@@ -38,8 +38,8 @@
     {
       "id": "T01",
       "title": "Initialize monorepo structure",
-      "status": "todo",
-      "description": "Create the top-level project layout with frontend/ and backend/ directories. Initialize a SvelteKit + TypeScript + Tailwind project in frontend/ and a FastAPI project in backend/. Add .env.example documenting all required environment variables (DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET), a root .gitignore, and a root README. Monorepo vs. split-repo is an open decision \u2014 proceed with monorepo assumption until overridden.",
+      "status": "done",
+      "description": "Create the top-level project layout with frontend/ and backend/ directories. Initialize a SvelteKit + TypeScript + Tailwind project in frontend/ and a FastAPI project in backend/. Add .env.example documenting all required environment variables (DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET), a root .gitignore, and a root README. Monorepo vs. split-repo is an open decision — proceed with monorepo assumption until overridden.",
       "depends_on": [],
       "stack": [
         "frontend",
@@ -63,7 +63,7 @@
     {
       "id": "T02",
       "title": "Set up Supabase project and Alembic",
-      "status": "todo",
+      "status": "done",
       "description": "Configure the FastAPI app to connect to Supabase PostgreSQL using SQLAlchemy and the DATABASE_URL from the environment. Initialize Alembic for schema migrations, pointing at the Supabase connection string. Create the base migration environment and verify that `alembic upgrade head` runs cleanly against the Supabase database.",
       "depends_on": [
         "T01"
@@ -79,7 +79,7 @@
       "acceptance_criteria": [
         "`alembic upgrade head` completes without error against the Supabase Postgres instance",
         "`alembic downgrade base` reverses cleanly",
-        "DATABASE_URL is read from environment only \u2014 never hardcoded",
+        "DATABASE_URL is read from environment only — never hardcoded",
         "SQLAlchemy Base and async session factory are importable from `app.db`"
       ],
       "updates_docs": [
@@ -88,8 +88,8 @@
     },
     {
       "id": "T03",
-      "title": "DB schema \u2014 participants and sessions tables",
-      "status": "todo",
+      "title": "DB schema — participants and sessions tables",
+      "status": "done",
       "description": "Write SQLAlchemy models and an Alembic migration for the `participants` and `sessions` tables. `participants` uses `participant_uuid` (UUID PK) and `participant_number` (unique ascending int, server-assigned). `sessions` uses `session_id` (UUID PK), `participant_uuid` FK, `status` VARCHAR ('created'/'active'/'complete'), and timestamps.",
       "depends_on": [
         "T02"
@@ -115,9 +115,9 @@
     },
     {
       "id": "T04",
-      "title": "DB schema \u2014 digit span tables",
-      "status": "todo",
-      "description": "Write SQLAlchemy models and an Alembic migration for `digitspan_runs` and `digitspan_trials`. `digitspan_runs` stores run_id (UUID PK), session_id FK, participant_uuid FK, total_correct (INT), max_span (INT). `digitspan_trials` stores trial_id (UUID PK), run_id FK, trial_number (INT 1\u201314), span_length (INT 3\u20139), sequence_shown (VARCHAR), sequence_entered (VARCHAR), correct (BOOLEAN).",
+      "title": "DB schema — digit span tables",
+      "status": "done",
+      "description": "Write SQLAlchemy models and an Alembic migration for `digitspan_runs` and `digitspan_trials`. `digitspan_runs` stores run_id (UUID PK), session_id FK, participant_uuid FK, total_correct (INT), max_span (INT). `digitspan_trials` stores trial_id (UUID PK), run_id FK, trial_number (INT 1–14), span_length (INT 3–9), sequence_shown (VARCHAR), sequence_entered (VARCHAR), correct (BOOLEAN).",
       "depends_on": [
         "T03"
       ],
@@ -142,9 +142,9 @@
     },
     {
       "id": "T05",
-      "title": "DB schema \u2014 all four survey tables",
-      "status": "todo",
-      "description": "Write SQLAlchemy models and a single Alembic migration covering `survey_uls8`, `survey_cesd10`, `survey_gad7`, and `survey_cogfunc8a`. Each table stores response_id (UUID PK), session_id FK, participant_uuid FK, raw item columns (r1\u2013rN as SMALLINT), and computed score columns. See docs/SCHEMA.md for full column specs. CogFunc 8a uses 1-5 Likert range (OPEN-02 resolved).",
+      "title": "DB schema — all four survey tables",
+      "status": "done",
+      "description": "Write SQLAlchemy models and a single Alembic migration covering `survey_uls8`, `survey_cesd10`, `survey_gad7`, and `survey_cogfunc8a`. Each table stores response_id (UUID PK), session_id FK, participant_uuid FK, raw item columns (r1–rN as SMALLINT), and computed score columns. See docs/SCHEMA.md for full column specs. CogFunc 8a uses 1-5 Likert range (OPEN-02 resolved).",
       "depends_on": [
         "T03"
       ],
@@ -171,8 +171,8 @@
     },
     {
       "id": "T06",
-      "title": "Auth \u2014 stub lab member dependency",
-      "status": "todo",
+      "title": "Auth — stub lab member dependency",
+      "status": "done",
       "description": "Implement a stubbed `get_current_lab_member` FastAPI dependency in `backend/app/auth.py` that returns a hardcoded LabMember Pydantic object without contacting Supabase Auth. This unblocks all RA endpoint development while the real JWT validation (T18) is deferred. Mark the stub clearly with a TODO comment referencing T18.",
       "depends_on": [
         "T01"
@@ -196,9 +196,9 @@
     },
     {
       "id": "T07",
-      "title": "Backend \u2014 participant CRUD endpoints",
-      "status": "todo",
-      "description": "Implement POST /participants (create), GET /participants (list), and GET /participants/{uuid} (detail) in `backend/app/routers/participants.py`. Server assigns participant_number as the next integer in sequence \u2014 it must never be client-supplied. All three endpoints require the `get_current_lab_member` auth dependency from T06.",
+      "title": "Backend — participant CRUD endpoints",
+      "status": "done",
+      "description": "Implement POST /participants (create), GET /participants (list), and GET /participants/{uuid} (detail) in `backend/app/routers/participants.py`. Server assigns participant_number as the next integer in sequence — it must never be client-supplied. All three endpoints require the `get_current_lab_member` auth dependency from T06.",
       "depends_on": [
         "T03",
         "T06"
@@ -223,8 +223,8 @@
     },
     {
       "id": "T08",
-      "title": "Backend \u2014 session endpoints",
-      "status": "todo",
+      "title": "Backend — session endpoints",
+      "status": "done",
       "description": "Implement POST /sessions (create), GET /sessions/{session_id} (status check), and PATCH /sessions/{session_id}/status (update status) in `backend/app/routers/sessions.py`. Sessions start with status='created'. POST and PATCH require auth; GET is unauthenticated so the participant page can poll status.",
       "depends_on": [
         "T03",
@@ -250,7 +250,7 @@
     },
     {
       "id": "T09",
-      "title": "Backend \u2014 digit span scoring module and endpoint",
+      "title": "Backend — digit span scoring module and endpoint",
       "status": "todo",
       "description": "Implement `backend/app/scoring/digitspan.py` with a pure `score(trials: list[TrialInput]) -> DigitSpanScored` function that computes total_correct and max_span. Implement POST /digitspan/runs in `backend/app/routers/digitspan.py` that accepts raw trial data, validates session is 'active', runs scoring, and persists rows to both digitspan_runs and digitspan_trials.",
       "depends_on": [
@@ -278,9 +278,9 @@
     },
     {
       "id": "T10",
-      "title": "Backend \u2014 all four survey scoring modules and endpoints",
+      "title": "Backend — all four survey scoring modules and endpoints",
       "status": "todo",
-      "description": "Implement scoring modules in `backend/app/scoring/` for uls8.py, cesd10.py, gad7.py, and cogfunc8a.py, each exposing a `score(raw)` function following the exact rules in each instrument's doc (docs/ULS8.md, docs/CESD10.md, docs/GAD7.md, docs/COGFUNC8A.md). Implement POST endpoints for each survey in `backend/app/routers/surveys.py`. Each endpoint validates active session, scores, persists, and returns the scored result. OPEN-02 and OPEN-03 are now RESOLVED \u2014 see docs/DECISIONS.md.",
+      "description": "Implement scoring modules in `backend/app/scoring/` for uls8.py, cesd10.py, gad7.py, and cogfunc8a.py, each exposing a `score(raw)` function following the exact rules in each instrument's doc (docs/ULS8.md, docs/CESD10.md, docs/GAD7.md, docs/COGFUNC8A.md). Implement POST endpoints for each survey in `backend/app/routers/surveys.py`. Each endpoint validates active session, scores, persists, and returns the scored result. OPEN-02 and OPEN-03 are now RESOLVED — see docs/DECISIONS.md.",
       "depends_on": [
         "T05",
         "T08"
@@ -297,8 +297,8 @@
         "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "ULS-8: items 3 & 6 reversed (5 \u2212 raw), mean computed, 0\u2013100 transform applied and stored",
-        "CES-D 10: raw 1-4 stored, items 5 & 8 reversed (4 \u2212 raw), negative items (raw \u2212 1), total 0\u201330 stored",
+        "ULS-8: items 3 & 6 reversed (5 − raw), mean computed, 0–100 transform applied and stored",
+        "CES-D 10: raw 1-4 stored, items 5 & 8 reversed (4 − raw), negative items (raw − 1), total 0–30 stored",
         "GAD-7: severity_band assigned correctly for all four bands (minimal/mild/moderate/severe)",
         "All four endpoints reject submissions where session status is not 'active'"
       ],
@@ -310,7 +310,7 @@
     },
     {
       "id": "T11",
-      "title": "Frontend \u2014 SvelteKit route layout and auth guard",
+      "title": "Frontend — SvelteKit route layout and auth guard",
       "status": "todo",
       "description": "Establish the SvelteKit route structure: a `(ra)/` route group for RA pages with an auth guard layout, and a `session/[session_id]/` route group for unauthenticated participant pages. Implement `+layout.svelte` and `+layout.server.ts` for the RA group that redirect to /login if no auth session is present. Create the typed API wrapper module at `src/lib/api/index.ts`.",
       "depends_on": [
@@ -334,7 +334,7 @@
     },
     {
       "id": "T12",
-      "title": "Frontend \u2014 RA participant management UI",
+      "title": "Frontend — RA participant management UI",
       "status": "todo",
       "description": "Build the RA-facing participant pages under (ra)/participants/: a list page showing all participants and a create-participant form. The form posts first_name and last_name to POST /participants and displays the auto-assigned participant_number on success. All API calls go through src/lib/api/ wrappers.",
       "depends_on": [
@@ -352,7 +352,7 @@
         "Create participant form submits to backend and displays auto-assigned participant_number on success",
         "Participant list renders participant_number, first_name, last_name in a table ordered by number",
         "Form prevents submission with empty first_name or last_name",
-        "No bare fetch calls in component files \u2014 all calls go through src/lib/api/"
+        "No bare fetch calls in component files — all calls go through src/lib/api/"
       ],
       "updates_docs": [
         "docs/PROGRESS.md"
@@ -360,7 +360,7 @@
     },
     {
       "id": "T13",
-      "title": "Frontend \u2014 RA session creation and launch UI",
+      "title": "Frontend — RA session creation and launch UI",
       "status": "todo",
       "description": "Build session management UI under (ra)/sessions/: RA selects a participant, calls POST /sessions to create a session, and is shown the participant session URL (/session/[session_id]). Include a status badge that polls GET /sessions/{id} to display current status. Add a button to set status to 'active' via PATCH /sessions/{id}/status.",
       "depends_on": [
@@ -386,7 +386,7 @@
     },
     {
       "id": "T14",
-      "title": "Frontend \u2014 participant digit span task UI",
+      "title": "Frontend — participant digit span task UI",
       "status": "todo",
       "description": "Build the participant-facing digit span flow under /session/[session_id]/digitspan. See docs/DIGITSPAN.md for full specification including instruction text, practice trial (hardcoded '13579' at span 5), and input behavior. 14 scored trials (spans 3,3,4,4,5,5,6,6,7,7,8,8,9,9). Client manages presentation timing: 1000ms per digit display, 100ms gap between digits, using setTimeout chains. On completion, POST raw trial data to POST /digitspan/runs.",
       "depends_on": [
@@ -413,7 +413,7 @@
     },
     {
       "id": "T15",
-      "title": "Frontend \u2014 ULS-8 and CES-D 10 survey screens",
+      "title": "Frontend — ULS-8 and CES-D 10 survey screens",
       "status": "todo",
       "description": "Build survey screens for ULS-8 at /session/[session_id]/uls8 and CES-D 10 at /session/[session_id]/cesd10. Each screen presents exact instrument wording from docs/ULS8.md and docs/CESD10.md with the correct response scale (1-4 Never/Rarely/Sometimes/Often). On submission, POST raw responses (1-4) to the corresponding backend endpoint and advance to the next survey only on a 2xx response. OPEN-03 is now RESOLVED.",
       "depends_on": [
@@ -441,9 +441,9 @@
     },
     {
       "id": "T16",
-      "title": "Frontend \u2014 GAD-7 and CogFunc 8a survey screens + completion routing",
+      "title": "Frontend — GAD-7 and CogFunc 8a survey screens + completion routing",
       "status": "todo",
-      "description": "Build survey screens for GAD-7 at /session/[session_id]/gad7 and Cognitive Function 8a at /session/[session_id]/cogfunc. See docs/GAD7.md and docs/COGFUNC8A.md for exact item wording and scales. CogFunc 8a is the final instrument. After CogFunc 8a submits successfully, update session status to 'complete' via PATCH /sessions/{id}/status and route to /session/[session_id]/complete. OPEN-02 is now RESOLVED \u2014 CogFunc uses 1-5 scale.",
+      "description": "Build survey screens for GAD-7 at /session/[session_id]/gad7 and Cognitive Function 8a at /session/[session_id]/cogfunc. See docs/GAD7.md and docs/COGFUNC8A.md for exact item wording and scales. CogFunc 8a is the final instrument. After CogFunc 8a submits successfully, update session status to 'complete' via PATCH /sessions/{id}/status and route to /session/[session_id]/complete. OPEN-02 is now RESOLVED — CogFunc uses 1-5 scale.",
       "depends_on": [
         "T10",
         "T11"
@@ -469,9 +469,9 @@
     },
     {
       "id": "T17",
-      "title": "Frontend \u2014 session completion screen",
+      "title": "Frontend — session completion screen",
       "status": "todo",
-      "description": "Build the participant-facing completion screen at /session/[session_id]/complete. Display a thank-you message and instruction to return the device to the RA. No scores or data should be shown to the participant. The page is a dead end \u2014 no navigation forward or back.",
+      "description": "Build the participant-facing completion screen at /session/[session_id]/complete. Display a thank-you message and instruction to return the device to the RA. No scores or data should be shown to the participant. The page is a dead end — no navigation forward or back.",
       "depends_on": [
         "T16"
       ],
@@ -493,7 +493,7 @@
     },
     {
       "id": "T18",
-      "title": "Auth \u2014 replace stub with Supabase Auth",
+      "title": "Auth — replace stub with Supabase Auth",
       "status": "todo",
       "description": "Replace the stub in backend/app/auth.py with real Supabase JWT validation: decode and verify the JWT from the Authorization header using SUPABASE_JWT_SECRET, and return a typed LabMember from the token claims. On the frontend, wire the RA route group auth guard to Supabase Auth session management so that login/logout and protected route redirects work against real Supabase Auth tokens.",
       "depends_on": [

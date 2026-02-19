@@ -49,7 +49,7 @@ sessions (1) ──────────────────── (1) su
 |------------------|-------------|---------------|-----------------------------------------|
 | session_id       | UUID        | PK            |                                         |
 | participant_uuid | UUID        | FK, NOT NULL  | → participants.participant_uuid         |
-| status           | VARCHAR     | NOT NULL      | "created" → "active" → "complete"       |
+| status           | VARCHAR     | NOT NULL      | "created" / "active" / "complete"       |
 | created_at       | TIMESTAMPTZ | DEFAULT NOW() |                                         |
 | completed_at     | TIMESTAMPTZ | NULLABLE      | Set when status transitions to "complete" |
 
@@ -151,4 +151,7 @@ sessions (1) ──────────────────── (1) su
 
 | Date | Task | Migration Description |
 |------|------|-----------------------|
-| —    | —    | No migrations applied yet |
+| 2026-02-19 | T02 | Alembic initialized with baseline revision |
+| 2026-02-19 | T03 | Create participants and sessions tables |
+| 2026-02-19 | T04 | Create digitspan_runs and digitspan_trials tables |
+| 2026-02-19 | T05 | Create survey tables (ULS-8, CES-D 10, GAD-7, CogFunc 8a) |

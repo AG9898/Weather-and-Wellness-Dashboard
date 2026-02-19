@@ -1,0 +1,11 @@
+# Node
+node_modules/
+.svelte-kit/
+
+# Python
+__pycache__/
+*.pyc
+
+# Env files
+.env
+.env.local

@@ -31,9 +31,9 @@
 
 | Method | Path | Auth | Status | Implemented by |
 |--------|------|------|--------|----------------|
-| POST   | /participants | RA | planned | T07 |
-| GET    | /participants | RA | planned | T07 |
-| GET    | /participants/{uuid} | RA | planned | T07 |
+| POST   | /participants | RA | implemented | T07 |
+| GET    | /participants | RA | implemented | T07 |
+| GET    | /participants/{uuid} | RA | implemented | T07 |
 | POST   | /sessions | RA | planned | T08 |
 | GET    | /sessions/{session_id} | None | planned | T08 |
 | PATCH  | /sessions/{session_id}/status | RA | planned | T08 |
@@ -49,7 +49,7 @@
 
 ### POST /participants
 - **Auth:** RA required
-- **Status:** planned (T07)
+- **Status:** implemented (T07)
 - **Request body:**
   ```json
   { "first_name": "string", "last_name": "string" }
@@ -70,14 +70,14 @@
 
 ### GET /participants
 - **Auth:** RA required
-- **Status:** planned (T07)
+- **Status:** implemented (T07)
 - **Response:** Array of ParticipantResponse objects, ordered by `participant_number` ascending.
 
 ---
 
 ### GET /participants/{uuid}
 - **Auth:** RA required
-- **Status:** planned (T07)
+- **Status:** implemented (T07)
 - **Response:** Single ParticipantResponse | 404 if UUID unknown.
 
 ---
@@ -86,7 +86,7 @@
 
 ### POST /sessions
 - **Auth:** RA required
-- **Status:** planned (T08)
+- **Status:** implemented (T08)
 - **Request body:**
   ```json
   { "participant_uuid": "uuid" }
@@ -107,14 +107,14 @@
 
 ### GET /sessions/{session_id}
 - **Auth:** None (unauthenticated — participant page polls this)
-- **Status:** planned (T08)
+- **Status:** implemented (T08)
 - **Response:** SessionResponse with current `status` field.
 
 ---
 
 ### PATCH /sessions/{session_id}/status
 - **Auth:** RA required
-- **Status:** planned (T08)
+- **Status:** implemented (T08)
 - **Request body:**
   ```json
   { "status": "created | active | complete" }

@@ -1,0 +1,5 @@
+Alembic environment for the Weather & Wellness backend.
+
+Migrations are sourced from `backend/alembic/versions/`.
+
+The database URL is read from the `DATABASE_URL` environment variable only.
