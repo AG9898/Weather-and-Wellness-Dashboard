@@ -43,19 +43,21 @@
 - `DATABASE_URL` from environment only — never hardcode connection strings
 - FK constraints enforced at DB level (not just application level)
 - All tables get `created_at TIMESTAMPTZ DEFAULT NOW()`
+- For Supabase connectivity in IPv4-only environments, prefer session pooler `DATABASE_URL` values
+- With SQLAlchemy asyncpg in this repo, use `ssl=require` query param (not `sslmode=require`)
 
 ---
 
-## Frontend (SvelteKit)
+## Frontend (Next.js)
 
 ### Route structure
-- Each major screen is its own `+page.svelte` file
-- RA-only pages: `src/routes/(ra)/` — protected by auth guard layout
-- Participant pages: `src/routes/session/[session_id]/` — no auth required
+- Each major screen is a `page.tsx` under the App Router
+- RA-only pages: `src/app/(ra)/` — protected by auth guard (layout or middleware)
+- Participant pages: `src/app/session/[session_id]/` — no auth required
 
 ### Components and state
 - Shared reusable UI goes in `src/lib/components/`
-- Application state: Svelte stores in `src/lib/stores/` (current `session_id`, current step, participant mode flag)
+- Application state: client-side stores in `src/lib/stores/` (current `session_id`, current step, participant mode flag)
 
 ### API calls
 - **All** API calls go through typed wrapper functions in `src/lib/api/`
@@ -90,7 +92,7 @@ Follow this sequence when adding any new instrument in future phases:
 3. Create Pydantic schemas in `backend/app/schemas/`
 4. Create Alembic migration for the new survey table; update `docs/SCHEMA.md` migration history
 5. Add POST endpoint in `backend/app/routers/surveys.py`; update `docs/API.md`
-6. Create SvelteKit survey route under `src/routes/session/[session_id]/<instrument>/+page.svelte`
+6. Create Next.js survey route under `src/app/session/[session_id]/<instrument>/page.tsx`
 7. Wire new route into the session flow sequence in the appropriate layout or store
 
 ---
@@ -99,7 +101,9 @@ Follow this sequence when adding any new instrument in future phases:
 
 | Variable             | Description                                |
 |----------------------|--------------------------------------------|
-| `DATABASE_URL`       | Supabase PostgreSQL connection string      |
-| `SUPABASE_URL`       | Supabase project URL                       |
-| `SUPABASE_ANON_KEY`  | Supabase anonymous/public key              |
-| `SUPABASE_JWT_SECRET`| Used by FastAPI to validate Supabase JWTs  |
+| `DATABASE_URL`       | Supabase PostgreSQL connection string (backend) |
+| `SUPABASE_URL`       | Supabase project URL (server-side use) |
+| `SUPABASE_ANON_KEY`  | Supabase anonymous/public key (server-side use) |
+| `SUPABASE_JWT_SECRET`| Used by FastAPI to validate Supabase JWTs (only if auth enabled) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (frontend auth; only if auth enabled) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key (frontend auth; only if auth enabled) |

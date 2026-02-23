@@ -10,15 +10,19 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 1                      |
-| Tasks completed    | 7 / 18                 |
-| Tasks in progress  | 0                      |
-| Last updated       | 2026-02-19             |
+| Tasks completed    | 5 / 18                 |
+| Tasks in progress  | 1                      |
+| Last updated       | 2026-02-23             |
+
+---
+
+**Architecture note (2026-02-22):** Project architecture is now standardized on Next.js (Vercel) + FastAPI (Render) + Supabase Postgres. Earlier entries referencing SvelteKit reflect the initial scaffold and are superseded by docs/ARCHITECTURE.md.
 
 ---
 
 ## Currently In Progress
 
-_No tasks in progress._
+**T01 — Initialize monorepo structure** (reopened 2026-02-20)
 
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
@@ -29,10 +33,12 @@ _No tasks in progress._
 
 ## Completed Tasks
 
+Note: T01, T07, and T08 were reopened on 2026-02-20 after verification found incomplete or invalid implementations. See Recent Changes.
+
 | Task | Title | Completed | Notes |
 |------|-------|-----------|-------|
 | T01 | Initialize monorepo structure | 2026-02-19 | Monorepo scaffolded (frontend+backend); env + gitignore added. |
-| T02 | Set up Supabase project and Alembic | 2026-02-19 | Alembic initialized; async SQLAlchemy Base and session factory in app.db; env-only DATABASE_URL; migrations env configured. |
+| T02 | Set up Supabase project and Alembic | 2026-02-19 | Alembic initialized; async SQLAlchemy Base and session factory in app.db; env-only DATABASE_URL; migrations env configured; live `upgrade head` verified on Supabase (2026-02-23). |
 | T03 | DB schema — participants and sessions tables | 2026-02-19 | Models and migration created for participants and sessions with constraints and timestamps. |
 | T04 | DB schema — digit span tables | 2026-02-19 | Models and migration created for digitspan_runs and digitspan_trials with FK constraints and checks. |
 | T05 | DB schema — all four survey tables | 2026-02-19 | Models + migration for all four survey tables created. |
@@ -43,6 +49,76 @@ _No tasks in progress._
 ---
 
 ## Recent Changes
+### Backend setup verification + docs alignment — 2026-02-23
+
+**Files modified:**
+- backend/alembic/versions/20260219_000004_survey_tables.py — fixed quote escaping syntax in migration script
+- README.md — updated stack/status wording and run commands
+- docs/devSteps.md — updated local `.env` workflow, venv-based commands, and Render timing guidance
+- docs/ARCHITECTURE.md — added explicit Render setup timing section
+- docs/CONVENTIONS.md — added session-pooler/SSL guidance for asyncpg
+- docs/SCHEMA.md — added note confirming applied head revision
+- docs/kanban.md — aligned T01 env-doc acceptance wording with current repo workflow
+- docs/PROGRESS.md — state date and this entry updated
+
+**Key implementation decisions:**
+- For this environment, Supabase connectivity uses a session pooler URL in `DATABASE_URL`.
+- SQLAlchemy asyncpg in this repo expects `ssl=require` query param.
+- Render setup is not required to complete local backend setup tasks in current Phase 1 scope.
+
+**Verification:**
+- `alembic upgrade head` completed successfully against Supabase.
+- `alembic current -v` reports revision `20260219_000004 (head)`.
+
+**Blockers encountered:**
+- T07/T08 endpoint tasks remain open because router files still contain syntax issues.
+
+**Docs updated:**
+- README.md
+- docs/devSteps.md
+- docs/ARCHITECTURE.md
+- docs/CONVENTIONS.md
+- docs/SCHEMA.md
+- docs/kanban.md
+- docs/PROGRESS.md
+
+---
+
+### Architecture & deployment documentation update — 2026-02-22
+
+**Files modified:**
+- docs/ARCHITECTURE.md — canonical architecture/deployment doc updated
+- docs/DECISIONS.md — OPEN-04 resolved; deployment locked
+- docs/CONVENTIONS.md — frontend conventions updated to Next.js
+- docs/API.md — production base URL and auth notes aligned
+- docs/devSteps.md — dev setup aligned to Next.js + optional auth
+- docs/kanban.md — stack and frontend tasks aligned to Next.js
+- docs/PRD.md — removed CSV export scope per architecture
+- docs/PROGRESS.md — state and this entry updated
+
+**Key implementation decisions:**
+- Deploy as a 3-tier web app: Next.js on Vercel (UI only), FastAPI on Render, Supabase Postgres.
+- Supabase Auth is optional; if enabled, Next.js sends JWTs to FastAPI for validation.
+- Alembic migrations run as deploy step/one-off command, not on app startup.
+
+---
+
+### T01/T07/T08 — Status corrections after audit — 2026-02-20
+
+**Files modified:**
+- docs/kanban.md — T01 set to in_progress; T07/T08 set to todo after verification
+- docs/PROGRESS.md — current state updated to reflect reopened tasks
+
+**Key implementation decisions:**
+- Reopened tasks are tracked as corrections rather than deleting historical completion entries.
+
+**Blockers encountered:**
+- T07/T08 routers contain syntax errors and incomplete code, preventing backend from starting.
+- T01 cannot be marked complete until dev servers are verified locally (env + deps required).
+
+**Docs updated:**
+- docs/PROGRESS.md — this entry and state tables updated
+
 ### T07 — Backend — participant CRUD endpoints — 2026-02-19
 
 **Files created:**

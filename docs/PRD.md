@@ -6,7 +6,7 @@ Internal lab-operated web app to:
 - Administer 4 surveys (exact wording)
 - Auto-score all instruments
 - Store data linked by participant + session
-- Export analysis-ready CSV
+- Provide data access via Supabase Studio (no CSV export in Phase 1)
 
 ## Users
 - LabMember (RA/Admin)
@@ -23,9 +23,9 @@ Internal lab-operated web app to:
 - CES-D 10 (reverse score + total)
 - GAD-7 (total + severity band)
 - Cognitive Function 8a (sum + mean)
-- Session creation + CSV export
+- Session creation + data access via Supabase Studio (no CSV export)
 
 ## Success Criteria
 - End-to-end session without manual scoring
 - All data linked to participant_uuid + session_id
-- Export ready for analysis
+- Lab team can view stored results via Supabase Studio

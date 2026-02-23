@@ -1,10 +1,12 @@
 # Node
 node_modules/
-.svelte-kit/
+.next/
 
 # Python
 __pycache__/
 *.pyc
+.venv/
+backend/.venv/
 
 # Env files
 .env

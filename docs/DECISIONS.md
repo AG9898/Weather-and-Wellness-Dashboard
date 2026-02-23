@@ -33,22 +33,7 @@ and whether a shared types package makes sense. Affects all path references in c
 
 ---
 
-### OPEN-04 — Deployment Target and Hosting
-
-**Why it matters:** Affects environment variable management, whether Docker Compose is
-needed, which SvelteKit adapter to use (static vs. Node), and production database config.
-
-**Options considered:**
-- Lab server / self-hosted VPS (Docker or process manager)
-- Fly.io or Railway (managed containers, simple for small teams)
-- Vercel (frontend) + Fly.io (backend) split deployment
-- Supabase Edge Functions (would require restructuring backend — not recommended)
-
-**Current default:** Deployment is out of Phase 1 scope. Do not make deployment-driven
-architectural choices. Keep infra decisions reversible. Do not commit to a specific
-SvelteKit adapter (e.g., `@sveltejs/adapter-static` vs. `adapter-node`) until resolved.
-
-**Blocks / affects:** T01 (`svelte.config.js` adapter); future deployment tasks (T19+).
+*(OPEN-04 moved to Resolved section — see RESOLVED-06)*
 
 ---
 
@@ -58,14 +43,14 @@ SvelteKit adapter (e.g., `@sveltejs/adapter-static` vs. `adapter-node`) until re
 
 **Resolved:** Pre-project (before T01)
 
-**Decision:** Supabase is the database and auth platform for Phase 1.
+**Decision:** Supabase is the managed database platform for Phase 1. Supabase Auth is optional.
 
 **Why:** Supabase bundles three required capabilities:
 1. Managed PostgreSQL — same semantics as Neon or self-hosted; Alembic/SQLAlchemy unchanged
-2. Supabase Auth — RA login solved without a separate auth provider; FastAPI validates JWTs
+2. Optional Supabase Auth — when enabled, RA login uses Supabase JWTs validated by FastAPI
 3. Supabase Studio — lab team reads all stored results directly via the web UI
 
-Neon would be preferred if DB branching were a priority and a separate auth solution existed. For this project, a single managed platform with auth is the right tradeoff.
+Neon would be preferred if DB branching were a priority and a separate auth solution existed. For this project, a single managed platform with optional auth is the right tradeoff.
 
 **Affects:** All DB and auth tasks; T02 (Supabase connection), T06/T18 (auth pattern).
 
@@ -89,7 +74,7 @@ revisited in Phase 2 if lab workflows require it.
 
 **Resolved:** Pre-project (before T01)
 
-**Decision:** Client (SvelteKit) handles digit presentation timing only. All scoring computed server-side (FastAPI). Final scores never computed on the client.
+**Decision:** Client (Next.js) handles digit presentation timing only. All scoring computed server-side (FastAPI). Final scores never computed on the client.
 
 **Why:** Server-side scoring ensures a single authoritative implementation, enables unit testing in isolation, and prevents score manipulation. Client-side timing is necessary because digit presentation must be precise (1000ms/digit) without a round-trip per digit.
 
@@ -118,6 +103,23 @@ revisited in Phase 2 if lab workflows require it.
 **Why:** Verified against the lab's instrument form (Mood Measures.pdf, UBC H24-03749 v1.2) and the CES-D 10 scoring reference (DDSSection2.7CESD.pdf, which identifies items e and h as positive-affect). Additionally, the lab form uses a 1–4 scale (Never/Rarely/Sometimes/Often), not the standard 0–3. Raw values 1–4 are stored; scoring converts to 0–3 (`raw - 1`) before computing totals. Positive items reverse: `4 - raw`.
 
 **Affects:** T10 (scoring module), T15 (frontend CES-D screen). See docs/CESD10.md for full specification. Updated docs/SCHEMA.md and docs/SCORING.md.
+
+---
+
+### RESOLVED-06 — Architecture & Deployment (was OPEN-04)
+
+**Resolved:** 2026-02-22
+
+**Decision:** Deploy as a standard three-tier web app:
+1. **Frontend:** Next.js (TypeScript + Tailwind UI only) on Vercel
+2. **Backend:** Long-lived FastAPI service on Render (no FastAPI on Vercel)
+3. **Database:** Supabase Postgres (managed)
+
+Auth is optional. If enabled, Next.js obtains a Supabase JWT and sends `Authorization: Bearer <JWT>` to FastAPI for validation. Alembic migrations run as a deploy step/one-off command, not on every startup.
+
+**Why:** This split cleanly separates UI, API, and data layers; keeps deployment straightforward for a small lab team; and preserves server-side canonical scoring while using managed Postgres.
+
+**Affects:** docs/ARCHITECTURE.md (canonical), docs/CONVENTIONS.md, docs/API.md, docs/devSteps.md, docs/kanban.md.
 
 ---
 

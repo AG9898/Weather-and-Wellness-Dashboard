@@ -29,17 +29,17 @@
   "project": "Weather & Wellness + Misokinesia Research Web App",
   "phase": 1,
   "stack_overview": {
-    "frontend": "SvelteKit + TypeScript + Tailwind",
-    "backend": "FastAPI (Python)",
+    "frontend": "Next.js (Vercel) + TypeScript + Tailwind",
+    "backend": "FastAPI (Python, Render)",
     "database": "Supabase (managed PostgreSQL)",
-    "auth": "Supabase Auth (JWT validated in FastAPI)"
+    "auth": "Supabase Auth (optional; JWT validated in FastAPI when enabled)"
   },
   "tasks": [
     {
       "id": "T01",
       "title": "Initialize monorepo structure",
-      "status": "done",
-      "description": "Create the top-level project layout with frontend/ and backend/ directories. Initialize a SvelteKit + TypeScript + Tailwind project in frontend/ and a FastAPI project in backend/. Add .env.example documenting all required environment variables (DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET), a root .gitignore, and a root README. Monorepo vs. split-repo is an open decision — proceed with monorepo assumption until overridden.",
+      "status": "in_progress",
+      "description": "Create the top-level project layout with frontend/ and backend/ directories. Initialize a Next.js + TypeScript + Tailwind project in frontend/ and a FastAPI project in backend/. Document required environment variables for local setup (DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY; if auth enabled also SUPABASE_JWT_SECRET and NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY) in repository docs and/or a template env file, plus a root .gitignore and README. Monorepo vs. split-repo is an open decision — proceed with monorepo assumption until overridden.",
       "depends_on": [],
       "stack": [
         "frontend",
@@ -51,10 +51,10 @@
         "docs/DECISIONS.md"
       ],
       "acceptance_criteria": [
-        "`cd frontend && npm run dev` starts SvelteKit dev server without errors",
+        "`cd frontend && npm run dev` starts Next.js dev server without errors",
         "`cd backend && uvicorn app.main:app --reload` starts FastAPI without errors",
-        ".env.example documents DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET",
-        ".gitignore covers node_modules, __pycache__, .env, .svelte-kit, and *.pyc"
+        "Environment docs (README/devSteps and/or .env.example) document DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, and (if auth enabled) SUPABASE_JWT_SECRET + NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        ".gitignore covers node_modules, __pycache__, .env, .next, and *.pyc"
       ],
       "updates_docs": [
         "docs/PROGRESS.md"
@@ -197,7 +197,7 @@
     {
       "id": "T07",
       "title": "Backend — participant CRUD endpoints",
-      "status": "done",
+      "status": "todo",
       "description": "Implement POST /participants (create), GET /participants (list), and GET /participants/{uuid} (detail) in `backend/app/routers/participants.py`. Server assigns participant_number as the next integer in sequence — it must never be client-supplied. All three endpoints require the `get_current_lab_member` auth dependency from T06.",
       "depends_on": [
         "T03",
@@ -224,7 +224,7 @@
     {
       "id": "T08",
       "title": "Backend — session endpoints",
-      "status": "done",
+      "status": "todo",
       "description": "Implement POST /sessions (create), GET /sessions/{session_id} (status check), and PATCH /sessions/{session_id}/status (update status) in `backend/app/routers/sessions.py`. Sessions start with status='created'. POST and PATCH require auth; GET is unauthenticated so the participant page can poll status.",
       "depends_on": [
         "T03",
@@ -310,9 +310,9 @@
     },
     {
       "id": "T11",
-      "title": "Frontend — SvelteKit route layout and auth guard",
+      "title": "Frontend — Next.js route layout and auth guard",
       "status": "todo",
-      "description": "Establish the SvelteKit route structure: a `(ra)/` route group for RA pages with an auth guard layout, and a `session/[session_id]/` route group for unauthenticated participant pages. Implement `+layout.svelte` and `+layout.server.ts` for the RA group that redirect to /login if no auth session is present. Create the typed API wrapper module at `src/lib/api/index.ts`.",
+      "description": "Establish the Next.js App Router structure: a `(ra)/` route group for RA pages with an auth guard (layout or middleware), and a `session/[session_id]/` route group for unauthenticated participant pages. Implement `src/app/(ra)/layout.tsx` (or middleware) to redirect to /login if no auth session is present. Create the typed API wrapper module at `src/lib/api/index.ts`.",
       "depends_on": [
         "T01"
       ],
@@ -325,7 +325,7 @@
       "acceptance_criteria": [
         "Navigating to any (ra)/ route without auth redirects to /login",
         "Navigating to /session/[any-id] does not require auth",
-        "Route group folders exist: src/routes/(ra)/ and src/routes/session/[session_id]/",
+        "Route group folders exist: src/app/(ra)/ and src/app/session/[session_id]/",
         "src/lib/api/index.ts exists with typed fetch wrapper functions and exports at least one placeholder"
       ],
       "updates_docs": [
@@ -336,7 +336,7 @@
       "id": "T12",
       "title": "Frontend — RA participant management UI",
       "status": "todo",
-      "description": "Build the RA-facing participant pages under (ra)/participants/: a list page showing all participants and a create-participant form. The form posts first_name and last_name to POST /participants and displays the auto-assigned participant_number on success. All API calls go through src/lib/api/ wrappers.",
+      "description": "Build the RA-facing participant pages under (ra)/participants in the Next.js App Router: a list page showing all participants and a create-participant form. The form posts first_name and last_name to POST /participants and displays the auto-assigned participant_number on success. All API calls go through src/lib/api/ wrappers.",
       "depends_on": [
         "T07",
         "T11"
@@ -362,7 +362,7 @@
       "id": "T13",
       "title": "Frontend — RA session creation and launch UI",
       "status": "todo",
-      "description": "Build session management UI under (ra)/sessions/: RA selects a participant, calls POST /sessions to create a session, and is shown the participant session URL (/session/[session_id]). Include a status badge that polls GET /sessions/{id} to display current status. Add a button to set status to 'active' via PATCH /sessions/{id}/status.",
+      "description": "Build session management UI under (ra)/sessions in the Next.js App Router: RA selects a participant, calls POST /sessions to create a session, and is shown the participant session URL (/session/[session_id]). Include a status badge that polls GET /sessions/{id} to display current status. Add a button to set status to 'active' via PATCH /sessions/{id}/status.",
       "depends_on": [
         "T08",
         "T11"

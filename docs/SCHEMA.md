@@ -155,3 +155,6 @@ sessions (1) ──────────────────── (1) su
 | 2026-02-19 | T03 | Create participants and sessions tables |
 | 2026-02-19 | T04 | Create digitspan_runs and digitspan_trials tables |
 | 2026-02-19 | T05 | Create survey tables (ULS-8, CES-D 10, GAD-7, CogFunc 8a) |
+
+As of 2026-02-23, migrations were applied and verified on Supabase through
+revision `20260219_000004` (`head`).
