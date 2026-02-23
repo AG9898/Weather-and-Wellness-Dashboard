@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ParticipantCreate(BaseModel):
@@ -12,18 +12,16 @@ class ParticipantCreate(BaseModel):
 
 
 class ParticipantResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     participant_uuid: UUID
     participant_number: int
     first_name: str
     last_name: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 __all__ = [
-    ParticipantCreate,
-    ParticipantResponse,
+    "ParticipantCreate",
+    "ParticipantResponse",
 ]
-PY}

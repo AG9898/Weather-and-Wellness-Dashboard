@@ -2,7 +2,7 @@
 
 Monorepo for the lab app stack: Next.js frontend + FastAPI backend + Supabase Postgres.
 
-Current workspace status: backend infra/migrations are set up and verified; frontend scaffold is pending completion (see T01).
+Current workspace status: monorepo initialized — Next.js frontend and FastAPI backend both start cleanly. Backend infra/migrations are set up and verified.
 
 ## Project Docs
 - Architecture: `docs/ARCHITECTURE.md`
@@ -13,6 +13,8 @@ Current workspace status: backend infra/migrations are set up and verified; fron
 ## Dev
 - Backend deps: `cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
 - Backend API: `cd backend && set -a && source ../.env && set +a && PYTHONPATH=. .venv/bin/uvicorn app.main:app --reload`
+- Frontend deps: `cd frontend && npm install`
+- Frontend dev: `cd frontend && npm run dev`
 - DB migrations: `cd backend && set -a && source ../.env && set +a && PYTHONPATH=. .venv/bin/alembic upgrade head`
 
 ## Environment
@@ -21,6 +23,8 @@ Create a root `.env` and set required values from `docs/CONVENTIONS.md`:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_JWT_SECRET` (only when auth is enabled)
+- `NEXT_PUBLIC_SUPABASE_URL` (frontend, only when auth is enabled)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (frontend, only when auth is enabled)
 
 Notes:
 - Do not commit `.env`.

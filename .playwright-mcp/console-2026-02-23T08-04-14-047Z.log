@@ -1,0 +1,7 @@
+[   13499ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://viwqgwydrtpicovclllb.supabase.co/auth/v1/token?grant_type=password:0
+[   66953ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=h5QP9X4y47yEwbC5qXriG' failed:  @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[  132256ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8000/participants:0
+[  132257ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8000/participants:0
+[  161645ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8000/participants:0
+[  161649ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8000/participants:0
+[  166556ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8000/participants:0

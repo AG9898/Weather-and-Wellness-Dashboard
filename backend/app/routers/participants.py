@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,18 +12,17 @@ from app.models import Participant
 from app.schemas.participants import ParticipantCreate, ParticipantResponse
 
 router = APIRouter(
-    prefix=/participants,
-    tags=[participants],
+    prefix="/participants",
+    tags=["participants"],
     dependencies=[Depends(get_current_lab_member)],
 )
 
 
-@router.post(, response_model=ParticipantResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ParticipantResponse, status_code=status.HTTP_201_CREATED)
 async def create_participant(
     payload: ParticipantCreate,
     session: AsyncSession = Depends(get_session),
 ) -> ParticipantResponse:
-    # Determine next participant_number sequentially (starting at 1)
     result = await session.execute(select(func.max(Participant.participant_number)))
     current_max: int | None = result.scalar_one()
     next_number = (current_max or 0) + 1
@@ -40,10 +38,10 @@ async def create_participant(
     return ParticipantResponse.model_validate(participant)
 
 
-@router.get(, response_model=List[ParticipantResponse])
+@router.get("", response_model=list[ParticipantResponse])
 async def list_participants(
     session: AsyncSession = Depends(get_session),
-) -> List[ParticipantResponse]:
+) -> list[ParticipantResponse]:
     result = await session.execute(
         select(Participant).order_by(Participant.participant_number.asc())
     )
@@ -51,7 +49,7 @@ async def list_participants(
     return [ParticipantResponse.model_validate(p) for p in rows]
 
 
-@router.get(/{participant_uuid}, response_model=ParticipantResponse)
+@router.get("/{participant_uuid}", response_model=ParticipantResponse)
 async def get_participant(
     participant_uuid: UUID,
     session: AsyncSession = Depends(get_session),
@@ -61,4 +59,8 @@ async def get_participant(
     )
     participant = result.scalar_one_or_none()
     if participant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=Participant
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Participant not found",
+        )
+    return ParticipantResponse.model_validate(participant)

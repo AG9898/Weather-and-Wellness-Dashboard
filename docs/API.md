@@ -31,17 +31,17 @@
 
 | Method | Path | Auth | Status | Implemented by |
 |--------|------|------|--------|----------------|
-| POST   | /participants | RA | planned | T07 |
-| GET    | /participants | RA | planned | T07 |
-| GET    | /participants/{uuid} | RA | planned | T07 |
-| POST   | /sessions | RA | planned | T08 |
-| GET    | /sessions/{session_id} | None | planned | T08 |
-| PATCH  | /sessions/{session_id}/status | RA | planned | T08 |
-| POST   | /digitspan/runs | None (active session) | planned | T09 |
-| POST   | /surveys/uls8 | None (active session) | planned | T10 |
-| POST   | /surveys/cesd10 | None (active session) | planned | T10 |
-| POST   | /surveys/gad7 | None (active session) | planned | T10 |
-| POST   | /surveys/cogfunc8a | None (active session) | planned | T10 |
+| POST   | /participants | RA | implemented | T07 |
+| GET    | /participants | RA | implemented | T07 |
+| GET    | /participants/{uuid} | RA | implemented | T07 |
+| POST   | /sessions | RA | implemented | T08 |
+| GET    | /sessions/{session_id} | None | implemented | T08 |
+| PATCH  | /sessions/{session_id}/status | RA | implemented | T08 |
+| POST   | /digitspan/runs | None (active session) | implemented | T09 |
+| POST   | /surveys/uls8 | None (active session) | implemented | T10 |
+| POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
+| POST   | /surveys/gad7 | None (active session) | implemented | T10 |
+| POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
 
 ---
 
@@ -51,7 +51,7 @@
 
 ### POST /participants
 - **Auth:** RA required
-- **Status:** planned (T07)
+- **Status:** implemented (T07)
 - **Request body:**
   ```json
   { "first_name": "string", "last_name": "string" }
@@ -72,14 +72,14 @@
 
 ### GET /participants
 - **Auth:** RA required
-- **Status:** planned (T07)
+- **Status:** implemented (T07)
 - **Response:** Array of ParticipantResponse objects, ordered by `participant_number` ascending.
 
 ---
 
 ### GET /participants/{uuid}
 - **Auth:** RA required
-- **Status:** planned (T07)
+- **Status:** implemented (T07)
 - **Response:** Single ParticipantResponse | 404 if UUID unknown.
 
 ---
@@ -90,7 +90,7 @@
 
 ### POST /sessions
 - **Auth:** RA required
-- **Status:** planned (T08)
+- **Status:** implemented (T08)
 - **Request body:**
   ```json
   { "participant_uuid": "uuid" }
@@ -111,14 +111,14 @@
 
 ### GET /sessions/{session_id}
 - **Auth:** None (unauthenticated — participant page polls this)
-- **Status:** planned (T08)
+- **Status:** implemented (T08)
 - **Response:** SessionResponse with current `status` field.
 
 ---
 
 ### PATCH /sessions/{session_id}/status
 - **Auth:** RA required
-- **Status:** planned (T08)
+- **Status:** implemented (T08)
 - **Request body:**
   ```json
   { "status": "created | active | complete" }
@@ -131,7 +131,7 @@
 
 ### POST /digitspan/runs
 - **Auth:** None (active session validated)
-- **Status:** planned (T09)
+- **Status:** implemented (T09)
 - **Request body:**
   ```json
   {
@@ -163,7 +163,7 @@
 
 ### POST /surveys/uls8
 - **Auth:** None (active session validated)
-- **Status:** planned (T10)
+- **Status:** implemented (T10)
 - **Request body:**
   ```json
   { "session_id": "uuid", "r1": 1, "r2": 1, "r3": 1, "r4": 1, "r5": 1, "r6": 1, "r7": 1, "r8": 1 }
@@ -177,7 +177,7 @@
 
 ### POST /surveys/cesd10
 - **Auth:** None (active session validated)
-- **Status:** planned (T10)
+- **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r10": 0–3 each }`
 - **Response:** `{ "response_id": "uuid", "total_score": integer }`
 
@@ -185,7 +185,7 @@
 
 ### POST /surveys/gad7
 - **Auth:** None (active session validated)
-- **Status:** planned (T10)
+- **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r7": 0–3 each }`
 - **Response:** `{ "response_id": "uuid", "total_score": integer, "severity_band": "string" }`
 
@@ -193,7 +193,7 @@
 
 ### POST /surveys/cogfunc8a
 - **Auth:** None (active session validated)
-- **Status:** planned (T10)
+- **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r8": 1–5 each }`
 - **Response:** `{ "response_id": "uuid", "total_sum": integer, "mean_score": "decimal" }`
 
