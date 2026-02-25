@@ -49,6 +49,7 @@ export default function GAD7Page() {
   return (
     <SurveyForm
       title="GAD-7 — Generalized Anxiety Scale"
+      stepLabel="Survey 3 of 4"
       instructions="Please indicate how often each statement describes you right now."
       items={ITEMS}
       scale={SCALE}

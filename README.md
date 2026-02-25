@@ -6,6 +6,8 @@ Current workspace status: monorepo initialized — Next.js frontend and FastAPI 
 
 ## Project Docs
 - Architecture: `docs/ARCHITECTURE.md`
+- UI style guide: `docs/styleguide.md`
+- shadcn component guide: `docs/shadcn.md`
 - Task queue: `docs/kanban.md`
 - Progress log: `docs/PROGRESS.md`
 - Local setup/runbook: `docs/devSteps.md`
@@ -16,6 +18,11 @@ Current workspace status: monorepo initialized — Next.js frontend and FastAPI 
 - Frontend deps: `cd frontend && npm install`
 - Frontend dev: `cd frontend && npm run dev`
 - DB migrations: `cd backend && set -a && source ../.env && set +a && PYTHONPATH=. .venv/bin/alembic upgrade head`
+
+### One-command local startup
+- Start backend + frontend together: `./scripts/dev.sh`
+- Stop both: `Ctrl+C`
+- Optional ports/host override: `BACKEND_PORT=8001 FRONTEND_PORT=3001 HOST=127.0.0.1 ./scripts/dev.sh`
 
 ## Environment
 Create a root `.env` and set required values from `docs/CONVENTIONS.md`:

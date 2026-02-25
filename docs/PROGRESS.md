@@ -9,10 +9,10 @@
 
 | Field              | Value                  |
 |--------------------|------------------------|
-| Phase              | 2 (planning)           |
-| Tasks completed    | 18 / 32                |
+| Phase              | 2 (in progress)        |
+| Tasks completed    | 24 / 32                |
 | Tasks in progress  | 0                      |
-| Last updated       | 2026-02-23             |
+| Last updated       | 2026-02-25             |
 
 ---
 
@@ -55,11 +55,209 @@ Note: T01, T07, and T08 were reopened on 2026-02-20 after verification found inc
 | T16 | Frontend — GAD-7 and CogFunc 8a survey screens + completion routing | 2026-02-23 | GAD-7 (4-pt) + CogFunc 8a (5-pt); PATCH complete + route to /complete on final submit. |
 | T17 | Frontend — session completion screen | 2026-02-23 | Thank-you page, no scores shown, no navigation forward/back. |
 | T18 | Auth — replace stub with Supabase Auth | 2026-02-23 | Real JWT validation (backend) + Supabase Auth client (frontend). |
+| T19 | Frontend foundation — design tokens and shared layout shell | 2026-02-25 | UBC dark theme tokens in globals.css; PageContainer + RANavBar shared components; RA layout shell; participant session layout; login page styled; default Next.js root page replaced. |
+| T20 | Backend — dashboard summary endpoint for RA home | 2026-02-25 | GET /dashboard/summary; counts participants + sessions by status + last-7-day windows; RA auth required; tested against live DB. |
+| T21 | Backend — sessions list endpoint with filters and pagination | 2026-02-25 | GET /sessions; page/page_size/status/participant_number/date_from/date_to; newest-first; participant_number joined; input validation; tested against live DB. |
+| T22 | Frontend — RA dashboard landing page | 2026-02-25 | /dashboard with hero action zone, 5 KPI cards, recent sessions list; consumes /dashboard/summary + /sessions; loading/empty/error states; nav updated; login redirects to /dashboard. |
+| T23 | Frontend — RA participants and sessions UI cleanup | 2026-02-25 | /participants: page header + subtitle, combined name column, #N badge chip, responsive (date hidden mobile), bordered success/error banners. /sessions: page header + subtitle, sessions history table (GET /sessions), refreshes on create/activate/complete. |
+| T24 | Frontend — participant flow visual cleanup | 2026-02-25 | SurveyForm: dark-theme colors, blue selected state, stepLabel prop. Digit span: dark-theme colors, "STUDY TASK" step context, input border/text updates, emerald/red feedback. Surveys: "Survey N of 4" step labels. Completion: checkmark icon + dark colors. |
 <!-- Ralph: append one row per completed task. Never delete rows. -->
 
 ---
 
 ## Recent Changes
+
+### T24 — Frontend — participant flow visual cleanup — 2026-02-25
+
+**Files modified:**
+- frontend/src/lib/components/SurveyForm.tsx — added optional `stepLabel` prop (renders `text-xs uppercase tracking-widest text-muted-foreground` above title); replaced all `text-zinc-*` with semantic tokens (`text-foreground`, `text-muted-foreground`); selected radio: `background: var(--ubc-blue-700)` + `border-transparent text-white`; unselected: `border-border` + `hover:border-ring`; submit button: `--ubc-blue-700`; error: bordered destructive banner
+- frontend/src/app/session/[session_id]/digitspan/page.tsx — all `text-zinc-*` replaced with semantic tokens; `Screen` inner div updated to `w-full max-w-md text-center`; instruction1: added "STUDY TASK" label + example in bordered card; `Advance` updated to `text-muted-foreground`; digit display: `text-8xl text-foreground select-none`; input phase: `border-border`, `text-foreground`/`text-muted-foreground`; practice feedback: `text-emerald-400`/`text-red-400`; Continue button: `--ubc-blue-700`; error: bordered destructive banner
+- frontend/src/app/session/[session_id]/uls8/page.tsx — added `stepLabel="Survey 1 of 4"`
+- frontend/src/app/session/[session_id]/cesd10/page.tsx — added `stepLabel="Survey 2 of 4"`
+- frontend/src/app/session/[session_id]/gad7/page.tsx — added `stepLabel="Survey 3 of 4"`
+- frontend/src/app/session/[session_id]/cogfunc/page.tsx — added `stepLabel="Survey 4 of 4"`
+- frontend/src/app/session/[session_id]/complete/page.tsx — updated `text-zinc-600` → `text-muted-foreground`; added blue-700 checkmark circle icon above "Thank You" heading
+- docs/DESIGN_SPEC.md — Participant Flow Pages section added (digit span, surveys, completion)
+
+**Key implementation decisions:**
+- `stepLabel` is optional in SurveyForm so no changes needed at call sites that don't supply it (future instruments)
+- Exact instrument wording (items text, scale labels, instructions) is unchanged throughout — only styling was modified
+- Practice feedback uses `text-emerald-400`/`text-red-400` (lighter variants) to read well on the dark `--ubc-video-blue` background
+- `\u00A0` (non-breaking space) used as placeholder in both digit display and input display to maintain stable height
+- Digit display: `text-8xl` (slightly larger than previous `text-7xl`) for better cognitive task legibility
+- `Screen` component's inner div changed from `max-w-lg space-y-1` to `w-full max-w-md text-center` — removes tight space-y-1 that conflicted with explicit margins on children
+- Completion page: `aria-hidden="true"` on checkmark SVG since it is decorative
+
+**Verification:**
+- `next build` succeeds — all 12 routes ✓
+- Digit span instruction1: "STUDY TASK" label + "Backwards Digit Span" heading + example card + "Press Space to continue" ✓
+- Digit span instruction2: "We will begin with a practice trial..." centered ✓
+- Digit span input phase: "PRACTICE TRIAL" label + prompt + `border-border` input line + entered digits in large mono ✓
+- ULS-8 survey: "SURVEY 1 OF 4" label + title + items; "Never" selected → blue-700 fill ✓
+- Completion: blue checkmark circle + "Thank You" + muted RA-return instruction ✓
+- All instrument wording verified unchanged ✓
+
+**Docs updated:**
+- docs/DESIGN_SPEC.md — Participant Flow Pages section
+- docs/PROGRESS.md — state table and this entry
+
+---
+
+### T23 — Frontend — RA participants and sessions UI cleanup — 2026-02-25
+
+**Files modified:**
+- frontend/src/app/(ra)/participants/page.tsx — page header + subtitle; combined Name column; `#N` badge chip (blue-700) replacing plain number; `rounded-2xl` card; responsive `Added` column hidden on mobile; separate `formError`/`listError` state; bordered emerald success banner, bordered destructive error banner
+- frontend/src/app/(ra)/sessions/page.tsx — page header + subtitle; sessions history table using `GET /sessions?page_size=20`; `fetchSessionList` refreshes after create/activate/complete; `timeAgo()` utility; `rounded-2xl` cards; `hidden sm:table-cell` on Session ID column; `createError` state renamed from `error` for clarity
+- docs/DESIGN_SPEC.md — RA Participants Page and RA Sessions Page sections added; Component Style Conventions updated to `rounded-2xl`, success banner, error banner, and participant number badge patterns
+
+**Key implementation decisions:**
+- Sessions history loads on mount via `GET /sessions?page_size=20` — no pagination UI (20 is sufficient for typical lab use)
+- `fetchSessionList` passed as dependency to `startPolling` via `useCallback` so polling triggers a list refresh when session reaches `complete`
+- `timeAgo()` duplicated inline in sessions page (not extracted to shared util — only 2 uses, function is 6 lines)
+- Participants table: first+last name merged into one `Name` column — cleaner on mobile without sacrificing data
+- Active session panel (just-created session) remains on sessions page above the history list — gives RA immediate access to URL/activate without scrolling through the list
+
+**Verification:**
+- `next build` succeeds — all 8 routes ✓
+- `/participants`: Participants (3) table renders with #1/#2/#3 badges, combined names, date; form card with labels ✓
+- `/sessions`: All Sessions (3) table renders with #-badges, truncated IDs, status badges (active/complete), time-ago ✓
+- Create session card shows participant dropdown populated with all 3 participants ✓
+- Existing create/activate/copy URL functionality unchanged ✓
+
+**Docs updated:**
+- docs/DESIGN_SPEC.md — participants + sessions page sections + updated style conventions
+- docs/PROGRESS.md — state table and this entry
+
+---
+
+### T22 — Frontend — RA dashboard landing page — 2026-02-25
+
+**Files created:**
+- frontend/src/app/(ra)/dashboard/page.tsx — dashboard page: hero action zone, 5 KPI cards, recent sessions list
+
+**Files modified:**
+- frontend/src/lib/api/index.ts — added `DashboardSummaryResponse`, `SessionListItemResponse`, `SessionListResponse` types
+- frontend/src/lib/components/RANavBar.tsx — added Dashboard as first nav link; brand link now points to /dashboard
+- frontend/src/app/login/page.tsx — post-login redirect changed from /participants to /dashboard
+- docs/DESIGN_SPEC.md — RA Dashboard Page section added
+
+**Key implementation decisions:**
+- Dashboard and sessions fetched in parallel with `Promise.all` — single loading state for both
+- `timeAgo()` utility implemented inline (no external dependency) — converts ISO timestamps to "Xm/h/d ago"
+- Hero zone uses a CSS `blur-3xl` radial glow (UBC blue-600 at 20% opacity) for the reference-inspired atmospheric depth, contained with `overflow-hidden`
+- KPI card `accent` prop controls icon chip background tint — each card gets a distinct but brand-coherent color
+- Session rows use `#N` participant badge (UBC blue-700 fill) instead of a plain number for visual scannability
+- Loading state: KPI values show `—`; session panel shows centered "Loading…"
+- Empty state: session panel shows link to create first session
+- Error state: inline destructive banner above KPI cards
+- `grid-cols-2 sm:grid-cols-3 lg:grid-cols-5` — KPI grid collapses gracefully on mobile
+
+**Verification:**
+- `next build` succeeds with /dashboard route confirmed
+- Dashboard loads real data: 3 participants, 2 active sessions, 3 total, 3 created this week, 1 completed
+- Recent sessions list shows all 3 sessions with correct participant numbers, status badges, time-ago
+- Mobile (375px): hero stacks vertically, buttons go full-width, KPI grid goes 2-column ✓
+
+**Docs updated:**
+- docs/DESIGN_SPEC.md — RA Dashboard Page section
+- docs/PROGRESS.md — state table and this entry
+
+---
+
+### T21 — Backend — sessions list endpoint with filters and pagination — 2026-02-25
+
+**Files modified:**
+- backend/app/schemas/sessions.py — added `SessionListItemResponse` (with `participant_number`) and `SessionListResponse` (paginated wrapper)
+- backend/app/routers/sessions.py — added `GET /sessions` list handler with query params, JOIN to participants, validation, ordering, pagination
+- docs/API.md — GET /sessions definition with full param/response table
+
+**Key implementation decisions:**
+- `GET /sessions` is placed before `GET /sessions/{session_id}` in the router so FastAPI route matching handles the literal path first
+- All 5 filters are optional; status filter validated against literal set before hitting the DB (returns 422 with clear message)
+- `date_to` includes the full day by using `23:59:59` end-of-day cutoff
+- `participant_number` included in each item via a `JOIN` to participants table so the frontend doesn't need a second request
+- `pages` computed as `max(1, ceil(total / page_size))` so empty results still return `pages: 1`
+- `func` import alias changed to `sqlfunc` inside `update_session_status` to avoid conflict with the top-level `func` import
+
+**Verification:**
+- No auth → 401 ✓
+- `status=invalid` → 422 with descriptive message ✓
+- `date_from=2026-02-25&date_to=2026-02-01` → 422 ✓
+- Unfiltered → 3 items, newest first, each with `participant_number` ✓
+- `status=active` → 2 items ✓
+- `page_size=1&page=2` → 1 item, `total=3`, `pages=3` ✓
+- `participant_number=1` → 1 item for participant #1 ✓
+
+**Docs updated:**
+- docs/API.md — GET /sessions + index row
+- docs/PROGRESS.md — state table and this entry
+
+---
+
+### T20 — Backend — dashboard summary endpoint for RA home — 2026-02-25
+
+**Files created:**
+- backend/app/schemas/dashboard.py — `DashboardSummaryResponse` Pydantic model
+- backend/app/routers/dashboard.py — `GET /dashboard/summary` endpoint; single-pass conditional aggregation for all session counts
+
+**Files modified:**
+- backend/app/main.py — registered dashboard router
+- docs/API.md — added dashboard endpoint definition and index entry
+
+**Key implementation decisions:**
+- Single SQL query with `func.sum(case(...))` for all session status counts and 7-day windows (avoids N separate count queries)
+- `completed_at` 7-day window guards against NULL before comparing
+- `cutoff` computed in Python with `timezone.utc` so timezone-aware datetime is compared to TIMESTAMPTZ column correctly
+- Counts coerce `None → 0` via `int(row.x or 0)` since `sum()` on an empty table returns NULL in Postgres
+
+**Verification:**
+- `python -c "from app.main import app; ..."` confirms `/dashboard/summary` registered
+- `curl` without auth → `{"detail":"Missing authorization header"}` (401 correct)
+- `curl` with valid Supabase ES256 JWT → `{"total_participants":3,"sessions_created":0,"sessions_active":2,"sessions_complete":1,"sessions_created_last_7_days":3,"sessions_completed_last_7_days":1}` — matches DB state
+
+**Docs updated:**
+- docs/API.md — dashboard section + index row
+- docs/PROGRESS.md — state table and this entry
+
+---
+
+### T19 — Frontend foundation — design tokens and shared layout shell — 2026-02-25
+
+**Files created:**
+- frontend/src/lib/components/PageContainer.tsx — shared max-width content wrapper with `narrow` prop for focused flows
+- frontend/src/lib/components/RANavBar.tsx — sticky RA top nav bar (brand link, Participants/Sessions nav, sign-out)
+
+**Files modified:**
+- frontend/src/app/globals.css — replaced default Next.js light theme with UBC dark palette; added `--ubc-*` and `--ink-*` brand tokens; `.dark` mirrors `:root` for shadcn internals
+- frontend/src/app/layout.tsx — added `dark` class to `<html>` to force always-dark mode
+- frontend/src/app/(ra)/layout.tsx — auth guard now wraps content in RANavBar + `<main>` shell; shows "Loading…" state while checking auth
+- frontend/src/app/session/[session_id]/layout.tsx — added `min-h-screen bg-background` + `max-w-3xl` centered wrapper for participant pages
+- frontend/src/app/page.tsx — replaced default Next.js starter page with server-side `redirect("/login")`
+- frontend/src/app/login/page.tsx — restyled with UBC dark card, brand label, blue CTA button
+- frontend/src/app/(ra)/participants/page.tsx — wraps content in `PageContainer`; all colors updated to semantic tokens
+- frontend/src/app/(ra)/sessions/page.tsx — wraps content in `PageContainer`; status badges use border+bg pattern; all colors updated to semantic tokens
+- docs/DESIGN_SPEC.md — added Phase 2 design system section (tokens, components, layout structure, style conventions)
+- docs/CONVENTIONS.md — added PageContainer and RANavBar usage rules
+
+**Key implementation decisions:**
+- App is always dark — `:root` is set to UBC dark theme, `.dark` mirrors it for shadcn component variant correctness
+- `--ubc-navy` applied to RANavBar via inline style (avoids needing a custom Tailwind utility for a single-use value)
+- Primary buttons use `background: var(--ubc-blue-700)` inline style to use the exact brand token
+- PageContainer defaults to `max-w-5xl` (RA pages); `narrow` prop switches to `max-w-2xl` (participant task/survey pages)
+- Root `/` page uses Next.js `redirect()` (server-side, no client JS needed)
+
+**Verification:**
+- `next build` succeeds with all 11 routes
+- Visual check: login, /participants, /sessions, /session/*/complete all render with UBC dark theme
+- Mobile (375px) layout verified — nav wraps but all elements accessible
+
+**Docs updated:**
+- docs/DESIGN_SPEC.md — Phase 2 design system section added
+- docs/CONVENTIONS.md — shared component usage rules added
+- docs/PROGRESS.md — state table and this entry
+
+---
+
 ### Phase 2 planning update — 2026-02-23
 
 **Files modified:**

@@ -1,4 +1,6 @@
-# Design Spec — Phase 1
+# Design Spec — Phase 1 + Phase 2
+
+Visual language baseline: [docs/styleguide.md](styleguide.md)
 
 ## UX Goals
 - Guided, simple flow — one screen per step, no back navigation during session
@@ -68,3 +70,137 @@ All scoring is server-side. See per-instrument docs for full formulas.
 - **CES-D 10:** raw 1-4, convert to 0-3 (`raw - 1`), reverse items 5 & 8 (`4 - raw`), sum → total 0-30
 - **GAD-7:** raw 1-4, convert to 0-3 (`raw - 1`), sum → total 0-21 + severity band
 - **CogFunc 8a:** raw 1-5, reverse all (`6 - raw`) for computed scores, sum (8-40) + mean (1.0-5.0)
+
+---
+
+# Design System — Phase 2 (T19+)
+
+> Implemented in T19. All new pages must follow this system.
+
+## Design Tokens
+
+All brand and semantic tokens are defined in `frontend/src/app/globals.css`. The app is **always dark** (clinical/research tool — no light mode toggle).
+
+### UBC Brand Palette (CSS variables)
+
+| Variable | Hex | Usage |
+|---|---|---|
+| `--ubc-video-blue` | `#001328` | Global background |
+| `--ubc-navy` | `#000847` | Nav bar / deepest surfaces |
+| `--ubc-blue-700` | `#0052f5` | Primary action buttons |
+| `--ubc-blue-600` | `#00a2fa` | Secondary actions / activate |
+| `--ubc-blue-500` | `#33e0fc` | Focus ring / highlight |
+| `--ink-100` | `#e6edf8` | Primary text |
+| `--ink-70` | `#a9b6cc` | Secondary / muted text |
+| `--ink-45` | `#6e7c95` | Labels / meta text |
+
+### Shadcn Semantic Token Mapping
+
+Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to the UBC palette in `:root`. The `.dark` block mirrors `:root` so shadcn component dark-variant internals work.
+
+## Shared Components
+
+| Component | Path | Usage |
+|---|---|---|
+| `PageContainer` | `src/lib/components/PageContainer.tsx` | Max-width content wrapper for all pages. Use `narrow` prop for survey/task flows. |
+| `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky top nav for RA pages (brand, nav links, sign-out). |
+| `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments. |
+
+## Layout Structure
+
+### RA Pages (`/participants`, `/sessions`, future `/dashboard`)
+```
+<html class="dark">
+  <body>
+    <RALayout>           ← auth guard
+      <RANavBar />       ← sticky navy nav (--ubc-navy)
+      <main>
+        <PageContainer>  ← max-w-5xl, responsive padding
+          {page content}
+        </PageContainer>
+      </main>
+    </RALayout>
+  </body>
+</html>
+```
+
+### Participant Pages (`/session/[id]/*`)
+```
+<html class="dark">
+  <body>
+    <SessionLayout>      ← no-auth, max-w-3xl centered shell
+      {page content}
+    </SessionLayout>
+  </body>
+</html>
+```
+
+## RA Dashboard Page (T22)
+
+The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
+
+1. **Hero action zone** — card with blue glow accent, headline "Start a New Study Session", description, two CTA buttons (Add Participant → `/participants`, Create Session → `/sessions`)
+2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
+3. **Recent Sessions list** — up to 8 rows. Each row: participant `#N` badge, truncated session ID, status badge, time-ago. "View all →" link to `/sessions`.
+
+Loading state shows `—` in KPI values and a centered "Loading…" in the sessions panel. Error state shows an inline destructive banner. Empty sessions state shows a link to create the first session.
+
+---
+
+## Participant Flow Pages (T24)
+
+### Digit Span Task (`/session/[id]/digitspan`)
+
+- **Instruction screens:** full-viewport centered (`flex min-h-screen items-center justify-center`); "STUDY TASK" uppercase muted label above bold title; example shown in a `rounded-xl border border-border` card; "Press Space to continue" in muted text below.
+- **Digit display phase:** `text-8xl font-bold text-foreground select-none` centered; uses `\u00A0` to hold space when digit is blank.
+- **Input phase:** "PRACTICE TRIAL" / "TRIAL N OF 14" uppercase label at top; `border-b-2 border-border` input line; large mono (`text-4xl`) entered digits; `text-muted-foreground` hint row at bottom.
+- **Practice feedback:** `text-emerald-400` (Correct) / `text-red-400` (Incorrect).
+- **End of task / Continue button:** `--ubc-blue-700` styled, same as primary buttons on RA pages.
+
+### Survey Pages (`/session/[id]/uls8|cesd10|gad7|cogfunc`)
+
+All four surveys use the shared `SurveyForm` component with:
+- **`stepLabel` prop:** "Survey 1 of 4" … "Survey 4 of 4" — rendered as `text-xs uppercase tracking-widest text-muted-foreground` above the title.
+- **Selected radio option:** `background: var(--ubc-blue-700)` fill with white text.
+- **Unselected radio option:** `border-border text-muted-foreground hover:border-ring hover:text-foreground`.
+- **Submit button:** `--ubc-blue-700` + `text-primary-foreground`, disabled until all items answered.
+- **Error state:** bordered destructive banner (same pattern as RA pages).
+
+### Completion Page (`/session/[id]/complete`)
+
+- Vertically centered blue checkmark circle (`--ubc-blue-700`), bold "Thank You" heading, muted instruction paragraph.
+- No scores, data, or forward/back navigation links.
+
+---
+
+## RA Participants Page (T23)
+
+The participants page at `/participants` layout (top to bottom):
+
+1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
+2. **Add participant form card** — `rounded-2xl` card; `text-xs uppercase tracking-widest` section label; flex-wrap row with two `flex-1 min-w-36` inputs and a primary CTA. Success state: `border-emerald-500/30 bg-emerald-500/10 text-emerald-300` banner. Error state: destructive banner.
+3. **Participants table** — section label with count `(N)`; `rounded-2xl` card; columns: `#` (blue-700 badge chip), `Name` (combined first+last), `Added` (hidden on mobile via `hidden sm:table-cell`).
+
+## RA Sessions Page (T23)
+
+The sessions page at `/sessions` layout (top to bottom):
+
+1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
+2. **Create session card** — `rounded-2xl` card; participant dropdown; primary CTA. Error state: destructive banner inline below form.
+3. **Active session panel** — `rounded-2xl` card; appears after session creation. Shows session ID, participant info, participant URL with copy button, activate button (blue-600) for `created` status, completion timestamp for `complete` status. Refreshes session list after activate.
+4. **All Sessions table** — section label with count; `rounded-2xl` card. Columns: `#` (blue-700 badge), `Session ID` (8-char truncated, hidden on mobile), `Status` (colored badge), `Created` (time-ago). Loads on mount; refreshes after create/activate/complete.
+
+---
+
+## Component Style Conventions
+
+- **Cards/panels:** `rounded-2xl border border-border` + `background: var(--card)`
+- **Section headings inside cards:** `text-xs font-semibold uppercase tracking-widest text-muted-foreground`
+- **Primary buttons:** `background: var(--ubc-blue-700)` + `text-primary-foreground`
+- **Secondary/activate buttons:** `background: var(--ubc-blue-600)`
+- **Inputs:** `border border-border bg-input/30` + focus ring on `--ring`
+- **Status badges:** colored border + bg at 15% opacity (yellow/emerald/white for created/active/complete)
+- **Tables:** `rounded-2xl border border-border overflow-hidden` + muted header row; responsive columns use `hidden sm:table-cell`
+- **Success banners:** `border-emerald-500/30 bg-emerald-500/10 text-emerald-300 rounded-lg`
+- **Error banners:** `border-destructive/30 bg-destructive/10 text-destructive rounded-lg` (inline, no toast)
+- **Participant number badge:** `w-8 h-8 rounded-lg bg-ubc-blue-700 text-white text-xs font-bold`

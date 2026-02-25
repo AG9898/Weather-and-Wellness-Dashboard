@@ -31,17 +31,39 @@
 
 | Method | Path | Auth | Status | Implemented by |
 |--------|------|------|--------|----------------|
+| GET    | /dashboard/summary | RA | implemented | T20 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
+| GET    | /sessions | RA | implemented | T21 |
 | POST   | /sessions | RA | implemented | T08 |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
-| PATCH  | /sessions/{session_id}/status | RA | implemented | T08 |
+| PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
 | POST   | /surveys/uls8 | None (active session) | implemented | T10 |
 | POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
 | POST   | /surveys/gad7 | None (active session) | implemented | T10 |
 | POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
+
+---
+
+## Dashboard
+
+### GET /dashboard/summary
+- **Auth:** RA required
+- **Status:** implemented (T20)
+- **Response:**
+  ```json
+  {
+    "total_participants": "integer",
+    "sessions_created": "integer",
+    "sessions_active": "integer",
+    "sessions_complete": "integer",
+    "sessions_created_last_7_days": "integer",
+    "sessions_completed_last_7_days": "integer"
+  }
+  ```
+- **Notes:** All counts reflect current DB state. `sessions_created_last_7_days` counts sessions whose `created_at` is within 7 days of the request. `sessions_completed_last_7_days` counts sessions whose `completed_at` is within 7 days of the request. Returns 401 if auth token is missing or invalid.
 
 ---
 
@@ -88,6 +110,47 @@
 
 - **Audit note:** T08 endpoints were reopened on 2026-02-20 due to incomplete/invalid implementation.
 
+### GET /sessions
+- **Auth:** RA required
+- **Status:** implemented (T21)
+- **Query parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `page` | integer ≥ 1 | 1 | Page number (1-based) |
+| `page_size` | integer 1–100 | 20 | Items per page |
+| `status` | string (optional) | — | Filter by status: `created` \| `active` \| `complete` |
+| `participant_number` | integer ≥ 1 (optional) | — | Filter by participant number |
+| `date_from` | date `YYYY-MM-DD` (optional) | — | Sessions created on or after this date |
+| `date_to` | date `YYYY-MM-DD` (optional) | — | Sessions created on or before this date (inclusive end of day) |
+
+- **Response:**
+  ```json
+  {
+    "items": [
+      {
+        "session_id": "uuid",
+        "participant_uuid": "uuid",
+        "participant_number": "integer",
+        "status": "created | active | complete",
+        "created_at": "datetime",
+        "completed_at": "datetime | null"
+      }
+    ],
+    "total": "integer",
+    "page": "integer",
+    "page_size": "integer",
+    "pages": "integer"
+  }
+  ```
+- **Notes:**
+  - Results are ordered by `created_at` DESC (newest first).
+  - Invalid `status` value returns 422 with descriptive message.
+  - `date_from` > `date_to` returns 422.
+  - `participant_number` is included in each item (joined from participants table).
+
+---
+
 ### POST /sessions
 - **Auth:** RA required
 - **Status:** implemented (T08)
@@ -117,7 +180,9 @@
 ---
 
 ### PATCH /sessions/{session_id}/status
-- **Auth:** RA required
+- **Auth:** 
+  - RA required for `"created"` and `"active"` updates
+  - No auth required for participant-driven `"complete"` update from an active session
 - **Status:** implemented (T08)
 - **Request body:**
   ```json

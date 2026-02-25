@@ -58,6 +58,8 @@
 ### Components and state
 - Shared reusable UI goes in `src/lib/components/`
 - Application state: client-side stores in `src/lib/stores/` (current `session_id`, current step, participant mode flag)
+- Use `PageContainer` (from `src/lib/components/PageContainer.tsx`) as the content wrapper on every page — do not introduce ad-hoc `max-w-*` container divs
+- Use `RANavBar` (from `src/lib/components/RANavBar.tsx`) via the RA layout — do not add navigation manually to individual RA pages
 
 ### API calls
 - **All** API calls go through typed wrapper functions in `src/lib/api/`
@@ -67,6 +69,9 @@
 ### Styling
 - Tailwind utility classes only
 - Do not write custom CSS unless Tailwind cannot express the required style
+- UI visuals (tokens, typography, spacing, component feel) must follow `docs/styleguide.md`
+- For shadcn component installation/usage patterns, follow `docs/shadcn.md`
+- Reference UIs are for direction only; do not clone non-required components verbatim
 
 ### Digit span timing
 - Use **`setTimeout` chains** driven by a state machine — never `setInterval`

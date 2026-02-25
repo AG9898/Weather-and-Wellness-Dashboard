@@ -136,3 +136,29 @@ export interface CogFunc8aResponse {
   total_sum: number;
   mean_score: number;
 }
+
+export interface DashboardSummaryResponse {
+  total_participants: number;
+  sessions_created: number;
+  sessions_active: number;
+  sessions_complete: number;
+  sessions_created_last_7_days: number;
+  sessions_completed_last_7_days: number;
+}
+
+export interface SessionListItemResponse {
+  session_id: string;
+  participant_uuid: string;
+  participant_number: number;
+  status: "created" | "active" | "complete";
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface SessionListResponse {
+  items: SessionListItemResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}

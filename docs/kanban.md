@@ -113,7 +113,7 @@
 {
   "project": "Weather & Wellness + Misokinesia Research Web App",
   "phase": 2,
-  "phase_status": "planned",
+  "phase_status": "in_progress",
   "goal": "Ship a polished dashboard-like RA experience and clean participant UI while hardening backend connections, deployment, and production auth.",
   "stack_overview": {
     "frontend": "Next.js (Vercel) + TypeScript + Tailwind",
@@ -125,7 +125,7 @@
     {
       "id": "T19",
       "title": "Frontend foundation — design tokens and shared layout shell",
-      "status": "todo",
+      "status": "done",
       "description": "Create a coherent design foundation for RA and participant routes: spacing/typography/color tokens, reusable page container primitives, and a consistent app shell that replaces scaffold/default styling.",
       "depends_on": [
         "T18"
@@ -153,7 +153,7 @@
     {
       "id": "T20",
       "title": "Backend — dashboard summary endpoint for RA home",
-      "status": "todo",
+      "status": "done",
       "description": "Add an authenticated RA endpoint that returns dashboard summary metrics (total participants, sessions by status, sessions created in last 7 days, sessions completed in last 7 days).",
       "depends_on": [
         "T08",
@@ -181,7 +181,7 @@
     {
       "id": "T21",
       "title": "Backend — sessions list endpoint with filters and pagination",
-      "status": "todo",
+      "status": "done",
       "description": "Add an authenticated RA endpoint to list sessions with pagination and optional filters (`status`, `participant_number`, date range) for dashboard tables.",
       "depends_on": [
         "T08",
@@ -209,8 +209,8 @@
     {
       "id": "T22",
       "title": "Frontend — RA dashboard landing page",
-      "status": "todo",
-      "description": "Build an RA dashboard home page that consumes dashboard summary and sessions list endpoints, with KPI cards, recent sessions table, and quick actions to create participant/session.",
+      "status": "done",
+      "description": "Build an RA dashboard home page that consumes dashboard summary and sessions list endpoints, with KPI cards, recent sessions table, quick actions to create participant/session, and clear links/anchors to start a participant session flow.",
       "depends_on": [
         "T20",
         "T21"
@@ -227,7 +227,8 @@
         "Dashboard loads real metrics from typed API wrappers",
         "Recent sessions table renders status badges and participant mapping",
         "Loading, empty, and error states are visible and usable",
-        "Navigation links to participants and sessions are present"
+        "Navigation links to participants and sessions are present",
+        "Homepage includes quick-start links/anchors that take RAs directly to session creation/launch actions"
       ],
       "updates_docs": [
         "docs/DESIGN_SPEC.md",
@@ -237,7 +238,7 @@
     {
       "id": "T23",
       "title": "Frontend — RA participants and sessions UI cleanup",
-      "status": "todo",
+      "status": "done",
       "description": "Refactor `/participants` and `/sessions` pages to align with dashboard visual system: clearer hierarchy, cleaner forms/tables, consistent feedback patterns, and responsive layout.",
       "depends_on": [
         "T19",
@@ -265,7 +266,7 @@
     {
       "id": "T24",
       "title": "Frontend — participant flow visual cleanup",
-      "status": "todo",
+      "status": "done",
       "description": "Polish participant-facing pages (`digitspan`, all surveys, completion) with consistent spacing, typography, progress context, and clearer interaction affordances while preserving instrument wording and behavior.",
       "depends_on": [
         "T19"

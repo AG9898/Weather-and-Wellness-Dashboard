@@ -51,6 +51,8 @@ function generateSequences(): number[][] {
   return SPANS.map((span) => sampleDigits(span));
 }
 
+// ── Page ──
+
 export default function DigitSpanPage() {
   const params = useParams();
   const router = useRouter();
@@ -147,10 +149,8 @@ export default function DigitSpanPage() {
     setResults((prev) => {
       const updated = [...prev, trialData];
       if (updated.length === 14) {
-        // All trials done — show end screen
         setPhase("instruction4");
       } else {
-        // Start next trial
         const nextIdx = trialIndex + 1;
         setTrialIndex(nextIdx);
         setPhase("trial-showing");
@@ -167,7 +167,6 @@ export default function DigitSpanPage() {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      // Instruction screens advance on Space
       if (
         phase === "instruction1" ||
         phase === "instruction2" ||
@@ -182,7 +181,6 @@ export default function DigitSpanPage() {
         return;
       }
 
-      // Input phases
       if (phase === "practice-input" || phase === "trial-input") {
         if (e.key >= "1" && e.key <= "9") {
           setEntered((prev) => [...prev, e.key]);
@@ -218,20 +216,34 @@ export default function DigitSpanPage() {
 
   // ── Render ──
 
-  // Instruction screens
   if (phase === "instruction1") {
     return (
       <Screen>
-        <h1 className="text-2xl font-bold">Backwards Digit Span</h1>
-        <p className="mt-4">You will be shown a number sequence, one number at a time.</p>
-        <p className="mt-2">Memorize the number sequence.</p>
-        <p className="mt-2">
-          You will then be asked to type the sequence in reverse/backwards order.
-          For example...
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+          Study Task
         </p>
-        <p className="mt-4 font-mono">Sequence: 1 2 3 4 5</p>
-        <p className="font-mono">Correct: 5 4 3 2 1</p>
-        <p className="mt-4">The sequences will get longer throughout the experiment.</p>
+        <h1 className="text-2xl font-bold text-foreground">Backwards Digit Span</h1>
+
+        <div className="mt-6 space-y-2 text-sm text-muted-foreground text-left">
+          <p>You will be shown a number sequence, one number at a time.</p>
+          <p>Memorize the number sequence.</p>
+          <p>
+            You will then be asked to type the sequence in reverse/backwards order.
+            For example...
+          </p>
+        </div>
+
+        <div
+          className="mt-5 rounded-xl border border-border px-6 py-4 text-left"
+          style={{ background: "var(--card)" }}
+        >
+          <p className="text-sm font-mono text-muted-foreground">Sequence: 1 2 3 4 5</p>
+          <p className="text-sm font-mono text-foreground mt-1">Correct: 5 4 3 2 1</p>
+        </div>
+
+        <p className="mt-4 text-sm text-muted-foreground">
+          The sequences will get longer throughout the experiment.
+        </p>
         <Advance />
       </Screen>
     );
@@ -240,7 +252,7 @@ export default function DigitSpanPage() {
   if (phase === "instruction2") {
     return (
       <Screen>
-        <p className="text-lg">We will begin with a practice trial...</p>
+        <p className="text-lg text-foreground">We will begin with a practice trial...</p>
         <Advance />
       </Screen>
     );
@@ -249,7 +261,7 @@ export default function DigitSpanPage() {
   if (phase === "instruction3") {
     return (
       <Screen>
-        <p className="text-lg">We will now begin the main trials...</p>
+        <p className="text-lg text-foreground">We will now begin the main trials...</p>
         <Advance />
       </Screen>
     );
@@ -258,11 +270,16 @@ export default function DigitSpanPage() {
   if (phase === "instruction4") {
     return (
       <Screen>
-        <p className="text-lg">End of task.</p>
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        <p className="text-lg text-foreground">End of task.</p>
+        {error && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+            {error}
+          </div>
+        )}
         <button
           onClick={handleSubmitToBackend}
-          className="mt-6 rounded-md bg-zinc-900 px-6 py-2 text-white hover:bg-zinc-700"
+          className="mt-8 rounded-lg px-8 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+          style={{ background: "var(--ubc-blue-700)" }}
         >
           Continue
         </button>
@@ -273,7 +290,7 @@ export default function DigitSpanPage() {
   if (phase === "submitting") {
     return (
       <Screen>
-        <p className="text-lg">Submitting results...</p>
+        <p className="text-lg text-muted-foreground">Submitting results…</p>
       </Screen>
     );
   }
@@ -282,8 +299,11 @@ export default function DigitSpanPage() {
   if (phase === "practice-showing" || phase === "trial-showing") {
     return (
       <Screen>
-        <div className="text-7xl font-bold tabular-nums min-h-[1em]">
-          {currentDigit !== null ? currentDigit : ""}
+        <div
+          className="text-8xl font-bold tabular-nums text-foreground select-none"
+          style={{ lineHeight: "1.1", minHeight: "1em" }}
+        >
+          {currentDigit !== null ? currentDigit : "\u00A0"}
         </div>
       </Screen>
     );
@@ -294,9 +314,7 @@ export default function DigitSpanPage() {
     const isCorrect = practiceFeedback === "Correct";
     return (
       <Screen>
-        <p
-          className={`text-2xl font-bold ${isCorrect ? "text-green-600" : "text-red-600"}`}
-        >
+        <p className={`text-3xl font-bold ${isCorrect ? "text-emerald-400" : "text-red-400"}`}>
           {practiceFeedback}
         </p>
       </Screen>
@@ -306,15 +324,15 @@ export default function DigitSpanPage() {
   // Input phase (practice or trial)
   return (
     <Screen>
-      <p className="text-sm text-zinc-500 mb-2">
-        {phase === "practice-input" ? "Practice" : `Trial ${trialIndex + 1} of 14`}
+      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-6">
+        {phase === "practice-input" ? "Practice Trial" : `Trial ${trialIndex + 1} of 14`}
       </p>
-      <p className="mb-4">Type the sequence in backwards order:</p>
-      <div className="text-4xl font-mono tracking-widest min-h-[1.2em] border-b-2 border-zinc-300 pb-1 min-w-[200px] text-center">
+      <p className="text-foreground mb-6">Type the sequence in backwards order:</p>
+      <div className="text-4xl font-mono tracking-widest border-b-2 border-border pb-2 min-w-[200px] min-h-[1.4em] text-center text-foreground select-none">
         {entered.join(" ") || "\u00A0"}
       </div>
-      <p className="mt-4 text-xs text-zinc-400">
-        Keys 1-9 to enter &middot; Backspace to delete &middot; Enter to submit
+      <p className="mt-6 text-xs text-muted-foreground">
+        Keys 1–9 to enter &middot; Backspace to delete &middot; Enter to submit
       </p>
     </Screen>
   );
@@ -324,14 +342,14 @@ export default function DigitSpanPage() {
 
 function Screen({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="max-w-lg text-center space-y-1">{children}</div>
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="w-full max-w-md text-center">{children}</div>
     </div>
   );
 }
 
 function Advance() {
   return (
-    <p className="mt-8 text-sm text-zinc-400">Press Space to continue</p>
+    <p className="mt-10 text-sm text-muted-foreground">Press Space to continue</p>
   );
 }

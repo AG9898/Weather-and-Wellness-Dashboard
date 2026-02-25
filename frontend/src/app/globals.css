@@ -1,26 +1,148 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ──────────────────────────────────────────────────────────────────
+   UBC Brand Tokens + Always-Dark Theme
+   (This app is a clinical research tool; dark mode is the only mode)
+   ────────────────────────────────────────────────────────────────── */
+:root {
+  /* UBC brand palette */
+  --ubc-video-blue: #001328;
+  --ubc-navy: #000847;
+  --ubc-blue-700: #0052f5;
+  --ubc-blue-600: #00a2fa;
+  --ubc-blue-500: #33e0fc;
+  --ubc-blue-300: #5ce5fc;
+  --ubc-blue-200: #7af2f7;
+  --ubc-blue-100: #9efaf2;
+  --ubc-earth: #878343;
+  --ink-100: #e6edf8;
+  --ink-70: #a9b6cc;
+  --ink-45: #6e7c95;
+
+  /* Border radius — 12px base for research-tool feel */
+  --radius: 0.75rem;
+
+  /* Shadcn semantic tokens mapped to UBC dark palette */
+  --background: oklch(0.097 0.04 251);        /* ≈ #001328 UBC Video Blue */
+  --foreground: oklch(0.93 0.015 248);         /* ≈ #e6edf8 ink-100 */
+  --card: oklch(0.135 0.04 252);               /* slightly lighter surface */
+  --card-foreground: oklch(0.93 0.015 248);
+  --popover: oklch(0.135 0.04 252);
+  --popover-foreground: oklch(0.93 0.015 248);
+  --primary: oklch(0.47 0.24 264);             /* ≈ #0052F5 UBC Blue 700 */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.16 0.045 255);          /* deep secondary surface */
+  --secondary-foreground: oklch(0.93 0.015 248);
+  --muted: oklch(0.18 0.04 253);
+  --muted-foreground: oklch(0.74 0.025 248);   /* ≈ #a9b6cc ink-70 */
+  --accent: oklch(0.65 0.17 227);              /* ≈ #00A2FA UBC Blue 600 */
+  --accent-foreground: oklch(0.097 0.04 251);
+  --destructive: oklch(0.65 0.22 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.83 0.13 210);                /* ≈ #33E0FC UBC Blue 500 */
+  --chart-1: oklch(0.65 0.17 227);
+  --chart-2: oklch(0.83 0.13 210);
+  --chart-3: oklch(0.47 0.24 264);
+  --chart-4: oklch(0.70 0.15 195);
+  --chart-5: oklch(0.55 0.08 100);
+  --sidebar: oklch(0.077 0.065 271);           /* ≈ #000847 UBC Navy */
+  --sidebar-foreground: oklch(0.93 0.015 248);
+  --sidebar-primary: oklch(0.47 0.24 264);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.16 0.045 255);
+  --sidebar-accent-foreground: oklch(0.93 0.015 248);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.83 0.13 210);
+}
+
+/* .dark mirrors :root so shadcn dark-variant internals work correctly */
+.dark {
+  --background: oklch(0.097 0.04 251);
+  --foreground: oklch(0.93 0.015 248);
+  --card: oklch(0.135 0.04 252);
+  --card-foreground: oklch(0.93 0.015 248);
+  --popover: oklch(0.135 0.04 252);
+  --popover-foreground: oklch(0.93 0.015 248);
+  --primary: oklch(0.47 0.24 264);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.16 0.045 255);
+  --secondary-foreground: oklch(0.93 0.015 248);
+  --muted: oklch(0.18 0.04 253);
+  --muted-foreground: oklch(0.74 0.025 248);
+  --accent: oklch(0.65 0.17 227);
+  --accent-foreground: oklch(0.097 0.04 251);
+  --destructive: oklch(0.65 0.22 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.83 0.13 210);
+  --chart-1: oklch(0.65 0.17 227);
+  --chart-2: oklch(0.83 0.13 210);
+  --chart-3: oklch(0.47 0.24 264);
+  --chart-4: oklch(0.70 0.15 195);
+  --chart-5: oklch(0.55 0.08 100);
+  --sidebar: oklch(0.077 0.065 271);
+  --sidebar-foreground: oklch(0.93 0.015 248);
+  --sidebar-primary: oklch(0.47 0.24 264);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.16 0.045 255);
+  --sidebar-accent-foreground: oklch(0.93 0.015 248);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.83 0.13 210);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
 }

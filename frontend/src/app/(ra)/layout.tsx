@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import RANavBar from "@/lib/components/RANavBar";
 
 /**
  * Auth guard layout for RA-only pages.
  * Redirects to /login if no Supabase Auth session is present.
+ * Wraps authorized content in the shared RA navigation shell.
  */
 export default function RALayout({
   children,
@@ -37,8 +39,17 @@ export default function RALayout({
   }, [router]);
 
   if (!authorized) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="text-sm text-muted-foreground">Loading…</span>
+      </div>
+    );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-background">
+      <RANavBar />
+      <main>{children}</main>
+    </div>
+  );
 }

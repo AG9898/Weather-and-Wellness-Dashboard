@@ -50,6 +50,7 @@ export default function ULS8Page() {
   return (
     <SurveyForm
       title="ULS-8 — Loneliness Scale"
+      stepLabel="Survey 1 of 4"
       instructions="Please indicate how often each statement describes you right now."
       items={ITEMS}
       scale={SCALE}

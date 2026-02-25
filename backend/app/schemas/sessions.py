@@ -28,9 +28,32 @@ class SessionStatusUpdate(BaseModel):
     status: AllowedStatus
 
 
+class SessionListItemResponse(BaseModel):
+    """Session row enriched with participant_number for RA dashboard tables."""
+
+    session_id: UUID
+    participant_uuid: UUID
+    participant_number: int
+    status: AllowedStatus
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class SessionListResponse(BaseModel):
+    """Paginated session list returned by GET /sessions."""
+
+    items: list[SessionListItemResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
 __all__ = [
     "AllowedStatus",
     "SessionCreate",
+    "SessionListItemResponse",
+    "SessionListResponse",
     "SessionResponse",
     "SessionStatusUpdate",
 ]

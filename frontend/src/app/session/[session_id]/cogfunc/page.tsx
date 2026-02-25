@@ -59,6 +59,7 @@ export default function CogFuncPage() {
   return (
     <SurveyForm
       title="Cognitive Function 8a"
+      stepLabel="Survey 4 of 4"
       instructions="Please respond to each question or statement by marking one box per row. Right now..."
       items={ITEMS}
       scale={SCALE}

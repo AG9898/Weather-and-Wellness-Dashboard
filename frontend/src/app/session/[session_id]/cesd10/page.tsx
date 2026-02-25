@@ -52,6 +52,7 @@ export default function CESD10Page() {
   return (
     <SurveyForm
       title="CES-D 10 — Depression Scale"
+      stepLabel="Survey 2 of 4"
       instructions="Please indicate how often each statement describes you right now."
       items={ITEMS}
       scale={SCALE}
