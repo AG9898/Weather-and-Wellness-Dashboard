@@ -110,5 +110,6 @@ Follow this sequence when adding any new instrument in future phases:
 | `SUPABASE_URL`       | Supabase project URL (server-side use) |
 | `SUPABASE_ANON_KEY`  | Supabase anonymous/public key (server-side use) |
 | `SUPABASE_JWT_SECRET`| Used by FastAPI to validate Supabase JWTs (only if auth enabled) |
+| `ALLOWED_ORIGINS`    | Comma-separated CORS allowed origins for FastAPI (backend). Defaults to localhost dev origins when unset. Set to Vercel URL(s) in production. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (frontend auth; only if auth enabled) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key (frontend auth; only if auth enabled) |

@@ -297,7 +297,7 @@
     {
       "id": "T25",
       "title": "Frontend — survey and task UX reliability pass",
-      "status": "todo",
+      "status": "done",
       "description": "Improve client-side robustness for participant submissions with standardized loading disable states, retry-safe button behavior, and friendly error messaging for network/API failures.",
       "depends_on": [
         "T24"
@@ -324,7 +324,7 @@
     {
       "id": "T26",
       "title": "Backend — API connection hardening (CORS, timeouts, error mapping)",
-      "status": "todo",
+      "status": "done",
       "description": "Harden cross-service behavior between Vercel frontend and Render backend by configuring strict allowed origins, standard API error shapes, and backend timeout-safe DB patterns.",
       "depends_on": [
         "T21"
@@ -354,7 +354,7 @@
     {
       "id": "T27",
       "title": "Infra — Render backend integration",
-      "status": "todo",
+      "status": "done",
       "description": "Set up and verify Render deployment for FastAPI (build/start command, env vars, health check, migration workflow) so Phase 2 can run in hosted mode.",
       "depends_on": [
         "T26"

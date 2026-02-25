@@ -1,5 +1,0 @@
-[     338ms] [ERROR] Access to fetch at 'http://localhost:8000/participants' from origin 'http://localhost:3000' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:3000/participants:0
-[     338ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8000/participants:0
-[     342ms] [ERROR] Access to fetch at 'http://localhost:8000/participants' from origin 'http://localhost:3000' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:3000/participants:0
-[     342ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://localhost:8000/participants:0
-[   40079ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=NQhtwlA2njaocYBV07HFb' failed:  @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, type GAD7Response } from "@/lib/api";
+import { apiPost, getParticipantErrorMessage, type GAD7Response } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
 
 const SCALE: ScaleOption[] = [
@@ -40,7 +40,7 @@ export default function GAD7Page() {
       });
       router.push(`/session/${sessionId}/cogfunc`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit");
+      setError(getParticipantErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

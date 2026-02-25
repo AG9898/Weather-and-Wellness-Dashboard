@@ -11,3 +11,6 @@ backend/.venv/
 # Env files
 .env
 .env.local
+
+# Playwright MCP artifacts (screenshots, logs)
+.playwright-mcp/

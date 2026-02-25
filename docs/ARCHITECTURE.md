@@ -10,6 +10,7 @@
 - **Three-tier web app**: Next.js frontend → FastAPI backend → Supabase Postgres
 - **Frontend (Vercel)**: Next.js (TypeScript + Tailwind) for UI only. No FastAPI on Vercel.
 - **Backend (Render)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
+  - Hosted URL: `https://weather-and-wellness-dashboard.onrender.com`
 - **Database (Supabase)**: Managed Postgres. Lab reads data via Supabase Studio.
 
 ---
@@ -23,6 +24,15 @@
 
 ---
 
+## CORS
+
+- Allowed origins are configured via the `ALLOWED_ORIGINS` env var (comma-separated list).
+- When `ALLOWED_ORIGINS` is unset, the backend defaults to localhost dev origins only.
+- In production (Render), set `ALLOWED_ORIGINS` to the Vercel frontend URL(s).
+- No wildcard (`*`) origins are used — least-privilege policy.
+
+---
+
 ## Migrations
 
 - **Alembic only** for schema changes.
@@ -30,11 +40,23 @@
 
 ---
 
-## Render Setup Timing
+## Render Setup
 
+- Service is live at `https://weather-and-wellness-dashboard.onrender.com`.
+- Health check path: `/health` → returns `{"status":"ok"}`.
 - Local backend tasks in Phase 1 (DB wiring, models, migrations, stub auth) do not require Render.
-- Render is required when you deploy the FastAPI service for hosted access.
-- Minimum backend env var at deploy time is `DATABASE_URL`; auth-related vars are only required when JWT auth is enabled.
+
+### Required Render Environment Variables
+
+| Variable | Required | Notes |
+|---|---|---|
+| `DATABASE_URL` | Always | Supabase pooler URL; include `ssl=require` |
+| `ALLOWED_ORIGINS` | Always | Comma-separated Vercel frontend URL(s) for CORS |
+| `SUPABASE_JWT_SECRET` | When RA JWT auth enabled | Used by FastAPI to validate Supabase JWTs |
+| `SUPABASE_URL` | When backend uses Supabase SDK | Supabase project URL |
+| `SUPABASE_ANON_KEY` | When backend uses Supabase SDK | Supabase anonymous key |
+
+> Do not commit secret values to the repo. Set them only in Render service environment settings.
 
 ---
 

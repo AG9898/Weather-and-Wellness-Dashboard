@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, apiPatch, type CogFunc8aResponse, type SessionResponse } from "@/lib/api";
+import { apiPost, apiPatch, getParticipantErrorMessage, type CogFunc8aResponse, type SessionResponse } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
 
 const SCALE: ScaleOption[] = [
@@ -50,7 +50,7 @@ export default function CogFuncPage() {
 
       router.push(`/session/${sessionId}/complete`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit");
+      setError(getParticipantErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

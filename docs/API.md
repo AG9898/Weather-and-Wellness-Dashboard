@@ -15,7 +15,7 @@
 | Environment | URL |
 |-------------|-----|
 | Development | `http://localhost:8000` |
-| Production  | Render FastAPI base URL (set per environment). See docs/ARCHITECTURE.md. |
+| Production  | `https://weather-and-wellness-dashboard.onrender.com` |
 
 ---
 
@@ -264,6 +264,26 @@
 
 ---
 
+## Error Response Format
+
+All error responses (4xx and 5xx) use a consistent JSON body:
+
+```json
+{ "detail": "<string or array>" }
+```
+
+- For `HTTPException` errors: `detail` is a string.
+- For `RequestValidationError` (422): `detail` is an array of Pydantic validation error objects.
+- For unhandled server errors (500): `detail` is `"Internal server error"`. Full error is logged server-side with method, path, and exception type.
+
+---
+
+## CORS
+
+Allowed origins are configured via the `ALLOWED_ORIGINS` environment variable (comma-separated). When unset, defaults to `http://localhost:3000`, `http://localhost:3001`, `http://127.0.0.1:3000`, `http://127.0.0.1:3001`. Set to your Vercel frontend URL(s) in production.
+
+---
+
 ## Error Codes Reference
 
 | HTTP Status | Meaning | When returned |
@@ -273,3 +293,4 @@
 | 409 | Conflict | Session not in expected state for operation |
 | 422 | Unprocessable Entity | Invalid status value in PATCH; malformed request body |
 | 401 | Unauthorized | Missing or invalid JWT on RA endpoint |
+| 500 | Internal Server Error | Unhandled exception — see server logs for details |

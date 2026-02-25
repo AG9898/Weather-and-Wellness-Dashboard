@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, type CESD10Response } from "@/lib/api";
+import { apiPost, getParticipantErrorMessage, type CESD10Response } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
 
 const SCALE: ScaleOption[] = [
@@ -43,7 +43,7 @@ export default function CESD10Page() {
       });
       router.push(`/session/${sessionId}/gad7`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit");
+      setError(getParticipantErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

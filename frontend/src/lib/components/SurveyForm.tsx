@@ -44,7 +44,7 @@ export default function SurveyForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!allAnswered) return;
+    if (!allAnswered || submitting) return;
     const payload: Record<string, number> = {};
     items.forEach((item) => {
       payload[`r${item.number}`] = responses[item.number];

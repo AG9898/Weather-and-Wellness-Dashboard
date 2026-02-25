@@ -10,7 +10,7 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 2 (in progress)        |
-| Tasks completed    | 24 / 32                |
+| Tasks completed    | 27 / 32                |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-02-25             |
 
@@ -29,6 +29,7 @@ _No tasks in progress._
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
 
 ---
+
 
 
 ## Completed Tasks
@@ -61,6 +62,9 @@ Note: T01, T07, and T08 were reopened on 2026-02-20 after verification found inc
 | T22 | Frontend — RA dashboard landing page | 2026-02-25 | /dashboard with hero action zone, 5 KPI cards, recent sessions list; consumes /dashboard/summary + /sessions; loading/empty/error states; nav updated; login redirects to /dashboard. |
 | T23 | Frontend — RA participants and sessions UI cleanup | 2026-02-25 | /participants: page header + subtitle, combined name column, #N badge chip, responsive (date hidden mobile), bordered success/error banners. /sessions: page header + subtitle, sessions history table (GET /sessions), refreshes on create/activate/complete. |
 | T24 | Frontend — participant flow visual cleanup | 2026-02-25 | SurveyForm: dark-theme colors, blue selected state, stepLabel prop. Digit span: dark-theme colors, "STUDY TASK" step context, input border/text updates, emerald/red feedback. Surveys: "Survey N of 4" step labels. Completion: checkmark icon + dark colors. |
+| T25 | Frontend — survey and task UX reliability pass | 2026-02-25 | Added `getParticipantErrorMessage()` helper to API layer mapping ApiError status codes to friendly non-technical strings; updated all four survey pages + digit span to use it; added `submitting` guard to SurveyForm.handleSubmit; added loading/disabled state to digit span Continue button; TypeScript check clean. |
+| T26 | Backend — API connection hardening (CORS, timeouts, error mapping) | 2026-02-25 | CORS origins now env-driven via `ALLOWED_ORIGINS` (comma-separated, defaults to localhost dev origins); consistent JSON error body `{"detail": ...}` for HTTPException + RequestValidationError + unhandled exceptions via global handlers; unhandled 5xx errors logged with method, path, exception type; verified allowed/blocked origin CORS behavior. |
+| T27 | Infra — Render backend integration | 2026-02-25 | Render service verified live at https://weather-and-wellness-dashboard.onrender.com; /health 200 ✓, /docs 200 ✓, /openapi.json 200 valid JSON ✓; DB at head rev 20260219_000004 confirmed; migration runbook documented in devSteps.md; hosted base URL added to API.md and ARCHITECTURE.md; ALLOWED_ORIGINS and all required Render env vars documented. |
 <!-- Ralph: append one row per completed task. Never delete rows. -->
 
 ---
@@ -97,9 +101,77 @@ Note: T01, T07, and T08 were reopened on 2026-02-20 after verification found inc
 - Completion: blue checkmark circle + "Thank You" + muted RA-return instruction ✓
 - All instrument wording verified unchanged ✓
 
+---
+
+### T25 — Frontend — survey and task UX reliability pass — 2026-02-25
+
+**Files modified:**
+- `frontend/src/lib/api/index.ts` — added `getParticipantErrorMessage(err: unknown): string` helper; maps `ApiError` 5xx → server error message, 400/409 → session state message, 404 → session not found message, other → generic retry message; non-ApiError (network failure) → connection message
+- `frontend/src/lib/components/SurveyForm.tsx` — `handleSubmit` now guards `|| submitting` to prevent form re-submission via non-button paths
+- `frontend/src/app/session/[session_id]/digitspan/page.tsx` — added `submitting` state; `handleSubmitToBackend` checks `if (submitting) return` guard; Continue button is `disabled={submitting}` with "Submitting…" label while pending; error now uses `getParticipantErrorMessage`
+- `frontend/src/app/session/[session_id]/uls8/page.tsx` — error handler uses `getParticipantErrorMessage`
+- `frontend/src/app/session/[session_id]/cesd10/page.tsx` — error handler uses `getParticipantErrorMessage`
+- `frontend/src/app/session/[session_id]/gad7/page.tsx` — error handler uses `getParticipantErrorMessage`
+- `frontend/src/app/session/[session_id]/cogfunc/page.tsx` — error handler uses `getParticipantErrorMessage`
+
+**Key implementation decisions:**
+- Error messages are participant-safe (no status codes, no internal detail fields) and direct the participant to notify the RA when the issue is not retryable
+- Network-level errors (fetch throws, no response) return a connection-specific message that encourages retry
+- Recoverable error flow: survey pages call `finally { setSubmitting(false) }` so all form state is preserved for retry; digit span reverts to "instruction4" with the error shown and Continue button re-enabled
+
+**Verification:**
+- `npx tsc --noEmit` exits 0 (no TS errors)
+- SurveyForm button disabled while submitting prevents duplicate submissions ✓
+- Digit span Continue button shows "Submitting…" and is disabled during API call ✓
+
+---
+
+### T26 — Backend — API connection hardening — 2026-02-25
+
+**Files modified:**
+- `backend/app/main.py` — CORS `allow_origins` now built from `ALLOWED_ORIGINS` env var (comma-separated, whitespace-trimmed); defaults to localhost:3000/3001 dev origins when unset; added `http_exception_handler` (consistent `{"detail": ...}` for all HTTP errors; 5xx also logged); added `validation_exception_handler` (422 with `{"detail": errors_list}`); added `unhandled_exception_handler` (500 + full exception logged with method/path/type)
+- `.env` — documented `ALLOWED_ORIGINS` variable with example Vercel URL comment
+
+**Key implementation decisions:**
+- `ALLOWED_ORIGINS` is least-privilege: production deployments must explicitly list allowed origins; no wildcard fallback
+- All exception handlers produce `{"detail": ...}` shape consistent with FastAPI's default HTTPException format, so the frontend API layer (`body.detail`) works uniformly
+- Unhandled 5xx logs use `logger.exception()` (includes full traceback) with method, path, exception class, and message — no PII
+
+**Verification:**
+- `python -c "from app.main import app"` imports cleanly ✓
+- `GET /health` returns `{"status": "ok"}` ✓
+- Invalid request body → 422 `{"detail": [...]}` ✓
+- Invalid auth → 401 `{"detail": "Invalid token header"}` ✓
+- `curl -X OPTIONS` with localhost:3000 origin → `access-control-allow-origin: http://localhost:3000` ✓
+- `curl -X OPTIONS` with unknown origin → no `access-control-allow-origin` header ✓
+
 **Docs updated:**
 - docs/DESIGN_SPEC.md — Participant Flow Pages section
 - docs/PROGRESS.md — state table and this entry
+
+---
+
+### T27 — Infra — Render backend integration — 2026-02-25
+
+**Files modified:**
+- `docs/API.md` — Production base URL updated to `https://weather-and-wellness-dashboard.onrender.com`
+- `docs/ARCHITECTURE.md` — Backend hosted URL added to summary; Render Setup section expanded with required env var table
+- `docs/devSteps.md` — T27 Runbook expanded: service config table, full env var checklist (including `ALLOWED_ORIGINS`), Alembic one-off procedure (Option A: local-against-prod, Option B: Render Shell), confirmation method (`alembic current` + Supabase Studio SQL), Vercel `NEXT_PUBLIC_API_URL` guidance, smoke test checklist
+- `docs/PROGRESS.md` — state table and this entry
+- `docs/kanban.md` — T27 status set to done
+
+**Key implementation decisions:**
+- Migrations confirmed NOT run on app startup (no Alembic calls in `main.py` or `db.py`)
+- `ALLOWED_ORIGINS` added to required Render env var list (added in T26; needed at Render deploy time for CORS to allow Vercel origin)
+- Migration runbook documents two options to fit different operator preferences; Option B (Render Shell) preferred for production to avoid running local tools against production DB
+- Alembic confirmation uses `alembic current -v` locally or direct SQL in Supabase Studio — no new endpoint added
+
+**Verification (hosted backend — 2026-02-25):**
+- `GET /health` → 200 `{"status":"ok"}` ✓
+- `GET /docs` → 200 (Swagger UI) ✓
+- `GET /openapi.json` → 200, valid JSON, title "Weather & Wellness Backend" v0.1.0 ✓
+- DB migration state: `alembic current -v` → `Rev: 20260219_000004 (head)` ✓
+- No Alembic import in `app/main.py` or `app/db.py` ✓
 
 ---
 

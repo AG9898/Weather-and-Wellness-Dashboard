@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, type DigitSpanRunResponse } from "@/lib/api";
+import { apiPost, getParticipantErrorMessage, type DigitSpanRunResponse } from "@/lib/api";
 
 // ── Constants ──
 
@@ -68,6 +68,7 @@ export default function DigitSpanPage() {
   const [practiceFeedback, setPracticeFeedback] = useState<string | null>(null);
   const [results, setResults] = useState<TrialData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // ── Digit presentation via setTimeout chains ──
 
@@ -200,6 +201,8 @@ export default function DigitSpanPage() {
   // ── Submit to backend ──
 
   const handleSubmitToBackend = async () => {
+    if (submitting) return;
+    setSubmitting(true);
     setPhase("submitting");
     setError(null);
     try {
@@ -209,8 +212,10 @@ export default function DigitSpanPage() {
       });
       router.push(`/session/${sessionId}/uls8`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit");
+      setError(getParticipantErrorMessage(err));
       setPhase("instruction4");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -278,10 +283,11 @@ export default function DigitSpanPage() {
         )}
         <button
           onClick={handleSubmitToBackend}
-          className="mt-8 rounded-lg px-8 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+          disabled={submitting}
+          className="mt-8 rounded-lg px-8 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
           style={{ background: "var(--ubc-blue-700)" }}
         >
-          Continue
+          {submitting ? "Submitting…" : "Continue"}
         </button>
       </Screen>
     );

@@ -163,8 +163,9 @@ All four surveys use the shared `SurveyForm` component with:
 - **`stepLabel` prop:** "Survey 1 of 4" … "Survey 4 of 4" — rendered as `text-xs uppercase tracking-widest text-muted-foreground` above the title.
 - **Selected radio option:** `background: var(--ubc-blue-700)` fill with white text.
 - **Unselected radio option:** `border-border text-muted-foreground hover:border-ring hover:text-foreground`.
-- **Submit button:** `--ubc-blue-700` + `text-primary-foreground`, disabled until all items answered.
-- **Error state:** bordered destructive banner (same pattern as RA pages).
+- **Submit button:** `--ubc-blue-700` + `text-primary-foreground`, disabled until all items answered and not currently submitting. Shows "Submitting…" label while pending.
+- **Error state:** bordered destructive banner (same pattern as RA pages). Error messages are participant-safe (non-technical) via `getParticipantErrorMessage()`. Form state is preserved on error so the participant can retry.
+- **Duplicate submission prevention:** `SurveyForm.handleSubmit` guards against `submitting === true` so concurrent submissions cannot occur even via non-button paths.
 
 ### Completion Page (`/session/[id]/complete`)
 

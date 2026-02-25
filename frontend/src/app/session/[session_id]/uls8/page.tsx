@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, type ULS8Response } from "@/lib/api";
+import { apiPost, getParticipantErrorMessage, type ULS8Response } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
 
 const SCALE: ScaleOption[] = [
@@ -41,7 +41,7 @@ export default function ULS8Page() {
       });
       router.push(`/session/${sessionId}/cesd10`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit");
+      setError(getParticipantErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

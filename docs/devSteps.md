@@ -39,14 +39,91 @@
 
 ---
 
-## Render Requirement Timing
+## T27 Runbook — Render Backend Service
 
-- You do **not** need Render configured to complete local backend setup tasks in Phase 1 (`T02`–`T06` and schema work in `T03`–`T05`).
-- You need Render only when deploying/running the hosted FastAPI service.
-- Render backend env vars when deployed:
-  - `DATABASE_URL` (required now)
-  - `SUPABASE_JWT_SECRET` (required once T18 auth is enabled)
-  - `SUPABASE_URL` / `SUPABASE_ANON_KEY` (only if backend code consumes them in that phase)
+> **Status (2026-02-25):** Service is live at `https://weather-and-wellness-dashboard.onrender.com`.
+> Verification results: `/health` → 200 `{"status":"ok"}` ✓ | `/docs` → 200 ✓ | `/openapi.json` → 200 valid JSON ✓
+
+Use this runbook when re-deploying or reconfiguring the Render backend.
+
+### 1) Service configuration (reference)
+
+| Setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Runtime | Python 3 |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health Check Path | `/health` |
+
+### 2) Required Render environment variables
+
+| Variable | Required | Notes |
+|---|---|---|
+| `DATABASE_URL` | Always | Supabase session pooler URL; must include `ssl=require` |
+| `ALLOWED_ORIGINS` | Always | Comma-separated Vercel frontend URL(s) for CORS. Without this only localhost origins are allowed. |
+| `SUPABASE_JWT_SECRET` | When RA JWT auth enabled | Used by FastAPI to validate Supabase JWTs |
+| `SUPABASE_URL` | When backend uses Supabase SDK | Supabase project URL |
+| `SUPABASE_ANON_KEY` | When backend uses Supabase SDK | Supabase anonymous key |
+
+> Keep all secret values in Render env settings only — never commit values to the repo.
+
+### 3) Alembic migrations (hosted one-off procedure)
+
+Migrations run **explicitly** — never on app startup (`app/main.py` contains no Alembic calls).
+
+**Option A — Run locally against production DATABASE_URL (⚠ use carefully):**
+
+```bash
+cd backend
+# Export the production DATABASE_URL (the same value set in Render)
+export DATABASE_URL="<production-pooler-url>?ssl=require"
+PYTHONPATH=. .venv/bin/alembic upgrade head
+```
+
+**Option B — Render Shell / one-off job:**
+
+In the Render dashboard, open the service → **Shell** tab and run:
+
+```bash
+PYTHONPATH=. alembic upgrade head
+```
+
+**Confirm migrations applied:**
+
+```bash
+# Locally (against the same DB):
+PYTHONPATH=. .venv/bin/alembic current -v
+# Expected: Rev: 20260219_000004 (head)
+```
+
+Or query the DB directly in Supabase Studio:
+
+```sql
+SELECT version_num FROM alembic_version;
+-- Expected: 20260219_000004
+```
+
+Current head revision: `20260219_000004` (survey_tables — final Phase 1 migration).
+
+### 4) Link frontend to hosted backend
+
+Set the following in Vercel project environment settings:
+
+```
+NEXT_PUBLIC_API_URL=https://weather-and-wellness-dashboard.onrender.com
+```
+
+After setting, redeploy the frontend and smoke-test `/health`, participant creation, and a survey submission.
+
+### 5) Smoke test checklist (developer-owned)
+
+- [ ] `GET /health` → 200 `{"status":"ok"}`
+- [ ] `GET /docs` → 200 (Swagger UI loads)
+- [ ] `GET /openapi.json` → 200 valid JSON
+- [ ] RA endpoint auth behavior matches current phase
+- [ ] Frontend (Vercel) can reach backend from its deployed origin (check CORS headers)
+- [ ] New rows appear in Supabase Studio after participant/session creation
 
 ---
 

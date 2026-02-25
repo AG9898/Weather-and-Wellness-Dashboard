@@ -90,6 +90,27 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Map an unknown thrown value to a participant-facing, non-technical error message.
+ * Use this in all participant submit handlers.
+ */
+export function getParticipantErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status >= 500) {
+      return "A server error occurred. Please try again or ask the research assistant for help.";
+    }
+    if (err.status === 400 || err.status === 409) {
+      return "Your session is not in the expected state. Please ask the research assistant for help.";
+    }
+    if (err.status === 404) {
+      return "Your session could not be found. Please ask the research assistant for help.";
+    }
+    return "Something went wrong. Please try again or ask the research assistant for help.";
+  }
+  // Network error (fetch() threw — no response received)
+  return "Unable to connect to the server. Please check your connection and try again.";
+}
+
 // ── Domain-specific types ──
 
 export interface ParticipantResponse {
