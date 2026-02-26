@@ -8,6 +8,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+
 from app.db import Base
 
 
@@ -25,3 +26,7 @@ class Session(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when session becomes complete; links session to weather data via study_days
+    study_day_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("study_days.study_day_id"), nullable=True
+    )

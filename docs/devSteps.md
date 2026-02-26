@@ -32,7 +32,7 @@
 ## Verification Checklist
 
 - `alembic upgrade head` completes without errors against your Supabase DB. (T02–T05)
-- `alembic current -v` reports `Rev: 20260219_000004 (head)` after initial setup. (T02–T05)
+- `alembic current -v` reports `Rev: 20260226_000005 (head)` after applying all migrations. (T02–T05, T29)
 - Backend starts cleanly and exposes `/health`. (T01)
 - Frontend dev server starts without Next.js compile errors. (T01)
 - Participant/session endpoints return expected status codes once T07/T08 are fixed. (T07–T08)
@@ -104,7 +104,7 @@ SELECT version_num FROM alembic_version;
 -- Expected: 20260219_000004
 ```
 
-Current head revision: `20260219_000004` (survey_tables — final Phase 1 migration).
+Current head revision: `20260226_000005` (weather_tables — Phase 2, T29).
 
 ### 4) Link frontend to hosted backend
 

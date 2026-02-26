@@ -384,7 +384,7 @@
     {
       "id": "T28",
       "title": "Docs — weather ingestion spec + doc wiring",
-      "status": "todo",
+      "status": "done",
       "description": "Add a canonical Phase 2 weather ingestion spec doc and update API/schema/architecture/dev runbooks so the feature is decision-complete before implementation.",
       "depends_on": [
         "T27"
@@ -419,7 +419,7 @@
     {
       "id": "T29",
       "title": "DB schema — study_days + weather tables",
-      "status": "todo",
+      "status": "done",
       "description": "Add schema for day-level linking and weather ingestion storage: study_days dimension, sessions FK, weather_daily upsert table, and weather_ingest_runs audit table.",
       "depends_on": [
         "T28"
@@ -447,7 +447,7 @@
     {
       "id": "T30",
       "title": "Backend — UBC EOS scrape/parse + POST ingest endpoint",
-      "status": "todo",
+      "status": "done",
       "description": "Implement HTML scraping/parsing for UBC EOS sources and add POST /weather/ingest/ubc-eos with dual auth (LabMember JWT or GitHub Actions shared secret), idempotent daily upserts, cooldown, and concurrency lock.",
       "depends_on": [
         "T29"
@@ -475,7 +475,7 @@
     {
       "id": "T31",
       "title": "Backend — GET daily weather endpoint (RA-only)",
-      "status": "todo",
+      "status": "done",
       "description": "Add GET /weather/daily?start&end (RA-only) to read day-keyed weather rows for dashboard status and future analyses, including latest ingest run metadata.",
       "depends_on": [
         "T30"

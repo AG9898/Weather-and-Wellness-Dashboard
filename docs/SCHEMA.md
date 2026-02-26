@@ -31,11 +31,10 @@ sessions (1) ──────────────────── (1) su
 
 ---
 
-## Planned Additions (Phase 2 — Weather Ingestion)
+## Phase 2 Additions — Weather Ingestion (T29, applied 2026-02-26)
 
-> These tables/columns are **planned** and are not in the database until the
-> corresponding Alembic migration is applied. Canonical feature spec:
-> `docs/WEATHER_INGESTION.md`
+> These tables were added by migration `20260226_000005`. They are live in the database.
+> Canonical feature spec: `docs/WEATHER_INGESTION.md`
 
 ### Day Dimension: `study_days` (planned)
 
@@ -49,13 +48,13 @@ sessions (1) ──────────────────── (1) su
 **Purpose:** Provide a stable relational key for day-level analysis joins without relying on
 computed date derivation at query time.
 
-### Sessions: planned FK to `study_days`
+### Sessions: FK to `study_days` (added T29)
 
-Planned addition to `sessions`:
+Addition to `sessions` applied in migration `20260226_000005`:
 
 | Column       | Type | Constraints | Notes |
 |--------------|------|-------------|------|
-| study_day_id | UUID | FK, NULLABLE | Set when session becomes `complete` (default definition) |
+| study_day_id | UUID | FK, NULLABLE | Set when session becomes `complete`; links to `study_days.study_day_id` |
 
 ### Table: `weather_daily` (planned)
 
@@ -254,7 +253,7 @@ Planned migration (T40):
 | 2026-02-19 | T03 | Create participants and sessions tables |
 | 2026-02-19 | T04 | Create digitspan_runs and digitspan_trials tables |
 | 2026-02-19 | T05 | Create survey tables (ULS-8, CES-D 10, GAD-7, CogFunc 8a) |
-| 2026-02-26 | T29 (planned) | Add study_days + weather_daily + weather_ingest_runs tables |
+| 2026-02-26 | T29 | Add study_days + weather_ingest_runs + weather_daily tables; add study_day_id FK to sessions |
 | 2026-02-26 | T40 (planned) | Drop participant name columns (anonymous participants) |
 
 As of 2026-02-23, migrations were applied and verified on Supabase through

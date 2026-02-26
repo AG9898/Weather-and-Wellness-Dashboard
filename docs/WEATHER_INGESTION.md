@@ -150,13 +150,30 @@ If lock is held, return `409` (“Ingestion already in progress”).
 
 ---
 
+## Auth Model
+
+The `POST /weather/ingest/ubc-eos` endpoint accepts **either** of two auth methods:
+
+| Path | Header | Value |
+|------|--------|-------|
+| RA manual trigger | `Authorization` | `Bearer <supabase-jwt>` (LabMember JWT) |
+| GitHub Actions scheduler | `X-WW-Weather-Ingest-Secret` | Shared secret (plain string) |
+
+Rules:
+- The endpoint checks for a valid LabMember JWT first; if absent it falls back to the shared secret header.
+- The shared secret is compared against all values in `WEATHER_INGEST_SHARED_SECRETS` (comma-separated) to allow rotation.
+- **Shared secrets must never be included in the RA dashboard HTML/JS** — the frontend triggers ingest via the LabMember JWT path only.
+- If neither auth method is valid, return `401`.
+
+---
+
 ## Scheduler (GitHub Actions Only)
 
 GitHub Actions is the primary and only scheduler in this phase.
 
 - Schedule: once per day at a stable UTC time.
 - Implement retries (Render cold starts / transient failures).
-- Auth: shared secret header (never a JWT).
+- Auth: shared secret header (`X-WW-Weather-Ingest-Secret`); never a LabMember JWT.
 
 See `docs/ARCHITECTURE.md` for secret ownership boundaries and required GitHub secrets.
 

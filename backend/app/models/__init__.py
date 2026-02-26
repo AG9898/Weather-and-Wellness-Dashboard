@@ -7,6 +7,7 @@ from .surveys import (
     SurveyGAD7,
     SurveyCogFunc8a,
 )
+from .weather import StudyDay, WeatherIngestRun, WeatherDaily
 
 __all__ = [
     "Participant",
@@ -17,4 +18,7 @@ __all__ = [
     "SurveyCESD10",
     "SurveyGAD7",
     "SurveyCogFunc8a",
+    "StudyDay",
+    "WeatherIngestRun",
+    "WeatherDaily",
 ]

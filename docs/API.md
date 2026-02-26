@@ -45,8 +45,8 @@
 | POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
 | POST   | /surveys/gad7 | None (active session) | implemented | T10 |
 | POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
-| POST   | /weather/ingest/ubc-eos | RA or shared secret | planned | T30 |
-| GET    | /weather/daily | RA | planned | T31 |
+| POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
+| GET    | /weather/daily | RA | implemented | T31 |
 
 ---
 
@@ -297,7 +297,7 @@
 
 ### POST /weather/ingest/ubc-eos
 - **Auth:** LabMember JWT **or** GitHub Actions shared secret
-- **Status:** planned (T30)
+- **Status:** implemented (T30)
 - **Headers (one of):**
   - RA path: `Authorization: Bearer <supabase-jwt>`
   - Actions path: `X-WW-Weather-Ingest-Secret: <shared-secret>`
@@ -317,12 +317,18 @@
   }
   ```
 - **Notes:**
-  - Idempotent daily upsert into `weather_daily`.
-  - Enforces per-station cooldown (10 minutes) and per-station concurrency lock.
+  - Idempotent daily upsert into `weather_daily` keyed by `(station_id, study_day_id)`.
+  - Enforces per-station cooldown (default 10 min; `WEATHER_INGEST_COOLDOWN_SECONDS` env var) → 429 with `Retry-After` header.
+  - Per-station Postgres advisory lock prevents concurrent runs → 409 if already in progress.
+  - Always writes a `weather_ingest_runs` row regardless of parse outcome.
+  - Writes `weather_daily` only when `parse_status` is `success` or `partial`.
+  - `study_days` row for `date_local` is get-or-created automatically.
+  - Parser version: `ubc-eos-v1`. Sources: `custom.php` (current conditions) + `ubcrs_withicons/index.php` (current + 3-hour forecast periods).
+  - Verified: 2026-02-26 — `parse_status: success`, `upserted_days: 1`, rows confirmed in Supabase Studio.
 
 ### GET /weather/daily
 - **Auth:** RA required
-- **Status:** planned (T31)
+- **Status:** implemented (T31)
 - **Query parameters:**
 
 | Parameter | Type | Default | Description |
@@ -355,6 +361,13 @@
     }
   }
   ```
+- **Notes:**
+  - Both `start` and `end` are required. `start` > `end` returns 422.
+  - Max range is 365 days; exceeding it returns 422.
+  - `items` ordered by `date_local` ASC. Empty array if no data for the range.
+  - `latest_run` is the most recent ingest run for the station regardless of date range; `null` if no runs exist.
+  - `latest_run.parse_status` values: `success | partial | fail`.
+- **Verified:** 2026-02-26 — returned 1 item with `current_temp_c`, `forecast_periods`, and `latest_run` from live DB.
 
 ---
 

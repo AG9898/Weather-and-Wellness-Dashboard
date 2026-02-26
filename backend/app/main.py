@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import dashboard, digitspan, participants, sessions, surveys
+from app.routers import dashboard, digitspan, participants, sessions, surveys, weather
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ app.include_router(sessions.router)
 app.include_router(digitspan.router)
 app.include_router(surveys.router)
 app.include_router(dashboard.router)
+app.include_router(weather.router)
 
 
 # ── Exception handlers ────────────────────────────────────────────────────────

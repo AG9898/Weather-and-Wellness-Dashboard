@@ -10,9 +10,9 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 2 (in progress)        |
-| Tasks completed    | 27 / 32                |
+| Tasks completed    | 31 / 32                |
 | Tasks in progress  | 0                      |
-| Last updated       | 2026-02-25             |
+| Last updated       | 2026-02-26             |
 
 ---
 
@@ -65,11 +65,125 @@ Note: T01, T07, and T08 were reopened on 2026-02-20 after verification found inc
 | T25 | Frontend — survey and task UX reliability pass | 2026-02-25 | Added `getParticipantErrorMessage()` helper to API layer mapping ApiError status codes to friendly non-technical strings; updated all four survey pages + digit span to use it; added `submitting` guard to SurveyForm.handleSubmit; added loading/disabled state to digit span Continue button; TypeScript check clean. |
 | T26 | Backend — API connection hardening (CORS, timeouts, error mapping) | 2026-02-25 | CORS origins now env-driven via `ALLOWED_ORIGINS` (comma-separated, defaults to localhost dev origins); consistent JSON error body `{"detail": ...}` for HTTPException + RequestValidationError + unhandled exceptions via global handlers; unhandled 5xx errors logged with method, path, exception type; verified allowed/blocked origin CORS behavior. |
 | T27 | Infra — Render backend integration | 2026-02-25 | Render service verified live at https://weather-and-wellness-dashboard.onrender.com; /health 200 ✓, /docs 200 ✓, /openapi.json 200 valid JSON ✓; DB at head rev 20260219_000004 confirmed; migration runbook documented in devSteps.md; hosted base URL added to API.md and ARCHITECTURE.md; ALLOWED_ORIGINS and all required Render env vars documented. |
+| T28 | Docs — weather ingestion spec + doc wiring | 2026-02-25 | WEATHER_INGESTION.md (goal, sources, day-linking, data model, parse rules, idempotency, cooldown/locking, auth model, scheduler) verified decision-complete. Auth model section added (dual-auth: LabMember JWT vs shared-secret path; rotation rules; no-client-secret-exposure rule). API.md weather endpoints (POST /weather/ingest/ubc-eos, GET /weather/daily) verified with full schemas. SCHEMA.md planned tables (study_days, weather_daily, weather_ingest_runs) verified with column detail. ARCHITECTURE.md Scheduled Jobs section verified with GitHub secret ownership. CONVENTIONS.md env vars table verified (WEATHER_INGEST_SHARED_SECRETS, WEATHER_INGEST_COOLDOWN_SECONDS). DECISIONS.md RESOLVED-07 and RESOLVED-08 verified. devSteps.md Weather Ingestion Setup section verified (Render vars, GitHub secrets, verification steps). kanban.md T28 marked done. |
+| T29 | DB schema — study_days + weather tables | 2026-02-26 | SQLAlchemy models created (weather.py: StudyDay, WeatherIngestRun, WeatherDaily). Session model updated with nullable study_day_id FK. models/__init__.py updated. Alembic migration 20260226_000005 written and applied; DB at head rev 20260226_000005 ✓. Tables: study_days (UNIQUE date_local), weather_ingest_runs (indexed station+ingested_at DESC, station+date_local), weather_daily (UNIQUE station_id+study_day_id idempotency constraint, indexed station+date_local). FKs: weather_daily→study_days, weather_daily→weather_ingest_runs, sessions→study_days. SCHEMA.md planned→applied sections updated; devSteps.md head rev updated. |
+| T30 | Backend — UBC EOS scrape/parse + POST ingest endpoint | 2026-02-26 | POST /weather/ingest/ubc-eos implemented. Dual auth: LabMember JWT (ra_manual) or X-WW-Weather-Ingest-Secret header (github_actions); JWT path: no fallback on invalid token. Per-station cooldown (429+Retry-After from WEATHER_INGEST_COOLDOWN_SECONDS, default 600s). Per-station pg_try_advisory_xact_lock (409 if held). Parser: fetches both UBC EOS URLs concurrently; primary page (custom.php) supplies current conditions from td.var/td.value table; secondary page (ubcrs_withicons) supplies forecast periods from div.time-range-wrapper blocks; day-level summary computed from today's periods. Always inserts weather_ingest_runs row. Upserts study_days + weather_daily when parse_status != fail. Added beautifulsoup4, lxml, tzdata to requirements.txt. Verified live: parse_status=success, upserted_days=1, current_temp_c=7.2°C, forecast_high=7.4°C, rows in Supabase Studio ✓. 429 on immediate retry ✓. 401 on wrong/missing secret ✓. |
+| T31 | Backend — GET daily weather endpoint (RA-only) | 2026-02-26 | GET /weather/daily implemented. RA-only (Depends(get_current_lab_member)). Query params: start (date, required), end (date, required), station_id (int, default 3510). Validates start ≤ end (422), max range 365 days (422). Returns weather_daily rows ordered by date_local ASC + latest_run from weather_ingest_runs (run_id, ingested_at, parse_status); latest_run is null if no runs exist. Schemas: WeatherDailyItem, LatestRunInfo, WeatherDailyResponse added to schemas/weather.py. Verified live: valid date range returns 1 item (current_temp_c=7.2°C, 19 forecast periods), start>end→422, >365 days→422, no auth→401. |
 <!-- Ralph: append one row per completed task. Never delete rows. -->
 
 ---
 
 ## Recent Changes
+
+### T31 — Backend — GET daily weather endpoint (RA-only) — 2026-02-26
+
+**Files modified:**
+- `backend/app/schemas/weather.py` — added `WeatherDailyItem` (from_attributes ORM model), `LatestRunInfo`, `WeatherDailyResponse`
+- `backend/app/routers/weather.py` — added `GET /weather/daily` endpoint; new imports: `date as date_type`, `Query`; `_MAX_DATE_RANGE_DAYS = 365`
+- `docs/API.md` — GET /weather/daily status → implemented; Notes + Verified sections added
+- `docs/kanban.md` — T31 → done
+- `docs/PROGRESS.md` — state table and this entry
+
+**Key implementation decisions:**
+- `start` and `end` are required query params (no defaults); FastAPI returns 422 automatically if either is absent
+- `start > end` and range > 365 days both return 422 with descriptive `detail` strings
+- `latest_run` is station-scoped (most recent run regardless of requested date range) — gives frontend a quick freshness indicator without a separate API call
+- `latest_run` is `null` if no ingest runs have ever been recorded for the station (not an error)
+- `WeatherDailyItem` uses `ConfigDict(from_attributes=True)` — serialized directly from ORM rows via `model_validate`
+
+**Verification (2026-02-26):**
+- `GET /weather/daily?start=2026-02-26&end=2026-02-26` → 1 item, `current_temp_c: 7.2`, 19 forecast periods, `latest_run.parse_status: success` ✓
+- `start=2026-02-27&end=2026-02-26` → 422 `start must not be after end` ✓
+- `start=2024-01-01&end=2026-02-26` (>365 days) → 422 `Date range exceeds maximum of 365 days` ✓
+- No auth → 401 ✓
+
+---
+
+### T30 — Backend — UBC EOS scrape/parse + POST ingest endpoint — 2026-02-26
+
+**Files created:**
+- `backend/app/services/__init__.py`
+- `backend/app/services/weather_parser.py` — async `fetch_and_parse(station_id)` returns `ParseResult`. Fetches `custom.php` (current conditions via `td.var`/`td.value`) and `ubcrs_withicons/index.php` (current + `div.time-range-wrapper` forecast periods) concurrently with httpx. Merges: primary wins for current conditions, secondary supplies forecast. Computes day-level summary (high/low/precip/condition) from today's periods. SHA-256 hashes raw HTML for change detection.
+- `backend/app/schemas/weather.py` — `WeatherIngestRequest` (station_id default 3510), `WeatherIngestResponse`
+- `backend/app/routers/weather.py` — `POST /weather/ingest/ubc-eos`. Dual auth dependency (`_require_ingest_auth`): JWT → ra_manual, shared secret → github_actions. Per-station cooldown check (429). `fetch_and_parse` called outside DB. `pg_try_advisory_xact_lock` (409). Inserts `weather_ingest_runs` always. Upserts `study_days` (get-or-create) + `weather_daily` (idempotent) when parse_status ≠ fail.
+
+**Files modified:**
+- `backend/app/main.py` — registered `weather.router`
+- `backend/requirements.txt` — added beautifulsoup4, lxml, tzdata
+- `docs/API.md` — POST /weather/ingest/ubc-eos status → implemented; notes expanded with parser details and verification
+- `docs/kanban.md` — T30 → done
+- `docs/PROGRESS.md` — state table and this entry
+
+**Key implementation decisions:**
+- Dual auth: JWT present → must validate (no fallback to secret); JWT absent → check secret; neither → 401
+- Advisory lock is `pg_try_advisory_xact_lock` (transaction-level, released on commit) — minimal lock duration since HTTP fetch happens before the write transaction
+- `study_days` get-or-create uses `ON CONFLICT DO UPDATE ... RETURNING` so re-ingestion for the same day returns the existing `study_day_id`
+- `weather_daily` upsert uses named constraint `uq_weather_daily_station_id_study_day_id` — overwrites all weather fields on conflict
+- `forecast_precip_prob_pct` and `current_wind_gust_kmh` are always `None` (UBC EOS pages do not expose these)
+- Parser version `ubc-eos-v1` stored in every run for future format-change triage
+
+**Verification (2026-02-26):**
+- `POST /weather/ingest/ubc-eos` with valid shared secret → `parse_status: success`, `upserted_days: 1` ✓
+- `weather_ingest_runs`: 1 row, `requested_via: github_actions`, `parse_status: success` ✓
+- `weather_daily`: `current_temp_c: 7.2`, `forecast_high_c: 7.4`, `forecast_low_c: 5.1`, `forecast_condition_text: Overcast` ✓
+- `study_days`: 1 row for `2026-02-26`, `tz_name: America/Edmonton` ✓
+- Immediate retry → 429 ✓
+- Wrong secret → 401 ✓
+- No auth → 401 ✓
+
+---
+
+### T29 — DB schema — study_days + weather tables — 2026-02-26
+
+**Files created:**
+- `backend/app/models/weather.py` — `StudyDay`, `WeatherIngestRun`, `WeatherDaily` SQLAlchemy models with full column definitions, FK constraints, and `UniqueConstraint` for idempotency
+- `backend/alembic/versions/20260226_000005_weather_tables.py` — migration creating all three tables, idempotency unique constraint and indexes, plus `study_day_id` FK column on `sessions`
+
+**Files modified:**
+- `backend/app/models/sessions.py` — added nullable `study_day_id` FK → `study_days.study_day_id`
+- `backend/app/models/__init__.py` — exported `StudyDay`, `WeatherIngestRun`, `WeatherDaily`
+- `docs/SCHEMA.md` — "Planned Additions" section relabelled as applied (T29, 2026-02-26); session FK note updated; migration history row updated
+- `docs/devSteps.md` — head revision updated to `20260226_000005`; verification checklist updated
+- `docs/kanban.md` — T29 status set to done
+- `docs/PROGRESS.md` — state table and this entry
+
+**Key implementation decisions:**
+- `study_days` created before `weather_ingest_runs` (no cross-dependency); `weather_daily` created last (FKs to both)
+- Idempotency enforced via UNIQUE (`station_id`, `study_day_id`) on `weather_daily` — enables conflict-free upserts
+- Two indexes on `weather_ingest_runs`: `(station_id, ingested_at DESC)` for recent-run lookups, `(station_id, date_local)` for day-range queries
+- One index on `weather_daily`: `(station_id, date_local)` for day-range queries
+- `sessions.study_day_id` is nullable so existing rows are unaffected; set server-side when a session reaches `complete`
+
+**Verification:**
+- `from app.models import StudyDay, WeatherIngestRun, WeatherDaily` — imports OK ✓
+- `alembic history` shows correct `20260219_000004 -> 20260226_000005 (head)` chain ✓
+- `alembic upgrade head` applied without errors ✓
+- `alembic current -v` → `Rev: 20260226_000005 (head)` ✓
+
+---
+
+### T28 — Docs — weather ingestion spec + doc wiring — 2026-02-25
+
+**Files modified:**
+- `docs/WEATHER_INGESTION.md` — Added explicit Auth Model section: dual-auth table (LabMember JWT vs GitHub Actions shared-secret header `X-WW-Weather-Ingest-Secret`); key rule that shared secrets must never be exposed client-side; 401 on both-invalid; rotation guidance via comma-separated `WEATHER_INGEST_SHARED_SECRETS`. All other sections (goal, sources, day-linking, data model, parse rules, idempotency, cooldown, concurrency, scheduler) confirmed decision-complete.
+- `docs/kanban.md` — T28 status set to done.
+- `docs/PROGRESS.md` — state table updated; this entry added.
+
+**Docs verified (no changes needed):**
+- `docs/API.md` — Weather section: POST /weather/ingest/ubc-eos and GET /weather/daily endpoints with full request/response schemas present.
+- `docs/SCHEMA.md` — Planned Additions section: study_days, weather_daily, weather_ingest_runs tables with column-level detail; session FK to study_days; idempotency constraints and indexes documented.
+- `docs/ARCHITECTURE.md` — Scheduled Jobs section with GitHub Actions as sole scheduler and full secrets ownership table.
+- `docs/CONVENTIONS.md` — Env vars table includes WEATHER_INGEST_SHARED_SECRETS and WEATHER_INGEST_COOLDOWN_SECONDS; Weather Ingestion (Planned) rules section.
+- `docs/DECISIONS.md` — RESOLVED-07 (GitHub Actions scheduler) and RESOLVED-08 (study_days day-linking) present.
+- `docs/devSteps.md` — Weather Ingestion Setup section: Render env vars, GitHub secrets, verification steps.
+
+**Key decisions confirmed by this task:**
+- Auth model: dual-path (JWT or shared secret) with no client-side secret exposure.
+- Scheduler: GitHub Actions only (RESOLVED-07).
+- Day key: study_days dimension table (RESOLVED-08).
+- Ingestion is idempotent (upsert by station + study_day) with per-station cooldown and advisory lock.
+
+---
 
 ### T24 — Frontend — participant flow visual cleanup — 2026-02-25
 
