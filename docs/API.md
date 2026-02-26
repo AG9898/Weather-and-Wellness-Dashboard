@@ -37,6 +37,7 @@
 | GET    | /participants/{uuid} | RA | implemented | T07 |
 | GET    | /sessions | RA | implemented | T21 |
 | POST   | /sessions | RA | implemented | T08 |
+| POST   | /sessions/start | RA | planned | T41 |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
@@ -44,6 +45,8 @@
 | POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
 | POST   | /surveys/gad7 | None (active session) | implemented | T10 |
 | POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
+| POST   | /weather/ingest/ubc-eos | RA or shared secret | planned | T30 |
+| GET    | /weather/daily | RA | planned | T31 |
 
 ---
 
@@ -70,6 +73,7 @@
 ## Participants
 
 - **Audit note:** T07 endpoints were reopened on 2026-02-20 due to incomplete/invalid implementation.
+- **Phase 2 note (planned):** Participants are anonymous. `first_name` / `last_name` will be removed from the schema and API responses in T40.
 
 ### POST /participants
 - **Auth:** RA required
@@ -192,6 +196,29 @@
 
 ---
 
+### POST /sessions/start
+- **Auth:** RA required
+- **Status:** planned (T41)
+- **Request body:** Empty object
+  ```json
+  {}
+  ```
+- **Response:**
+  ```json
+  {
+    "participant_uuid": "uuid",
+    "participant_number": "integer",
+    "session_id": "uuid",
+    "status": "active",
+    "created_at": "datetime",
+    "completed_at": null,
+    "start_path": "/session/<session_id>/uls8"
+  }
+  ```
+- **Notes:** One-click flow for supervised sessions. Creates an anonymous participant and an active session atomically, then returns a start path for the participant flow.
+
+---
+
 ## Digit Span
 
 ### POST /digitspan/runs
@@ -261,6 +288,73 @@
 - **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r8": 1–5 each }`
 - **Response:** `{ "response_id": "uuid", "total_sum": integer, "mean_score": "decimal" }`
+
+---
+
+## Weather
+
+> Canonical feature spec: `docs/WEATHER_INGESTION.md`
+
+### POST /weather/ingest/ubc-eos
+- **Auth:** LabMember JWT **or** GitHub Actions shared secret
+- **Status:** planned (T30)
+- **Headers (one of):**
+  - RA path: `Authorization: Bearer <supabase-jwt>`
+  - Actions path: `X-WW-Weather-Ingest-Secret: <shared-secret>`
+- **Request body:**
+  ```json
+  { "station_id": 3510 }
+  ```
+- **Response:**
+  ```json
+  {
+    "run_id": "uuid",
+    "station_id": "integer",
+    "ingested_at": "datetime",
+    "parse_status": "success | partial | fail",
+    "parse_errors": "array",
+    "upserted_days": "integer"
+  }
+  ```
+- **Notes:**
+  - Idempotent daily upsert into `weather_daily`.
+  - Enforces per-station cooldown (10 minutes) and per-station concurrency lock.
+
+### GET /weather/daily
+- **Auth:** RA required
+- **Status:** planned (T31)
+- **Query parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `start` | date `YYYY-MM-DD` | — | Start local date (America/Edmonton) |
+| `end` | date `YYYY-MM-DD` | — | End local date (America/Edmonton) |
+| `station_id` | integer | 3510 | Station id (currently only 3510 supported) |
+
+- **Response:**
+  ```json
+  {
+    "items": [
+      {
+        "station_id": "integer",
+        "study_day_id": "uuid",
+        "date_local": "date",
+        "source_run_id": "uuid",
+        "updated_at": "datetime",
+        "current_temp_c": "number | null",
+        "forecast_high_c": "number | null",
+        "forecast_low_c": "number | null",
+        "forecast_condition_text": "string | null",
+        "forecast_periods": "array"
+      }
+    ],
+    "latest_run": {
+      "run_id": "uuid",
+      "ingested_at": "datetime",
+      "parse_status": "success | partial | fail"
+    }
+  }
+  ```
 
 ---
 

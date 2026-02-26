@@ -40,6 +40,26 @@
 
 ---
 
+## Scheduled Jobs (GitHub Actions)
+
+> Canonical feature spec: `docs/WEATHER_INGESTION.md`
+
+Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
+
+- Scheduler: **GitHub Actions only** (explicitly excluding Supabase `pg_cron` for now).
+- Trigger: GitHub Actions calls a protected backend endpoint on Render.
+- Reliability: job retries handle Render cold starts and transient network failures; ingestion is idempotent.
+
+### Secrets ownership
+
+- GitHub repository secrets (used by Actions):
+  - `WEATHER_INGEST_BASE_URL` (Render backend base URL)
+  - `WEATHER_INGEST_SHARED_SECRET` (shared secret header value)
+- Render backend environment:
+  - `WEATHER_INGEST_SHARED_SECRETS` (comma-separated to allow rotation)
+
+---
+
 ## Render Setup
 
 - Service is live at `https://weather-and-wellness-dashboard.onrender.com`.

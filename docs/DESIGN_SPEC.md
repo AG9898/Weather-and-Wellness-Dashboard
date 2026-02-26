@@ -9,18 +9,19 @@ Visual language baseline: [docs/styleguide.md](styleguide.md)
 
 ## RA Flow
 1. Login
-2. Create participant (auto number + UUID)
-3. Create session
-4. Launch participant mode (copy URL)
-5. View data via Supabase Studio
+2. Start new entry (one click)
+3. Backend creates anonymous participant + active session automatically
+4. RA is redirected into the participant test flow (no copy-link step)
+5. After completion, return to RA dashboard; KPIs reflect the new complete session
+6. View data via Supabase Studio
 
 ## Participant Flow
-1. Digit Span instructions → practice trial → 14 scored trials
-2. ULS-8 survey
-3. CES-D 10 survey
-4. GAD-7 survey
-5. Cognitive Function 8a survey
-6. Completion screen (thank you + return device to RA)
+1. ULS-8 survey
+2. CES-D 10 survey
+3. GAD-7 survey
+4. Cognitive Function 8a survey
+5. Digit Span instructions → practice trial → 14 scored trials
+6. Completion screen (thank you) → return to RA dashboard
 
 ---
 
@@ -139,7 +140,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
-1. **Hero action zone** — card with blue glow accent, headline "Start a New Study Session", description, two CTA buttons (Add Participant → `/participants`, Create Session → `/sessions`)
+1. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description, primary CTA that creates an anonymous participant + active session and redirects into Survey 1.
 2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
 3. **Recent Sessions list** — up to 8 rows. Each row: participant `#N` badge, truncated session ID, status badge, time-ago. "View all →" link to `/sessions`.
 
@@ -170,7 +171,7 @@ All four surveys use the shared `SurveyForm` component with:
 ### Completion Page (`/session/[id]/complete`)
 
 - Vertically centered blue checkmark circle (`--ubc-blue-700`), bold "Thank You" heading, muted instruction paragraph.
-- No scores, data, or forward/back navigation links.
+- No scores or stored data are shown. Completion provides a clear return-to-dashboard action for supervised lab use.
 
 ---
 
@@ -179,16 +180,16 @@ All four surveys use the shared `SurveyForm` component with:
 The participants page at `/participants` layout (top to bottom):
 
 1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
-2. **Add participant form card** — `rounded-2xl` card; `text-xs uppercase tracking-widest` section label; flex-wrap row with two `flex-1 min-w-36` inputs and a primary CTA. Success state: `border-emerald-500/30 bg-emerald-500/10 text-emerald-300` banner. Error state: destructive banner.
-3. **Participants table** — section label with count `(N)`; `rounded-2xl` card; columns: `#` (blue-700 badge chip), `Name` (combined first+last), `Added` (hidden on mobile via `hidden sm:table-cell`).
+2. **Add participant form card** — Phase 2 (planned): participants are anonymous, so this page becomes ID-only and does not collect names. The one-click dashboard flow is the primary path for new entries.
+3. **Participants table** — `rounded-2xl` card; columns remain oriented around the participant ID (`#N`) and timestamps only.
 
 ## RA Sessions Page (T23)
 
 The sessions page at `/sessions` layout (top to bottom):
 
 1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
-2. **Create session card** — `rounded-2xl` card; participant dropdown; primary CTA. Error state: destructive banner inline below form.
-3. **Active session panel** — `rounded-2xl` card; appears after session creation. Shows session ID, participant info, participant URL with copy button, activate button (blue-600) for `created` status, completion timestamp for `complete` status. Refreshes session list after activate.
+2. **Create session card** — may remain as a debugging/administrative tool, but the primary Phase 2 path is the one-click dashboard start.
+3. **Active session panel** — Phase 2 (planned): the dashboard flow removes the copy-link step by redirecting directly into the participant flow.
 4. **All Sessions table** — section label with count; `rounded-2xl` card. Columns: `#` (blue-700 badge), `Session ID` (8-char truncated, hidden on mobile), `Status` (colored badge), `Created` (time-ago). Loads on mount; refreshes after create/activate/complete.
 
 ---

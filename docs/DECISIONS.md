@@ -123,6 +123,59 @@ Auth is optional. If enabled, Next.js obtains a Supabase JWT and sends `Authoriz
 
 ---
 
+### RESOLVED-07 — Weather Ingestion Scheduler: GitHub Actions Only
+
+**Resolved:** 2026-02-26
+
+**Decision:** Daily UBC EOS weather ingestion will be scheduled via **GitHub Actions only** in Phase 2.
+Supabase `pg_cron` is explicitly excluded for now.
+
+**Why:** Keeps scheduling simple and portable, avoids database-side cron complexity, and fits free-tier
+constraints while preserving idempotent ingestion behavior.
+
+**Affects:** docs/WEATHER_INGESTION.md, docs/ARCHITECTURE.md, docs/API.md, docs/kanban.md.
+
+---
+
+### RESOLVED-08 — Day Linking via `study_days` Dimension
+
+**Resolved:** 2026-02-26
+
+**Decision:** Add a `study_days` dimension table keyed by `date_local` (America/Edmonton) and link:
+- `sessions.study_day_id -> study_days.study_day_id`
+- `weather_daily.study_day_id -> study_days.study_day_id`
+
+**Why:** Maximizes relational consistency for day-level analyses and avoids fragile computed-date joins
+while keeping sessions linkable even if weather ingestion is missing for a day.
+
+**Affects:** docs/WEATHER_INGESTION.md, docs/SCHEMA.md, docs/kanban.md.
+
+---
+
+### RESOLVED-09 — Anonymous Participants (No Names Stored)
+
+**Resolved:** 2026-02-26
+
+**Decision:** Participants are anonymous. The database will not store `first_name` / `last_name` or other direct identifiers. The only human-facing identifier is `participant_number` (Participant ID); `participant_uuid` remains an internal stable key.
+
+**Why:** Reduces PII handling burden and aligns the app with anonymity requirements while keeping relational integrity via UUID keys.
+
+**Affects:** docs/PRD.md, docs/SCHEMA.md, docs/API.md, docs/DESIGN_SPEC.md, docs/kanban.md.
+
+---
+
+### RESOLVED-10 — Test Flow Order: Surveys First, Digit Span Last
+
+**Resolved:** 2026-02-26
+
+**Decision:** The participant task order is: 4 surveys (ULS-8 → CES-D 10 → GAD-7 → CogFunc 8a) followed by Digit Span, then completion.
+
+**Why:** Matches the desired supervised lab workflow and enables a single one-click launch into Survey 1 without intermediate digit span instructions.
+
+**Affects:** docs/DESIGN_SPEC.md, docs/API.md, docs/kanban.md.
+
+---
+
 <!-- Template for new decisions:
 
 ### OPEN-XX — [Decision Name]

@@ -13,9 +13,9 @@ Internal lab-operated web app to:
 - Participant (no login)
 
 ## Participant Model
-- participant_number (ascending integer starting at 1)
-- participant_uuid (stable UUID)
-- first_name, last_name (entered by RA)
+- participant_number (ascending integer starting at 1; the only human-facing Participant ID)
+- participant_uuid (stable UUID; internal key only)
+- participants are anonymous: no names or other direct identifiers are stored
 
 ## Phase 1 Scope
 - Keyboard-only Backwards Digit Span

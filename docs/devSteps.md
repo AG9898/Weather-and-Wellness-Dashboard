@@ -127,6 +127,47 @@ After setting, redeploy the frontend and smoke-test `/health`, participant creat
 
 ---
 
+## Weather Ingestion Setup (Phase 2 — planned)
+
+> Canonical feature spec: `docs/WEATHER_INGESTION.md`
+
+### Backend (Render) env vars
+
+Add to Render backend env:
+
+- `WEATHER_INGEST_SHARED_SECRETS` — comma-separated secrets for GitHub Actions ingestion auth (supports rotation)
+- `WEATHER_INGEST_COOLDOWN_SECONDS` — set to `600` (optional; defaults to 600 in code)
+
+### GitHub repository secrets
+
+Add to GitHub repo secrets:
+
+- `WEATHER_INGEST_BASE_URL` — e.g. `https://weather-and-wellness-dashboard.onrender.com`
+- `WEATHER_INGEST_SHARED_SECRET` — one value that matches an entry in Render `WEATHER_INGEST_SHARED_SECRETS`
+
+Note:
+- GitHub Actions `schedule` runs on the repository default branch and uses UTC cron time.
+- Use `workflow_dispatch` (manual run) to verify configuration immediately.
+
+### Verification steps (after implementation)
+
+- Run Alembic migration that creates `study_days`, `weather_daily`, `weather_ingest_runs`.
+- Trigger ingestion manually from the RA dashboard and confirm rows appear in Supabase Studio.
+- Confirm the GitHub Actions workflow runs on schedule and is idempotent (no duplicate day rows).
+
+---
+
+## One-Click Session Flow (Phase 2 — planned)
+
+After implementation of the one-click supervised workflow:
+
+- From `/dashboard`, click **Start New Entry**.
+- Confirm the app redirects directly into Survey 1 (`/session/<session_id>/uls8`) without copying a link.
+- Complete all four surveys, then Digit Span, then the completion screen.
+- Return to `/dashboard` and confirm KPIs (especially Completed sessions) reflect the new completion.
+
+---
+
 ## Pooler Note
 
 - In IPv4-only environments, use Supabase **session pooler** for `DATABASE_URL`.

@@ -11,7 +11,7 @@
 - **TypeScript everywhere** in the frontend. No `any` — prefer `unknown` + type narrowing.
 - **Python type hints everywhere** in the backend. All FastAPI path functions and Pydantic models must be fully typed.
 - **No business logic in route handlers.** Route handlers call service functions; service functions call scoring modules or DB helpers.
-- **Never log PII.** Do not log `first_name`, `last_name`, or any identifiable data.
+- **Never log PII.** Do not log any direct identifiers. Participants are anonymous: do not collect or store names.
 - **UUID v4** for all generated IDs (Python: `uuid.uuid4()`; never client-generated).
 
 ---
@@ -113,3 +113,19 @@ Follow this sequence when adding any new instrument in future phases:
 | `ALLOWED_ORIGINS`    | Comma-separated CORS allowed origins for FastAPI (backend). Defaults to localhost dev origins when unset. Set to Vercel URL(s) in production. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (frontend auth; only if auth enabled) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key (frontend auth; only if auth enabled) |
+| `WEATHER_INGEST_SHARED_SECRETS` | Comma-separated shared secrets accepted by `POST /weather/ingest/ubc-eos` (GitHub Actions path). |
+| `WEATHER_INGEST_COOLDOWN_SECONDS` | Cooldown window (seconds) for per-station ingestion (default 600). |
+
+---
+
+## Weather Ingestion (Planned)
+
+> Canonical feature spec: `docs/WEATHER_INGESTION.md`
+
+Rules:
+- Weather ingestion is **day-level** (local day `America/Edmonton`), not hourly-series.
+- Use `study_days` as the relational day key for both `sessions` and `weather_daily`.
+- The ingest endpoint must enforce:
+  - per-station cooldown (default 10 minutes)
+  - per-station advisory lock to prevent concurrent runs
+  - dual auth: LabMember JWT or GitHub Actions shared secret

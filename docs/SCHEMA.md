@@ -31,6 +31,105 @@ sessions (1) ──────────────────── (1) su
 
 ---
 
+## Planned Additions (Phase 2 — Weather Ingestion)
+
+> These tables/columns are **planned** and are not in the database until the
+> corresponding Alembic migration is applied. Canonical feature spec:
+> `docs/WEATHER_INGESTION.md`
+
+### Day Dimension: `study_days` (planned)
+
+| Column       | Type        | Constraints            | Notes |
+|--------------|-------------|------------------------|------|
+| study_day_id | UUID        | PK                     | Generated server-side |
+| date_local   | DATE        | UNIQUE, NOT NULL       | Local day in `America/Edmonton` |
+| tz_name      | VARCHAR     | NOT NULL               | Default `"America/Edmonton"` |
+| created_at   | TIMESTAMPTZ | DEFAULT NOW()          |      |
+
+**Purpose:** Provide a stable relational key for day-level analysis joins without relying on
+computed date derivation at query time.
+
+### Sessions: planned FK to `study_days`
+
+Planned addition to `sessions`:
+
+| Column       | Type | Constraints | Notes |
+|--------------|------|-------------|------|
+| study_day_id | UUID | FK, NULLABLE | Set when session becomes `complete` (default definition) |
+
+### Table: `weather_daily` (planned)
+
+| Column                 | Type        | Constraints   | Notes |
+|------------------------|-------------|---------------|-------|
+| daily_id               | UUID        | PK            | Generated server-side |
+| station_id             | INT         | NOT NULL      | Current station: 3510 |
+| study_day_id           | UUID        | FK, NOT NULL  | → study_days.study_day_id |
+| date_local             | DATE        | NOT NULL      | Denormalized for convenience; must match study_days.date_local |
+| source_run_id          | UUID        | FK, NOT NULL  | → weather_ingest_runs.run_id |
+| updated_at             | TIMESTAMPTZ | DEFAULT NOW() | Updated on upsert |
+| current_observed_at    | TIMESTAMPTZ | NULLABLE      | Metadata only (display/debug) |
+| current_temp_c         | DOUBLE PRECISION | NULLABLE      |      |
+| current_relative_humidity_pct | INT  | NULLABLE      |      |
+| current_wind_speed_kmh | DOUBLE PRECISION | NULLABLE      |      |
+| current_wind_gust_kmh  | DOUBLE PRECISION | NULLABLE      |      |
+| current_wind_dir_deg   | INT         | NULLABLE      |      |
+| current_pressure_kpa   | DOUBLE PRECISION | NULLABLE      |      |
+| current_precip_today_mm| DOUBLE PRECISION | NULLABLE      |      |
+| forecast_high_c        | DOUBLE PRECISION | NULLABLE      | Day-level summary |
+| forecast_low_c         | DOUBLE PRECISION | NULLABLE      | Day-level summary |
+| forecast_precip_prob_pct | INT       | NULLABLE      | Day-level summary |
+| forecast_precip_mm     | DOUBLE PRECISION | NULLABLE      | Day-level summary |
+| forecast_condition_text| VARCHAR     | NULLABLE      | Day-level summary |
+| forecast_periods       | JSONB       | NOT NULL      | List of structured forecast blocks |
+| structured_json        | JSONB       | NOT NULL      | Full normalized per-day payload |
+| created_at             | TIMESTAMPTZ | DEFAULT NOW() |      |
+
+Constraints/indexes (planned):
+- UNIQUE (`station_id`, `study_day_id`) for idempotent upserts
+- Index (`station_id`, `date_local`)
+
+### Table: `weather_ingest_runs` (planned)
+
+| Column                | Type        | Constraints   | Notes |
+|-----------------------|-------------|---------------|-------|
+| run_id                | UUID        | PK            | Generated server-side |
+| station_id            | INT         | NOT NULL      | 3510 |
+| date_local            | DATE        | NOT NULL      | Local day (America/Edmonton) of the ingestion attempt |
+| ingested_at           | TIMESTAMPTZ | DEFAULT NOW() | Debug/ops |
+| requested_via         | VARCHAR     | NOT NULL      | `github_actions` or `ra_manual` |
+| requested_by_lab_member_id | UUID   | NULLABLE      | From JWT `sub` when RA triggers |
+| source_primary_url    | VARCHAR     | NOT NULL      |      |
+| source_secondary_url  | VARCHAR     | NOT NULL      |      |
+| http_primary_status   | SMALLINT    | NULLABLE      |      |
+| http_secondary_status | SMALLINT    | NULLABLE      |      |
+| raw_html_primary      | TEXT        | NULLABLE      | Stored for debugging HTML changes |
+| raw_html_secondary    | TEXT        | NULLABLE      | Stored for debugging HTML changes |
+| raw_html_primary_sha256 | CHAR(64)  | NULLABLE      | Hash for change detection |
+| raw_html_secondary_sha256 | CHAR(64)| NULLABLE      | Hash for change detection |
+| parsed_json           | JSONB       | NOT NULL      | Canonical merged payload |
+| parse_status          | VARCHAR     | NOT NULL      | `success` / `partial` / `fail` |
+| parse_errors          | JSONB       | NOT NULL      | Array of structured error objects |
+| parser_version        | VARCHAR     | NOT NULL      | e.g. `ubc-eos-v1` |
+| created_at            | TIMESTAMPTZ | DEFAULT NOW() |      |
+
+Indexes (planned):
+- Index (`station_id`, `ingested_at` DESC)
+- Index (`station_id`, `date_local`)
+
+---
+
+## Planned Changes (Phase 2 — Participant Anonymity)
+
+Participants are anonymous in Phase 2: no names or other direct identifiers are stored.
+
+Planned migration (T40):
+- Drop `participants.first_name` and `participants.last_name`.
+- Continue using:
+  - `participant_uuid` as the internal stable key
+  - `participant_number` as the only human-facing Participant ID
+
+---
+
 ## Table: `participants`
 
 | Column             | Type           | Constraints       | Notes                                      |
@@ -155,6 +254,20 @@ sessions (1) ──────────────────── (1) su
 | 2026-02-19 | T03 | Create participants and sessions tables |
 | 2026-02-19 | T04 | Create digitspan_runs and digitspan_trials tables |
 | 2026-02-19 | T05 | Create survey tables (ULS-8, CES-D 10, GAD-7, CogFunc 8a) |
+| 2026-02-26 | T29 (planned) | Add study_days + weather_daily + weather_ingest_runs tables |
+| 2026-02-26 | T40 (planned) | Drop participant name columns (anonymous participants) |
 
 As of 2026-02-23, migrations were applied and verified on Supabase through
 revision `20260219_000004` (`head`).
+
+---
+
+## Session-to-Weather Join Guidance (Day-Level)
+
+Canonical (planned) join key is `study_day_id` via `study_days`.
+
+Temporary fallback (no FK) join key is local-day derivation:
+
+```sql
+timezone('America/Edmonton', sessions.completed_at)::date
+```
