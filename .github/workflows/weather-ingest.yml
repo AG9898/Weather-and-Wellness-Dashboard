@@ -20,6 +20,21 @@ jobs:
           MAX_RETRIES=5
           RETRY_DELAY=60
           ATTEMPT=0
+          BASE_URL=$(printf '%s' "${WEATHER_INGEST_BASE_URL:-}" | tr -d '\r\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+          BASE_URL="${BASE_URL#\"}"
+          BASE_URL="${BASE_URL%\"}"
+          BASE_URL="${BASE_URL#\'}"
+          BASE_URL="${BASE_URL%\'}"
+          TARGET_URL="${BASE_URL%/}/weather/ingest/ubc-eos"
+
+          if [ -z "${BASE_URL}" ]; then
+            echo "ERROR: WEATHER_INGEST_BASE_URL is empty."
+            exit 1
+          fi
+          if [[ ! "${BASE_URL}" =~ ^https?:// ]]; then
+            echo "ERROR: WEATHER_INGEST_BASE_URL must start with http:// or https://"
+            exit 1
+          fi
 
           while [ $ATTEMPT -lt $MAX_RETRIES ]; do
             ATTEMPT=$((ATTEMPT + 1))
@@ -38,7 +53,7 @@ jobs:
               -H "X-WW-Weather-Ingest-Secret: ${WEATHER_INGEST_SHARED_SECRET}" \
               -H "Content-Type: application/json" \
               -d '{"station_id": 3510}' \
-              "${WEATHER_INGEST_BASE_URL}/weather/ingest/ubc-eos" \
+              "${TARGET_URL}" \
               2>"${CURL_ERR_FILE}") || CURL_EXIT=$?
 
             if [ $CURL_EXIT -ne 0 ]; then

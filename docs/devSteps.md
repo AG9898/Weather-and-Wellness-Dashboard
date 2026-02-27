@@ -147,7 +147,7 @@ Add the following under **Settings → Secrets and variables → Actions → Rep
 
 | Secret name | Value |
 |---|---|
-| `WEATHER_INGEST_BASE_URL` | `https://weather-and-wellness-dashboard.onrender.com` |
+| `WEATHER_INGEST_BASE_URL` | `https://weather-and-wellness-dashboard.onrender.com` (no quotes/whitespace) |
 | `WEATHER_INGEST_SHARED_SECRET` | One value that matches an entry in Render `WEATHER_INGEST_SHARED_SECRETS` |
 
 ### 3) Verify the workflow triggers

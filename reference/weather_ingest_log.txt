@@ -1,0 +1,149 @@
+2026-02-27T06:31:17.6175436Z Current runner version: '2.331.0'
+2026-02-27T06:31:17.6199846Z ##[group]Runner Image Provisioner
+2026-02-27T06:31:17.6200665Z Hosted Compute Agent
+2026-02-27T06:31:17.6201317Z Version: 20260213.493
+2026-02-27T06:31:17.6201939Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-02-27T06:31:17.6202693Z Build Date: 2026-02-13T00:28:41Z
+2026-02-27T06:31:17.6203404Z Worker ID: {74aba92a-339e-4778-859c-5b26c5767bef}
+2026-02-27T06:31:17.6204130Z Azure Region: northcentralus
+2026-02-27T06:31:17.6204670Z ##[endgroup]
+2026-02-27T06:31:17.6206123Z ##[group]Operating System
+2026-02-27T06:31:17.6206753Z Ubuntu
+2026-02-27T06:31:17.6207223Z 24.04.3
+2026-02-27T06:31:17.6207733Z LTS
+2026-02-27T06:31:17.6208545Z ##[endgroup]
+2026-02-27T06:31:17.6209047Z ##[group]Runner Image
+2026-02-27T06:31:17.6209666Z Image: ubuntu-24.04
+2026-02-27T06:31:17.6210214Z Version: 20260224.36.1
+2026-02-27T06:31:17.6211469Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260224.36/images/ubuntu/Ubuntu2404-Readme.md
+2026-02-27T06:31:17.6213012Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260224.36
+2026-02-27T06:31:17.6213928Z ##[endgroup]
+2026-02-27T06:31:17.6215150Z ##[group]GITHUB_TOKEN Permissions
+2026-02-27T06:31:17.6217305Z Contents: read
+2026-02-27T06:31:17.6217894Z Metadata: read
+2026-02-27T06:31:17.6218615Z Packages: read
+2026-02-27T06:31:17.6219135Z ##[endgroup]
+2026-02-27T06:31:17.6221136Z Secret source: Actions
+2026-02-27T06:31:17.6222161Z Prepare workflow directory
+2026-02-27T06:31:17.6627896Z Prepare all required actions
+2026-02-27T06:31:17.6762707Z Complete job name: Trigger UBC EOS Weather Ingestion
+2026-02-27T06:31:17.7812689Z ##[group]Run MAX_RETRIES=5
+2026-02-27T06:31:17.7813465Z [36;1mMAX_RETRIES=5[0m
+2026-02-27T06:31:17.7814114Z [36;1mRETRY_DELAY=60[0m
+2026-02-27T06:31:17.7814643Z [36;1mATTEMPT=0[0m
+2026-02-27T06:31:17.7815293Z [36;1m[0m
+2026-02-27T06:31:17.7815923Z [36;1mwhile [ $ATTEMPT -lt $MAX_RETRIES ]; do[0m
+2026-02-27T06:31:17.7816631Z [36;1m  ATTEMPT=$((ATTEMPT + 1))[0m
+2026-02-27T06:31:17.7817320Z [36;1m  echo "=== Attempt ${ATTEMPT} of ${MAX_RETRIES} ==="[0m
+2026-02-27T06:31:17.7818367Z [36;1m[0m
+2026-02-27T06:31:17.7818982Z [36;1m  RESPONSE_FILE=/tmp/ingest_response.json[0m
+2026-02-27T06:31:17.7819744Z [36;1m  CURL_ERR_FILE=/tmp/ingest_curl_error.log[0m
+2026-02-27T06:31:17.7820577Z [36;1m  rm -f "${RESPONSE_FILE}" "${CURL_ERR_FILE}"[0m
+2026-02-27T06:31:17.7821242Z [36;1m[0m
+2026-02-27T06:31:17.7821751Z [36;1m  CURL_EXIT=0[0m
+2026-02-27T06:31:17.7822312Z [36;1m  HTTP_STATUS=$(curl -sS \[0m
+2026-02-27T06:31:17.7823035Z [36;1m    -o /tmp/ingest_response.json \[0m
+2026-02-27T06:31:17.7823757Z [36;1m    -w "%{http_code}" \[0m
+2026-02-27T06:31:17.7824305Z [36;1m    --max-time 120 \[0m
+2026-02-27T06:31:17.7824855Z [36;1m    -X POST \[0m
+2026-02-27T06:31:17.7825700Z [36;1m    -H "X-WW-Weather-Ingest-Secret: ${WEATHER_INGEST_SHARED_SECRET}" \[0m
+2026-02-27T06:31:17.7826560Z [36;1m    -H "Content-Type: application/json" \[0m
+2026-02-27T06:31:17.7827246Z [36;1m    -d '{"station_id": 3510}' \[0m
+2026-02-27T06:31:17.7827986Z [36;1m    "${WEATHER_INGEST_BASE_URL}/weather/ingest/ubc-eos" \[0m
+2026-02-27T06:31:17.7828988Z [36;1m    2>"${CURL_ERR_FILE}") || CURL_EXIT=$?[0m
+2026-02-27T06:31:17.7829641Z [36;1m[0m
+2026-02-27T06:31:17.7830191Z [36;1m  if [ $CURL_EXIT -ne 0 ]; then[0m
+2026-02-27T06:31:17.7830823Z [36;1m    HTTP_STATUS="000"[0m
+2026-02-27T06:31:17.7831452Z [36;1m  fi[0m
+2026-02-27T06:31:17.7831881Z [36;1m[0m
+2026-02-27T06:31:17.7832367Z [36;1m  echo "HTTP status: ${HTTP_STATUS}"[0m
+2026-02-27T06:31:17.7833138Z [36;1m  echo "Response body:"[0m
+2026-02-27T06:31:17.7833715Z [36;1m  if [ -f "${RESPONSE_FILE}" ]; then[0m
+2026-02-27T06:31:17.7834353Z [36;1m    cat "${RESPONSE_FILE}"[0m
+2026-02-27T06:31:17.7835014Z [36;1m  else[0m
+2026-02-27T06:31:17.7835514Z [36;1m    echo "<no response body captured>"[0m
+2026-02-27T06:31:17.7836180Z [36;1m  fi[0m
+2026-02-27T06:31:17.7836746Z [36;1m  if [ -s "${CURL_ERR_FILE}" ]; then[0m
+2026-02-27T06:31:17.7837593Z [36;1m    echo[0m
+2026-02-27T06:31:17.7838376Z [36;1m    echo "Curl error output:"[0m
+2026-02-27T06:31:17.7839063Z [36;1m    cat "${CURL_ERR_FILE}"[0m
+2026-02-27T06:31:17.7839641Z [36;1m  fi[0m
+2026-02-27T06:31:17.7840120Z [36;1m  echo[0m
+2026-02-27T06:31:17.7840633Z [36;1m[0m
+2026-02-27T06:31:17.7841123Z [36;1m  if [[ "${HTTP_STATUS}" == 2* ]]; then[0m
+2026-02-27T06:31:17.7841878Z [36;1m    echo "SUCCESS: Ingestion accepted."[0m
+2026-02-27T06:31:17.7842477Z [36;1m    exit 0[0m
+2026-02-27T06:31:17.7843018Z [36;1m  elif [[ "${HTTP_STATUS}" == "409" ]]; then[0m
+2026-02-27T06:31:17.7844177Z [36;1m    echo "INFO: Ingestion already in progress (409) — another process holds the lock. Exiting cleanly."[0m
+2026-02-27T06:31:17.7845128Z [36;1m    exit 0[0m
+2026-02-27T06:31:17.7845689Z [36;1m  elif [[ "${HTTP_STATUS}" == "429" ]]; then[0m
+2026-02-27T06:31:17.7846690Z [36;1m    echo "INFO: Cooldown active (429) — data was recently ingested. Exiting cleanly."[0m
+2026-02-27T06:31:17.7847575Z [36;1m    exit 0[0m
+2026-02-27T06:31:17.7848341Z [36;1m  else[0m
+2026-02-27T06:31:17.7849045Z [36;1m    echo "WARN: Unexpected status ${HTTP_STATUS}."[0m
+2026-02-27T06:31:17.7849806Z [36;1m    if [ $ATTEMPT -lt $MAX_RETRIES ]; then[0m
+2026-02-27T06:31:17.7850771Z [36;1m      echo "Waiting ${RETRY_DELAY}s before retry (Render may be cold-starting)..."[0m
+2026-02-27T06:31:17.7851619Z [36;1m      sleep $RETRY_DELAY[0m
+2026-02-27T06:31:17.7852193Z [36;1m    fi[0m
+2026-02-27T06:31:17.7852750Z [36;1m  fi[0m
+2026-02-27T06:31:17.7853190Z [36;1mdone[0m
+2026-02-27T06:31:17.7853849Z [36;1m[0m
+2026-02-27T06:31:17.7854682Z [36;1mecho "ERROR: All ${MAX_RETRIES} attempts failed. Last HTTP status: ${HTTP_STATUS}"[0m
+2026-02-27T06:31:17.7855505Z [36;1mexit 1[0m
+2026-02-27T06:31:17.8606467Z shell: /usr/bin/bash -e {0}
+2026-02-27T06:31:17.8607390Z env:
+2026-02-27T06:31:17.8608691Z   WEATHER_INGEST_BASE_URL: *** 
+2026-02-27T06:31:17.8609569Z   WEATHER_INGEST_SHARED_SECRET: ***
+2026-02-27T06:31:17.8610263Z ##[endgroup]
+2026-02-27T06:31:17.8812559Z === Attempt 1 of 5 ===
+2026-02-27T06:31:17.8873526Z HTTP status: 000
+2026-02-27T06:31:17.8874668Z Response body:
+2026-02-27T06:31:17.8875547Z <no response body captured>
+2026-02-27T06:31:17.8875877Z 
+2026-02-27T06:31:17.8876167Z Curl error output:
+2026-02-27T06:31:17.8884009Z curl: (3) URL rejected: Malformed input to a URL function
+2026-02-27T06:31:17.8884952Z 
+2026-02-27T06:31:17.8885428Z WARN: Unexpected status 000.
+2026-02-27T06:31:17.8886727Z Waiting 60s before retry (Render may be cold-starting)...
+2026-02-27T06:32:17.8914362Z === Attempt 2 of 5 ===
+2026-02-27T06:32:17.8994530Z HTTP status: 000
+2026-02-27T06:32:17.8995056Z Response body:
+2026-02-27T06:32:17.8995557Z <no response body captured>
+2026-02-27T06:32:17.8995967Z 
+2026-02-27T06:32:17.8996243Z Curl error output:
+2026-02-27T06:32:17.9005628Z curl: (3) URL rejected: Malformed input to a URL function
+2026-02-27T06:32:17.9006878Z 
+2026-02-27T06:32:17.9007151Z WARN: Unexpected status 000.
+2026-02-27T06:32:17.9007794Z Waiting 60s before retry (Render may be cold-starting)...
+2026-02-27T06:33:17.9023220Z === Attempt 3 of 5 ===
+2026-02-27T06:33:17.9102846Z HTTP status: 000
+2026-02-27T06:33:17.9103494Z Response body:
+2026-02-27T06:33:17.9103929Z <no response body captured>
+2026-02-27T06:33:17.9104328Z 
+2026-02-27T06:33:17.9104531Z Curl error output:
+2026-02-27T06:33:17.9117075Z curl: (3) URL rejected: Malformed input to a URL function
+2026-02-27T06:33:17.9118951Z 
+2026-02-27T06:33:17.9119231Z WARN: Unexpected status 000.
+2026-02-27T06:33:17.9119938Z Waiting 60s before retry (Render may be cold-starting)...
+2026-02-27T06:34:17.9136148Z === Attempt 4 of 5 ===
+2026-02-27T06:34:17.9217151Z HTTP status: 000
+2026-02-27T06:34:17.9217530Z Response body:
+2026-02-27T06:34:17.9217938Z <no response body captured>
+2026-02-27T06:34:17.9218408Z 
+2026-02-27T06:34:17.9218555Z Curl error output:
+2026-02-27T06:34:17.9231706Z curl: (3) URL rejected: Malformed input to a URL function
+2026-02-27T06:34:17.9233047Z 
+2026-02-27T06:34:17.9233801Z WARN: Unexpected status 000.
+2026-02-27T06:34:17.9234617Z Waiting 60s before retry (Render may be cold-starting)...
+2026-02-27T06:35:17.9251422Z === Attempt 5 of 5 ===
+2026-02-27T06:35:17.9329488Z HTTP status: 000
+2026-02-27T06:35:17.9329884Z Response body:
+2026-02-27T06:35:17.9330305Z <no response body captured>
+2026-02-27T06:35:17.9330711Z 
+2026-02-27T06:35:17.9330905Z Curl error output:
+2026-02-27T06:35:17.9340382Z curl: (3) URL rejected: Malformed input to a URL function
+2026-02-27T06:35:17.9341567Z 
+2026-02-27T06:35:17.9342030Z WARN: Unexpected status 000.
+2026-02-27T06:35:17.9342695Z ERROR: All 5 attempts failed. Last HTTP status: 000
+2026-02-27T06:35:17.9370266Z ##[error]Process completed with exit code 1.
+2026-02-27T06:35:17.9474213Z Cleaning up orphan processes
