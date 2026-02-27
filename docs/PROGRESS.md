@@ -10,7 +10,7 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 2 (in progress)        |
-| Tasks completed    | 31 / 32                |
+| Tasks completed    | 32 / 32                |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-02-26             |
 
@@ -69,11 +69,37 @@ Note: T01, T07, and T08 were reopened on 2026-02-20 after verification found inc
 | T29 | DB schema — study_days + weather tables | 2026-02-26 | SQLAlchemy models created (weather.py: StudyDay, WeatherIngestRun, WeatherDaily). Session model updated with nullable study_day_id FK. models/__init__.py updated. Alembic migration 20260226_000005 written and applied; DB at head rev 20260226_000005 ✓. Tables: study_days (UNIQUE date_local), weather_ingest_runs (indexed station+ingested_at DESC, station+date_local), weather_daily (UNIQUE station_id+study_day_id idempotency constraint, indexed station+date_local). FKs: weather_daily→study_days, weather_daily→weather_ingest_runs, sessions→study_days. SCHEMA.md planned→applied sections updated; devSteps.md head rev updated. |
 | T30 | Backend — UBC EOS scrape/parse + POST ingest endpoint | 2026-02-26 | POST /weather/ingest/ubc-eos implemented. Dual auth: LabMember JWT (ra_manual) or X-WW-Weather-Ingest-Secret header (github_actions); JWT path: no fallback on invalid token. Per-station cooldown (429+Retry-After from WEATHER_INGEST_COOLDOWN_SECONDS, default 600s). Per-station pg_try_advisory_xact_lock (409 if held). Parser: fetches both UBC EOS URLs concurrently; primary page (custom.php) supplies current conditions from td.var/td.value table; secondary page (ubcrs_withicons) supplies forecast periods from div.time-range-wrapper blocks; day-level summary computed from today's periods. Always inserts weather_ingest_runs row. Upserts study_days + weather_daily when parse_status != fail. Added beautifulsoup4, lxml, tzdata to requirements.txt. Verified live: parse_status=success, upserted_days=1, current_temp_c=7.2°C, forecast_high=7.4°C, rows in Supabase Studio ✓. 429 on immediate retry ✓. 401 on wrong/missing secret ✓. |
 | T31 | Backend — GET daily weather endpoint (RA-only) | 2026-02-26 | GET /weather/daily implemented. RA-only (Depends(get_current_lab_member)). Query params: start (date, required), end (date, required), station_id (int, default 3510). Validates start ≤ end (422), max range 365 days (422). Returns weather_daily rows ordered by date_local ASC + latest_run from weather_ingest_runs (run_id, ingested_at, parse_status); latest_run is null if no runs exist. Schemas: WeatherDailyItem, LatestRunInfo, WeatherDailyResponse added to schemas/weather.py. Verified live: valid date range returns 1 item (current_temp_c=7.2°C, 19 forecast periods), start>end→422, >365 days→422, no auth→401. |
+| T32 | Infra — GitHub Actions scheduled ingestion | 2026-02-26 | Workflow file created at `.github/workflows/weather-ingest.yml`. Runs daily at 14:00 UTC (cron `0 14 * * *`) and supports `workflow_dispatch` for manual runs. Calls `POST /weather/ingest/ubc-eos` with `X-WW-Weather-Ingest-Secret` header and body `{"station_id": 3510}`. Retry loop: up to 5 attempts, 60s delay between tries to handle Render free-tier cold starts. Exits 0 on 2xx, 409, or 429; exits 1 after all retries exhausted on any other status. Logs HTTP status and full response body on every attempt. Required secrets: `WEATHER_INGEST_BASE_URL` and `WEATHER_INGEST_SHARED_SECRET` (GitHub repo secrets). Required Render env var: `WEATHER_INGEST_SHARED_SECRETS`. devSteps.md weather ingestion setup section updated to reflect actual workflow. |
 <!-- Ralph: append one row per completed task. Never delete rows. -->
 
 ---
 
 ## Recent Changes
+
+### T32 — Infra — GitHub Actions scheduled ingestion — 2026-02-26
+
+**Files created:**
+- `.github/workflows/weather-ingest.yml` — daily cron (`0 14 * * *`) + `workflow_dispatch`. Single job: bash retry loop calls `POST /weather/ingest/ubc-eos` with `X-WW-Weather-Ingest-Secret` header and `{"station_id": 3510}` body. Up to 5 attempts, 60s delay between retries. Logs HTTP status + full response body each attempt.
+
+**Files modified:**
+- `docs/devSteps.md` — Weather Ingestion Setup section updated (removed "planned" label, added workflow file reference and GitHub Actions setup steps)
+- `docs/ARCHITECTURE.md` — Scheduled Jobs section updated with workflow file path and retry design note
+- `docs/kanban.md` — T32 → done
+- `docs/PROGRESS.md` — state table and this entry
+
+**Key implementation decisions:**
+- 409 (lock held) and 429 (cooldown) treated as exit 0 — both indicate the system correctly handled a duplicate call, not a workflow failure
+- All other non-2xx trigger retry, then exit 1 after 5 attempts — ensures the workflow shows red in GitHub Actions when something is genuinely wrong
+- 60s retry delay accounts for Render free-tier cold start (~50s typical spin-up time)
+- Body `{"station_id": 3510}` is hardcoded — only one station in this phase; add workflow_dispatch inputs if multi-station is ever needed
+- Cron at 14:00 UTC = 6–7 AM Pacific / 7–8 AM Mountain — runs before study sessions typically begin
+
+**Required secrets (not set yet — manual step for T33):**
+- GitHub repo secret: `WEATHER_INGEST_BASE_URL`
+- GitHub repo secret: `WEATHER_INGEST_SHARED_SECRET`
+- Render env var: `WEATHER_INGEST_SHARED_SECRETS`
+
+---
 
 ### T31 — Backend — GET daily weather endpoint (RA-only) — 2026-02-26
 

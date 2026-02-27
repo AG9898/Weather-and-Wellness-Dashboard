@@ -47,8 +47,11 @@
 Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 
 - Scheduler: **GitHub Actions only** (explicitly excluding Supabase `pg_cron` for now).
+- Workflow file: `.github/workflows/weather-ingest.yml`
 - Trigger: GitHub Actions calls a protected backend endpoint on Render.
-- Reliability: job retries handle Render cold starts and transient network failures; ingestion is idempotent.
+- Schedule: `cron: '0 14 * * *'` (14:00 UTC daily) + `workflow_dispatch` for manual runs.
+- Reliability: bash retry loop (5 attempts, 60s delay) handles Render free-tier cold starts (~50s spin-up); ingestion is idempotent so duplicate runs are safe.
+- Exit policy: 2xx → success; 409/429 → exit 0 (expected control-flow responses); all other non-2xx → retry, then exit 1 (loud failure in Actions UI).
 
 ### Secrets ownership
 

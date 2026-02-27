@@ -502,7 +502,7 @@
     {
       "id": "T32",
       "title": "Infra — GitHub Actions scheduled ingestion",
-      "status": "todo",
+      "status": "done",
       "description": "Add a GitHub Actions workflow that triggers daily ingestion by calling the backend endpoint with a shared secret and retry policy suitable for free-tier cold starts.",
       "depends_on": [
         "T31"

@@ -127,33 +127,43 @@ After setting, redeploy the frontend and smoke-test `/health`, participant creat
 
 ---
 
-## Weather Ingestion Setup (Phase 2 — planned)
+## Weather Ingestion Setup (Phase 2 — T32)
 
 > Canonical feature spec: `docs/WEATHER_INGESTION.md`
+> Workflow file: `.github/workflows/weather-ingest.yml`
 
-### Backend (Render) env vars
+### 1) Backend (Render) env vars
 
-Add to Render backend env:
+Add to Render backend service environment settings:
 
-- `WEATHER_INGEST_SHARED_SECRETS` — comma-separated secrets for GitHub Actions ingestion auth (supports rotation)
-- `WEATHER_INGEST_COOLDOWN_SECONDS` — set to `600` (optional; defaults to 600 in code)
+| Variable | Value | Notes |
+|---|---|---|
+| `WEATHER_INGEST_SHARED_SECRETS` | `<your-secret>` | Comma-separated; supports rotation. Must match `WEATHER_INGEST_SHARED_SECRET` in GitHub. |
+| `WEATHER_INGEST_COOLDOWN_SECONDS` | `600` | Optional — defaults to 600 in code. |
 
-### GitHub repository secrets
+### 2) GitHub repository secrets
 
-Add to GitHub repo secrets:
+Add the following under **Settings → Secrets and variables → Actions → Repository secrets**:
 
-- `WEATHER_INGEST_BASE_URL` — e.g. `https://weather-and-wellness-dashboard.onrender.com`
-- `WEATHER_INGEST_SHARED_SECRET` — one value that matches an entry in Render `WEATHER_INGEST_SHARED_SECRETS`
+| Secret name | Value |
+|---|---|
+| `WEATHER_INGEST_BASE_URL` | `https://weather-and-wellness-dashboard.onrender.com` |
+| `WEATHER_INGEST_SHARED_SECRET` | One value that matches an entry in Render `WEATHER_INGEST_SHARED_SECRETS` |
 
-Note:
-- GitHub Actions `schedule` runs on the repository default branch and uses UTC cron time.
-- Use `workflow_dispatch` (manual run) to verify configuration immediately.
+### 3) Verify the workflow triggers
 
-### Verification steps (after implementation)
+- The `schedule` trigger (`cron: '0 14 * * *'`) is only active on the **default branch** (`main`).
+- Use **Actions → Daily Weather Ingestion → Run workflow** to trigger manually via `workflow_dispatch` immediately after setting secrets.
+- Confirm the run succeeds (green) and that a new row appears in Supabase Studio → `weather_ingest_runs`.
 
-- Run Alembic migration that creates `study_days`, `weather_daily`, `weather_ingest_runs`.
-- Trigger ingestion manually from the RA dashboard and confirm rows appear in Supabase Studio.
-- Confirm the GitHub Actions workflow runs on schedule and is idempotent (no duplicate day rows).
+### Verification checklist
+
+- [ ] Render env var `WEATHER_INGEST_SHARED_SECRETS` is set and non-empty.
+- [ ] GitHub secrets `WEATHER_INGEST_BASE_URL` and `WEATHER_INGEST_SHARED_SECRET` are set.
+- [ ] Manual `workflow_dispatch` run completes green.
+- [ ] `weather_ingest_runs` shows a new row with `parse_status: success` or `partial`.
+- [ ] `weather_daily` shows a row for today's date.
+- [ ] Re-running the workflow within 10 minutes returns 429 (exit 0 — not a failure).
 
 ---
 

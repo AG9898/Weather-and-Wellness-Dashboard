@@ -1,0 +1,62 @@
+name: Daily Weather Ingestion
+
+on:
+  schedule:
+    # 14:00 UTC daily — 6–7 AM Pacific / 7–8 AM Mountain
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    name: Trigger UBC EOS Weather Ingestion
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call weather ingest endpoint (with retry for Render cold start)
+        env:
+          WEATHER_INGEST_BASE_URL: ${{ secrets.WEATHER_INGEST_BASE_URL }}
+          WEATHER_INGEST_SHARED_SECRET: ${{ secrets.WEATHER_INGEST_SHARED_SECRET }}
+        run: |
+          MAX_RETRIES=5
+          RETRY_DELAY=60
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "=== Attempt ${ATTEMPT} of ${MAX_RETRIES} ==="
+
+            HTTP_STATUS=$(curl -s \
+              -o /tmp/ingest_response.json \
+              -w "%{http_code}" \
+              --max-time 120 \
+              -X POST \
+              -H "X-WW-Weather-Ingest-Secret: ${WEATHER_INGEST_SHARED_SECRET}" \
+              -H "Content-Type: application/json" \
+              -d '{"station_id": 3510}' \
+              "${WEATHER_INGEST_BASE_URL}/weather/ingest/ubc-eos")
+
+            echo "HTTP status: ${HTTP_STATUS}"
+            echo "Response body:"
+            cat /tmp/ingest_response.json
+            echo
+
+            if [[ "${HTTP_STATUS}" == 2* ]]; then
+              echo "SUCCESS: Ingestion accepted."
+              exit 0
+            elif [[ "${HTTP_STATUS}" == "409" ]]; then
+              echo "INFO: Ingestion already in progress (409) — another process holds the lock. Exiting cleanly."
+              exit 0
+            elif [[ "${HTTP_STATUS}" == "429" ]]; then
+              echo "INFO: Cooldown active (429) — data was recently ingested. Exiting cleanly."
+              exit 0
+            else
+              echo "WARN: Unexpected status ${HTTP_STATUS}."
+              if [ $ATTEMPT -lt $MAX_RETRIES ]; then
+                echo "Waiting ${RETRY_DELAY}s before retry (Render may be cold-starting)..."
+                sleep $RETRY_DELAY
+              fi
+            fi
+          done
+
+          echo "ERROR: All ${MAX_RETRIES} attempts failed. Last HTTP status: ${HTTP_STATUS}"
+          exit 1
