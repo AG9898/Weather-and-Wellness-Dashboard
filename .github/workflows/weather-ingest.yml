@@ -33,7 +33,7 @@ jobs:
               -H "X-WW-Weather-Ingest-Secret: ${WEATHER_INGEST_SHARED_SECRET}" \
               -H "Content-Type: application/json" \
               -d '{"station_id": 3510}' \
-              "${WEATHER_INGEST_BASE_URL}/weather/ingest/ubc-eos")
+              "${WEATHER_INGEST_BASE_URL}/weather/ingest/ubc-eos") || HTTP_STATUS="000"
 
             echo "HTTP status: ${HTTP_STATUS}"
             echo "Response body:"
