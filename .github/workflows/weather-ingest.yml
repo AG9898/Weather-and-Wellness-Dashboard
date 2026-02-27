@@ -25,7 +25,12 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "=== Attempt ${ATTEMPT} of ${MAX_RETRIES} ==="
 
-            HTTP_STATUS=$(curl -s \
+            RESPONSE_FILE=/tmp/ingest_response.json
+            CURL_ERR_FILE=/tmp/ingest_curl_error.log
+            rm -f "${RESPONSE_FILE}" "${CURL_ERR_FILE}"
+
+            CURL_EXIT=0
+            HTTP_STATUS=$(curl -sS \
               -o /tmp/ingest_response.json \
               -w "%{http_code}" \
               --max-time 120 \
@@ -33,11 +38,25 @@ jobs:
               -H "X-WW-Weather-Ingest-Secret: ${WEATHER_INGEST_SHARED_SECRET}" \
               -H "Content-Type: application/json" \
               -d '{"station_id": 3510}' \
-              "${WEATHER_INGEST_BASE_URL}/weather/ingest/ubc-eos") || HTTP_STATUS="000"
+              "${WEATHER_INGEST_BASE_URL}/weather/ingest/ubc-eos" \
+              2>"${CURL_ERR_FILE}") || CURL_EXIT=$?
+
+            if [ $CURL_EXIT -ne 0 ]; then
+              HTTP_STATUS="000"
+            fi
 
             echo "HTTP status: ${HTTP_STATUS}"
             echo "Response body:"
-            cat /tmp/ingest_response.json
+            if [ -f "${RESPONSE_FILE}" ]; then
+              cat "${RESPONSE_FILE}"
+            else
+              echo "<no response body captured>"
+            fi
+            if [ -s "${CURL_ERR_FILE}" ]; then
+              echo
+              echo "Curl error output:"
+              cat "${CURL_ERR_FILE}"
+            fi
             echo
 
             if [[ "${HTTP_STATUS}" == 2* ]]; then
