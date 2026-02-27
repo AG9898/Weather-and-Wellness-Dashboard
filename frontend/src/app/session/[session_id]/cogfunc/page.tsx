@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, apiPatch, getParticipantErrorMessage, type CogFunc8aResponse, type SessionResponse } from "@/lib/api";
+import { apiPost, getParticipantErrorMessage, type CogFunc8aResponse } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
 
 const SCALE: ScaleOption[] = [
@@ -36,19 +36,12 @@ export default function CogFuncPage() {
     setSubmitting(true);
     setError(null);
     try {
-      // Submit survey
       await apiPost<CogFunc8aResponse>("/surveys/cogfunc8a", {
         session_id: sessionId,
         ...responses,
       });
 
-      // Mark session complete
-      await apiPatch<SessionResponse>(
-        `/sessions/${sessionId}/status`,
-        { status: "complete" }
-      );
-
-      router.push(`/session/${sessionId}/complete`);
+      router.push(`/session/${sessionId}/digitspan`);
     } catch (err) {
       setError(getParticipantErrorMessage(err));
     } finally {

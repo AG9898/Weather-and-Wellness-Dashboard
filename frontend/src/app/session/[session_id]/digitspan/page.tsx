@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, getParticipantErrorMessage, type DigitSpanRunResponse } from "@/lib/api";
+import { apiPost, apiPatch, getParticipantErrorMessage, type DigitSpanRunResponse, type SessionResponse } from "@/lib/api";
 
 // ── Constants ──
 
@@ -210,7 +210,8 @@ export default function DigitSpanPage() {
         session_id: sessionId,
         trials: results,
       });
-      router.push(`/session/${sessionId}/uls8`);
+      await apiPatch<SessionResponse>(`/sessions/${sessionId}/status`, { status: "complete" });
+      router.push(`/session/${sessionId}/complete`);
     } catch (err) {
       setError(getParticipantErrorMessage(err));
       setPhase("instruction4");

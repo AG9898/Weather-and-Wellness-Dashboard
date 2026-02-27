@@ -9,10 +9,11 @@
 
 | Field              | Value                  |
 |--------------------|------------------------|
-| Phase              | 2 (in progress)        |
-| Tasks completed    | 32 / 32                |
+| Phase              | 3 (in progress)        |
+| Tasks completed    | 40 / 45                |
+| Remaining queue    | T41–T45                |
 | Tasks in progress  | 0                      |
-| Last updated       | 2026-02-26             |
+| Last updated       | 2026-02-27             |
 
 ---
 
@@ -70,11 +71,212 @@ Note: T01, T07, and T08 were reopened on 2026-02-20 after verification found inc
 | T30 | Backend — UBC EOS scrape/parse + POST ingest endpoint | 2026-02-26 | POST /weather/ingest/ubc-eos implemented. Dual auth: LabMember JWT (ra_manual) or X-WW-Weather-Ingest-Secret header (github_actions); JWT path: no fallback on invalid token. Per-station cooldown (429+Retry-After from WEATHER_INGEST_COOLDOWN_SECONDS, default 600s). Per-station pg_try_advisory_xact_lock (409 if held). Parser: fetches both UBC EOS URLs concurrently; primary page (custom.php) supplies current conditions from td.var/td.value table; secondary page (ubcrs_withicons) supplies forecast periods from div.time-range-wrapper blocks; day-level summary computed from today's periods. Always inserts weather_ingest_runs row. Upserts study_days + weather_daily when parse_status != fail. Added beautifulsoup4, lxml, tzdata to requirements.txt. Verified live: parse_status=success, upserted_days=1, current_temp_c=7.2°C, forecast_high=7.4°C, rows in Supabase Studio ✓. 429 on immediate retry ✓. 401 on wrong/missing secret ✓. |
 | T31 | Backend — GET daily weather endpoint (RA-only) | 2026-02-26 | GET /weather/daily implemented. RA-only (Depends(get_current_lab_member)). Query params: start (date, required), end (date, required), station_id (int, default 3510). Validates start ≤ end (422), max range 365 days (422). Returns weather_daily rows ordered by date_local ASC + latest_run from weather_ingest_runs (run_id, ingested_at, parse_status); latest_run is null if no runs exist. Schemas: WeatherDailyItem, LatestRunInfo, WeatherDailyResponse added to schemas/weather.py. Verified live: valid date range returns 1 item (current_temp_c=7.2°C, 19 forecast periods), start>end→422, >365 days→422, no auth→401. |
 | T32 | Infra — GitHub Actions scheduled ingestion | 2026-02-26 | Workflow file created at `.github/workflows/weather-ingest.yml`. Runs daily at 14:00 UTC (cron `0 14 * * *`) and supports `workflow_dispatch` for manual runs. Calls `POST /weather/ingest/ubc-eos` with `X-WW-Weather-Ingest-Secret` header and body `{"station_id": 3510}`. Retry loop: up to 5 attempts, 60s delay between tries to handle Render free-tier cold starts. Exits 0 on 2xx, 409, or 429; exits 1 after all retries exhausted on any other status. Logs HTTP status and full response body on every attempt. Required secrets: `WEATHER_INGEST_BASE_URL` and `WEATHER_INGEST_SHARED_SECRET` (GitHub repo secrets). Required Render env var: `WEATHER_INGEST_SHARED_SECRETS`. devSteps.md weather ingestion setup section updated to reflect actual workflow. |
+| T34 | Frontend — RA dashboard Weather card + manual Update Weather | 2026-02-27 | WeatherCard component added to dashboard. Loads last ingest status via GET /weather/daily on mount. "Update Weather" button triggers POST /weather/ingest/ubc-eos with LabMember JWT. Inline feedback for success/partial/fail/409/429/network errors. shadcn Button + Badge installed (new-york style). Build clean. |
+| T33 | Ops — configure GitHub Actions recurrence + secrets | 2026-02-27 | All manual ops steps completed and verified. GitHub repo secrets set: `WEATHER_INGEST_BASE_URL` and `WEATHER_INGEST_SHARED_SECRET`. Render env var `WEATHER_INGEST_SHARED_SECRETS` set and matches GitHub secret. Manual `workflow_dispatch` run succeeded end-to-end: HTTP 200, `parse_status: success`, `upserted_days: 1`. Cron schedule confirmed active on default branch (`main`). devSteps.md verification checklist reflects completed state. |
+| T35 | DB schema — anonymize participants (drop names) | 2026-02-27 | Alembic migration 20260227_000006 drops participants.first_name and participants.last_name. SQLAlchemy model, Pydantic schemas, and router updated. Frontend ParticipantResponse type, participants page (form + table), and sessions page (dropdown + info) updated. TypeScript check clean. Docs updated. |
+| T36 | Backend — one-click start endpoint (create participant + active session) | 2026-02-27 | POST /sessions/start implemented (RA-only). Atomically creates anonymous participant + active session via flush+commit. Returns participant_uuid, participant_number, session_id, status=active, start_path=/session/{id}/uls8. StartSessionResponse schema added. Imports clean. |
+| T37 | Frontend — RA dashboard Start New Entry (auto redirect) | 2026-02-27 | Hero action zone updated: two link buttons replaced with a single shadcn Button "Start New Entry". Calls startSession() wrapper (POST /sessions/start); on success, router.push(start_path) → Survey 1. Loading spinner + non-technical error states. StartSessionResponse type and startSession() wrapper added to api/index.ts. TypeScript clean. |
+| T38 | Frontend — reorder participant flow (surveys first) | 2026-02-27 | Flow is now uls8→cesd10→gad7→cogfunc→digitspan→complete. cogfunc: removed apiPatch session-complete call and unused imports; routes to /digitspan. digitspan: routes to /complete on successful submission. TypeScript clean. |
+| T39 | Backend + Frontend — mark session complete after Digit Span | 2026-02-27 | digitspan page now calls PATCH /sessions/{id}/status → complete after POST /digitspan/runs succeeds, before routing to /complete. completed_at set only after digit span succeeds. No backend changes needed (PATCH endpoint already supports participant-driven completion from active session). TypeScript clean. |
+| T40 | Frontend — completion returns to dashboard (supervised) | 2026-02-27 | Completion page converted to client component; added shadcn Button (asChild + Link) "Return to Dashboard" → /dashboard. Dashboard useEffect re-fetches on mount so KPIs refresh naturally. TypeScript clean. |
 <!-- Ralph: append one row per completed task. Never delete rows. -->
 
 ---
 
 ## Recent Changes
+
+### T40 — Frontend — completion returns to dashboard (supervised) — 2026-02-27
+
+**Files modified:**
+- `frontend/src/app/session/[session_id]/complete/page.tsx` — converted to "use client"; imported `Link` and shadcn `Button`; added `Button asChild size="lg"` wrapping `<Link href="/dashboard">Return to Dashboard</Link>` below the thank-you message; minor layout tweak (space-y-6, nested heading group)
+- `docs/DESIGN_SPEC.md` — completion page description updated
+- `docs/devSteps.md` — verification checklist and flow notes updated
+- `docs/API.md` — participant flow routing notes updated
+- `docs/kanban.md` — T40 → done
+- `docs/PROGRESS.md` — current state and this entry
+
+**Dashboard KPI refresh:** No code change needed. Dashboard `useEffect` re-fetches `/dashboard/summary` and `/sessions` on every mount, so navigating from `/complete` → `/dashboard` naturally shows the newly completed session.
+
+---
+
+### Phase 3 (T35–T40) — Supervised One-Click Flow — Routing & API Summary — 2026-02-27
+
+Complete end-to-end change record for T35–T40 covering all routing, API, and backend changes:
+
+**Backend API changes:**
+- `POST /participants` — request body is now empty `{}`; response no longer includes `first_name`/`last_name` (T35)
+- `POST /sessions/start` — new RA-only endpoint; atomically creates anonymous participant + active session; returns `start_path=/session/{id}/uls8` (T36)
+
+**DB schema changes:**
+- Migration `20260227_000006`: drops `participants.first_name` and `participants.last_name` (applied 2026-02-27) (T35)
+
+**Frontend routing changes (participant flow):**
+
+| Step | Old route/action | New route/action |
+|------|-----------------|-----------------|
+| Entry point | `/session/{id}/digitspan` | `/session/{id}/uls8` (via `start_path` from T36) |
+| After ULS-8 | → cesd10 | → cesd10 (unchanged) |
+| After CES-D 10 | → gad7 | → gad7 (unchanged) |
+| After GAD-7 | → cogfunc | → cogfunc (unchanged) |
+| After CogFunc | PATCH complete → /complete | → /digitspan (no PATCH) (T38) |
+| After Digit Span | → /uls8 | PATCH complete → /complete (T38, T39) |
+| Completion screen | Static (no action) | "Return to Dashboard" → /dashboard (T40) |
+
+**Frontend API calls changed:**
+- `cogfunc/page.tsx` — removed `PATCH /sessions/{id}/status → complete`; removed `apiPatch`/`SessionResponse` imports (T38)
+- `digitspan/page.tsx` — added `PATCH /sessions/{id}/status → complete` after `POST /digitspan/runs` success (T39); changed post-submit redirect from `/uls8` → `/complete` (T38)
+
+**RA dashboard changes:**
+- Hero zone: "Add Participant" + "Create Session" links replaced with single "Start New Entry" `Button` calling `POST /sessions/start` → auto-redirect to Survey 1 (T37)
+- `startSession()` typed wrapper + `StartSessionResponse` type added to `api/index.ts` (T37)
+
+---
+
+### T39 — Backend + Frontend — mark session complete after Digit Span — 2026-02-27
+
+**Files modified:**
+- `frontend/src/app/session/[session_id]/digitspan/page.tsx` — added `apiPatch` and `SessionResponse` imports; `handleSubmitToBackend` now calls `PATCH /sessions/{id}/status → complete` after successful POST /digitspan/runs, then routes to `/complete`
+- `docs/kanban.md` — T39 → done
+- `docs/PROGRESS.md` — current state and this entry
+
+**Backend:** No changes. `PATCH /sessions/{session_id}/status` already accepts participant-driven `complete` transitions from `active` sessions without auth.
+
+**Key implementation decisions:**
+- Both POST and PATCH are in the same try block: if PATCH fails, the error is shown and the user can retry via the "Continue" button (instruction4 phase)
+- `completed_at` is set by the DB when PATCH succeeds — guaranteed to be set before the completion screen is shown
+- Dashboard KPI re-fetch on mount naturally picks up the new complete session on return
+
+---
+
+### T38 — Frontend — reorder participant flow (surveys first) — 2026-02-27
+
+**Files modified:**
+- `frontend/src/app/session/[session_id]/cogfunc/page.tsx` — removed `apiPatch`/`SessionResponse` imports; removed `PATCH /sessions/{id}/status` call; routes to `/digitspan` on success instead of `/complete`
+- `frontend/src/app/session/[session_id]/digitspan/page.tsx` — post-submission redirect changed from `/uls8` → `/complete`
+- `docs/DESIGN_SPEC.md` — participant flow order updated
+- `docs/kanban.md` — T38 → done
+- `docs/PROGRESS.md` — current state and this entry
+
+**New participant flow:** uls8 → cesd10 → gad7 → cogfunc → digitspan → complete
+
+**Key implementation decisions:**
+- Session completion PATCH intentionally left out of both pages — that is T39's responsibility
+- No other survey routes changed (uls8→cesd10→gad7→cogfunc chain was already correct)
+
+---
+
+### T37 — Frontend — RA dashboard Start New Entry — 2026-02-27
+
+**Files modified:**
+- `frontend/src/lib/api/index.ts` — added `StartSessionResponse` interface and `startSession()` typed wrapper (POST /sessions/start, auth: true)
+- `frontend/src/app/(ra)/dashboard/page.tsx` — added `useRouter`, `Button`, `startSession`, `ApiError` imports; added `starting`/`startError` state; `handleStartEntry` calls `startSession()` then `router.push(start_path)` on success; hero action zone replaced two Link buttons with shadcn `Button` (size lg, ubc-blue-700) + inline error display; empty-sessions message updated
+- `docs/DESIGN_SPEC.md` — hero action zone description already reflected one-click flow (no change needed)
+- `docs/kanban.md` — T37 → done
+- `docs/PROGRESS.md` — current state and this entry
+
+**Key implementation decisions:**
+- `starting` stays `true` after success so the button stays disabled during `router.push()` navigation; only reset on error
+- Error messages are non-technical: 401 → "session expired", 5xx → "server error", network → "check connection"
+- Removed "Add Participant" / "Create Session" link buttons from hero zone — those pages are still accessible via the nav bar
+- Empty sessions state no longer links to `/sessions`; directs user to use the hero button instead
+
+---
+
+### T36 — Backend — one-click start endpoint — 2026-02-27
+
+**Files modified:**
+- `backend/app/schemas/sessions.py` — added `StartSessionResponse` (participant_uuid, participant_number, session_id, status, created_at, completed_at, start_path)
+- `backend/app/routers/sessions.py` — added `POST /sessions/start` (RA-only); atomically creates anonymous `Participant` + `active` `Session` via `flush` + `commit`; returns `start_path = /session/{session_id}/uls8`
+- `docs/API.md` — POST /sessions/start status updated to `implemented (T36)`; notes updated with atomicity detail
+- `docs/kanban.md` — T36 → done
+- `docs/PROGRESS.md` — current state and this entry
+
+**Key implementation decisions:**
+- `db.flush()` after adding participant assigns `participant_uuid` without committing, so the session FK reference is valid before the single `db.commit()`
+- Route registered before `/{session_id}` parameterised routes (FastAPI matches in registration order)
+- Session created directly as `status="active"` — no separate activate step required for supervised flow
+
+---
+
+### T35 — DB schema — anonymize participants (drop names) — 2026-02-27
+
+**Files created:**
+- `backend/alembic/versions/20260227_000006_drop_participant_name_columns.py` — drops `participants.first_name` and `participants.last_name`; downgrade re-adds them with empty server_default then removes the default
+
+**Files modified:**
+- `backend/app/models/participants.py` — removed `first_name` and `last_name` mapped columns; removed unused `String` import
+- `backend/app/schemas/participants.py` — removed `ParticipantCreate` class and name fields from `ParticipantResponse`; removed unused `Field` import
+- `backend/app/routers/participants.py` — `create_participant` takes no body; creates `Participant(participant_number=next_number)` only
+- `frontend/src/lib/api/index.ts` — removed `first_name` and `last_name` from `ParticipantResponse` interface
+- `frontend/src/app/(ra)/participants/page.tsx` — removed name form state/inputs; form is now a single "Enrol participant" button; table removed "Name" column, shows `#` and `Enrolled` only
+- `frontend/src/app/(ra)/sessions/page.tsx` — dropdown options show `Participant #N`; info panel shows `#N` only
+- `docs/SCHEMA.md` — participants table definition updated (no name columns); planned-changes note removed; migration history row added
+- `docs/API.md` — POST /participants request/response updated (no name fields); phase note updated to applied
+- `docs/DESIGN_SPEC.md` — participants page and sessions page descriptions updated to reflect anonymous model
+- `docs/PROGRESS.md` — current state and this entry
+
+**Key implementation decisions:**
+- `ParticipantCreate` schema removed entirely since POST body is now empty; `create_participant` endpoint takes no body
+- Table columns: `#` badge + `Enrolled` date only — name column removed
+- TypeScript: `npx tsc --noEmit` clean; no remaining `first_name`/`last_name` references in frontend
+- Migration run required against live DB: `PYTHONPATH=. .venv/bin/alembic upgrade head` (needs DATABASE_URL)
+
+---
+
+### Phase 3 planning update — 2026-02-27
+
+**Files modified:**
+- `docs/kanban.md` — Phase 2 moved to collapsed summary format (complete), and remaining queue moved into a new detailed Phase 3 block
+- `docs/PROGRESS.md` — Current State updated to Phase 3 with remaining queue starting at `T35`
+
+**Key implementation decisions:**
+- Keep all completed task history unchanged and append-only
+- Treat `T19`–`T34` as complete Phase 2 scope
+- Start the remaining queue at `T35` and continue sequentially through `T45`
+
+---
+
+### T34 — Frontend — RA dashboard Weather card + manual Update Weather — 2026-02-27
+
+**Files created:**
+- `frontend/src/lib/components/WeatherCard.tsx` — self-contained card component. Loads last ingest status via `getWeatherStatus()` on mount. "Update Weather" button calls `triggerWeatherIngest()` with LabMember JWT. Loading/success/partial/fail/error states all handled inline. No shared secret in client code.
+- `frontend/src/components/ui/button.tsx` — shadcn Button (new-york style)
+- `frontend/src/components/ui/badge.tsx` — shadcn Badge (new-york style)
+
+**Files modified:**
+- `frontend/src/lib/api/index.ts` — added `WeatherIngestResponse`, `WeatherLatestRun`, `WeatherDailyResponse` types; `triggerWeatherIngest()` and `getWeatherStatus()` wrapper functions
+- `frontend/src/app/(ra)/dashboard/page.tsx` — imported and rendered `<WeatherCard />` between KPI cards and recent sessions
+- `docs/kanban.md` — T34 → done
+- `docs/PROGRESS.md` — state table and this entry
+
+**Key implementation decisions:**
+- `getWeatherStatus()` calls `GET /weather/daily?start=today&end=today` and reads `latest_run` — gives last ingest metadata without triggering ingestion; `latest_run` is station-scoped regardless of date range
+- State machine: `latestRun === undefined` = loading, `null` = no runs, `WeatherLatestRun` = loaded — avoids separate `loading` boolean
+- 409 and 429 shown as informative messages (not generic errors) since RAs can act on them
+- parse_status badge uses emerald/yellow/red to match severity; consistent with session status colors
+- `Button` + `Badge` from shadcn (new-york); no bare Tailwind primitives for interactive elements
+
+**Build:** clean (`npm run build` — TypeScript, no errors)
+
+---
+
+### T33 — Ops — configure GitHub Actions recurrence + secrets — 2026-02-27
+
+**Manual ops steps completed (no code changes):**
+- GitHub repo secret `WEATHER_INGEST_BASE_URL` set to Render backend URL
+- GitHub repo secret `WEATHER_INGEST_SHARED_SECRET` set
+- Render backend env var `WEATHER_INGEST_SHARED_SECRETS` set and matching GitHub secret
+
+**Verification:**
+- `workflow_dispatch` manual run → HTTP 200 → `{"run_id":"5ba0cb35-...","parse_status":"success","upserted_days":1}` ✓
+- New row confirmed in `weather_ingest_runs` via Supabase Studio ✓
+- Cron schedule active on `main` branch ✓
+
+**Files modified:**
+- `docs/kanban.md` — T33 → done
+- `docs/PROGRESS.md` — state table and this entry
+
+---
 
 ### T32 — Infra — GitHub Actions scheduled ingestion — 2026-02-26
 

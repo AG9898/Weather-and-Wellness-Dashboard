@@ -20,7 +20,7 @@ Visual language baseline: [docs/styleguide.md](styleguide.md)
 2. CES-D 10 survey
 3. GAD-7 survey
 4. Cognitive Function 8a survey
-5. Digit Span instructions → practice trial → 14 scored trials
+5. Digit Span instructions → practice trial → 14 scored trials → session marked complete
 6. Completion screen (thank you) → return to RA dashboard
 
 ---
@@ -140,7 +140,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
-1. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description, primary CTA that creates an anonymous participant + active session and redirects into Survey 1.
+1. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("One click enrols an anonymous participant and opens a supervised session immediately"), primary shadcn `Button` (size lg, ubc-blue-700) that calls `startSession()` and redirects to Survey 1. Shows spinner + "Starting…" while in flight; non-technical inline error message on failure.
 2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
 3. **Recent Sessions list** — up to 8 rows. Each row: participant `#N` badge, truncated session ID, status badge, time-ago. "View all →" link to `/sessions`.
 
@@ -180,8 +180,8 @@ All four surveys use the shared `SurveyForm` component with:
 The participants page at `/participants` layout (top to bottom):
 
 1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
-2. **Add participant form card** — Phase 2 (planned): participants are anonymous, so this page becomes ID-only and does not collect names. The one-click dashboard flow is the primary path for new entries.
-3. **Participants table** — `rounded-2xl` card; columns remain oriented around the participant ID (`#N`) and timestamps only.
+2. **Enrol participant form card** — Participants are anonymous; no names are collected. The form shows a single "Enrol participant" button that creates an anonymous participant. The one-click dashboard flow is the primary path for new entries.
+3. **Participants table** — `rounded-2xl` card; columns: `#` (participant number badge) and `Enrolled` (date). No name column.
 
 ## RA Sessions Page (T23)
 
@@ -189,7 +189,7 @@ The sessions page at `/sessions` layout (top to bottom):
 
 1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
 2. **Create session card** — may remain as a debugging/administrative tool, but the primary Phase 2 path is the one-click dashboard start.
-3. **Active session panel** — Phase 2 (planned): the dashboard flow removes the copy-link step by redirecting directly into the participant flow.
+3. **Active session panel** — Participant info shows `#N` only (no name). The dashboard one-click flow is the primary path; this page remains for administrative use.
 4. **All Sessions table** — section label with count; `rounded-2xl` card. Columns: `#` (blue-700 badge), `Session ID` (8-char truncated, hidden on mobile), `Status` (colored badge), `Created` (time-ago). Loads on mount; refreshes after create/activate/complete.
 
 ---

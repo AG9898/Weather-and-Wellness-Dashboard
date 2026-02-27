@@ -106,15 +106,111 @@
 
 # Kanban — Phase 2
 
-> This block follows the detailed machine-readable task format with dependencies, docs to read, acceptance criteria, and required doc updates.
-> Keep Phase 1 above unchanged.
+> Collapsed summary format: tasks are intentionally reduced to only task number, title, and description.
 
 ```json
 {
   "project": "Weather & Wellness + Misokinesia Research Web App",
   "phase": 2,
+  "phase_status": "complete",
+  "tasks": [
+    {
+      "task_number": "T19",
+      "title": "Frontend foundation — design tokens and shared layout shell",
+      "description": "Create a coherent design foundation for RA and participant routes with shared tokens, layout primitives, and shell components."
+    },
+    {
+      "task_number": "T20",
+      "title": "Backend — dashboard summary endpoint for RA home",
+      "description": "Add an authenticated RA endpoint that returns dashboard summary metrics for participant/session counts and recent activity."
+    },
+    {
+      "task_number": "T21",
+      "title": "Backend — sessions list endpoint with filters and pagination",
+      "description": "Add an authenticated RA endpoint to list sessions with pagination and optional filters for dashboard tables."
+    },
+    {
+      "task_number": "T22",
+      "title": "Frontend — RA dashboard landing page",
+      "description": "Build an RA dashboard page with KPI cards, recent sessions, and quick actions wired to typed API wrappers."
+    },
+    {
+      "task_number": "T23",
+      "title": "Frontend — RA participants and sessions UI cleanup",
+      "description": "Refactor `/participants` and `/sessions` to align with the shared dashboard visual system and feedback patterns."
+    },
+    {
+      "task_number": "T24",
+      "title": "Frontend — participant flow visual cleanup",
+      "description": "Polish participant-facing survey/task/completion pages for consistency while preserving instrument wording and behavior."
+    },
+    {
+      "task_number": "T25",
+      "title": "Frontend — survey and task UX reliability pass",
+      "description": "Improve client-side robustness with loading guards, duplicate-submit prevention, and user-friendly error messaging."
+    },
+    {
+      "task_number": "T26",
+      "title": "Backend — API connection hardening (CORS, timeouts, error mapping)",
+      "description": "Harden cross-service behavior with env-driven CORS, consistent API errors, and better failure logging."
+    },
+    {
+      "task_number": "T27",
+      "title": "Infra — Render backend integration",
+      "description": "Set up and verify hosted Render deployment for FastAPI including health checks, env vars, and migration runbook."
+    },
+    {
+      "task_number": "T28",
+      "title": "Docs — weather ingestion spec + doc wiring",
+      "description": "Add canonical weather-ingestion documentation and wire API/schema/architecture/dev runbooks before implementation."
+    },
+    {
+      "task_number": "T29",
+      "title": "DB schema — study_days + weather tables",
+      "description": "Add `study_days`, `weather_daily`, and `weather_ingest_runs` schema for day-level weather linkage and ingestion audit history."
+    },
+    {
+      "task_number": "T30",
+      "title": "Backend — UBC EOS scrape/parse + POST ingest endpoint",
+      "description": "Implement UBC EOS parsing and POST ingest endpoint with dual auth, idempotent upsert, cooldown, and concurrency lock."
+    },
+    {
+      "task_number": "T31",
+      "title": "Backend — GET daily weather endpoint (RA-only)",
+      "description": "Add RA-only GET endpoint for day-keyed weather reads plus latest ingest-run metadata."
+    },
+    {
+      "task_number": "T32",
+      "title": "Infra — GitHub Actions scheduled ingestion",
+      "description": "Add GitHub Actions daily scheduler and manual dispatch workflow for weather ingestion with retry handling."
+    },
+    {
+      "task_number": "T33",
+      "title": "Ops — configure GitHub Actions recurrence + secrets",
+      "description": "Configure ingestion secrets and verify scheduled recurrence semantics with successful manual dispatch."
+    },
+    {
+      "task_number": "T34",
+      "title": "Frontend — RA dashboard Weather card + manual Update Weather",
+      "description": "Add an RA-only dashboard weather card showing latest ingest status and manual update action via typed API wrappers."
+    }
+  ]
+}
+```
+
+---
+
+# Kanban — Phase 3
+
+> This block follows the detailed machine-readable task format with dependencies, docs to read, acceptance criteria, and required doc updates.
+> Keep Phase 1 and Phase 2 above unchanged.
+
+```json
+{
+  "project": "Weather & Wellness + Misokinesia Research Web App",
+  "phase": 3,
   "phase_status": "in_progress",
-  "goal": "Ship a polished dashboard-like RA experience and clean participant UI while hardening backend connections, deployment, and production auth.",
+  "goal": "Ship the supervised one-click participant flow, participant anonymization, production auth/reliability hardening, and release readiness.",
   "stack_overview": {
     "frontend": "Next.js (Vercel) + TypeScript + Tailwind",
     "backend": "FastAPI (Python, Render)",
@@ -123,470 +219,9 @@
   },
   "tasks": [
     {
-      "id": "T19",
-      "title": "Frontend foundation — design tokens and shared layout shell",
-      "status": "done",
-      "description": "Create a coherent design foundation for RA and participant routes: spacing/typography/color tokens, reusable page container primitives, and a consistent app shell that replaces scaffold/default styling.",
-      "depends_on": [
-        "T18"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/CONVENTIONS.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ],
-      "acceptance_criteria": [
-        "Shared UI tokens/components exist and are used by at least 3 pages",
-        "No default Next.js starter visuals remain in app routes",
-        "Desktop and mobile breakpoints render without layout breakage",
-        "No direct fetch calls introduced in components"
-      ],
-      "updates_docs": [
-        "docs/CONVENTIONS.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T20",
-      "title": "Backend — dashboard summary endpoint for RA home",
-      "status": "done",
-      "description": "Add an authenticated RA endpoint that returns dashboard summary metrics (total participants, sessions by status, sessions created in last 7 days, sessions completed in last 7 days).",
-      "depends_on": [
-        "T08",
-        "T19"
-      ],
-      "stack": [
-        "backend"
-      ],
-      "read_docs": [
-        "docs/SCHEMA.md",
-        "docs/API.md",
-        "docs/CONVENTIONS.md"
-      ],
-      "acceptance_criteria": [
-        "GET dashboard summary endpoint exists and requires lab-member auth",
-        "Response schema is typed and documented in API.md",
-        "Counts match DB state for status values created/active/complete",
-        "Unknown/invalid auth token returns 401"
-      ],
-      "updates_docs": [
-        "docs/API.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T21",
-      "title": "Backend — sessions list endpoint with filters and pagination",
-      "status": "done",
-      "description": "Add an authenticated RA endpoint to list sessions with pagination and optional filters (`status`, `participant_number`, date range) for dashboard tables.",
-      "depends_on": [
-        "T08",
-        "T20"
-      ],
-      "stack": [
-        "backend"
-      ],
-      "read_docs": [
-        "docs/SCHEMA.md",
-        "docs/API.md",
-        "docs/CONVENTIONS.md"
-      ],
-      "acceptance_criteria": [
-        "Endpoint returns deterministic ordering (newest first)",
-        "Supports query params for page/page_size/status/date filters",
-        "Input validation rejects invalid status and invalid date ranges",
-        "API docs include request params and response schema"
-      ],
-      "updates_docs": [
-        "docs/API.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T22",
-      "title": "Frontend — RA dashboard landing page",
-      "status": "done",
-      "description": "Build an RA dashboard home page that consumes dashboard summary and sessions list endpoints, with KPI cards, recent sessions table, quick actions to create participant/session, and clear links/anchors to start a participant session flow.",
-      "depends_on": [
-        "T20",
-        "T21"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/API.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/CONVENTIONS.md"
-      ],
-      "acceptance_criteria": [
-        "Dashboard loads real metrics from typed API wrappers",
-        "Recent sessions table renders status badges and participant mapping",
-        "Loading, empty, and error states are visible and usable",
-        "Navigation links to participants and sessions are present",
-        "Homepage includes quick-start links/anchors that take RAs directly to session creation/launch actions"
-      ],
-      "updates_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T23",
-      "title": "Frontend — RA participants and sessions UI cleanup",
-      "status": "done",
-      "description": "Refactor `/participants` and `/sessions` pages to align with dashboard visual system: clearer hierarchy, cleaner forms/tables, consistent feedback patterns, and responsive layout.",
-      "depends_on": [
-        "T19",
-        "T22"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/API.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/CONVENTIONS.md"
-      ],
-      "acceptance_criteria": [
-        "Participant and session pages use shared design primitives from T19",
-        "Form submit, success, and error states are consistent with dashboard",
-        "Table readability is improved on narrow screens",
-        "No regressions in create/activate/copy URL functionality"
-      ],
-      "updates_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T24",
-      "title": "Frontend — participant flow visual cleanup",
-      "status": "done",
-      "description": "Polish participant-facing pages (`digitspan`, all surveys, completion) with consistent spacing, typography, progress context, and clearer interaction affordances while preserving instrument wording and behavior.",
-      "depends_on": [
-        "T19"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/DIGITSPAN.md",
-        "docs/ULS8.md",
-        "docs/CESD10.md",
-        "docs/GAD7.md",
-        "docs/COGFUNC8A.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/CONVENTIONS.md"
-      ],
-      "acceptance_criteria": [
-        "Exact instrument wording and response scales remain unchanged",
-        "Digit span flow remains keyboard-first and timing-compliant",
-        "Survey pages show clear step context without enabling back-navigation",
-        "Completion page stays data-free and participant-safe"
-      ],
-      "updates_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T25",
-      "title": "Frontend — survey and task UX reliability pass",
-      "status": "done",
-      "description": "Improve client-side robustness for participant submissions with standardized loading disable states, retry-safe button behavior, and friendly error messaging for network/API failures.",
-      "depends_on": [
-        "T24"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/API.md",
-        "docs/CONVENTIONS.md",
-        "docs/DESIGN_SPEC.md"
-      ],
-      "acceptance_criteria": [
-        "All participant submit actions prevent duplicate submissions while pending",
-        "API failure messages are user-readable and non-technical",
-        "Recoverable network failures allow retry without losing page state",
-        "No bare fetch introduced outside `src/lib/api/`"
-      ],
-      "updates_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T26",
-      "title": "Backend — API connection hardening (CORS, timeouts, error mapping)",
-      "status": "done",
-      "description": "Harden cross-service behavior between Vercel frontend and Render backend by configuring strict allowed origins, standard API error shapes, and backend timeout-safe DB patterns.",
-      "depends_on": [
-        "T21"
-      ],
-      "stack": [
-        "backend",
-        "infra"
-      ],
-      "read_docs": [
-        "docs/ARCHITECTURE.md",
-        "docs/CONVENTIONS.md",
-        "docs/API.md"
-      ],
-      "acceptance_criteria": [
-        "CORS origins are environment-driven and least-privilege",
-        "Consistent JSON error body format is returned for 4xx/5xx cases",
-        "Local and deployed frontend origins can call backend successfully",
-        "Connection-related failures are logged with enough context for debugging"
-      ],
-      "updates_docs": [
-        "docs/API.md",
-        "docs/ARCHITECTURE.md",
-        "docs/devSteps.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T27",
-      "title": "Infra — Render backend integration",
-      "status": "done",
-      "description": "Set up and verify Render deployment for FastAPI (build/start command, env vars, health check, migration workflow) so Phase 2 can run in hosted mode.",
-      "depends_on": [
-        "T26"
-      ],
-      "stack": [
-        "backend",
-        "infra"
-      ],
-      "read_docs": [
-        "docs/ARCHITECTURE.md",
-        "docs/devSteps.md",
-        "docs/DECISIONS.md"
-      ],
-      "acceptance_criteria": [
-        "Render service runs backend and exposes healthy `/health` endpoint",
-        "Required env vars are documented and set in Render",
-        "Alembic migration runbook for deploy is documented and tested",
-        "API base URL references in docs are updated for hosted backend"
-      ],
-      "updates_docs": [
-        "docs/ARCHITECTURE.md",
-        "docs/API.md",
-        "docs/devSteps.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T28",
-      "title": "Docs — weather ingestion spec + doc wiring",
-      "status": "done",
-      "description": "Add a canonical Phase 2 weather ingestion spec doc and update API/schema/architecture/dev runbooks so the feature is decision-complete before implementation.",
-      "depends_on": [
-        "T27"
-      ],
-      "stack": [
-        "docs"
-      ],
-      "read_docs": [
-        "docs/CONVENTIONS.md",
-        "docs/ARCHITECTURE.md",
-        "docs/API.md",
-        "docs/SCHEMA.md",
-        "docs/DECISIONS.md"
-      ],
-      "acceptance_criteria": [
-        "docs/WEATHER_INGESTION.md exists and is decision-complete",
-        "docs/API.md includes planned Weather endpoints with full schemas",
-        "docs/SCHEMA.md includes planned weather tables and study_days day-linking",
-        "docs/ARCHITECTURE.md documents GitHub Actions scheduling and secret ownership",
-        "docs/devSteps.md includes setup/verification steps for ingestion"
-      ],
-      "updates_docs": [
-        "docs/WEATHER_INGESTION.md",
-        "docs/API.md",
-        "docs/SCHEMA.md",
-        "docs/ARCHITECTURE.md",
-        "docs/devSteps.md",
-        "docs/CONVENTIONS.md",
-        "docs/DECISIONS.md"
-      ]
-    },
-    {
-      "id": "T29",
-      "title": "DB schema — study_days + weather tables",
-      "status": "done",
-      "description": "Add schema for day-level linking and weather ingestion storage: study_days dimension, sessions FK, weather_daily upsert table, and weather_ingest_runs audit table.",
-      "depends_on": [
-        "T28"
-      ],
-      "stack": [
-        "backend",
-        "database"
-      ],
-      "read_docs": [
-        "docs/SCHEMA.md",
-        "docs/CONVENTIONS.md",
-        "docs/WEATHER_INGESTION.md"
-      ],
-      "acceptance_criteria": [
-        "Alembic migration creates study_days, weather_daily, and weather_ingest_runs",
-        "Idempotency constraints exist for weather_daily (unique per station per day)",
-        "Indexes support day-range queries and recent-run debugging",
-        "docs/SCHEMA.md migration history is updated"
-      ],
-      "updates_docs": [
-        "docs/SCHEMA.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T30",
-      "title": "Backend — UBC EOS scrape/parse + POST ingest endpoint",
-      "status": "done",
-      "description": "Implement HTML scraping/parsing for UBC EOS sources and add POST /weather/ingest/ubc-eos with dual auth (LabMember JWT or GitHub Actions shared secret), idempotent daily upserts, cooldown, and concurrency lock.",
-      "depends_on": [
-        "T29"
-      ],
-      "stack": [
-        "backend"
-      ],
-      "read_docs": [
-        "docs/API.md",
-        "docs/CONVENTIONS.md",
-        "docs/WEATHER_INGESTION.md"
-      ],
-      "acceptance_criteria": [
-        "POST endpoint accepts LabMember JWT or shared-secret header",
-        "Ingestion writes weather_ingest_runs with parse_status and parse_errors",
-        "weather_daily is upserted per station per study day (idempotent)",
-        "Cooldown (429) and per-station advisory lock (409) prevent abuse/concurrency",
-        "docs/API.md is updated to implemented after verification"
-      ],
-      "updates_docs": [
-        "docs/API.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T31",
-      "title": "Backend — GET daily weather endpoint (RA-only)",
-      "status": "done",
-      "description": "Add GET /weather/daily?start&end (RA-only) to read day-keyed weather rows for dashboard status and future analyses, including latest ingest run metadata.",
-      "depends_on": [
-        "T30"
-      ],
-      "stack": [
-        "backend"
-      ],
-      "read_docs": [
-        "docs/API.md",
-        "docs/CONVENTIONS.md",
-        "docs/WEATHER_INGESTION.md"
-      ],
-      "acceptance_criteria": [
-        "Endpoint is RA-protected and validates date range inputs",
-        "Response includes ordered day rows and latest run status",
-        "Max range guard prevents abusive queries",
-        "docs/API.md is updated to implemented after verification"
-      ],
-      "updates_docs": [
-        "docs/API.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T32",
-      "title": "Infra — GitHub Actions scheduled ingestion",
-      "status": "done",
-      "description": "Add a GitHub Actions workflow that triggers daily ingestion by calling the backend endpoint with a shared secret and retry policy suitable for free-tier cold starts.",
-      "depends_on": [
-        "T31"
-      ],
-      "stack": [
-        "infra",
-        "backend"
-      ],
-      "read_docs": [
-        "docs/ARCHITECTURE.md",
-        "docs/devSteps.md",
-        "docs/WEATHER_INGESTION.md"
-      ],
-      "acceptance_criteria": [
-        "Workflow runs on a daily cron and supports manual dispatch",
-        "Workflow uses retrying HTTP call and fails loudly on non-2xx",
-        "Required GitHub secrets and Render env vars are documented"
-      ],
-      "updates_docs": [
-        "docs/ARCHITECTURE.md",
-        "docs/devSteps.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T33",
-      "title": "Ops — configure GitHub Actions recurrence + secrets",
-      "status": "todo",
-      "description": "Configure GitHub repo secrets and verify scheduled recurrence semantics for the weather ingestion workflow (cron trigger on default branch; manual dispatch for testing).",
-      "depends_on": [
-        "T32"
-      ],
-      "stack": [
-        "infra",
-        "ops"
-      ],
-      "read_docs": [
-        "docs/ARCHITECTURE.md",
-        "docs/devSteps.md",
-        "docs/WEATHER_INGESTION.md"
-      ],
-      "acceptance_criteria": [
-        "GitHub repo secrets are set (base URL + shared secret)",
-        "Render env var WEATHER_INGEST_SHARED_SECRETS is set and matches GitHub secret",
-        "Manual run via workflow_dispatch succeeds end-to-end",
-        "Cron schedule is confirmed to be active on the default branch"
-      ],
-      "updates_docs": [
-        "docs/devSteps.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T34",
-      "title": "Frontend — RA dashboard Weather card + manual Update Weather",
-      "status": "todo",
-      "description": "Add an RA-only dashboard card that shows last ingest status (success/partial/fail), last updated time, and a manual 'Update Weather' button using typed API wrappers (no bare fetch).",
-      "depends_on": [
-        "T33"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/API.md",
-        "docs/CONVENTIONS.md",
-        "docs/styleguide.md",
-        "docs/WEATHER_INGESTION.md"
-      ],
-      "acceptance_criteria": [
-        "Dashboard shows last attempt/success and parse_status",
-        "Manual trigger calls POST ingest with LabMember JWT via typed API wrapper",
-        "Loading/success/failure feedback is visible and non-technical",
-        "No client-side secret leakage"
-      ],
-      "updates_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T40",
+      "id": "T35",
       "title": "DB schema — anonymize participants (drop names)",
-      "status": "todo",
+      "status": "done",
       "description": "Migrate to anonymous participants by dropping name fields from the participants table and updating backend/frontend contracts accordingly (Participant ID only).",
       "depends_on": [
         "T34"
@@ -615,12 +250,12 @@
       ]
     },
     {
-      "id": "T41",
+      "id": "T36",
       "title": "Backend — one-click start endpoint (create participant + active session)",
-      "status": "todo",
+      "status": "done",
       "description": "Add an RA-protected endpoint that creates an anonymous participant and an active session atomically, returning a participant start path for the supervised test flow.",
       "depends_on": [
-        "T40"
+        "T35"
       ],
       "stack": [
         "backend"
@@ -641,12 +276,12 @@
       ]
     },
     {
-      "id": "T42",
+      "id": "T37",
       "title": "Frontend — RA dashboard Start New Entry (auto redirect)",
-      "status": "todo",
+      "status": "done",
       "description": "Replace the manual participant/session launch sequence with a dashboard button that calls the one-click backend endpoint and redirects into Survey 1 automatically.",
       "depends_on": [
-        "T41"
+        "T36"
       ],
       "stack": [
         "frontend"
@@ -668,12 +303,12 @@
       ]
     },
     {
-      "id": "T43",
+      "id": "T38",
       "title": "Frontend — reorder participant flow (surveys first)",
-      "status": "todo",
+      "status": "done",
       "description": "Update the participant route sequence to run the 4 surveys first, then Digit Span, then completion (surveys: uls8 → cesd10 → gad7 → cogfunc → digitspan → complete).",
       "depends_on": [
-        "T42"
+        "T37"
       ],
       "stack": [
         "frontend"
@@ -694,12 +329,12 @@
       ]
     },
     {
-      "id": "T44",
+      "id": "T39",
       "title": "Backend + Frontend — mark session complete after Digit Span",
-      "status": "todo",
+      "status": "done",
       "description": "Move session completion to the end of the Digit Span submission so the session is only marked complete once all surveys and digit span have finished.",
       "depends_on": [
-        "T43"
+        "T38"
       ],
       "stack": [
         "backend",
@@ -721,12 +356,12 @@
       ]
     },
     {
-      "id": "T45",
+      "id": "T40",
       "title": "Frontend — completion returns to dashboard (supervised)",
-      "status": "todo",
+      "status": "done",
       "description": "Add an explicit supervised return path from participant completion to the RA dashboard and ensure dashboard statistics refresh to reflect the newly completed session.",
       "depends_on": [
-        "T44"
+        "T39"
       ],
       "stack": [
         "frontend"
@@ -746,12 +381,12 @@
       ]
     },
     {
-      "id": "T46",
+      "id": "T41",
       "title": "Auth hardening — JWT signing key verification path",
       "status": "todo",
       "description": "Upgrade backend auth verification to production-ready signing key handling (Supabase JWT signing key/JWKS flow), including key rotation support and strict claim validation (`exp`, `sub`, issuer/audience policy).",
       "depends_on": [
-        "T45",
+        "T40",
         "T18",
         "T27"
       ],
@@ -778,12 +413,12 @@
       ]
     },
     {
-      "id": "T47",
+      "id": "T42",
       "title": "Backend reliability — readiness endpoint, structured logging, request IDs",
       "status": "todo",
       "description": "Add readiness checks and structured request logging (without PII) to improve debugging and deployment confidence for hosted usage.",
       "depends_on": [
-        "T46"
+        "T41"
       ],
       "stack": [
         "backend",
@@ -806,15 +441,15 @@
       ]
     },
     {
-      "id": "T48",
+      "id": "T43",
       "title": "E2E verification — Playwright workflow coverage",
       "status": "todo",
       "description": "Add end-to-end Playwright coverage for core RA and participant workflows against running frontend/backend services, including auth guard behavior and end-to-end session completion.",
       "depends_on": [
         "T23",
         "T25",
-        "T46",
-        "T47"
+        "T41",
+        "T42"
       ],
       "stack": [
         "frontend",
@@ -838,12 +473,12 @@
       ]
     },
     {
-      "id": "T49",
+      "id": "T44",
       "title": "Release readiness — production checklist and rollback notes",
       "status": "todo",
       "description": "Create a practical launch checklist covering Render/Vercel env config, DB migration order, auth checks, smoke tests, and rollback/incident notes for lab operations.",
       "depends_on": [
-        "T48"
+        "T43"
       ],
       "stack": [
         "infra",
@@ -866,12 +501,12 @@
       ]
     },
     {
-      "id": "T50",
-      "title": "Phase 2 documentation sync and closeout",
+      "id": "T45",
+      "title": "Phase 3 documentation sync and closeout",
       "status": "todo",
-      "description": "Run a final documentation consistency pass so API, schema, conventions, design, and progress docs fully match implemented Phase 2 behavior and deployment reality.",
+      "description": "Run a final documentation consistency pass so API, schema, conventions, design, and progress docs fully match implemented Phase 3 behavior and deployment reality.",
       "depends_on": [
-        "T49"
+        "T44"
       ],
       "stack": [
         "docs"
@@ -887,8 +522,8 @@
       "acceptance_criteria": [
         "No documented endpoint/field conflicts with implemented behavior",
         "Design and UX docs reflect current RA/participant flows",
-        "Progress log captures all Phase 2 tasks and outcomes",
-        "Phase 2 in kanban can be marked complete with no unresolved doc drift"
+        "Progress log captures all Phase 3 tasks and outcomes",
+        "Phase 3 in kanban can be marked complete with no unresolved doc drift"
       ],
       "updates_docs": [
         "docs/API.md",

@@ -2,13 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   apiGet,
+  startSession,
+  ApiError,
   type DashboardSummaryResponse,
   type SessionListResponse,
   type SessionListItemResponse,
 } from "@/lib/api";
 import PageContainer from "@/lib/components/PageContainer";
+import WeatherCard from "@/lib/components/WeatherCard";
+import { Button } from "@/components/ui/button";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,10 +96,39 @@ function SessionRow({ session }: { session: SessionListItemResponse }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
   const [sessions, setSessions] = useState<SessionListItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  const handleStartEntry = async () => {
+    if (starting) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const result = await startSession();
+      router.push(result.start_path);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setStartError("Your session has expired. Please sign in again.");
+        } else if (err.status >= 500) {
+          setStartError("A server error occurred. Please try again.");
+        } else {
+          setStartError("Could not start a new entry. Please try again.");
+        }
+      } else {
+        setStartError("Unable to connect to the server. Please check your connection.");
+      }
+      setStarting(false);
+    }
+    // On success: keep starting=true; button stays disabled while navigation is in flight
+  };
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -138,28 +172,42 @@ export default function DashboardPage() {
               W&amp;W Research
             </p>
             <h1 className="text-3xl font-bold text-foreground leading-tight">
-              Start a New Study Session
+              Start a New Entry
             </h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Enrol a participant and launch a session to begin data collection.
-              The participant URL is generated automatically after creation.
+              One click enrols an anonymous participant and opens a supervised
+              session immediately — no setup steps required.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-            <Link
-              href="/participants"
-              className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold border border-border text-foreground hover:bg-white/5 transition-colors"
-            >
-              Add Participant
-            </Link>
-            <Link
-              href="/sessions"
-              className="inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          <div className="flex flex-col gap-2 shrink-0">
+            <Button
+              size="lg"
+              className="rounded-xl px-6 font-semibold text-white"
               style={{ background: "var(--ubc-blue-700)" }}
+              onClick={handleStartEntry}
+              disabled={starting}
             >
-              Create Session
-            </Link>
+              {starting ? (
+                <>
+                  <svg
+                    className="mr-1.5 h-4 w-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Starting…
+                </>
+              ) : (
+                "Start New Entry"
+              )}
+            </Button>
+            {startError && (
+              <p className="text-sm text-destructive max-w-xs">{startError}</p>
+            )}
           </div>
         </div>
       </div>
@@ -225,6 +273,11 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* ── Weather card ─────────────────────────────────── */}
+      <div className="mb-8">
+        <WeatherCard />
+      </div>
+
       {/* ── Recent sessions ──────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -249,14 +302,7 @@ export default function DashboardPage() {
             </div>
           ) : sessions.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-muted-foreground">No sessions yet.</p>
-              <Link
-                href="/sessions"
-                className="mt-3 inline-flex items-center text-sm font-medium hover:opacity-80 transition-opacity"
-                style={{ color: "var(--ubc-blue-500)" }}
-              >
-                Create the first session →
-              </Link>
+              <p className="text-sm text-muted-foreground">No sessions yet. Use the button above to start the first entry.</p>
             </div>
           ) : (
             sessions.map((s) => <SessionRow key={s.session_id} session={s} />)

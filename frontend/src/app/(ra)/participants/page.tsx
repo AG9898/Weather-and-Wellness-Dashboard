@@ -14,8 +14,6 @@ export default function ParticipantsPage() {
   const [listError, setListError] = useState<string | null>(null);
 
   // Form state
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -40,7 +38,7 @@ export default function ParticipantsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) return;
+    if (submitting) return;
 
     setSubmitting(true);
     setSuccessMsg(null);
@@ -49,15 +47,13 @@ export default function ParticipantsPage() {
     try {
       const created = await apiPost<ParticipantResponse>(
         "/participants",
-        { first_name: firstName.trim(), last_name: lastName.trim() },
+        {},
         { auth: true }
       );
-      setSuccessMsg(`Participant #${created.participant_number} added successfully.`);
-      setFirstName("");
-      setLastName("");
+      setSuccessMsg(`Participant #${created.participant_number} enrolled successfully.`);
       await fetchParticipants();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to create participant");
+      setFormError(err instanceof Error ? err.message : "Failed to enrol participant");
     } finally {
       setSubmitting(false);
     }
@@ -70,7 +66,7 @@ export default function ParticipantsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Participants</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage study participants. Each participant is assigned a unique number upon enrolment.
+          Manage study participants. Each participant is assigned a unique number upon enrolment. No names or identifiers are stored.
         </p>
       </div>
 
@@ -81,54 +77,22 @@ export default function ParticipantsPage() {
         </div>
       )}
 
-      {/* ── Add participant form ──────────────────────────── */}
+      {/* ── Enrol participant form ──────────────────────────── */}
       <div
         className="rounded-2xl border border-border p-6 mb-6"
         style={{ background: "var(--card)" }}
       >
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-          Add participant
+          Enrol participant
         </p>
-        <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-36">
-            <label
-              htmlFor="firstName"
-              className="block text-sm font-medium text-muted-foreground mb-1.5"
-            >
-              First name
-            </label>
-            <input
-              id="firstName"
-              type="text"
-              required
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="block w-full rounded-lg border border-border bg-input/30 px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-            />
-          </div>
-          <div className="flex-1 min-w-36">
-            <label
-              htmlFor="lastName"
-              className="block text-sm font-medium text-muted-foreground mb-1.5"
-            >
-              Last name
-            </label>
-            <input
-              id="lastName"
-              type="text"
-              required
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="block w-full rounded-lg border border-border bg-input/30 px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-            />
-          </div>
+        <form onSubmit={handleSubmit}>
           <button
             type="submit"
-            disabled={submitting || !firstName.trim() || !lastName.trim()}
+            disabled={submitting}
             className="rounded-lg px-5 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
             style={{ background: "var(--ubc-blue-700)" }}
           >
-            {submitting ? "Adding…" : "Add participant"}
+            {submitting ? "Enrolling…" : "Enrol participant"}
           </button>
         </form>
 
@@ -162,7 +126,7 @@ export default function ParticipantsPage() {
             </div>
           ) : participants.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No participants yet. Add one above.
+              No participants yet. Enrol one above.
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -171,11 +135,8 @@ export default function ParticipantsPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground w-16">
                     #
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Name
-                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-widest text-muted-foreground hidden sm:table-cell">
-                    Added
+                    Enrolled
                   </th>
                 </tr>
               </thead>
@@ -193,9 +154,6 @@ export default function ParticipantsPage() {
                       >
                         #{p.participant_number}
                       </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-foreground font-medium">
-                      {p.first_name} {p.last_name}
                     </td>
                     <td className="px-4 py-3.5 text-muted-foreground tabular-nums hidden sm:table-cell">
                       {new Date(p.created_at).toLocaleDateString()}

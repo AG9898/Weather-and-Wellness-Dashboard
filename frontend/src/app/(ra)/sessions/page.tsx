@@ -207,7 +207,7 @@ export default function SessionsPage() {
               )}
               {participants.map((p) => (
                 <option key={p.participant_uuid} value={p.participant_uuid}>
-                  #{p.participant_number} — {p.first_name} {p.last_name}
+                  Participant #{p.participant_number}
                 </option>
               ))}
             </select>
@@ -257,8 +257,7 @@ export default function SessionsPage() {
             <p className="text-sm text-muted-foreground">
               Participant:{" "}
               <span className="text-foreground font-medium">
-                #{selectedParticipant.participant_number} — {selectedParticipant.first_name}{" "}
-                {selectedParticipant.last_name}
+                #{selectedParticipant.participant_number}
               </span>
             </p>
           )}

@@ -117,26 +117,14 @@ Indexes (planned):
 
 ---
 
-## Planned Changes (Phase 2 — Participant Anonymity)
-
-Participants are anonymous in Phase 2: no names or other direct identifiers are stored.
-
-Planned migration (T40):
-- Drop `participants.first_name` and `participants.last_name`.
-- Continue using:
-  - `participant_uuid` as the internal stable key
-  - `participant_number` as the only human-facing Participant ID
-
----
-
 ## Table: `participants`
+
+Participants are anonymous: no names or other direct identifiers are stored. The only human-facing identifier is `participant_number`; `participant_uuid` is the internal stable key.
 
 | Column             | Type           | Constraints       | Notes                                      |
 |--------------------|----------------|-------------------|--------------------------------------------|
 | participant_uuid   | UUID           | PK                | Generated server-side                      |
 | participant_number | INT            | UNIQUE, NOT NULL  | Auto-incremented from 1; assigned by server |
-| first_name         | VARCHAR        | NOT NULL          |                                            |
-| last_name          | VARCHAR        | NOT NULL          |                                            |
 | created_at         | TIMESTAMPTZ    | DEFAULT NOW()     |                                            |
 
 ---
@@ -254,10 +242,10 @@ Planned migration (T40):
 | 2026-02-19 | T04 | Create digitspan_runs and digitspan_trials tables |
 | 2026-02-19 | T05 | Create survey tables (ULS-8, CES-D 10, GAD-7, CogFunc 8a) |
 | 2026-02-26 | T29 | Add study_days + weather_ingest_runs + weather_daily tables; add study_day_id FK to sessions |
-| 2026-02-26 | T40 (planned) | Drop participant name columns (anonymous participants) |
+| 2026-02-27 | T35 | Drop participants.first_name and participants.last_name (anonymous participants) |
 
-As of 2026-02-23, migrations were applied and verified on Supabase through
-revision `20260219_000004` (`head`).
+As of 2026-02-27, migrations were applied and verified on Supabase through
+revision `20260227_000006` (`head`).
 
 ---
 

@@ -37,7 +37,7 @@
 | GET    | /participants/{uuid} | RA | implemented | T07 |
 | GET    | /sessions | RA | implemented | T21 |
 | POST   | /sessions | RA | implemented | T08 |
-| POST   | /sessions/start | RA | planned | T41 |
+| POST   | /sessions/start | RA | implemented | T36 |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
@@ -73,26 +73,21 @@
 ## Participants
 
 - **Audit note:** T07 endpoints were reopened on 2026-02-20 due to incomplete/invalid implementation.
-- **Phase 2 note (planned):** Participants are anonymous. `first_name` / `last_name` will be removed from the schema and API responses in T40.
+- **T35 (2026-02-27):** Participants are anonymous. `first_name` and `last_name` have been removed from the schema and API. Only `participant_number` is the human-facing identifier.
 
 ### POST /participants
 - **Auth:** RA required
-- **Status:** implemented (T07)
-- **Request body:**
-  ```json
-  { "first_name": "string", "last_name": "string" }
-  ```
+- **Status:** implemented (T07, updated T35)
+- **Request body:** Empty object `{}`
 - **Response:**
   ```json
   {
     "participant_uuid": "uuid",
     "participant_number": "integer",
-    "first_name": "string",
-    "last_name": "string",
     "created_at": "datetime"
   }
   ```
-- **Notes:** `participant_number` is auto-assigned by server; never supplied by client. Implementation reopened after audit on 2026-02-20.
+- **Notes:** `participant_number` is auto-assigned by server; never supplied by client. No name fields accepted or returned.
 
 ---
 
@@ -198,11 +193,8 @@
 
 ### POST /sessions/start
 - **Auth:** RA required
-- **Status:** planned (T41)
-- **Request body:** Empty object
-  ```json
-  {}
-  ```
+- **Status:** implemented (T36)
+- **Request body:** None (empty body accepted)
 - **Response:**
   ```json
   {
@@ -215,7 +207,7 @@
     "start_path": "/session/<session_id>/uls8"
   }
   ```
-- **Notes:** One-click flow for supervised sessions. Creates an anonymous participant and an active session atomically, then returns a start path for the participant flow.
+- **Notes:** One-click flow for supervised sessions. Creates an anonymous participant and an active session atomically (single transaction via `flush` + `commit`), then returns a start path for Survey 1. Session is immediately `active` so participant submissions are accepted on arrival.
 
 ---
 

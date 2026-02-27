@@ -1,7 +1,12 @@
+"use client";
+
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
 export default function CompletePage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-sm w-full text-center space-y-5">
+      <div className="max-w-sm w-full text-center space-y-6">
         {/* Checkmark icon */}
         <div
           className="mx-auto flex h-16 w-16 items-center justify-center rounded-full"
@@ -23,11 +28,22 @@ export default function CompletePage() {
           </svg>
         </div>
 
-        <h1 className="text-2xl font-bold text-foreground">Thank You</h1>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          You have completed all tasks. Please return this device to the
-          research assistant.
-        </p>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">Thank You</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            You have completed all tasks. Please return this device to the
+            research assistant.
+          </p>
+        </div>
+
+        <Button
+          asChild
+          size="lg"
+          className="w-full rounded-xl font-semibold text-white"
+          style={{ background: "var(--ubc-blue-700)" }}
+        >
+          <Link href="/dashboard">Return to Dashboard</Link>
+        </Button>
       </div>
     </div>
   );

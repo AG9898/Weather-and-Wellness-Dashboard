@@ -49,6 +49,18 @@ class SessionListResponse(BaseModel):
     pages: int
 
 
+class StartSessionResponse(BaseModel):
+    """Response for POST /sessions/start — one-click supervised flow."""
+
+    participant_uuid: UUID
+    participant_number: int
+    session_id: UUID
+    status: AllowedStatus
+    created_at: datetime
+    completed_at: datetime | None
+    start_path: str
+
+
 __all__ = [
     "AllowedStatus",
     "SessionCreate",
@@ -56,4 +68,5 @@ __all__ = [
     "SessionListResponse",
     "SessionResponse",
     "SessionStatusUpdate",
+    "StartSessionResponse",
 ]

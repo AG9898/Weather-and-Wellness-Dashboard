@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_lab_member
 from app.db import get_session
 from app.models import Participant
-from app.schemas.participants import ParticipantCreate, ParticipantResponse
+from app.schemas.participants import ParticipantResponse
 
 router = APIRouter(
     prefix="/participants",
@@ -20,18 +20,13 @@ router = APIRouter(
 
 @router.post("", response_model=ParticipantResponse, status_code=status.HTTP_201_CREATED)
 async def create_participant(
-    payload: ParticipantCreate,
     session: AsyncSession = Depends(get_session),
 ) -> ParticipantResponse:
     result = await session.execute(select(func.max(Participant.participant_number)))
     current_max: int | None = result.scalar_one()
     next_number = (current_max or 0) + 1
 
-    participant = Participant(
-        participant_number=next_number,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-    )
+    participant = Participant(participant_number=next_number)
     session.add(participant)
     await session.commit()
     await session.refresh(participant)

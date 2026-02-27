@@ -21,6 +21,7 @@ from app.schemas.sessions import (
     SessionListResponse,
     SessionResponse,
     SessionStatusUpdate,
+    StartSessionResponse,
 )
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -154,6 +155,46 @@ async def create_session(
     await db.commit()
     await db.refresh(session_obj)
     return SessionResponse.model_validate(session_obj)
+
+
+@router.post(
+    "/start",
+    response_model=StartSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(get_current_lab_member)],
+)
+async def start_session(
+    db: AsyncSession = Depends(get_session),
+) -> StartSessionResponse:
+    """One-click supervised flow: atomically create an anonymous participant and an
+    active session, returning the participant start path for Survey 1."""
+    # Auto-increment participant number
+    result = await db.execute(select(func.max(Participant.participant_number)))
+    current_max: int | None = result.scalar_one()
+    next_number = (current_max or 0) + 1
+
+    participant = Participant(participant_number=next_number)
+    db.add(participant)
+    await db.flush()  # assigns participant_uuid without committing
+
+    session_obj = SessionModel(
+        participant_uuid=participant.participant_uuid,
+        status="active",
+    )
+    db.add(session_obj)
+    await db.commit()
+    await db.refresh(participant)
+    await db.refresh(session_obj)
+
+    return StartSessionResponse(
+        participant_uuid=participant.participant_uuid,
+        participant_number=participant.participant_number,
+        session_id=session_obj.session_id,
+        status=session_obj.status,
+        created_at=session_obj.created_at,
+        completed_at=session_obj.completed_at,
+        start_path=f"/session/{session_obj.session_id}/uls8",
+    )
 
 
 @router.get("/{session_id}", response_model=SessionResponse)

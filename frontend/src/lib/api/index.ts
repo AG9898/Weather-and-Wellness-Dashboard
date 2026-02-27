@@ -116,8 +116,6 @@ export function getParticipantErrorMessage(err: unknown): string {
 export interface ParticipantResponse {
   participant_uuid: string;
   participant_number: number;
-  first_name: string;
-  last_name: string;
   created_at: string;
 }
 
@@ -182,4 +180,57 @@ export interface SessionListResponse {
   page: number;
   page_size: number;
   pages: number;
+}
+
+export interface WeatherIngestResponse {
+  run_id: string;
+  station_id: number;
+  ingested_at: string;
+  parse_status: "success" | "partial" | "fail";
+  parse_errors: unknown[];
+  upserted_days: number;
+}
+
+export interface WeatherLatestRun {
+  run_id: string;
+  ingested_at: string;
+  parse_status: "success" | "partial" | "fail";
+}
+
+export interface WeatherDailyResponse {
+  items: unknown[];
+  latest_run: WeatherLatestRun | null;
+}
+
+export interface StartSessionResponse {
+  participant_uuid: string;
+  participant_number: number;
+  session_id: string;
+  status: "active";
+  created_at: string;
+  completed_at: null;
+  start_path: string;
+}
+
+/** One-click supervised flow: create anonymous participant + active session. */
+export async function startSession(): Promise<StartSessionResponse> {
+  return apiPost<StartSessionResponse>("/sessions/start", {}, { auth: true });
+}
+
+/** Trigger manual weather ingestion via LabMember JWT (RA-only). */
+export async function triggerWeatherIngest(): Promise<WeatherIngestResponse> {
+  return apiPost<WeatherIngestResponse>(
+    "/weather/ingest/ubc-eos",
+    { station_id: 3510 },
+    { auth: true }
+  );
+}
+
+/** Fetch latest ingest run status for the dashboard weather card. */
+export async function getWeatherStatus(): Promise<WeatherDailyResponse> {
+  const today = new Date().toISOString().slice(0, 10);
+  return apiGet<WeatherDailyResponse>(
+    `/weather/daily?start=${today}&end=${today}`,
+    { auth: true }
+  );
 }
