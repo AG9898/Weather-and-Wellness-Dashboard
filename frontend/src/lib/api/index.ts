@@ -197,8 +197,21 @@ export interface WeatherLatestRun {
   parse_status: "success" | "partial" | "fail";
 }
 
+export interface WeatherDailyItem {
+  station_id: number;
+  study_day_id: string;
+  date_local: string;
+  source_run_id: string | null;
+  updated_at: string;
+  current_temp_c: number | null;
+  forecast_high_c: number | null;
+  forecast_low_c: number | null;
+  forecast_condition_text: string | null;
+  forecast_periods: unknown[];
+}
+
 export interface WeatherDailyResponse {
-  items: unknown[];
+  items: WeatherDailyItem[];
   latest_run: WeatherLatestRun | null;
 }
 
@@ -212,9 +225,52 @@ export interface StartSessionResponse {
   start_path: string;
 }
 
+/**
+ * Bundle returned by GET /api/ra/dashboard (Vercel Route Handler).
+ * Combines dashboard summary + today's weather into a single cached payload.
+ */
+export interface DashboardBundle {
+  summary: DashboardSummaryResponse;
+  weather: WeatherDailyResponse;
+  cached_at: string; // ISO 8601
+}
+
+/** Response envelope from GET /api/ra/dashboard. */
+export interface DashboardRouteResponse {
+  cached: boolean;
+  data: DashboardBundle | null;
+}
+
 /** One-click supervised flow: create anonymous participant + active session. */
 export async function startSession(): Promise<StartSessionResponse> {
   return apiPost<StartSessionResponse>("/sessions/start", {}, { auth: true });
+}
+
+/**
+ * Fetch the RA dashboard bundle from the Vercel Route Handler (same-origin).
+ * mode=cached → returns the Upstash Redis bundle if present (fast path).
+ * mode=live   → fetches fresh data from the Render backend, refreshes the cache.
+ *
+ * Note: uses a relative path (/api/ra/dashboard) so it resolves correctly
+ * in both local dev (localhost:3000) and Vercel production.
+ */
+export async function getDashboardBundle(
+  mode: "cached" | "live"
+): Promise<DashboardRouteResponse> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`/api/ra/dashboard?mode=${mode}`, {
+    method: "GET",
+    headers,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<DashboardRouteResponse>;
 }
 
 /** Trigger manual weather ingestion via LabMember JWT (RA-only). */
@@ -226,11 +282,3 @@ export async function triggerWeatherIngest(): Promise<WeatherIngestResponse> {
   );
 }
 
-/** Fetch latest ingest run status for the dashboard weather card. */
-export async function getWeatherStatus(): Promise<WeatherDailyResponse> {
-  const today = new Date().toISOString().slice(0, 10);
-  return apiGet<WeatherDailyResponse>(
-    `/weather/daily?start=${today}&end=${today}`,
-    { auth: true }
-  );
-}

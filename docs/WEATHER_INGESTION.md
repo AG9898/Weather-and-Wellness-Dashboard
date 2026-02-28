@@ -23,7 +23,7 @@ persist structured numeric fields into Supabase Postgres, and provide:
 
 - Do not use Supabase `pg_cron` in this phase.
 - Do not scrape chart images or rely on chart-rendered values.
-- Do not build CSV export or bulk export endpoints.
+- Do not build weather-specific CSV export or bulk export endpoints (admin Import/Export is a separate Phase 3 feature).
 
 ---
 
@@ -46,7 +46,7 @@ The ingester fetches both, parses what it can from each, and merges into one can
 display/debug; analytics joins are by **local day**.
 
 ### Canonical day key
-- `date_local`: `DATE` in timezone `America/Edmonton`.
+- `date_local`: `DATE` in timezone `America/Vancouver`.
 - All daily weather is keyed by a `study_days` row (`study_day_id`) with unique `date_local`.
 
 ### Why use `study_days` (dimension table)
@@ -59,7 +59,7 @@ weather ingestion is missing for a day (the day row can still exist).
 
 ### Session day definition (for analyses)
 Default: the “session day” is set when a session becomes `complete` and is derived from
-`completed_at` in `America/Edmonton`.
+`completed_at` in `America/Vancouver`.
 
 Documented alternative (if the study later defines the day at activation): derive from
 an `activated_at` timestamp if/when introduced.
@@ -80,7 +80,7 @@ SELECT s.session_id, s.participant_uuid, w.current_temp_c
 FROM sessions s
 LEFT JOIN weather_daily w
   ON w.station_id = 3510
- AND w.date_local = (timezone('America/Edmonton', s.completed_at))::date
+ AND w.date_local = (timezone('America/Vancouver', s.completed_at))::date
 WHERE s.status = 'complete';
 ```
 
@@ -176,4 +176,3 @@ GitHub Actions is the primary and only scheduler in this phase.
 - Auth: shared secret header (`X-WW-Weather-Ingest-Secret`); never a LabMember JWT.
 
 See `docs/ARCHITECTURE.md` for secret ownership boundaries and required GitHub secrets.
-

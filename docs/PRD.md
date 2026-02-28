@@ -26,6 +26,14 @@ Internal lab-operated web app to:
 - Cognitive Function 8a (sum + mean)
 - Session creation + data access via Supabase Studio (no export UI in Phase 1)
 
+## Phase 3 Scope (planned)
+- RA-only Import/Export page (`/import-export`) with preview-first import (CSV/XLSX) and controlled exports (XLSX workbook + zipped CSV).
+- UI cleanup: remove RA pages `/participants` and `/sessions`; keep `/dashboard` as the primary landing page.
+- Start-session demographics questionnaire: when the RA starts a new entry, collect age band, gender, origin, commute method, and time outside (preset options) and store on `participants` before creating the session.
+- Consent gating page (`/session/[id]/consent`) before Survey 1; consent is UI-only (no DB record).
+- Add optional participant demographic/exposure fields to support legacy import mapping (no PII added), including a derived daylight exposure minutes field.
+- Dashboard date-range filtering (initially affects Created/Completed KPIs and dashboard weather date context).
+
 ## Success Criteria
 - End-to-end session without manual scoring
 - All data linked to participant_uuid + session_id

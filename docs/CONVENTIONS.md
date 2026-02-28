@@ -27,6 +27,14 @@
 - Import endpoints must be **preview-first** (no writes) and then explicit **commit**.
 - File uploads use `multipart/form-data`; file downloads must set `Content-Disposition` with the required filename.
 - Do not attempt to reconstruct raw survey item rows from imported aggregate values; store aggregates in a dedicated mapping table.
+- Import parsing must be deterministic for Excel serial dates and times (see `docs/API.md` Admin Data section); always store the full source row payload in `imported_session_measures.source_row_json`.
+- Normalize imported demographic strings conservatively (trim whitespace; canonicalize obvious variants) while preserving the original raw values in `source_row_json`.
+
+### Start session demographics + daylight exposure (Phase 3)
+- The RA “Start New Entry” flow must collect participant demographics **before** creating a participant+session.
+- Demographic fields are stored on `participants` only (never on `sessions`).
+- If the RA selects `"Other"` for `origin` or `commute_method`, store the detail in a dedicated `*_other_text` column (length-limited; avoid PII in UI copy).
+- `participants.daylight_exposure_minutes` is derived at session start time as minutes since `DAYLIGHT_START_LOCAL_TIME` in the study timezone (see `docs/DECISIONS.md` RESOLVED-12).
 
 ### Pydantic schemas
 - Naming: `...Create` for request bodies, `...Response` for responses
@@ -79,6 +87,9 @@
 - Cache is strictly for **read** performance; all canonical validation/scoring and all DB writes remain in FastAPI on Render.
 - Cache keys must use a clear prefix (e.g. `ww:`) and be versioned (e.g. `...:v1`) to allow safe invalidation on schema changes.
 - Cached values must not include direct identifiers (participants are anonymous) and must not include any secrets.
+- JWT verification in Route Handlers uses `jose`: ES256 via JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`) as primary; HS256 with `SUPABASE_JWT_SECRET` as fallback.
+- Redis client (`@upstash/redis`) is instantiated only when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set; handlers degrade gracefully without them.
+- Current cache key: `ww:ra:dashboard:v1` (TTL 300 s). Increment version string when bundle shape changes.
 
 ### Styling
 - Tailwind utility classes only
@@ -129,6 +140,7 @@ Follow this sequence when adding any new instrument in future phases:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key (frontend auth; only if auth enabled) |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (server-side only; provided by Vercel integration or set for local dev). |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (server-side only; provided by Vercel integration or set for local dev). |
+| `DAYLIGHT_START_LOCAL_TIME` | Local clock time `HH:MM` used to compute `participants.daylight_exposure_minutes` (default `06:00` in `America/Vancouver`). |
 | `WEATHER_INGEST_SHARED_SECRETS` | Comma-separated shared secrets accepted by `POST /weather/ingest/ubc-eos` (GitHub Actions path). |
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | Cooldown window (seconds) for per-station ingestion (default 600). |
 
@@ -139,7 +151,7 @@ Follow this sequence when adding any new instrument in future phases:
 > Canonical feature spec: `docs/WEATHER_INGESTION.md`
 
 Rules:
-- Weather ingestion is **day-level** (local day `America/Edmonton`), not hourly-series.
+- Weather ingestion is **day-level** (local day `America/Vancouver`), not hourly-series.
 - Use `study_days` as the relational day key for both `sessions` and `weather_daily`.
 - The ingest endpoint must enforce:
   - per-station cooldown (default 10 minutes)

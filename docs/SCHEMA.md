@@ -41,8 +41,8 @@ sessions (1) ──────────────────── (1) su
 | Column       | Type        | Constraints            | Notes |
 |--------------|-------------|------------------------|------|
 | study_day_id | UUID        | PK                     | Generated server-side |
-| date_local   | DATE        | UNIQUE, NOT NULL       | Local day in `America/Edmonton` |
-| tz_name      | VARCHAR     | NOT NULL               | Default `"America/Edmonton"` |
+| date_local   | DATE        | UNIQUE, NOT NULL       | Local day in `America/Vancouver` |
+| tz_name      | VARCHAR     | NOT NULL               | Default `"America/Vancouver"` |
 | created_at   | TIMESTAMPTZ | DEFAULT NOW()          |      |
 
 **Purpose:** Provide a stable relational key for day-level analysis joins without relying on
@@ -93,7 +93,7 @@ Constraints/indexes (planned):
 |-----------------------|-------------|---------------|-------|
 | run_id                | UUID        | PK            | Generated server-side |
 | station_id            | INT         | NOT NULL      | 3510 |
-| date_local            | DATE        | NOT NULL      | Local day (America/Edmonton) of the ingestion attempt |
+| date_local            | DATE        | NOT NULL      | Local day (America/Vancouver) of the ingestion attempt |
 | ingested_at           | TIMESTAMPTZ | DEFAULT NOW() | Debug/ops |
 | requested_via         | VARCHAR     | NOT NULL      | `github_actions` or `ra_manual` |
 | requested_by_lab_member_id | UUID   | NULLABLE      | From JWT `sub` when RA triggers |
@@ -132,9 +132,24 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | age_band           | VARCHAR        | NULLABLE          | Planned (T47). Stores categorical age band (e.g. "18-24") |
 | gender             | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
 | origin             | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
+| origin_other_text  | VARCHAR        | NULLABLE          | Planned (T47). Detail when `origin` is `"Other"` (length-limited; avoid PII) |
 | commute_method     | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
+| commute_method_other_text | VARCHAR | NULLABLE          | Planned (T47). Detail when `commute_method` is `"Other"` (length-limited; avoid PII) |
 | time_outside       | VARCHAR        | NULLABLE          | Planned (T47). Stored as categorical label from instruments |
-| daylight_exposure_minutes | INT     | NULLABLE          | Planned (T47). Derived minutes value from legacy `daytime` column |
+| daylight_exposure_minutes | INT     | NULLABLE          | Planned (T47). Minutes since `DAYLIGHT_START_LOCAL_TIME` (default 06:00 local) at session start time |
+
+**Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
+- `participant ID` → `participants.participant_number` (upsert key)
+- `age` → `participants.age_band` (whitespace-trimmed; canonicalize obvious variants like `Over 38` → `>38`)
+- `gender` → `participants.gender` (trim; canonicalize obvious variants like `Man ` → `Man`)
+- `origin` → `participants.origin` (trim)
+- If `origin` is an “Other” category, the free-text detail (if present) is stored in `participants.origin_other_text`.
+- `commute_method` → `participants.commute_method` (trim)
+- If `commute_method` is an “Other” category, the free-text detail (if present) is stored in `participants.commute_method_other_text`.
+- `time_outside` → `participants.time_outside` (trim; canonicalize capitalization/wording variants where safe)
+- `daytime` → used as the imported session start time-of-day to compute `participants.daylight_exposure_minutes` (nullable; minutes since daylight start)
+
+**Sessions relationship note (Phase 3):** The DB schema allows multiple sessions per participant, but the supervised experiment workflow targets a 1:1 participant↔session relationship. Import validation enforces “0 or 1 sessions per participant” to avoid ambiguity.
 
 ---
 
@@ -166,9 +181,13 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | loneliness_mean    | DOUBLE PRECISION | NULLABLE    | Legacy import column `loneliness` (aggregate/mean) |
 | depression_mean    | DOUBLE PRECISION | NULLABLE    | Legacy import column `depression` (aggregate/mean) |
 | digit_span_max_span| INT         | NULLABLE          | Legacy import column `digit_span_score` mapped to max span |
-| self_report        | DOUBLE PRECISION | NULLABLE    | Legacy import column `self_report` (mapping TBD) |
+| self_report        | DOUBLE PRECISION | NULLABLE    | Legacy import column `self_report` (stored as provided) |
 | source_row_json    | JSONB       | NOT NULL          | Full raw row payload for audit/future remapping |
 | created_at         | TIMESTAMPTZ | DEFAULT NOW()     | |
+
+**Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
+- Measures map 1:1 from columns `precipitation`, `temperature`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
+- `source_row_json` stores the complete row (including demographic fields and the original `date`) to preserve auditability and enable future remapping without re-uploading the original file.
 
 ---
 
@@ -287,5 +306,5 @@ Canonical (planned) join key is `study_day_id` via `study_days`.
 Temporary fallback (no FK) join key is local-day derivation:
 
 ```sql
-timezone('America/Edmonton', sessions.completed_at)::date
+timezone('America/Vancouver', sessions.completed_at)::date
 ```

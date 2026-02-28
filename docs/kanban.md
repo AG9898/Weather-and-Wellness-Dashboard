@@ -185,7 +185,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T41",
       "title": "Frontend infra — Upstash Redis cache + RA JWT verification (Vercel route)",
-      "status": "todo",
+      "status": "done",
       "description": "Add a Next.js Route Handler on Vercel that verifies Supabase JWTs and serves a cached dashboard bundle from Upstash Redis (Vercel integration), with a live fetch path that refreshes the cache.",
       "depends_on": [
         "T40"
@@ -218,7 +218,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T42",
       "title": "Frontend — typed API wrappers + RA dashboard stale-while-revalidate",
-      "status": "todo",
+      "status": "done",
       "description": "Add typed frontend API wrappers for the new cached dashboard route and refactor the RA dashboard to load cached data first, then refresh from live data (stale-while-revalidate).",
       "depends_on": [
         "T41"
@@ -244,7 +244,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T43",
       "title": "Frontend — eliminate extra cold-start fetches on dashboard (WeatherCard)",
-      "status": "todo",
+      "status": "done",
       "description": "Refactor the dashboard WeatherCard to use the cached/live dashboard bundle for its initial state so it does not independently trigger a cold-start fetch on mount.",
       "depends_on": [
         "T42"
@@ -270,7 +270,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T44",
       "title": "Docs/runbook — Vercel Upstash cache setup (env vars + verification)",
-      "status": "todo",
+      "status": "done",
       "description": "Document the Upstash (Vercel integration) setup, required Vercel env vars, local dev env setup, and a smoke-test checklist for cache hit/miss and auth gating.",
       "depends_on": [
         "T41"
@@ -299,7 +299,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T45",
       "title": "Verification — production smoke test and cold-start UX check",
-      "status": "todo",
+      "status": "done",
       "description": "Validate that the RA dashboard loads quickly from cache on repeated visits and still refreshes correctly from the live backend, including behavior during a Render cold start.",
       "depends_on": [
         "T43",
@@ -327,7 +327,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T46",
       "title": "Docs/spec — Phase 3 admin import/export + UI cleanup + consent + demographics + dashboard filtering",
-      "status": "todo",
+      "status": "done",
       "description": "Write decision-complete docs for the Phase 3 feature set after T45: Import/Export page + backend endpoints, export formats (CSV/XLSX), UI cleanup (remove /participants and /sessions pages), consent gating page (no DB record), demographic attribute mapping, and dashboard filtering scope. Update the core decisions log to allow admin export (CSV/XLSX).",
       "depends_on": [
         "T45"
@@ -368,7 +368,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T47",
       "title": "DB schema — demographics columns + imported measures table (alembic)",
       "status": "todo",
-      "description": "Add participant demographic columns (age band, gender, origin, commute method, time outside, daylight exposure minutes) and add a 1:1 imported measures table for legacy aggregate outcomes. Use Alembic migration only; update models and SCHEMA.md.",
+      "description": "Add participant demographic columns (age band, gender, origin, origin_other_text, commute method, commute_method_other_text, time outside, daylight exposure minutes) and add a 1:1 imported measures table for legacy aggregate outcomes. Daylight exposure is stored on participants (derived minutes since the configured daylight-start local time). Use Alembic migration only; update models and SCHEMA.md.",
       "depends_on": [
         "T46"
       ],
@@ -382,7 +382,7 @@ Follow current JSON Schema when adding tasks.
         "docs/DECISIONS.md"
       ],
       "acceptance_criteria": [
-        "Alembic migration adds demographic columns to participants (nullable)",
+        "Alembic migration adds demographic/exposure columns to participants (nullable), including origin_other_text and commute_method_other_text",
         "Alembic migration adds imported_session_measures (1:1 with sessions) for legacy aggregate values",
         "SQLAlchemy models and Pydantic schemas updated; SCHEMA.md reflects the applied migration"
       ],
@@ -392,12 +392,45 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
+      "id": "T47a",
+      "title": "Backend infra — study timezone and daylight exposure config",
+      "status": "todo",
+      "description": "Standardize day-level semantics (study_days date_local, session→study_day linking, weather_daily day linking, dashboard date filtering) on America/Vancouver. Introduce DAYLIGHT_START_LOCAL_TIME (default 06:00) used to compute participants.daylight_exposure_minutes from a session start time. Update any backend constants/services accordingly and verify docs match code assumptions.",
+      "depends_on": [
+        "T46"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/DECISIONS.md",
+        "docs/WEATHER_INGESTION.md",
+        "docs/SCHEMA.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Backend uses America/Vancouver for study_days date_local derivation and all day-level joins/filters",
+        "DAYLIGHT_START_LOCAL_TIME is supported (default 06:00) and documented; daylight exposure minutes can be computed deterministically",
+        "No schema-enforced 1:1 is introduced for participants↔sessions (workflow-only rule)"
+      ],
+      "updates_docs": [
+        "docs/DECISIONS.md",
+        "docs/WEATHER_INGESTION.md",
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/CONVENTIONS.md",
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
       "id": "T48",
       "title": "Backend — admin import preview/commit (CSV/XLSX) with upsert rules",
       "status": "todo",
-      "description": "Implement RA-only import endpoints that accept CSV/XLSX uploads, validate rows, present a preview with counts/errors, then commit writes on confirmation. Import creates/updates participants by participant_number, creates/updates a complete session per participant, links study_day_id, and stores imported aggregate measures in imported_session_measures. Conflicts: upsert; ambiguous (>1 session for a participant) fails.",
+      "description": "Implement RA-only import endpoints that accept CSV/XLSX uploads, validate rows, present a preview with counts/errors, then commit writes on confirmation. Import upserts participants by participant_number (overwriting demographics) and creates/updates a complete session per participant (workflow 1:1; ambiguous >1 sessions fails). Import links study_day_id from the imported date (America/Vancouver) and stores imported aggregate measures in imported_session_measures with a source_row_json audit payload. Daytime is parsed as a session start time-of-day used to compute participants.daylight_exposure_minutes (minutes since DAYLIGHT_START_LOCAL_TIME).",
       "depends_on": [
-        "T47"
+        "T47",
+        "T47a"
       ],
       "stack": [
         "backend"
@@ -410,8 +443,9 @@ Follow current JSON Schema when adding tasks.
       "acceptance_criteria": [
         "POST /admin/import/preview validates file and returns counts + row-level issues without writing",
         "POST /admin/import/commit performs DB writes matching the preview (transactional; fails cleanly)",
-        "Excel date serials and daytime HH:MM:SS are converted deterministically",
-        "Upsert behavior is documented and tested (create vs update counts match)"
+        "Excel date serials are converted deterministically and interpreted as America/Vancouver study dates",
+        "Daytime values (Excel fractions or HH:MM:SS) are parsed deterministically and used to compute daylight_exposure_minutes via DAYLIGHT_START_LOCAL_TIME",
+        "Import upsert behavior is documented and tested (create vs update counts match) and does not overwrite native survey/digit span rows"
       ],
       "updates_docs": [
         "docs/API.md",
@@ -423,7 +457,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T49",
       "title": "Backend — admin export (XLSX workbook + zipped CSV)",
       "status": "todo",
-      "description": "Implement RA-only export endpoints for current DB data. XLSX: one sheet per table. CSV: zip containing one CSV per table. Filenames: 'Weather and wellness - YYYY-MM-DD.xlsx' and '.zip'.",
+      "description": "Implement RA-only export endpoints for current DB data. XLSX: README sheet plus one sheet per table (schema-faithful; includes join keys). CSV: zip containing one CSV per table (schema-faithful; includes join keys). Filenames: 'Weather and wellness - YYYY-MM-DD.xlsx' and '.zip'.",
       "depends_on": [
         "T48"
       ],
@@ -436,7 +470,7 @@ Follow current JSON Schema when adding tasks.
         "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "GET /admin/export.xlsx returns a workbook with one sheet per table and correct headers",
+        "GET /admin/export.xlsx returns a workbook with a README sheet plus one sheet per table and correct headers",
         "GET /admin/export.zip returns a zip with one CSV per table and correct headers",
         "Both endpoints require RA auth and do not expose secrets"
       ],
@@ -478,7 +512,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T51",
       "title": "Frontend — UI cleanup (remove participants/sessions pages; update nav)",
       "status": "todo",
-      "description": "Remove the RA /participants and /sessions pages from the frontend and remove their navigation links. Ensure dashboard remains the primary RA landing page and add a nav link to Import/Export.",
+      "description": "Remove the RA /participants and /sessions pages from the frontend and remove their navigation links. Ensure dashboard remains the primary RA landing page and add a nav link to Import/Export. Start-session demographics are collected via the dashboard flow (not a separate participants editor).",
       "depends_on": [
         "T50"
       ],
@@ -500,12 +534,74 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
+      "id": "T51a",
+      "title": "Backend — start session requires demographics + daylight exposure compute",
+      "status": "todo",
+      "description": "Extend POST /sessions/start to accept required participant demographics (age band, gender, origin, commute_method, time_outside; plus origin_other_text/commute_method_other_text when applicable), store them on participants, compute daylight_exposure_minutes, and return start_path for the consent-gated flow.",
+      "depends_on": [
+        "T47",
+        "T47a"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md",
+        "docs/DECISIONS.md"
+      ],
+      "acceptance_criteria": [
+        "POST /sessions/start accepts a demographics payload and persists values to participants (no demographics stored on sessions)",
+        "If origin or commute_method is Other, the corresponding *_other_text field is required and persisted",
+        "participants.daylight_exposure_minutes is computed deterministically from session start local time and DAYLIGHT_START_LOCAL_TIME (default 06:00 America/Vancouver)",
+        "start_path returned by /sessions/start is /session/<session_id>/consent"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md",
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T51b",
+      "title": "Frontend — Start New Entry demographics questionnaire (dashboard)",
+      "status": "todo",
+      "description": "Update the RA dashboard Start New Entry flow to require a demographics questionnaire before creating a session. Use preset options derived from the legacy XLSX value set; allow free-text when Other is selected (with no-PII UI copy). Call POST /sessions/start with the payload and route to the returned start_path.",
+      "depends_on": [
+        "T51a"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/API.md",
+        "docs/styleguide.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Start New Entry opens a required demographics form with the specified preset options",
+        "Origin/commute_method Other requires free-text detail before submit and includes a warning not to enter names/PII",
+        "On submit, the dashboard calls the typed API wrapper (no bare fetch) and routes to /session/<id>/consent",
+        "Error states are inline and non-technical; form state is preserved on failure"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
       "id": "T52",
       "title": "Frontend + Backend — consent gating page (no DB record)",
       "status": "todo",
-      "description": "Add a participant consent screen at /session/[session_id]/consent that gates the flow before Survey 1. Consent is not written to the DB (UI-only). Update the one-click start endpoint to return start_path pointing to the consent page.",
+      "description": "Add a participant consent screen at /session/[session_id]/consent that gates the flow before Survey 1. Consent is not written to the DB (UI-only). Ensure the participant flow begins at consent and proceeds to Survey 1 only after explicit acceptance.",
       "depends_on": [
-        "T51"
+        "T51b"
       ],
       "stack": [
         "frontend",
@@ -518,7 +614,6 @@ Follow current JSON Schema when adding tasks.
       ],
       "acceptance_criteria": [
         "Participant flow begins at the consent page and requires explicit acceptance to continue",
-        "POST /sessions/start start_path becomes /session/<session_id>/consent",
         "No consent record is stored in Supabase (UI-only gating)"
       ],
       "updates_docs": [
@@ -531,7 +626,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T53",
       "title": "Dashboard — filtering controls (scope: KPIs + weather)",
       "status": "todo",
-      "description": "Add dashboard filtering controls (initially date range) that affect KPI summaries and weather display where applicable. Cache policy: default view uses cache; filtered views may bypass cache initially.",
+      "description": "Add dashboard filtering controls (initially date range) that affect KPI summaries and weather display where applicable. Weather behavior: if range is one day, show that day's weather; if multi-day, show date_to weather context. Cache policy: default view uses cache; filtered views bypass Redis initially.",
       "depends_on": [
         "T52"
       ],
@@ -546,8 +641,9 @@ Follow current JSON Schema when adding tasks.
       ],
       "acceptance_criteria": [
         "Dashboard provides date-range filtering controls with clear defaults",
-        "Backend supports filtered summary reads (new or extended endpoint) without breaking existing callers",
-        "Cache behavior for filtered vs default view is documented"
+        "Backend supports filtered summary reads (GET /dashboard/summary/range) without breaking existing callers",
+        "Filtered requests interpret date_from/date_to in America/Vancouver and use inclusive local-day windows",
+        "Cache behavior for filtered vs default view is documented and matches implementation"
       ],
       "updates_docs": [
         "docs/API.md",
@@ -560,7 +656,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T54",
       "title": "Verification — import/export + consent + UI cleanup smoke tests",
       "status": "todo",
-      "description": "Run end-to-end smoke tests for import preview/commit, export downloads, consent gating, and the cleaned RA navigation. Record results in PROGRESS.md.",
+      "description": "Run end-to-end smoke tests for start-session demographics, consent gating, import preview/commit, export downloads, dashboard filtering, and the cleaned RA navigation. Record results in PROGRESS.md.",
       "depends_on": [
         "T53"
       ],
@@ -575,9 +671,11 @@ Follow current JSON Schema when adding tasks.
         "docs/ARCHITECTURE.md"
       ],
       "acceptance_criteria": [
+        "Start New Entry requires demographics and routes to consent; participants row has demographics + daylight_exposure_minutes set",
         "Import preview and commit run successfully on a small sample and the reference XLSX",
         "Exported XLSX and CSV zip contain expected tables/sheets and correct filenames",
         "Consent page gates the participant flow before Survey 1",
+        "Dashboard filtering works for single-day and multi-day ranges (weather uses date_to for multi-day)",
         "Removed pages are not accessible and nav reflects the new IA",
         "Results are recorded in PROGRESS.md with dates"
       ],

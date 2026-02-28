@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   apiGet,
+  getDashboardBundle,
   startSession,
   ApiError,
   type DashboardSummaryResponse,
+  type WeatherDailyResponse,
   type SessionListResponse,
   type SessionListItemResponse,
 } from "@/lib/api";
@@ -40,7 +42,7 @@ interface KpiCardProps {
   label: string;
   value: number | string;
   icon: React.ReactNode;
-  accent?: string; // tailwind text-* class for the icon wrapper bg tint
+  accent?: string;
 }
 
 function KpiCard({ label, value, icon, accent = "bg-primary/15" }: KpiCardProps) {
@@ -66,14 +68,12 @@ function SessionRow({ session }: { session: SessionListItemResponse }) {
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-border last:border-0">
       <div className="flex items-center gap-3 min-w-0">
-        {/* Participant badge */}
         <span
           className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold tabular-nums"
           style={{ background: "var(--ubc-blue-700)", color: "#fff" }}
         >
           #{session.participant_number}
         </span>
-        {/* Session ID */}
         <span className="truncate font-mono text-xs text-muted-foreground">
           {session.session_id.slice(0, 8)}…
         </span>
@@ -98,9 +98,16 @@ function SessionRow({ session }: { session: SessionListItemResponse }) {
 export default function DashboardPage() {
   const router = useRouter();
 
+  // Summary + weather — populated from cache (fast) then updated by live refresh
   const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
+  const [weatherData, setWeatherData] = useState<WeatherDailyResponse | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
+  // Sessions list — populated from live fetch only (not cached)
   const [sessions, setSessions] = useState<SessionListItemResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+
+  // Non-blocking error: only shown when we have no data to display at all
   const [error, setError] = useState<string | null>(null);
 
   const [starting, setStarting] = useState(false);
@@ -127,25 +134,61 @@ export default function DashboardPage() {
       }
       setStarting(false);
     }
-    // On success: keep starting=true; button stays disabled while navigation is in flight
   };
 
+  // Track whether we already have cached summary data so a live-fetch error
+  // doesn't wipe out a successfully displayed cached view.
+  const hasCachedSummaryRef = useRef(false);
+
   useEffect(() => {
-    const fetchAll = async () => {
+    let cancelled = false;
+
+    const load = async () => {
+      // ── Phase 1: cached bundle (fast path — avoids Render cold-start wait) ──
       try {
-        const [summaryData, sessionsData] = await Promise.all([
-          apiGet<DashboardSummaryResponse>("/dashboard/summary", { auth: true }),
+        const cached = await getDashboardBundle("cached");
+        if (!cancelled && cached.cached && cached.data) {
+          setSummary(cached.data.summary);
+          setWeatherData(cached.data.weather);
+          setSummaryLoading(false);
+          hasCachedSummaryRef.current = true;
+        }
+      } catch {
+        // Cache unavailable or auth error — proceed to live
+      }
+
+      // ── Phase 2: live refresh + sessions list (in parallel) ──────────────
+      try {
+        const [liveRes, sessionsData] = await Promise.all([
+          getDashboardBundle("live"),
           apiGet<SessionListResponse>("/sessions?page_size=8", { auth: true }),
         ]);
-        setSummary(summaryData);
-        setSessions(sessionsData.items);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load dashboard");
+        if (!cancelled) {
+          if (liveRes.data) {
+            setSummary(liveRes.data.summary);
+            setWeatherData(liveRes.data.weather);
+          }
+          setSessions(sessionsData.items);
+        }
+      } catch {
+        // Only surface an error banner when we have no data to show at all
+        if (!cancelled && !hasCachedSummaryRef.current) {
+          setError(
+            "Unable to load dashboard data. You can still start a new entry."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setSummaryLoading(false);
+          setSessionsLoading(false);
+        }
       }
     };
-    fetchAll();
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const totalSessions = summary
@@ -160,7 +203,6 @@ export default function DashboardPage() {
         className="relative overflow-hidden rounded-2xl border border-border px-8 py-10 mb-8"
         style={{ background: "var(--card)" }}
       >
-        {/* Subtle blue glow accent top-right */}
         <div
           className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full blur-3xl opacity-20"
           style={{ background: "var(--ubc-blue-600)" }}
@@ -212,18 +254,23 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Error state ──────────────────────────────────── */}
+      {/* ── Error state (only when no data available at all) ─ */}
       {error && (
         <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
+      {/* ── Weather card ─────────────────────────────────── */}
+      <div className="mb-8">
+        <WeatherCard weather={weatherData} />
+      </div>
+
       {/* ── KPI cards ────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 mb-8">
         <KpiCard
           label="Participants"
-          value={loading ? "—" : (summary?.total_participants ?? 0)}
+          value={summaryLoading ? "—" : (summary?.total_participants ?? 0)}
           accent="bg-primary/15"
           icon={
             <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,7 +280,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="Active Sessions"
-          value={loading ? "—" : (summary?.sessions_active ?? 0)}
+          value={summaryLoading ? "—" : (summary?.sessions_active ?? 0)}
           accent="bg-emerald-500/15"
           icon={
             <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,7 +290,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="Total Sessions"
-          value={loading ? "—" : totalSessions}
+          value={summaryLoading ? "—" : totalSessions}
           accent="bg-accent/15"
           icon={
             <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,7 +300,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="Created (7d)"
-          value={loading ? "—" : (summary?.sessions_created_last_7_days ?? 0)}
+          value={summaryLoading ? "—" : (summary?.sessions_created_last_7_days ?? 0)}
           accent="bg-ring/15"
           icon={
             <svg className="w-4 h-4 text-ring" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,7 +310,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="Completed (7d)"
-          value={loading ? "—" : (summary?.sessions_completed_last_7_days ?? 0)}
+          value={summaryLoading ? "—" : (summary?.sessions_completed_last_7_days ?? 0)}
           accent="bg-primary/15"
           icon={
             <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,11 +318,6 @@ export default function DashboardPage() {
             </svg>
           }
         />
-      </div>
-
-      {/* ── Weather card ─────────────────────────────────── */}
-      <div className="mb-8">
-        <WeatherCard />
       </div>
 
       {/* ── Recent sessions ──────────────────────────────── */}
@@ -296,7 +338,7 @@ export default function DashboardPage() {
           className="rounded-2xl border border-border overflow-hidden"
           style={{ background: "var(--card)" }}
         >
-          {loading ? (
+          {sessionsLoading ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               Loading…
             </div>

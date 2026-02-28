@@ -169,6 +169,16 @@ cd frontend && npm run dev
 
 ### 3) Smoke test checklist
 
+**Route handler (T41 — implemented 2026-02-28):**
+
+- [ ] `GET /api/ra/dashboard` with no `Authorization` header → 401 `{"detail":"Missing Authorization header"}`
+- [ ] `GET /api/ra/dashboard` with an invalid token → 401 `{"detail":"Invalid or expired token"}`
+- [ ] `GET /api/ra/dashboard?mode=live` with a valid RA JWT → 200 `{ cached: false, data: { summary, weather, cached_at } }`
+- [ ] `GET /api/ra/dashboard?mode=cached` immediately after live → 200 `{ cached: true, data: … }` (Redis hit)
+- [ ] `GET /api/ra/dashboard?mode=cached` when Redis is unavailable (unset env vars) → 200 `{ cached: false, data: null }` (graceful miss)
+
+**Dashboard UX (T42–T43 — requires further tasks):**
+
 - [ ] Visit `/dashboard` twice within 5 minutes: second visit should render immediately from cache while live refresh runs.
 - [ ] Trigger a live refresh (reload after TTL or wait): dashboard should update once Render responds.
 - [ ] Without a valid Supabase session (or with an invalid token), `/api/ra/dashboard` should return 401.
@@ -191,6 +201,14 @@ cd backend
 pip install -r requirements.txt
 ```
 
+### 1b) Backend environment variables (Phase 3)
+
+Optional env vars (Render and local dev):
+
+| Variable | Default | Notes |
+|---|---:|---|
+| `DAYLIGHT_START_LOCAL_TIME` | `06:00` | Local clock time used to compute `participants.daylight_exposure_minutes` at session start (study TZ: `America/Vancouver`). |
+
 ### 2) DB migration
 
 After the Phase 3 migration task (T47) is implemented:
@@ -202,14 +220,29 @@ cd backend && alembic upgrade head
 ### 3) Smoke test checklist (developer-owned)
 
 - [ ] Sign in as RA and visit `/import-export`.
+- [ ] Verify auth protection:
+  - [ ] `POST /admin/import/preview` with no/invalid JWT → 401
+  - [ ] `POST /admin/import/commit` with no/invalid JWT → 401
+  - [ ] `GET /admin/export.xlsx` with no/invalid JWT → 401
+  - [ ] `GET /admin/export.zip` with no/invalid JWT → 401
 - [ ] Import preview: upload `reference/data_full_1-230.xlsx` and confirm the preview shows total rows and create/update counts.
+- [ ] Import preview performs **no writes**: before/after preview, verify table row counts are unchanged in Supabase Studio (especially `sessions` and `imported_session_measures`).
 - [ ] Import commit: click Confirm and verify a success summary (created vs updated counts).
+- [ ] Import commit is **transactional**: introduce a deliberate validation error (e.g. blank a required `participant ID` cell in a copy of the file) and verify commit fails cleanly with **no partial writes**.
 - [ ] Verify in Supabase Studio:
   - `participants` has demographic columns populated (where present in the import)
   - `sessions` includes complete sessions created/updated by the import
   - `imported_session_measures` contains the imported aggregate values
 - [ ] Export XLSX downloads and opens; file name matches `Weather and wellness - YYYY-MM-DD.xlsx`.
 - [ ] Export CSV downloads as a zip; file name matches `Weather and wellness - YYYY-MM-DD.zip`; each CSV has headers.
+- [ ] Export content sanity check:
+  - XLSX includes one sheet per app table (participants, sessions, surveys, digit span, weather, and imported measures).
+  - CSV zip includes one CSV per app table with matching headers.
+- [ ] Start New Entry demographics questionnaire:
+  - [ ] On `/dashboard`, click "Start a New Entry" and confirm a required demographics form appears.
+  - [ ] Selecting `Other` for origin/commute requires a free-text detail before continuing.
+  - [ ] Submitting the form creates a session and routes to `/session/<id>/consent`.
+  - [ ] Verify in Supabase Studio: `participants` row has demographics populated and `daylight_exposure_minutes` set (when applicable).
 
 ---
 

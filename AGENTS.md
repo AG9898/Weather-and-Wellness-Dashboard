@@ -24,8 +24,13 @@ admin exports (CSV/XLSX). Two roles: authenticated LabMember (RA) and unauthenti
 - **Client timing, server scoring.** Frontend handles digit presentation timing only. All scores computed in FastAPI. Never score on the client.
 - **UUID identity.** All result tables FK to `participant_uuid`. Participants are anonymous; do not collect or store names or other direct identifiers.
 - **Session-scoped data.** Every result row references both `participant_uuid` AND `session_id`. No orphaned rows.
+- **Consent gating is UI-only.** The consent screen gates the participant flow but does not write a consent row/flag to Supabase.
+- **Study timezone is fixed.** Day-level semantics (study days, weather linking, dashboard date filtering) use `America/Vancouver`.
+- **Daylight exposure is derived.** Store `participants.daylight_exposure_minutes` as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local) at session start time.
 - **No participant-facing export.** Participants never download data. Lab access remains via Supabase Studio by default.
 - **Admin Import/Export (Phase 3) is allowed.** RA-only Import/Export may provide controlled CSV/XLSX downloads and legacy imports. Keep endpoints RA-protected (`Depends(get_current_lab_member)`); do not expose secrets; avoid adding PII.
+- **RA navigation is minimal.** RA UI centers on `/dashboard` with an admin-only `/import-export` page; avoid reintroducing participant/session list UIs unless explicitly requested.
+- **Start-session demographics are required (Phase 3).** The RA must select demographic values (preset options) before creating a new participant+session; store values on `participants` only.
 - **Auth adapter.** `Depends(get_current_lab_member)` on all RA endpoints. Isolate Supabase JWT/SDK logic in `backend/app/auth.py`.
 - **No bare fetch.** All frontend API calls go through typed wrappers in `src/lib/api/`. Never call `fetch` directly from a component.
 - **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.

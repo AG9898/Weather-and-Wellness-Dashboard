@@ -66,7 +66,10 @@ Neon would be preferred if DB branching were a priority and a separate auth solu
 endpoint and UI add scope and complexity without clear benefit at this stage. Can be
 revisited in Phase 2 if lab workflows require it.
 
-**Affects:** No export endpoint or UI tasks. All data stays in the Supabase DB.
+**Superseded:** Phase 3 explicitly adds RA-only export endpoints and an admin Export UI (see **RESOLVED-11**).
+This decision remains true for **Phase 1** scope only.
+
+**Affects:** Phase 1 has no export endpoint or UI tasks. Data stays in the Supabase DB; Phase 3 adds controlled admin exports.
 
 ---
 
@@ -84,6 +87,40 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 
 **Affects:** Phase 3 tasks that add admin endpoints/UI and DB mapping tables. Update `AGENTS.md`, `docs/API.md`,
 `docs/SCHEMA.md`, `docs/DESIGN_SPEC.md`, and `docs/devSteps.md` before implementation.
+
+---
+
+### RESOLVED-12 — Study Timezone + Daylight Exposure Rule (Phase 3)
+
+**Resolved:** 2026-02-28
+
+**Decision:**
+- The study’s day-level semantics use timezone `America/Vancouver` for:
+  - `study_days.date_local`
+  - session → study day linking (`sessions.study_day_id`)
+  - weather_daily day linking (`weather_daily.study_day_id`)
+  - dashboard date-range filtering
+- Participant daylight exposure (`participants.daylight_exposure_minutes`) is computed as minutes since the local “daylight start” time:
+  - `daylight_exposure_minutes = max(0, minutes_between(DAYLIGHT_START_LOCAL_TIME, session_start_local_time))`
+  - Default `DAYLIGHT_START_LOCAL_TIME` is `06:00` in `America/Vancouver` and must be configurable.
+
+**Why:** Day-level analyses and UI filtering should match a single local day boundary. Daylight exposure is a derived participant attribute based on the session start time relative to a fixed local “daylight start”.
+
+**Affects:** docs/WEATHER_INGESTION.md, docs/SCHEMA.md, docs/API.md, docs/DESIGN_SPEC.md, backend weather/session day-linking logic, Phase 3 import/start-session implementations.
+
+---
+
+### RESOLVED-13 — Start Session Requires Demographics (Phase 3)
+
+**Resolved:** 2026-02-28
+
+**Decision:** The RA “Start New Entry” flow requires selecting participant demographics (preset options) before creating a participant+session. Values are stored on `participants` only:
+- `age_band`, `gender`, `origin`, `commute_method`, `time_outside`
+- If `origin` or `commute_method` is `"Other"`, store the free-text detail in a dedicated `*_other_text` column (length-limited; UI warns against PII).
+
+**Why:** Demographics are required for the experiment but must remain participant-anonymous. Collecting them at session start makes the workflow consistent and removes the need for separate participant-edit screens.
+
+**Affects:** docs/DESIGN_SPEC.md, docs/API.md (`POST /sessions/start`), docs/SCHEMA.md (`participants` columns), frontend dashboard start flow.
 
 ---
 
@@ -158,7 +195,7 @@ constraints while preserving idempotent ingestion behavior.
 
 **Resolved:** 2026-02-26
 
-**Decision:** Add a `study_days` dimension table keyed by `date_local` (America/Edmonton) and link:
+**Decision:** Add a `study_days` dimension table keyed by `date_local` (`America/Vancouver`) and link:
 - `sessions.study_day_id -> study_days.study_day_id`
 - `weather_daily.study_day_id -> study_days.study_day_id`
 

@@ -17,6 +17,25 @@
 
 ---
 
+## Vercel Cache Route Handler
+
+`GET /api/ra/dashboard?mode=cached|live` is a Next.js Route Handler that runs server-side on Vercel.
+
+| Mode | Behaviour |
+|---|---|
+| `cached` | Reads bundle from Upstash Redis (`ww:ra:dashboard:v1`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
+| `live` | Fetches `/dashboard/summary` + `/weather/daily` from the Render backend in parallel. Writes the result bundle to Redis (TTL 300 s). Returns `{ cached: false, data }`. |
+
+**Auth:** The handler verifies the Supabase JWT from `Authorization: Bearer <token>` before touching the cache or making backend calls. No auth bypass via cache. Returns 401 for missing or invalid tokens.
+
+**Redis credentials** (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`) are server-only Vercel env vars provided by the Upstash integration. The handler degrades gracefully when these vars are absent (falls back to live-only path).
+
+**Bundle type:** `{ summary: DashboardSummaryResponse, weather: WeatherDailyResponse, cached_at: string }` — no PII, no secrets.
+
+**Cache key:** `ww:ra:dashboard:v1` — versioned prefix allows safe invalidation on schema changes.
+
+---
+
 ## Auth (Optional)
 
 - If Supabase Auth is enabled, Next.js obtains a JWT and sends
@@ -90,4 +109,5 @@ Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 
 - All results are linked by `participant_uuid` and `session_id`.
 - Participants are anonymous: do not collect or store names or other direct identifiers.
+- Day-level semantics (study days, weather day linking, dashboard filtering) use the study timezone `America/Vancouver`.
 - Schema details live in `docs/SCHEMA.md`.

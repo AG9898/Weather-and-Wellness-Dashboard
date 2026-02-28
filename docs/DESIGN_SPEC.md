@@ -1,4 +1,4 @@
-# Design Spec — Phase 1 + Phase 2
+# Design Spec — Phase 1 + Phase 2 + Phase 3 (planned)
 
 Visual language baseline: [docs/styleguide.md](styleguide.md)
 
@@ -9,19 +9,20 @@ Visual language baseline: [docs/styleguide.md](styleguide.md)
 
 ## RA Flow
 1. Login
-2. Start new entry (one click)
-3. Backend creates anonymous participant + active session automatically
-4. RA is redirected into the participant test flow (no copy-link step)
+2. Start new entry (demographics questionnaire required)
+3. Backend creates anonymous participant + active session automatically (participant demographics stored on `participants`)
+4. RA is redirected into the participant test flow (no copy-link step; begins at consent)
 5. After completion, return to RA dashboard; KPIs reflect the new complete session
 6. View data via Supabase Studio
 
 ## Participant Flow
-1. ULS-8 survey
-2. CES-D 10 survey
-3. GAD-7 survey
-4. Cognitive Function 8a survey
-5. Digit Span instructions → practice trial → 14 scored trials → session marked complete
-6. Completion screen (thank you) → return to RA dashboard
+1. Consent (UI-only gating; no DB record) (planned)
+2. ULS-8 survey
+3. CES-D 10 survey
+4. GAD-7 survey
+5. Cognitive Function 8a survey
+6. Digit Span instructions → practice trial → 14 scored trials → session marked complete
+7. Completion screen (thank you) → return to RA dashboard
 
 ---
 
@@ -125,6 +126,11 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 </html>
 ```
 
+**Information architecture (Phase 3 planned):**
+- `/dashboard` remains the primary RA landing page.
+- `/import-export` is added for admin data operations.
+- Legacy RA pages `/participants` and `/sessions` are removed from navigation and routes (see T51). The backend endpoints remain available for internal operations and debugging.
+
 ### Participant Pages (`/session/[id]/*`)
 ```
 <html class="dark">
@@ -141,17 +147,38 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
 1. **Weather card** — top-of-page card showing the last fetched weather data for today (current temp, forecast high/low, condition text) plus ingest run status (success/partial/fail and time-ago). Includes an "Update Weather" action.
-2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("One click enrols an anonymous participant and opens a supervised session immediately"), primary shadcn `Button` (size lg, ubc-blue-700) that calls `startSession()` and redirects into the participant flow. Shows spinner + "Starting…" while in flight; non-technical inline error message on failure.
+2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Collect participant details and open a supervised session immediately"), primary shadcn `Button` (size lg, ubc-blue-700) that opens a required demographics questionnaire. On submit, calls `startSession(payload)` and redirects into the participant flow. Shows spinner + "Starting…" while in flight; non-technical inline error message on failure.
 3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
 
-**Data loading (T41+):**
+**Start New Entry questionnaire (Phase 3 planned):**
+- Required fields (preset options) are based on the current legacy import value set (`reference/data_full_1-230.xlsx`):
+  - **Age band:** `Under 18`, `18-24`, `25-31`, `32-38`, `>38`
+  - **Gender:** `Woman`, `Man`, `Non-binary`, `Prefer not to say`
+  - **Origin:** `Home`, `Work`, `Class`, `Library`, `Gym/Recreation Center`, `Other` (if `Other`, require free-text detail)
+  - **Commute method:** `Walk`, `Transit`, `Car`, `Bike/Scooter`, `Other` (if `Other`, require free-text detail)
+  - **Time outside:** `Never (0-30 minutes)`, `Rarely (31 minutes- 60 minutes)`, `Sometimes (61 minutes - 90 minutes)`, `Often (over 90 minutes)`
+- “Other” free-text inputs must include UI copy warning against entering names/PII and are stored in dedicated DB columns (`origin_other_text`, `commute_method_other_text`).
+- Backend computes `participants.daylight_exposure_minutes` at session start as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, `America/Vancouver`); this value is not shown to participants.
+- The supervised workflow treats participant↔session as 1:1 (a new participant is created for each new session); the DB does not enforce this constraint.
+
+**Data loading (T41–T43, implemented):**
 - Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then refresh from the live Render backend and update the UI when fresh data arrives.
-- The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather status/info.
+- The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather data (`WeatherDailyResponse`).
+- WeatherCard receives data from the bundle via the `weather` prop — no independent on-mount fetch. Manual "Update Weather" button still works (triggers ingest, overrides displayed run status locally).
 
 Loading state shows `—` in KPI values and weather card skeleton/loading text. Error state shows an inline destructive banner.
 
 **Filtering (planned):**
-- Dashboard will add date-range filtering controls for KPI summaries. Default view uses cache; filtered views may bypass cache initially.
+- Dashboard adds a date-range filter control that affects:
+  - the **Created** KPI (sessions created within the selected range), and
+  - the **Completed** KPI (sessions completed within the selected range),
+  - and the weather card **date context** (see below).
+- Default view (no custom range selected) uses the cached dashboard bundle (`/api/ra/dashboard?mode=cached` then SWR live refresh).
+- Filtered views bypass Redis initially and fetch live from Render using the planned `/dashboard/summary/range` contract plus `GET /weather/daily` for the selected date.
+
+**Weather behavior under filtering (planned):**
+- If the selected range is a single day (`date_from == date_to`), the weather card shows that day's `weather_daily` (if present).
+- If the selected range spans multiple days, the weather card shows the **end date** (`date_to`) as the most relevant day context for the filtered KPIs.
 
 ---
 
@@ -161,6 +188,7 @@ Loading state shows `—` in KPI values and weather card skeleton/loading text. 
 
 - Displays consent content and requires an explicit "I consent" checkbox before continuing.
 - No consent record is written to the database (UI-only gating).
+- Continue routes to Survey 1 (`/session/[id]/uls8`).
 
 ### Digit Span Task (`/session/[id]/digitspan`)
 
@@ -196,8 +224,9 @@ The Import/Export page at `/import-export` is RA-only and contains two sections:
    - UI shows a confirmation panel including the number of participants/sessions that will be created/updated.
    - A single explicit "Confirm import" action performs the write.
 2. **Export** — two download buttons:
-   - Export XLSX: one workbook with one sheet per DB table. Filename: `Weather and wellness - YYYY-MM-DD.xlsx`
+   - Export XLSX: one workbook with a README sheet plus one sheet per DB table. Filename: `Weather and wellness - YYYY-MM-DD.xlsx`
    - Export CSV: a zip containing one CSV per DB table. Filename: `Weather and wellness - YYYY-MM-DD.zip`
+   - Exports are schema-faithful and include join keys (`participant_uuid`, `session_id`, `study_day_id` where applicable) so tables can be linked offline.
 
 ---
 

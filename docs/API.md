@@ -32,6 +32,7 @@
 | Method | Path | Auth | Status | Implemented by |
 |--------|------|------|--------|----------------|
 | GET    | /dashboard/summary | RA | implemented | T20 |
+| GET    | /dashboard/summary/range | RA | planned | T53 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
@@ -74,10 +75,38 @@
 
 ---
 
+### GET /dashboard/summary/range
+- **Auth:** RA required
+- **Status:** planned (T53)
+- **Query parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `date_from` | date `YYYY-MM-DD` | Inclusive start (interpreted as `created_at` / `completed_at` window bounds) |
+| `date_to` | date `YYYY-MM-DD` | Inclusive end |
+
+- **Response:**
+  ```json
+  {
+    "date_from": "YYYY-MM-DD",
+    "date_to": "YYYY-MM-DD",
+    "sessions_created": "integer",
+    "sessions_completed": "integer"
+  }
+  ```
+- **Notes:**
+  - `sessions_created` counts sessions where `created_at` is within `[date_from, date_to]` (inclusive bounds).
+  - `sessions_completed` counts sessions where `completed_at` is within `[date_from, date_to]` (inclusive bounds).
+  - Date bounds are interpreted in the study timezone (`America/Vancouver`) using inclusive local-day windows.
+  - This endpoint supports the Phase 3 dashboard date-range filter without changing the existing `/dashboard/summary` response contract.
+
+---
+
 ## Participants
 
 - **Audit note:** T07 endpoints were reopened on 2026-02-20 due to incomplete/invalid implementation.
 - **T35 (2026-02-27):** Participants are anonymous. `first_name` and `last_name` have been removed from the schema and API. Only `participant_number` is the human-facing identifier.
+- **Phase 3 (planned):** `participants` will store demographic/exposure attributes (age band, gender, origin, commute method, time outside, daylight exposure minutes). These are set via the start-session demographics form and via admin import; there is no participant-facing API for them.
 
 ### POST /participants
 - **Auth:** RA required
@@ -198,7 +227,19 @@
 ### POST /sessions/start
 - **Auth:** RA required
 - **Status:** implemented (T36)
-- **Request body:** None (empty body accepted)
+- **Request body:** Empty body accepted (T36). Phase 3 extends this endpoint to accept participant demographics.
+- **Phase 3 request body (planned):**
+  ```json
+  {
+    "age_band": "string",
+    "gender": "string",
+    "origin": "string",
+    "origin_other_text": "string | null",
+    "commute_method": "string",
+    "commute_method_other_text": "string | null",
+    "time_outside": "string"
+  }
+  ```
 - **Response:**
   ```json
   {
@@ -208,11 +249,16 @@
     "status": "active",
     "created_at": "datetime",
     "completed_at": null,
-    "start_path": "/session/<session_id>/uls8"
+    "start_path": "/session/<session_id>/consent"
   }
   ```
-- **Notes:** One-click flow for supervised sessions. Creates an anonymous participant and an active session atomically (single transaction via `flush` + `commit`), then returns a start path for Survey 1. Session is immediately `active` so participant submissions are accepted on arrival.
-- **Planned change (T52):** `start_path` will change to `/session/<session_id>/consent` so the participant flow is consent-gated before Survey 1. No consent acceptance is stored in the DB (UI-only).
+- **Notes:** Supervised one-click start. Creates an anonymous participant and an active session atomically (single transaction via `flush` + `commit`), then returns a start path for the consent-gated participant flow. Session is immediately `active` so participant submissions are accepted on arrival.
+- **Phase 3 changes (T52 + Phase 3 start form):**
+  - `start_path` becomes `/session/<session_id>/consent` so the participant flow is consent-gated before Survey 1.
+  - No consent record is stored in Supabase (UI-only gating).
+  - When demographics are provided, they are stored on the `participants` row.
+  - Backend validates demographic values against the canonical preset option lists (see `docs/DESIGN_SPEC.md`). If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required.
+  - `participants.daylight_exposure_minutes` is computed at session start time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`).
 
 ---
 
@@ -330,8 +376,8 @@
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `start` | date `YYYY-MM-DD` | — | Start local date (America/Edmonton) |
-| `end` | date `YYYY-MM-DD` | — | End local date (America/Edmonton) |
+| `start` | date `YYYY-MM-DD` | — | Start local date (America/Vancouver) |
+| `end` | date `YYYY-MM-DD` | — | End local date (America/Vancouver) |
 | `station_id` | integer | 3510 | Station id (currently only 3510 supported) |
 
 - **Response:**
@@ -372,6 +418,11 @@
 
 > These endpoints are RA-only and are intended for internal lab administration. They are not participant-facing.
 > Imports must be preview-first (no writes on preview), then explicit commit.
+>
+> Legacy reference file: `reference/data_full_1-230.xlsx` (single-sheet workbook).
+> Expected header columns (exact, case-insensitive, whitespace-trimmed):
+> `participant ID`, `date`, `age`, `gender`, `origin`, `commute_method`, `time_outside`, `precipitation`,
+> `temperature`, `daytime`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
 
 ### POST /admin/import/preview
 - **Auth:** RA required
@@ -405,6 +456,21 @@
 - **Notes:**
   - No DB writes are performed.
   - Preview counts are computed using upsert rules (participants by `participant_number`, sessions by the 1:1 workflow expectation).
+  - Parsing rules (applies to preview and commit):
+    - `participant ID` → integer `participant_number` (required).
+    - `date` → Excel date serial → `date_local` (required). Convert via Excel base date `1899-12-30` with integer days. `date_local` is interpreted in the study timezone (`America/Vancouver`).
+    - `daytime` → imported **session start time-of-day** (optional) used only to compute `participants.daylight_exposure_minutes`:
+      - Accept either Excel time fraction (`0.0–1.0`) meaning fraction of a day, or `HH:MM` / `HH:MM:SS` strings.
+      - Parse to a local clock time (`session_start_local_time`).
+      - Compute `daylight_exposure_minutes = max(0, minutes_between(DAYLIGHT_START_LOCAL_TIME, session_start_local_time))`.
+    - String demographic fields are whitespace-trimmed and normalized to a canonical label set where obvious variants exist
+      (e.g. `"Man "` → `"Man"`, `"Nonbinary person"` → `"Non-binary"`).
+    - If `origin` / `commute_method` is an “Other” category and includes a free-text detail, store it in `origin_other_text` / `commute_method_other_text` (length-limited; avoid PII).
+    - All numeric measures (`precipitation`, `temperature`, `anxiety`, `loneliness`, `depression`, `self_report`) parse as floats; blanks become nulls.
+    - `digit_span_score` parses as integer; blank becomes null.
+  - Storage mapping (commit):
+    - Participant demographics are stored on `participants` (nullable columns planned in T47).
+    - Imported aggregates are stored in `imported_session_measures` (planned in T47) with a full `source_row_json` audit payload.
 
 ### POST /admin/import/commit
 - **Auth:** RA required
@@ -423,14 +489,25 @@
 - **Notes:**
   - Writes must be transactional: if any row fails validation, the commit fails cleanly (no partial import).
   - Imports create or update a complete session per participant and store legacy aggregate values without attempting to reconstruct raw survey item rows.
+  - Upsert rules (decision-complete for T48):
+    - Participant upsert key: `participant_number` (`participants.participant_number`).
+    - Participant demographics overwrite policy: import values overwrite existing stored demographics for the participant (import is authoritative for that participant_id).
+    - Session upsert rule: each participant must have **0 or 1** sessions in the DB:
+      - 0 sessions → create a new session.
+      - 1 session → update that session (only if it contains no native survey/digit span rows; otherwise fail validation).
+      - >1 sessions → fail validation (ambiguous).
+      - Note: the DB does not enforce a 1:1 participant↔session constraint; this is an application/workflow rule to avoid ambiguous imports.
+    - Imported sessions are always written as `status="complete"` and must set `study_day_id` based on the imported `date_local`.
+    - Imported session timestamps: `created_at` and `completed_at` are derived from the imported `date_local` only (legacy `daytime` does not affect session timestamps). Anchor to `12:00` local in `America/Vancouver` and store UTC timestamps.
 
 ### GET /admin/export.xlsx
 - **Auth:** RA required
 - **Status:** planned (T49)
-- **Response:** XLSX workbook download (one sheet per DB table)
+- **Response:** XLSX workbook download (one sheet per DB table + a README sheet)
 - **Headers:**
   - `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
   - `Content-Disposition: attachment; filename="Weather and wellness - YYYY-MM-DD.xlsx"`
+- **Notes:** Export is schema-faithful. Every sheet includes join keys needed to link tables (`participant_uuid`, `session_id`, `study_day_id` where applicable).
 
 ### GET /admin/export.zip
 - **Auth:** RA required
@@ -439,6 +516,7 @@
 - **Headers:**
   - `Content-Type: application/zip`
   - `Content-Disposition: attachment; filename="Weather and wellness - YYYY-MM-DD.zip"`
+- **Notes:** Each CSV is schema-faithful and includes join keys needed to link tables.
 
 ---
 

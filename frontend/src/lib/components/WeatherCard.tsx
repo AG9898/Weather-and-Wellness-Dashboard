@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ApiError,
   triggerWeatherIngest,
-  getWeatherStatus,
+  type WeatherDailyResponse,
   type WeatherLatestRun,
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,11 @@ function timeAgo(iso: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+function formatTemp(c: number | null): string | null {
+  if (c === null) return null;
+  return `${Math.round(c)}°C`;
 }
 
 function getIngestErrorMessage(err: unknown): string {
@@ -41,33 +46,43 @@ const STATUS_BADGE_CLASS: Record<ParseStatus, string> = {
   fail:    "border-red-500/40 bg-red-500/10 text-red-300",
 };
 
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+interface WeatherCardProps {
+  /**
+   * Weather data sourced from the dashboard bundle (cached/live).
+   * null = bundle not yet loaded — shows loading skeleton.
+   */
+  weather: WeatherDailyResponse | null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function WeatherCard() {
-  const [latestRun, setLatestRun] = useState<WeatherLatestRun | null | undefined>(
-    undefined // undefined = still loading; null = no runs yet
-  );
-  const [loadError, setLoadError] = useState<string | null>(null);
-
+export default function WeatherCard({ weather }: WeatherCardProps) {
+  // Override latest_run after a manual ingest without waiting for a full bundle refresh
+  const [ingestOverride, setIngestOverride] = useState<WeatherLatestRun | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateResult, setUpdateResult] = useState<{
     kind: "success" | "error";
     message: string;
   } | null>(null);
 
-  // Load last ingest status on mount
-  useEffect(() => {
-    getWeatherStatus()
-      .then((data) => setLatestRun(data.latest_run))
-      .catch(() => setLoadError("Could not load weather status."));
-  }, []);
+  // Derive display values — ingestOverride wins for latestRun after a manual update
+  const latestRun = ingestOverride ?? weather?.latest_run ?? null;
+  const todayItem = weather?.items[0] ?? null;
+  const isLoading = weather === null;
+
+  const currentTemp = formatTemp(todayItem?.current_temp_c ?? null);
+  const forecastHigh = formatTemp(todayItem?.forecast_high_c ?? null);
+  const forecastLow  = formatTemp(todayItem?.forecast_low_c ?? null);
+  const conditionText = todayItem?.forecast_condition_text ?? null;
 
   async function handleUpdate() {
     setUpdating(true);
     setUpdateResult(null);
     try {
       const result = await triggerWeatherIngest();
-      setLatestRun({
+      setIngestOverride({
         run_id: result.run_id,
         ingested_at: result.ingested_at,
         parse_status: result.parse_status,
@@ -86,17 +101,16 @@ export default function WeatherCard() {
     }
   }
 
-  const isLoading = latestRun === undefined && !loadError;
-
   return (
     <div
       className="rounded-2xl border border-border p-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
       style={{ background: "var(--card)" }}
     >
-      {/* Left — label + status */}
-      <div className="flex flex-col gap-2">
+      {/* Left — label + weather data + status */}
+      <div className="flex flex-col gap-3">
+
+        {/* Section label */}
         <div className="flex items-center gap-2">
-          {/* Cloud icon */}
           <svg
             className="w-4 h-4 shrink-0"
             style={{ color: "var(--ubc-blue-500)" }}
@@ -117,24 +131,53 @@ export default function WeatherCard() {
           </p>
         </div>
 
-        {loadError ? (
-          <p className="text-sm text-destructive">{loadError}</p>
-        ) : latestRun === undefined ? (
+        {/* Today's weather summary */}
+        {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : latestRun === null ? (
-          <p className="text-sm text-muted-foreground">No ingestion runs yet.</p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              className={`border font-semibold ${STATUS_BADGE_CLASS[latestRun.parse_status]}`}
-              variant="outline"
-            >
-              {latestRun.parse_status}
-            </Badge>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              Last updated {timeAgo(latestRun.ingested_at)}
-            </span>
+        ) : (currentTemp || conditionText) ? (
+          <div className="flex flex-col gap-1">
+            {/* Temperature row */}
+            <div className="flex flex-wrap items-baseline gap-3">
+              {currentTemp && (
+                <span className="text-2xl font-bold tabular-nums text-foreground">
+                  {currentTemp}
+                </span>
+              )}
+              {(forecastHigh || forecastLow) && (
+                <span className="text-sm tabular-nums text-muted-foreground">
+                  {forecastHigh && <span>↑ {forecastHigh}</span>}
+                  {forecastHigh && forecastLow && <span className="mx-1 opacity-40">·</span>}
+                  {forecastLow && <span>↓ {forecastLow}</span>}
+                </span>
+              )}
+            </div>
+            {/* Condition text */}
+            {conditionText && (
+              <p className="text-sm text-muted-foreground">{conditionText}</p>
+            )}
           </div>
+        ) : (
+          // Have weather response but no item data (no ingestion yet today)
+          <p className="text-sm text-muted-foreground">No weather data for today yet.</p>
+        )}
+
+        {/* Ingest run status */}
+        {!isLoading && (
+          latestRun ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                className={`border font-semibold ${STATUS_BADGE_CLASS[latestRun.parse_status]}`}
+                variant="outline"
+              >
+                {latestRun.parse_status}
+              </Badge>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                Last updated {timeAgo(latestRun.ingested_at)}
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No ingestion runs yet.</p>
+          )
         )}
 
         {/* Inline feedback after manual update */}
