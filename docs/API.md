@@ -48,10 +48,10 @@
 | POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
 | POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
 | GET    | /weather/daily | RA | implemented | T31 |
-| POST   | /admin/import/preview | RA | planned | T48 |
-| POST   | /admin/import/commit | RA | planned | T48 |
-| GET    | /admin/export.xlsx | RA | planned | T49 |
-| GET    | /admin/export.zip | RA | planned | T49 |
+| POST   | /admin/import/preview | RA | implemented | T48 |
+| POST   | /admin/import/commit | RA | implemented | T48 |
+| GET    | /admin/export.xlsx | RA | implemented | T49 |
+| GET    | /admin/export.zip | RA | implemented | T49 |
 
 ---
 
@@ -106,7 +106,7 @@
 
 - **Audit note:** T07 endpoints were reopened on 2026-02-20 due to incomplete/invalid implementation.
 - **T35 (2026-02-27):** Participants are anonymous. `first_name` and `last_name` have been removed from the schema and API. Only `participant_number` is the human-facing identifier.
-- **Phase 3 (planned):** `participants` will store demographic/exposure attributes (age band, gender, origin, commute method, time outside, daylight exposure minutes). These are set via the start-session demographics form and via admin import; there is no participant-facing API for them.
+- **Phase 3 (T47, applied):** `participants` now stores demographic/exposure attributes (age_band, gender, origin, origin_other_text, commute_method, commute_method_other_text, time_outside, daylight_exposure_minutes). These are set via the start-session demographics form and via admin import; there is no participant-facing API for them. `participants.daylight_exposure_minutes` is computed using `compute_daylight_exposure_minutes()` in `backend/app/config.py` (RESOLVED-12, T47a).
 
 ### POST /participants
 - **Auth:** RA required
@@ -376,8 +376,8 @@
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `start` | date `YYYY-MM-DD` | — | Start local date (America/Vancouver) |
-| `end` | date `YYYY-MM-DD` | — | End local date (America/Vancouver) |
+| `start` | date `YYYY-MM-DD` | — | Start local date (`America/Vancouver`) |
+| `end` | date `YYYY-MM-DD` | — | End local date (`America/Vancouver`) |
 | `station_id` | integer | 3510 | Station id (currently only 3510 supported) |
 
 - **Response:**
@@ -426,7 +426,7 @@
 
 ### POST /admin/import/preview
 - **Auth:** RA required
-- **Status:** planned (T48)
+- **Status:** implemented (T48)
 - **Request:** `multipart/form-data` with a single file field `file` (`.csv` or `.xlsx`)
 - **Response (preview summary):**
   ```json
@@ -474,7 +474,7 @@
 
 ### POST /admin/import/commit
 - **Auth:** RA required
-- **Status:** planned (T48)
+- **Status:** implemented (T48)
 - **Request:** `multipart/form-data` with a single file field `file` (`.csv` or `.xlsx`)
 - **Response (commit summary):**
   ```json
@@ -502,21 +502,29 @@
 
 ### GET /admin/export.xlsx
 - **Auth:** RA required
-- **Status:** planned (T49)
-- **Response:** XLSX workbook download (one sheet per DB table + a README sheet)
+- **Status:** implemented (T49)
+- **Response:** XLSX workbook download — README sheet + one sheet per DB table
 - **Headers:**
   - `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
   - `Content-Disposition: attachment; filename="Weather and wellness - YYYY-MM-DD.xlsx"`
-- **Notes:** Export is schema-faithful. Every sheet includes join keys needed to link tables (`participant_uuid`, `session_id`, `study_day_id` where applicable).
+- **Notes:**
+  - Sheet order: README, participants, sessions, survey_uls8, survey_cesd10, survey_gad7, survey_cogfunc8a, digitspan_runs, digitspan_trials, study_days, weather_ingest_runs, weather_daily, imported_session_measures.
+  - The README sheet describes all tables, join keys, and value conventions.
+  - All join keys (`participant_uuid`, `session_id`, `study_day_id`, `run_id`, `source_run_id`) are present on every relevant sheet.
+  - UUIDs and timestamps are ISO strings. JSONB columns are JSON strings.
+  - Date in filename is today in the study timezone (`America/Vancouver`).
 
 ### GET /admin/export.zip
 - **Auth:** RA required
-- **Status:** planned (T49)
+- **Status:** implemented (T49)
 - **Response:** ZIP download containing one CSV per DB table
 - **Headers:**
   - `Content-Type: application/zip`
   - `Content-Disposition: attachment; filename="Weather and wellness - YYYY-MM-DD.zip"`
-- **Notes:** Each CSV is schema-faithful and includes join keys needed to link tables.
+- **Notes:**
+  - ZIP contains 12 CSVs: `participants.csv`, `sessions.csv`, `survey_uls8.csv`, `survey_cesd10.csv`, `survey_gad7.csv`, `survey_cogfunc8a.csv`, `digitspan_runs.csv`, `digitspan_trials.csv`, `study_days.csv`, `weather_ingest_runs.csv`, `weather_daily.csv`, `imported_session_measures.csv`.
+  - Each CSV has a header row and is schema-faithful with all join keys.
+  - All values follow the same conversion rules as the XLSX export.
 
 ---
 

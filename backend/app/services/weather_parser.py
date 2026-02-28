@@ -27,7 +27,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from bs4 import BeautifulSoup
 
-_TZ_EDMONTON = ZoneInfo("America/Edmonton")
+_TZ_VANCOUVER = ZoneInfo("America/Vancouver")
 PARSER_VERSION = "ubc-eos-v1"
 
 _PRIMARY_URL = "https://weather.eos.ubc.ca/wxfcst/users/Guest/custom.php?location={station_id}"
@@ -196,7 +196,7 @@ def _extract_current_from_vmap(
     if updated_raw:
         try:
             dt = datetime.strptime(updated_raw, "%d %b %Y at %H:%M")
-            result["current_observed_at"] = dt.replace(tzinfo=_TZ_EDMONTON)
+            result["current_observed_at"] = dt.replace(tzinfo=_TZ_VANCOUVER)
         except ValueError:
             pass
 
@@ -345,7 +345,7 @@ async def _safe_fetch(
 
 async def fetch_and_parse(station_id: int) -> ParseResult:
     """Fetch both UBC EOS URLs and return a fully populated ParseResult."""
-    today_local = datetime.now(_TZ_EDMONTON).date()
+    today_local = datetime.now(_TZ_VANCOUVER).date()
     primary_url = _PRIMARY_URL.format(station_id=station_id)
     secondary_url = _SECONDARY_URL.format(station_id=station_id)
 

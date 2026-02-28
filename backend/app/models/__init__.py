@@ -8,6 +8,7 @@ from .surveys import (
     SurveyCogFunc8a,
 )
 from .weather import StudyDay, WeatherIngestRun, WeatherDaily
+from .imported_session_measures import ImportedSessionMeasures
 
 __all__ = [
     "Participant",
@@ -21,4 +22,5 @@ __all__ = [
     "StudyDay",
     "WeatherIngestRun",
     "WeatherDaily",
+    "ImportedSessionMeasures",
 ]

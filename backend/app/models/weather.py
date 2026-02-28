@@ -12,7 +12,7 @@ from app.db import Base
 
 
 class StudyDay(Base):
-    """Dimension table: one row per local calendar day (America/Edmonton)."""
+    """Dimension table: one row per local calendar day (America/Vancouver)."""
 
     __tablename__ = "study_days"
 
@@ -20,7 +20,7 @@ class StudyDay(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     date_local: Mapped[date] = mapped_column(Date, nullable=False, unique=True)
-    tz_name: Mapped[str] = mapped_column(String, nullable=False, default="America/Edmonton")
+    tz_name: Mapped[str] = mapped_column(String, nullable=False, default="America/Vancouver")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

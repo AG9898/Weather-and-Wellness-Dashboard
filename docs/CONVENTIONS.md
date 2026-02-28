@@ -34,7 +34,8 @@
 - The RA “Start New Entry” flow must collect participant demographics **before** creating a participant+session.
 - Demographic fields are stored on `participants` only (never on `sessions`).
 - If the RA selects `"Other"` for `origin` or `commute_method`, store the detail in a dedicated `*_other_text` column (length-limited; avoid PII in UI copy).
-- `participants.daylight_exposure_minutes` is derived at session start time as minutes since `DAYLIGHT_START_LOCAL_TIME` in the study timezone (see `docs/DECISIONS.md` RESOLVED-12).
+- `participants.daylight_exposure_minutes` is derived at session start time as minutes since `DAYLIGHT_START_LOCAL_TIME` in the study timezone (see `docs/DECISIONS.md` RESOLVED-12). Use `compute_daylight_exposure_minutes(session_start_utc)` from `backend/app/config.py`.
+- All day-level timezone operations use `STUDY_TIMEZONE = "America/Vancouver"` from `backend/app/config.py`. Never hardcode `"America/Vancouver"` or `"America/Edmonton"` directly in routers or services — import from `app.config`.
 
 ### Pydantic schemas
 - Naming: `...Create` for request bodies, `...Response` for responses

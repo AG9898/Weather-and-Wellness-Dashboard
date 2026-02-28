@@ -4,6 +4,7 @@ import math
 from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Optional
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -11,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_lab_member
+from app.config import STUDY_TIMEZONE
 from app.db import get_session
 from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
@@ -86,13 +88,15 @@ async def list_sessions(
     if participant_number is not None:
         base_stmt = base_stmt.where(Participant.participant_number == participant_number)
 
+    _tz = ZoneInfo(STUDY_TIMEZONE)
     if date_from is not None:
-        cutoff_start = datetime(date_from.year, date_from.month, date_from.day, tzinfo=timezone.utc)
+        # Start of local day in study timezone
+        cutoff_start = datetime(date_from.year, date_from.month, date_from.day, 0, 0, 0, tzinfo=_tz)
         base_stmt = base_stmt.where(SessionModel.created_at >= cutoff_start)
 
     if date_to is not None:
-        # Include the full day_to by going to end of that day
-        cutoff_end = datetime(date_to.year, date_to.month, date_to.day, 23, 59, 59, tzinfo=timezone.utc)
+        # End of local day in study timezone (inclusive)
+        cutoff_end = datetime(date_to.year, date_to.month, date_to.day, 23, 59, 59, tzinfo=_tz)
         base_stmt = base_stmt.where(SessionModel.created_at <= cutoff_end)
 
     # Total count (before pagination)

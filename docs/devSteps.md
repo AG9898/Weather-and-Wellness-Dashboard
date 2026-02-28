@@ -32,7 +32,7 @@
 ## Verification Checklist
 
 - `alembic upgrade head` completes without errors against your Supabase DB. (T02–T05)
-- `alembic current -v` reports `Rev: 20260226_000005 (head)` after applying all migrations. (T02–T05, T29)
+- `alembic current -v` reports `Rev: 20260228_000008 (head)` after applying all migrations. (T02–T05, T29, T47, T47a)
 - Backend starts cleanly and exposes `/health`. (T01)
 - Frontend dev server starts without Next.js compile errors. (T01)
 - Participant/session endpoints return expected status codes once T07/T08 are fixed. (T07–T08)
@@ -191,10 +191,11 @@ This phase adds an RA-only Import/Export page and admin endpoints to support leg
 
 ### 1) Backend dependencies
 
-Planned Python dependency for XLSX parsing and writing:
-- `openpyxl`
+Added Python packages (T48) — included in `backend/requirements.txt`:
+- `openpyxl>=3.1.0` — XLSX file reading (import preview/commit) and writing (export)
+- `python-multipart>=0.0.9` — FastAPI multipart file upload support
 
-After implementation, install/update backend deps as usual (Render deploy or local):
+Install/update backend deps as usual (Render deploy or local):
 
 ```bash
 cd backend
@@ -233,11 +234,12 @@ cd backend && alembic upgrade head
   - `participants` has demographic columns populated (where present in the import)
   - `sessions` includes complete sessions created/updated by the import
   - `imported_session_measures` contains the imported aggregate values
-- [ ] Export XLSX downloads and opens; file name matches `Weather and wellness - YYYY-MM-DD.xlsx`.
-- [ ] Export CSV downloads as a zip; file name matches `Weather and wellness - YYYY-MM-DD.zip`; each CSV has headers.
-- [ ] Export content sanity check:
-  - XLSX includes one sheet per app table (participants, sessions, surveys, digit span, weather, and imported measures).
-  - CSV zip includes one CSV per app table with matching headers.
+- [ ] Export XLSX (`GET /admin/export.xlsx`) downloads and opens; file name matches `Weather and wellness - YYYY-MM-DD.xlsx`; README sheet is present and first; 12 data sheets follow.
+- [ ] Export CSV zip (`GET /admin/export.zip`) downloads; file name matches `Weather and wellness - YYYY-MM-DD.zip`; contains 12 CSVs each with a header row.
+- [ ] Export content sanity check (T49):
+  - XLSX sheets: README + participants, sessions, survey_uls8, survey_cesd10, survey_gad7, survey_cogfunc8a, digitspan_runs, digitspan_trials, study_days, weather_ingest_runs, weather_daily, imported_session_measures.
+  - CSV zip contains the same 12 files with matching column headers.
+  - All join keys (`participant_uuid`, `session_id`, `study_day_id`, `run_id`) are present on relevant sheets/CSVs.
 - [ ] Start New Entry demographics questionnaire:
   - [ ] On `/dashboard`, click "Start a New Entry" and confirm a required demographics form appears.
   - [ ] Selecting `Other` for origin/commute requires a free-text detail before continuing.

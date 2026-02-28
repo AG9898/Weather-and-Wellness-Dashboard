@@ -86,15 +86,15 @@ WHERE s.status = 'complete';
 
 ---
 
-## Data Model (Planned)
+## Data Model
 
 ### Tables
 
-- `study_days` (dimension, one row per local day)
+- `study_days` (dimension, one row per local day in `America/Vancouver`)
 - `weather_daily` (one row per station per study day; idempotent upsert target)
 - `weather_ingest_runs` (append-only audit/debug record for every ingest attempt)
 
-See `docs/SCHEMA.md` for the planned column-level schema.
+See `docs/SCHEMA.md` for the column-level schema.
 
 ### Timestamp policy
 - Keep ingest/observation timestamps as metadata only:

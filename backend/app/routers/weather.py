@@ -26,6 +26,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import LabMember, get_current_lab_member
+from app.config import STUDY_TIMEZONE
 from app.db import get_session
 from app.models.weather import StudyDay, WeatherDaily, WeatherIngestRun
 from app.schemas.weather import (
@@ -179,7 +180,7 @@ async def ingest_weather(
             .values(
                 study_day_id=uuid.uuid4(),
                 date_local=parse_result.date_local,
-                tz_name="America/Edmonton",
+                tz_name=STUDY_TIMEZONE,
             )
             .on_conflict_do_update(
                 index_elements=["date_local"],
@@ -247,8 +248,8 @@ _MAX_DATE_RANGE_DAYS = 365
 
 @router.get("/daily", response_model=WeatherDailyResponse)
 async def get_weather_daily(
-    start: date_type = Query(..., description="Start date inclusive (YYYY-MM-DD, America/Edmonton)"),
-    end: date_type = Query(..., description="End date inclusive (YYYY-MM-DD, America/Edmonton)"),
+    start: date_type = Query(..., description="Start date inclusive (YYYY-MM-DD, America/Vancouver)"),
+    end: date_type = Query(..., description="End date inclusive (YYYY-MM-DD, America/Vancouver)"),
     station_id: int = Query(default=3510, description="Station ID"),
     _: LabMember = Depends(get_current_lab_member),
     db: AsyncSession = Depends(get_session),

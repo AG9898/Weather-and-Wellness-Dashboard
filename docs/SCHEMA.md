@@ -27,6 +27,7 @@ sessions (1) ──────────────────── (1) su
 sessions (1) ──────────────────── (1) survey_cesd10
 sessions (1) ──────────────────── (1) survey_gad7
 sessions (1) ──────────────────── (1) survey_cogfunc8a
+sessions (1) ──────────────────── (0..1) imported_session_measures
 ```
 
 ---
@@ -36,7 +37,9 @@ sessions (1) ──────────────────── (1) su
 > These tables were added by migration `20260226_000005`. They are live in the database.
 > Canonical feature spec: `docs/WEATHER_INGESTION.md`
 
-### Day Dimension: `study_days` (planned)
+### Day Dimension: `study_days`
+
+> Added by migration `20260226_000005` (T29). `tz_name` default corrected from `America/Edmonton` to `America/Vancouver` by migration `20260228_000008` (T47a).
 
 | Column       | Type        | Constraints            | Notes |
 |--------------|-------------|------------------------|------|
@@ -121,22 +124,21 @@ Indexes (planned):
 
 Participants are anonymous: no names or other direct identifiers are stored. The only human-facing identifier is `participant_number`; `participant_uuid` is the internal stable key.
 
-> Phase 3 (planned): `participants` will gain optional demographic/exposure columns to support legacy import mapping and lab ops.
-> This is a schema change and will be applied via Alembic (T47).
+> Phase 3 demographic/exposure columns were added by migration `20260228_000007` (T47). All columns are nullable; collected at session start or populated by legacy import.
 
 | Column             | Type           | Constraints       | Notes                                      |
 |--------------------|----------------|-------------------|--------------------------------------------|
 | participant_uuid   | UUID           | PK                | Generated server-side                      |
 | participant_number | INT            | UNIQUE, NOT NULL  | Auto-incremented from 1; assigned by server |
 | created_at         | TIMESTAMPTZ    | DEFAULT NOW()     |                                            |
-| age_band           | VARCHAR        | NULLABLE          | Planned (T47). Stores categorical age band (e.g. "18-24") |
-| gender             | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
-| origin             | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
-| origin_other_text  | VARCHAR        | NULLABLE          | Planned (T47). Detail when `origin` is `"Other"` (length-limited; avoid PII) |
-| commute_method     | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
-| commute_method_other_text | VARCHAR | NULLABLE          | Planned (T47). Detail when `commute_method` is `"Other"` (length-limited; avoid PII) |
-| time_outside       | VARCHAR        | NULLABLE          | Planned (T47). Stored as categorical label from instruments |
-| daylight_exposure_minutes | INT     | NULLABLE          | Planned (T47). Minutes since `DAYLIGHT_START_LOCAL_TIME` (default 06:00 local) at session start time |
+| age_band           | VARCHAR        | NULLABLE          | Categorical age band (e.g. "18-24") |
+| gender             | VARCHAR        | NULLABLE          | Stored as free-text/category string |
+| origin             | VARCHAR        | NULLABLE          | Stored as free-text/category string |
+| origin_other_text  | VARCHAR        | NULLABLE          | Detail when `origin` is `"Other"` (length-limited; avoid PII) |
+| commute_method     | VARCHAR        | NULLABLE          | Stored as free-text/category string |
+| commute_method_other_text | VARCHAR | NULLABLE          | Detail when `commute_method` is `"Other"` (length-limited; avoid PII) |
+| time_outside       | VARCHAR        | NULLABLE          | Stored as categorical label from instruments |
+| daylight_exposure_minutes | INT     | NULLABLE          | Minutes since `DAYLIGHT_START_LOCAL_TIME` (default 06:00 local) at session start time |
 
 **Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
 - `participant ID` → `participants.participant_number` (upsert key)
@@ -166,9 +168,9 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 
 ---
 
-## Table: `imported_session_measures` (planned)
+## Table: `imported_session_measures`
 
-> Phase 3 (planned, T47): store imported legacy aggregate outcomes without forcing them into survey item tables.
+> Added by migration `20260228_000007` (T47). Stores imported legacy aggregate outcomes without forcing them into survey item tables.
 > This table is 1:1 with sessions and exists to preserve imported values and audit the original row mapping.
 
 | Column             | Type        | Constraints       | Notes |
@@ -293,9 +295,11 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | 2026-02-19 | T05 | Create survey tables (ULS-8, CES-D 10, GAD-7, CogFunc 8a) |
 | 2026-02-26 | T29 | Add study_days + weather_ingest_runs + weather_daily tables; add study_day_id FK to sessions |
 | 2026-02-27 | T35 | Drop participants.first_name and participants.last_name (anonymous participants) |
+| 2026-02-28 | T47 | Add participant demographic/exposure columns (age_band, gender, origin, origin_other_text, commute_method, commute_method_other_text, time_outside, daylight_exposure_minutes); add imported_session_measures table |
+| 2026-02-28 | T47a | Fix study_days.tz_name server_default and existing rows from America/Edmonton to America/Vancouver |
 
-As of 2026-02-27, migrations were applied and verified on Supabase through
-revision `20260227_000006` (`head`).
+As of 2026-02-28, migrations were applied and verified on Supabase through
+revision `20260228_000008` (`head`).
 
 ---
 

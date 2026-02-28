@@ -13,6 +13,16 @@ class ParticipantResponse(BaseModel):
     participant_number: int
     created_at: datetime
 
+    # Phase 3 demographic / exposure columns (nullable)
+    age_band: str | None = None
+    gender: str | None = None
+    origin: str | None = None
+    origin_other_text: str | None = None
+    commute_method: str | None = None
+    commute_method_other_text: str | None = None
+    time_outside: str | None = None
+    daylight_exposure_minutes: int | None = None
+
 
 __all__ = [
     "ParticipantResponse",

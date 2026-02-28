@@ -367,7 +367,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T47",
       "title": "DB schema — demographics columns + imported measures table (alembic)",
-      "status": "todo",
+      "status": "done",
       "description": "Add participant demographic columns (age band, gender, origin, origin_other_text, commute method, commute_method_other_text, time outside, daylight exposure minutes) and add a 1:1 imported measures table for legacy aggregate outcomes. Daylight exposure is stored on participants (derived minutes since the configured daylight-start local time). Use Alembic migration only; update models and SCHEMA.md.",
       "depends_on": [
         "T46"
@@ -394,7 +394,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T47a",
       "title": "Backend infra — study timezone and daylight exposure config",
-      "status": "todo",
+      "status": "done",
       "description": "Standardize day-level semantics (study_days date_local, session→study_day linking, weather_daily day linking, dashboard date filtering) on America/Vancouver. Introduce DAYLIGHT_START_LOCAL_TIME (default 06:00) used to compute participants.daylight_exposure_minutes from a session start time. Update any backend constants/services accordingly and verify docs match code assumptions.",
       "depends_on": [
         "T46"
@@ -426,7 +426,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T48",
       "title": "Backend — admin import preview/commit (CSV/XLSX) with upsert rules",
-      "status": "todo",
+      "status": "done",
       "description": "Implement RA-only import endpoints that accept CSV/XLSX uploads, validate rows, present a preview with counts/errors, then commit writes on confirmation. Import upserts participants by participant_number (overwriting demographics) and creates/updates a complete session per participant (workflow 1:1; ambiguous >1 sessions fails). Import links study_day_id from the imported date (America/Vancouver) and stores imported aggregate measures in imported_session_measures with a source_row_json audit payload. Daytime is parsed as a session start time-of-day used to compute participants.daylight_exposure_minutes (minutes since DAYLIGHT_START_LOCAL_TIME).",
       "depends_on": [
         "T47",
@@ -456,7 +456,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T49",
       "title": "Backend — admin export (XLSX workbook + zipped CSV)",
-      "status": "todo",
+      "status": "done",
       "description": "Implement RA-only export endpoints for current DB data. XLSX: README sheet plus one sheet per table (schema-faithful; includes join keys). CSV: zip containing one CSV per table (schema-faithful; includes join keys). Filenames: 'Weather and wellness - YYYY-MM-DD.xlsx' and '.zip'.",
       "depends_on": [
         "T48"

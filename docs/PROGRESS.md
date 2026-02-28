@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 3 (in progress)        |
-| Tasks completed    | 46 / 57                |
-| Remaining queue    | T47–T54 (including T47a, T51a, T51b) |
+| Tasks completed    | 50 / 57                |
+| Remaining queue    | T50–T54 (including T51a, T51b) |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-02-28             |
 
@@ -28,6 +28,68 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+---
+
+## T49 — Backend: admin export XLSX + ZIP CSV (completed 2026-02-28)
+
+**Acceptance criteria met:**
+
+- `GET /admin/export.xlsx` implemented — returns a schema-faithful XLSX workbook; requires RA auth
+- `GET /admin/export.zip` implemented — returns a ZIP with one schema-faithful CSV per table; requires RA auth
+- Both endpoints implemented in `backend/app/routers/admin.py`; export logic in `backend/app/services/export_service.py`
+- XLSX structure: README sheet (description, join key guide, value conventions) + 12 data sheets in logical order
+- Sheet/file order: participants, sessions, survey_uls8, survey_cesd10, survey_gad7, survey_cogfunc8a, digitspan_runs, digitspan_trials, study_days, weather_ingest_runs, weather_daily, imported_session_measures
+- Filename format: `"Weather and wellness - YYYY-MM-DD.xlsx"` / `".zip"` (date in `America/Vancouver`)
+- All join keys present on relevant sheets: `participant_uuid`, `session_id`, `study_day_id`, `run_id`, `source_run_id`
+- Value conventions: UUIDs → ISO strings; datetimes → ISO-8601 UTC strings; JSONB → JSON strings; numerics and booleans preserved as native types in XLSX
+- Headers bolded and first row frozen in XLSX for usability
+- No secrets exposed: export queries DB through existing SQLAlchemy session; no raw credentials in response
+- Verified: XLSX produces 13 sheets with correct headers; ZIP produces 12 CSVs with correct headers (all confirmed by unit test)
+
+---
+
+## T48 — Backend: admin import preview/commit (completed 2026-02-28)
+
+**Acceptance criteria met:**
+
+- `POST /admin/import/preview` and `POST /admin/import/commit` implemented in `backend/app/routers/admin.py` — both RA-protected (`Depends(get_current_lab_member)`)
+- New service module `backend/app/services/import_service.py` implements all parsing and DB logic
+- New schemas in `backend/app/schemas/admin.py`: `ImportRowIssue`, `ImportPreviewResponse`, `ImportCommitResponse`
+- Excel date serials converted via base date `date(1899, 12, 30) + timedelta(days=N)`; Python `datetime`/`date` objects from openpyxl accepted directly
+- Daytime values accept: Python `time`/`datetime` objects, Excel fraction floats (0.0–<1.0), `HH:MM` / `HH:MM:SS` strings — used to compute `participants.daylight_exposure_minutes` via `compute_daylight_exposure_minutes()` from `app.config`
+- Demographic string normalization: whitespace-trimmed; canonical age band variants (`Over 38` → `>38`), gender variants (`Nonbinary person` → `Non-binary`); `origin`/`commute_method` values starting with "Other" split into `canonical="Other"` + `*_other_text`
+- Upsert rules: participant by `participant_number` (demographics overwrite); session: 0→create, 1→update (blocked if has native survey/digitspan rows), >1→error
+- Imported sessions: `status="complete"`, `study_day_id` from `date_local`, timestamps anchored to 12:00 local (`America/Vancouver`) → UTC
+- `imported_session_measures` upserted (keyed by `session_id`) with full `source_row_json` audit payload
+- Commit is transactional (all or nothing); fails with HTTP 422 + row-level error detail if any row is invalid
+- Duplicate `participant ID` within the same file detected as an error (not silently overwritten)
+- Verified against `reference/data_full_1-230.xlsx`: 207 rows parsed, 0 errors, 0 warnings
+- New packages added to `requirements.txt`: `openpyxl>=3.1.0`, `python-multipart>=0.0.9`
+
+---
+
+## T47a — Backend infra: study timezone and daylight exposure config (completed 2026-02-28)
+
+Migration `20260228_000008` applied to Supabase (now at `head`):
+
+- Created `backend/app/config.py`: `STUDY_TIMEZONE = "America/Vancouver"`, `get_daylight_start_local_time()` (reads env var, default `"06:00"`), `compute_daylight_exposure_minutes(session_start)` (pure function, tested)
+- Fixed `America/Edmonton` → `America/Vancouver` bug in `weather_parser.py` (`_TZ_EDMONTON` → `_TZ_VANCOUVER`), `weather.py` router (`tz_name` in study_days upsert, query descriptions), and `models/weather.py` (`StudyDay.tz_name` default and docstring)
+- Data-fix migration corrected all existing `study_days` rows and the `tz_name` server_default
+- Sessions router `date_from`/`date_to` filter now uses local-day boundaries in `America/Vancouver` instead of UTC midnight
+- Docs updated: `SCHEMA.md`, `WEATHER_INGESTION.md`, `API.md`, `CONVENTIONS.md`, `devSteps.md`, `DECISIONS.md` (no change needed — RESOLVED-12 was already correct)
+
+---
+
+## T47 — DB schema: demographics columns + imported_session_measures table (completed 2026-02-28)
+
+Migration `20260228_000007` applied to Supabase (now at `head`):
+
+- Added 8 nullable columns to `participants`: `age_band`, `gender`, `origin`, `origin_other_text`, `commute_method`, `commute_method_other_text`, `time_outside`, `daylight_exposure_minutes`
+- Created `imported_session_measures` table (PK = `session_id`; FK to `sessions` and `participants`); stores legacy aggregate measures + full `source_row_json` audit column
+- SQLAlchemy models updated: `Participant` (demographics), new `ImportedSessionMeasures`
+- Pydantic schemas updated: `ParticipantResponse` (demographics fields added), new `ImportedSessionMeasuresResponse`
+- `SCHEMA.md` updated: planned items marked applied, migration history row added, entity diagram updated
 
 ---
 
