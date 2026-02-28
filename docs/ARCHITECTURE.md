@@ -8,10 +8,12 @@
 ## Summary
 
 - **Three-tier web app**: Next.js frontend → FastAPI backend → Supabase Postgres
-- **Frontend (Vercel)**: Next.js (TypeScript + Tailwind) for UI only. No FastAPI on Vercel.
+- **Optional cache layer (Vercel)**: Next.js Route Handlers use **Upstash Redis** (via Vercel integration) to cache select RA read responses to reduce perceived cold-start latency, while still fetching live data from the Render backend.
+- **Frontend (Vercel)**: Next.js (TypeScript + Tailwind) for UI and Route Handlers. No FastAPI on Vercel.
 - **Backend (Render)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
   - Hosted URL: `https://weather-and-wellness-dashboard.onrender.com`
 - **Database (Supabase)**: Managed Postgres. Lab reads data via Supabase Studio.
+- **Admin data ops (planned, Phase 3)**: RA-only Import/Export endpoints on Render support legacy imports and controlled CSV/XLSX exports.
 
 ---
 
@@ -20,6 +22,7 @@
 - If Supabase Auth is enabled, Next.js obtains a JWT and sends
   `Authorization: Bearer <JWT>` to FastAPI.
 - FastAPI validates JWTs using `SUPABASE_JWT_SECRET`.
+- When using the Vercel cache Route Handler for RA dashboard reads, the Route Handler must also validate the Supabase JWT before returning cached data (no auth bypass via cache).
 - Participant endpoints remain unauthenticated and are validated by `session_id` + status.
 
 ---
@@ -86,5 +89,5 @@ Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 ## Data Model and Access
 
 - All results are linked by `participant_uuid` and `session_id`.
-- Names are stored only in `participants`; never in result rows.
+- Participants are anonymous: do not collect or store names or other direct identifiers.
 - Schema details live in `docs/SCHEMA.md`.

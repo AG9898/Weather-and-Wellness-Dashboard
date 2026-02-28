@@ -47,6 +47,10 @@
 | POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
 | POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
 | GET    | /weather/daily | RA | implemented | T31 |
+| POST   | /admin/import/preview | RA | planned | T48 |
+| POST   | /admin/import/commit | RA | planned | T48 |
+| GET    | /admin/export.xlsx | RA | planned | T49 |
+| GET    | /admin/export.zip | RA | planned | T49 |
 
 ---
 
@@ -208,6 +212,7 @@
   }
   ```
 - **Notes:** One-click flow for supervised sessions. Creates an anonymous participant and an active session atomically (single transaction via `flush` + `commit`), then returns a start path for Survey 1. Session is immediately `active` so participant submissions are accepted on arrival.
+- **Planned change (T52):** `start_path` will change to `/session/<session_id>/consent` so the participant flow is consent-gated before Survey 1. No consent acceptance is stored in the DB (UI-only).
 
 ---
 
@@ -360,6 +365,80 @@
   - `latest_run` is the most recent ingest run for the station regardless of date range; `null` if no runs exist.
   - `latest_run.parse_status` values: `success | partial | fail`.
 - **Verified:** 2026-02-26 — returned 1 item with `current_temp_c`, `forecast_periods`, and `latest_run` from live DB.
+
+---
+
+## Admin Data (Phase 3) (planned)
+
+> These endpoints are RA-only and are intended for internal lab administration. They are not participant-facing.
+> Imports must be preview-first (no writes on preview), then explicit commit.
+
+### POST /admin/import/preview
+- **Auth:** RA required
+- **Status:** planned (T48)
+- **Request:** `multipart/form-data` with a single file field `file` (`.csv` or `.xlsx`)
+- **Response (preview summary):**
+  ```json
+  {
+    "file_type": "csv | xlsx",
+    "rows_total": "integer",
+    "participants_create": "integer",
+    "participants_update": "integer",
+    "sessions_create": "integer",
+    "sessions_update": "integer",
+    "errors": [
+      {
+        "row": "integer",
+        "field": "string | null",
+        "message": "string"
+      }
+    ],
+    "warnings": [
+      {
+        "row": "integer",
+        "field": "string | null",
+        "message": "string"
+      }
+    ]
+  }
+  ```
+- **Notes:**
+  - No DB writes are performed.
+  - Preview counts are computed using upsert rules (participants by `participant_number`, sessions by the 1:1 workflow expectation).
+
+### POST /admin/import/commit
+- **Auth:** RA required
+- **Status:** planned (T48)
+- **Request:** `multipart/form-data` with a single file field `file` (`.csv` or `.xlsx`)
+- **Response (commit summary):**
+  ```json
+  {
+    "rows_total": "integer",
+    "participants_created": "integer",
+    "participants_updated": "integer",
+    "sessions_created": "integer",
+    "sessions_updated": "integer"
+  }
+  ```
+- **Notes:**
+  - Writes must be transactional: if any row fails validation, the commit fails cleanly (no partial import).
+  - Imports create or update a complete session per participant and store legacy aggregate values without attempting to reconstruct raw survey item rows.
+
+### GET /admin/export.xlsx
+- **Auth:** RA required
+- **Status:** planned (T49)
+- **Response:** XLSX workbook download (one sheet per DB table)
+- **Headers:**
+  - `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+  - `Content-Disposition: attachment; filename="Weather and wellness - YYYY-MM-DD.xlsx"`
+
+### GET /admin/export.zip
+- **Auth:** RA required
+- **Status:** planned (T49)
+- **Response:** ZIP download containing one CSV per DB table
+- **Headers:**
+  - `Content-Type: application/zip`
+  - `Content-Disposition: attachment; filename="Weather and wellness - YYYY-MM-DD.zip"`
 
 ---
 

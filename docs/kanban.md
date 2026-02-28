@@ -1,203 +1,5 @@
-# Kanban — Phase 1
-
-> Collapsed summary format: tasks are intentionally reduced to only task number, title, and description.
-
-```json
-{
-  "project": "Weather & Wellness + Misokinesia Research Web App",
-  "phase": 1,
-  "phase_status": "complete",
-  "tasks": [
-    {
-      "task_number": "T01",
-      "title": "Initialize monorepo structure",
-      "description": "Scaffold frontend and backend projects with required env docs, README, and ignore rules."
-    },
-    {
-      "task_number": "T02",
-      "title": "Set up Supabase project and Alembic",
-      "description": "Wire FastAPI to Supabase Postgres through env configuration and initialize Alembic migrations."
-    },
-    {
-      "task_number": "T03",
-      "title": "DB schema — participants and sessions tables",
-      "description": "Create participants and sessions models/migration with UUID keys, participant numbering, status, and timestamps."
-    },
-    {
-      "task_number": "T04",
-      "title": "DB schema — digit span tables",
-      "description": "Create digitspan_runs and digitspan_trials schema with required foreign keys and trial fields."
-    },
-    {
-      "task_number": "T05",
-      "title": "DB schema — all four survey tables",
-      "description": "Create ULS-8, CES-D 10, GAD-7, and CogFunc 8a survey tables with raw and computed score fields."
-    },
-    {
-      "task_number": "T06",
-      "title": "Auth — stub lab member dependency",
-      "description": "Add a temporary typed lab-member auth dependency to unblock protected RA endpoint development."
-    },
-    {
-      "task_number": "T07",
-      "title": "Backend — participant CRUD endpoints",
-      "description": "Implement RA-authenticated participant create/list/detail endpoints with server-assigned participant numbers."
-    },
-    {
-      "task_number": "T08",
-      "title": "Backend — session endpoints",
-      "description": "Implement session create/status/status-update endpoints with created/active/complete lifecycle support."
-    },
-    {
-      "task_number": "T09",
-      "title": "Backend — digit span scoring module and endpoint",
-      "description": "Implement pure digit span scoring and POST endpoint that validates active sessions and stores run/trial data."
-    },
-    {
-      "task_number": "T10",
-      "title": "Backend — all four survey scoring modules and endpoints",
-      "description": "Implement scoring logic and submission endpoints for ULS-8, CES-D 10, GAD-7, and CogFunc 8a."
-    },
-    {
-      "task_number": "T11",
-      "title": "Frontend — Next.js route layout and auth guard",
-      "description": "Set up RA/participant route groups, auth guard behavior, and typed API wrapper foundation."
-    },
-    {
-      "task_number": "T12",
-      "title": "Frontend — RA participant management UI",
-      "description": "Build participant list and create form screens for RAs using typed API wrappers only."
-    },
-    {
-      "task_number": "T13",
-      "title": "Frontend — RA session creation and launch UI",
-      "description": "Build RA session creation, participant launch URL display, status polling, and activation control."
-    },
-    {
-      "task_number": "T14",
-      "title": "Frontend — participant digit span task UI",
-      "description": "Build full participant digit span flow with exact timing, practice, 14 trials, and backend submission."
-    },
-    {
-      "task_number": "T15",
-      "title": "Frontend — ULS-8 and CES-D 10 survey screens",
-      "description": "Build ULS-8 and CES-D 10 participant forms with required responses and next-step routing on success."
-    },
-    {
-      "task_number": "T16",
-      "title": "Frontend — GAD-7 and CogFunc 8a survey screens + completion routing",
-      "description": "Build GAD-7 and CogFunc forms and finalize sessions by marking complete after final submission."
-    },
-    {
-      "task_number": "T17",
-      "title": "Frontend — session completion screen",
-      "description": "Build participant completion page with thank-you messaging and no score/data exposure."
-    },
-    {
-      "task_number": "T18",
-      "title": "Auth — replace stub with Supabase Auth",
-      "description": "Replace stub auth with validated Supabase JWT auth and integrate real RA login session handling."
-    }
-  ]
-}
-```
-
----
-
-# Kanban — Phase 2
-
-> Collapsed summary format: tasks are intentionally reduced to only task number, title, and description.
-
-```json
-{
-  "project": "Weather & Wellness + Misokinesia Research Web App",
-  "phase": 2,
-  "phase_status": "complete",
-  "tasks": [
-    {
-      "task_number": "T19",
-      "title": "Frontend foundation — design tokens and shared layout shell",
-      "description": "Create a coherent design foundation for RA and participant routes with shared tokens, layout primitives, and shell components."
-    },
-    {
-      "task_number": "T20",
-      "title": "Backend — dashboard summary endpoint for RA home",
-      "description": "Add an authenticated RA endpoint that returns dashboard summary metrics for participant/session counts and recent activity."
-    },
-    {
-      "task_number": "T21",
-      "title": "Backend — sessions list endpoint with filters and pagination",
-      "description": "Add an authenticated RA endpoint to list sessions with pagination and optional filters for dashboard tables."
-    },
-    {
-      "task_number": "T22",
-      "title": "Frontend — RA dashboard landing page",
-      "description": "Build an RA dashboard page with KPI cards, recent sessions, and quick actions wired to typed API wrappers."
-    },
-    {
-      "task_number": "T23",
-      "title": "Frontend — RA participants and sessions UI cleanup",
-      "description": "Refactor `/participants` and `/sessions` to align with the shared dashboard visual system and feedback patterns."
-    },
-    {
-      "task_number": "T24",
-      "title": "Frontend — participant flow visual cleanup",
-      "description": "Polish participant-facing survey/task/completion pages for consistency while preserving instrument wording and behavior."
-    },
-    {
-      "task_number": "T25",
-      "title": "Frontend — survey and task UX reliability pass",
-      "description": "Improve client-side robustness with loading guards, duplicate-submit prevention, and user-friendly error messaging."
-    },
-    {
-      "task_number": "T26",
-      "title": "Backend — API connection hardening (CORS, timeouts, error mapping)",
-      "description": "Harden cross-service behavior with env-driven CORS, consistent API errors, and better failure logging."
-    },
-    {
-      "task_number": "T27",
-      "title": "Infra — Render backend integration",
-      "description": "Set up and verify hosted Render deployment for FastAPI including health checks, env vars, and migration runbook."
-    },
-    {
-      "task_number": "T28",
-      "title": "Docs — weather ingestion spec + doc wiring",
-      "description": "Add canonical weather-ingestion documentation and wire API/schema/architecture/dev runbooks before implementation."
-    },
-    {
-      "task_number": "T29",
-      "title": "DB schema — study_days + weather tables",
-      "description": "Add `study_days`, `weather_daily`, and `weather_ingest_runs` schema for day-level weather linkage and ingestion audit history."
-    },
-    {
-      "task_number": "T30",
-      "title": "Backend — UBC EOS scrape/parse + POST ingest endpoint",
-      "description": "Implement UBC EOS parsing and POST ingest endpoint with dual auth, idempotent upsert, cooldown, and concurrency lock."
-    },
-    {
-      "task_number": "T31",
-      "title": "Backend — GET daily weather endpoint (RA-only)",
-      "description": "Add RA-only GET endpoint for day-keyed weather reads plus latest ingest-run metadata."
-    },
-    {
-      "task_number": "T32",
-      "title": "Infra — GitHub Actions scheduled ingestion",
-      "description": "Add GitHub Actions daily scheduler and manual dispatch workflow for weather ingestion with retry handling."
-    },
-    {
-      "task_number": "T33",
-      "title": "Ops — configure GitHub Actions recurrence + secrets",
-      "description": "Configure ingestion secrets and verify scheduled recurrence semantics with successful manual dispatch."
-    },
-    {
-      "task_number": "T34",
-      "title": "Frontend — RA dashboard Weather card + manual Update Weather",
-      "description": "Add an RA-only dashboard weather card showing latest ingest status and manual update action via typed API wrappers."
-    }
-  ]
-}
-```
-
+Current kanban for tasks. Historical kanban tasks have been moved to 'kanban_log.md'
+Follow current JSON Schema when adding tasks.
 ---
 
 # Kanban — Phase 3
@@ -372,7 +174,7 @@
       ],
       "acceptance_criteria": [
         "Completion page provides a clear return-to-dashboard action",
-        "Returning to /dashboard shows updated KPIs and recent sessions list"
+        "Returning to /dashboard shows updated KPIs"
       ],
       "updates_docs": [
         "docs/DESIGN_SPEC.md",
@@ -382,157 +184,405 @@
     },
     {
       "id": "T41",
-      "title": "Auth hardening — JWT signing key verification path",
+      "title": "Frontend infra — Upstash Redis cache + RA JWT verification (Vercel route)",
       "status": "todo",
-      "description": "Upgrade backend auth verification to production-ready signing key handling (Supabase JWT signing key/JWKS flow), including key rotation support and strict claim validation (`exp`, `sub`, issuer/audience policy).",
+      "description": "Add a Next.js Route Handler on Vercel that verifies Supabase JWTs and serves a cached dashboard bundle from Upstash Redis (Vercel integration), with a live fetch path that refreshes the cache.",
       "depends_on": [
-        "T40",
-        "T18",
-        "T27"
+        "T40"
       ],
       "stack": [
-        "backend",
+        "frontend",
+        "infra",
         "auth"
       ],
       "read_docs": [
+        "docs/ARCHITECTURE.md",
         "docs/CONVENTIONS.md",
-        "docs/DECISIONS.md",
-        "docs/ARCHITECTURE.md"
+        "docs/API.md",
+        "docs/devSteps.md"
       ],
       "acceptance_criteria": [
-        "JWT validation path supports configured signing-key strategy for production",
-        "Expired, tampered, wrong-issuer, and wrong-audience tokens are rejected",
-        "Key rotation behavior is documented and test-covered",
-        "Auth module remains the only location for provider-specific auth logic"
+        "A new route handler exists at GET /api/ra/dashboard?mode=cached|live (same-origin on Vercel)",
+        "Route handler requires Authorization: Bearer <supabase-jwt> and rejects missing/invalid tokens (401)",
+        "Cached mode returns quickly using Upstash Redis when available (TTL target: 300s)",
+        "Live mode fetches fresh data from Render backend endpoints and writes a refreshed bundle into Redis (bundle includes dashboard summary + today's weather info)",
+        "No Redis credentials are exposed to the browser (server-only env vars)"
       ],
       "updates_docs": [
-        "docs/CONVENTIONS.md",
         "docs/ARCHITECTURE.md",
         "docs/devSteps.md",
+        "docs/CONVENTIONS.md",
         "docs/PROGRESS.md"
       ]
     },
     {
       "id": "T42",
-      "title": "Backend reliability — readiness endpoint, structured logging, request IDs",
+      "title": "Frontend — typed API wrappers + RA dashboard stale-while-revalidate",
       "status": "todo",
-      "description": "Add readiness checks and structured request logging (without PII) to improve debugging and deployment confidence for hosted usage.",
+      "description": "Add typed frontend API wrappers for the new cached dashboard route and refactor the RA dashboard to load cached data first, then refresh from live data (stale-while-revalidate).",
       "depends_on": [
         "T41"
       ],
       "stack": [
-        "backend",
-        "infra"
+        "frontend"
       ],
       "read_docs": [
         "docs/CONVENTIONS.md",
-        "docs/ARCHITECTURE.md"
+        "docs/styleguide.md"
       ],
       "acceptance_criteria": [
-        "Readiness endpoint checks critical dependencies and returns actionable status",
-        "Each request has a traceable request ID in logs/response headers",
-        "Logs avoid first_name/last_name and other direct identifiers",
-        "Failure logs include endpoint and failure category details"
+        "RA dashboard uses cached bundle to render initial KPIs quickly when cache exists",
+        "RA dashboard triggers a background live refresh and updates the UI when fresh data arrives",
+        "All calls use typed wrappers in src/lib/api/ (no bare fetch from components)",
+        "Error states are non-technical and do not break core dashboard actions"
       ],
       "updates_docs": [
-        "docs/API.md",
-        "docs/CONVENTIONS.md",
+        "docs/DESIGN_SPEC.md",
         "docs/PROGRESS.md"
       ]
     },
     {
       "id": "T43",
-      "title": "E2E verification — Playwright workflow coverage",
+      "title": "Frontend — eliminate extra cold-start fetches on dashboard (WeatherCard)",
       "status": "todo",
-      "description": "Add end-to-end Playwright coverage for core RA and participant workflows against running frontend/backend services, including auth guard behavior and end-to-end session completion.",
+      "description": "Refactor the dashboard WeatherCard to use the cached/live dashboard bundle for its initial state so it does not independently trigger a cold-start fetch on mount.",
       "depends_on": [
-        "T23",
-        "T25",
-        "T41",
         "T42"
       ],
       "stack": [
-        "frontend",
-        "backend",
-        "qa"
+        "frontend"
       ],
       "read_docs": [
         "docs/API.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/devSteps.md"
+        "docs/DESIGN_SPEC.md"
       ],
       "acceptance_criteria": [
-        "E2E test covers RA login, one-click start, participant completion flow, and dashboard refresh",
-        "Tests assert key status transitions (`active` -> `complete`)",
-        "Test run command is documented and reproducible",
-        "Failures provide actionable traces/screenshots"
+        "WeatherCard initial status is sourced from the dashboard bundle (cached/live) rather than an on-mount fetch",
+        "WeatherCard displays the latest fetched weather data cleanly (today's summary fields) and is placed at the top of the dashboard",
+        "Manual Update Weather action still works and refreshes the displayed status",
+        "Dashboard mount performs at most one live backend refresh request path (via the Vercel aggregator)"
       ],
       "updates_docs": [
-        "docs/devSteps.md",
+        "docs/DESIGN_SPEC.md",
         "docs/PROGRESS.md"
       ]
     },
     {
       "id": "T44",
-      "title": "Release readiness — production checklist and rollback notes",
+      "title": "Docs/runbook — Vercel Upstash cache setup (env vars + verification)",
       "status": "todo",
-      "description": "Create a practical launch checklist covering Render/Vercel env config, DB migration order, auth checks, smoke tests, and rollback/incident notes for lab operations.",
+      "description": "Document the Upstash (Vercel integration) setup, required Vercel env vars, local dev env setup, and a smoke-test checklist for cache hit/miss and auth gating.",
       "depends_on": [
-        "T43"
+        "T41"
       ],
       "stack": [
-        "infra",
-        "ops"
+        "docs",
+        "infra"
       ],
       "read_docs": [
         "docs/ARCHITECTURE.md",
         "docs/devSteps.md",
-        "docs/PROGRESS.md"
+        "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "Checklist includes pre-deploy, deploy, and post-deploy verification steps",
-        "Rollback instructions exist for backend and frontend deploys",
-        "Critical env vars and secret ownership are explicitly documented",
-        "Document is usable by a lab member without implicit context"
+        "devSteps.md includes a Vercel Upstash cache section with env vars and exact setup steps",
+        "Docs clearly distinguish server-only env vars vs NEXT_PUBLIC_* vars",
+        "Smoke-test checklist covers cache hit, cache miss, live refresh, and 401 behavior"
       ],
       "updates_docs": [
         "docs/devSteps.md",
+        "docs/ARCHITECTURE.md",
+        "docs/CONVENTIONS.md",
         "docs/PROGRESS.md"
       ]
     },
     {
       "id": "T45",
-      "title": "Phase 3 documentation sync and closeout",
+      "title": "Verification — production smoke test and cold-start UX check",
       "status": "todo",
-      "description": "Run a final documentation consistency pass so API, schema, conventions, design, and progress docs fully match implemented Phase 3 behavior and deployment reality.",
+      "description": "Validate that the RA dashboard loads quickly from cache on repeated visits and still refreshes correctly from the live backend, including behavior during a Render cold start.",
       "depends_on": [
+        "T43",
         "T44"
+      ],
+      "stack": [
+        "frontend",
+        "qa",
+        "ops"
+      ],
+      "read_docs": [
+        "docs/devSteps.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "A second dashboard visit within 5 minutes renders from cache without waiting on Render",
+        "Dashboard still refreshes to live values once the backend responds",
+        "No unauthorized access to cached RA data is possible without a valid JWT (401 on missing/invalid token)",
+        "Smoke-test steps are executed and results are recorded in PROGRESS.md"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T46",
+      "title": "Docs/spec — Phase 3 admin import/export + UI cleanup + consent + demographics + dashboard filtering",
+      "status": "todo",
+      "description": "Write decision-complete docs for the Phase 3 feature set after T45: Import/Export page + backend endpoints, export formats (CSV/XLSX), UI cleanup (remove /participants and /sessions pages), consent gating page (no DB record), demographic attribute mapping, and dashboard filtering scope. Update the core decisions log to allow admin export (CSV/XLSX).",
+      "depends_on": [
+        "T45"
       ],
       "stack": [
         "docs"
       ],
       "read_docs": [
+        "AGENTS.md",
+        "docs/DECISIONS.md",
+        "docs/PRD.md",
         "docs/API.md",
         "docs/SCHEMA.md",
-        "docs/CONVENTIONS.md",
         "docs/DESIGN_SPEC.md",
-        "docs/ARCHITECTURE.md",
-        "docs/PROGRESS.md"
+        "docs/CONVENTIONS.md",
+        "docs/devSteps.md"
       ],
       "acceptance_criteria": [
-        "No documented endpoint/field conflicts with implemented behavior",
-        "Design and UX docs reflect current RA/participant flows",
-        "Progress log captures all Phase 3 tasks and outcomes",
-        "Phase 3 in kanban can be marked complete with no unresolved doc drift"
+        "DECISIONS.md permits RA-only Import/Export (CSV/XLSX) in Phase 3 without weakening PII rules",
+        "DESIGN_SPEC.md specifies Import/Export page UX (preview + confirm) and removes participants/sessions UI references",
+        "API.md contains planned admin endpoints and updated start_path behavior for consent",
+        "SCHEMA.md includes planned columns/tables for demographic mapping and imported measures storage",
+        "devSteps.md contains setup and smoke test steps for import/export"
+      ],
+      "updates_docs": [
+        "AGENTS.md",
+        "docs/DECISIONS.md",
+        "docs/PRD.md",
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md",
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T47",
+      "title": "DB schema — demographics columns + imported measures table (alembic)",
+      "status": "todo",
+      "description": "Add participant demographic columns (age band, gender, origin, commute method, time outside, daylight exposure minutes) and add a 1:1 imported measures table for legacy aggregate outcomes. Use Alembic migration only; update models and SCHEMA.md.",
+      "depends_on": [
+        "T46"
+      ],
+      "stack": [
+        "backend",
+        "database"
+      ],
+      "read_docs": [
+        "docs/SCHEMA.md",
+        "docs/CONVENTIONS.md",
+        "docs/DECISIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Alembic migration adds demographic columns to participants (nullable)",
+        "Alembic migration adds imported_session_measures (1:1 with sessions) for legacy aggregate values",
+        "SQLAlchemy models and Pydantic schemas updated; SCHEMA.md reflects the applied migration"
+      ],
+      "updates_docs": [
+        "docs/SCHEMA.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T48",
+      "title": "Backend — admin import preview/commit (CSV/XLSX) with upsert rules",
+      "status": "todo",
+      "description": "Implement RA-only import endpoints that accept CSV/XLSX uploads, validate rows, present a preview with counts/errors, then commit writes on confirmation. Import creates/updates participants by participant_number, creates/updates a complete session per participant, links study_day_id, and stores imported aggregate measures in imported_session_measures. Conflicts: upsert; ambiguous (>1 session for a participant) fails.",
+      "depends_on": [
+        "T47"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "POST /admin/import/preview validates file and returns counts + row-level issues without writing",
+        "POST /admin/import/commit performs DB writes matching the preview (transactional; fails cleanly)",
+        "Excel date serials and daytime HH:MM:SS are converted deterministically",
+        "Upsert behavior is documented and tested (create vs update counts match)"
       ],
       "updates_docs": [
         "docs/API.md",
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T49",
+      "title": "Backend — admin export (XLSX workbook + zipped CSV)",
+      "status": "todo",
+      "description": "Implement RA-only export endpoints for current DB data. XLSX: one sheet per table. CSV: zip containing one CSV per table. Filenames: 'Weather and wellness - YYYY-MM-DD.xlsx' and '.zip'.",
+      "depends_on": [
+        "T48"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
         "docs/SCHEMA.md",
-        "docs/CONVENTIONS.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "GET /admin/export.xlsx returns a workbook with one sheet per table and correct headers",
+        "GET /admin/export.zip returns a zip with one CSV per table and correct headers",
+        "Both endpoints require RA auth and do not expose secrets"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T50",
+      "title": "Frontend — Import/Export page (upload preview+confirm, export downloads)",
+      "status": "todo",
+      "description": "Add an RA-only /import-export page. Import section supports drag+drop CSV/XLSX, preview, and explicit confirm before commit. Export section provides XLSX and CSV (zip) downloads with required filenames.",
+      "depends_on": [
+        "T49"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
         "docs/DESIGN_SPEC.md",
-        "docs/ARCHITECTURE.md",
-        "docs/PROGRESS.md",
-        "docs/kanban.md"
+        "docs/API.md",
+        "docs/styleguide.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Import preview shows participant/session counts and validation errors before any writes",
+        "Confirm import triggers commit and shows a success summary (created vs updated counts)",
+        "Export buttons download files with required names and extensions",
+        "No bare fetch: all calls go through typed wrappers in src/lib/api/"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T51",
+      "title": "Frontend — UI cleanup (remove participants/sessions pages; update nav)",
+      "status": "todo",
+      "description": "Remove the RA /participants and /sessions pages from the frontend and remove their navigation links. Ensure dashboard remains the primary RA landing page and add a nav link to Import/Export.",
+      "depends_on": [
+        "T50"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/styleguide.md"
+      ],
+      "acceptance_criteria": [
+        "No RA routes exist for /participants and /sessions",
+        "RANavBar contains Dashboard + Import/Export (and Sign out) only",
+        "DESIGN_SPEC.md no longer describes the removed pages"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T52",
+      "title": "Frontend + Backend — consent gating page (no DB record)",
+      "status": "todo",
+      "description": "Add a participant consent screen at /session/[session_id]/consent that gates the flow before Survey 1. Consent is not written to the DB (UI-only). Update the one-click start endpoint to return start_path pointing to the consent page.",
+      "depends_on": [
+        "T51"
+      ],
+      "stack": [
+        "frontend",
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Participant flow begins at the consent page and requires explicit acceptance to continue",
+        "POST /sessions/start start_path becomes /session/<session_id>/consent",
+        "No consent record is stored in Supabase (UI-only gating)"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T53",
+      "title": "Dashboard — filtering controls (scope: KPIs + weather)",
+      "status": "todo",
+      "description": "Add dashboard filtering controls (initially date range) that affect KPI summaries and weather display where applicable. Cache policy: default view uses cache; filtered views may bypass cache initially.",
+      "depends_on": [
+        "T52"
+      ],
+      "stack": [
+        "backend",
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Dashboard provides date-range filtering controls with clear defaults",
+        "Backend supports filtered summary reads (new or extended endpoint) without breaking existing callers",
+        "Cache behavior for filtered vs default view is documented"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T54",
+      "title": "Verification — import/export + consent + UI cleanup smoke tests",
+      "status": "todo",
+      "description": "Run end-to-end smoke tests for import preview/commit, export downloads, consent gating, and the cleaned RA navigation. Record results in PROGRESS.md.",
+      "depends_on": [
+        "T53"
+      ],
+      "stack": [
+        "qa",
+        "ops"
+      ],
+      "read_docs": [
+        "docs/devSteps.md",
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "Import preview and commit run successfully on a small sample and the reference XLSX",
+        "Exported XLSX and CSV zip contain expected tables/sheets and correct filenames",
+        "Consent page gates the participant flow before Survey 1",
+        "Removed pages are not accessible and nav reflects the new IA",
+        "Results are recorded in PROGRESS.md with dates"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
       ]
     }
   ]

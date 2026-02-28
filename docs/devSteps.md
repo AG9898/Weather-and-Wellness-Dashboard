@@ -127,6 +127,92 @@ After setting, redeploy the frontend and smoke-test `/health`, participant creat
 
 ---
 
+## Vercel Upstash Cache Setup (Phase 3 — T41–T45)
+
+This phase adds an optional cache for **RA dashboard reads** using Upstash Redis via the Vercel integration.
+
+### 1) Vercel integration and environment variables
+
+In the Vercel dashboard for the frontend project:
+
+1. Install the **Upstash Redis** integration and attach it to the project.
+2. Confirm Vercel has the following server-side env vars (created by the integration):
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+3. Add the following server-side env vars (for JWT verification in the Route Handler):
+   - `SUPABASE_URL`
+   - `SUPABASE_JWT_SECRET` (optional but recommended for legacy HS256 support; ES256 via JWKS is primary)
+4. Ensure `NEXT_PUBLIC_API_URL` is still set to the Render backend base URL (the live origin fetch).
+5. Redeploy the frontend so the new env vars are available to Route Handlers.
+
+### 2) Local dev (optional) env vars
+
+To exercise the caching route locally, add a `frontend/.env.local` (do not commit) with:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_URL=<supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase-anon-key>
+
+SUPABASE_URL=<supabase-url>
+SUPABASE_JWT_SECRET=<supabase-jwt-secret-optional>
+
+UPSTASH_REDIS_REST_URL=<upstash-rest-url>
+UPSTASH_REDIS_REST_TOKEN=<upstash-rest-token>
+```
+
+Then run:
+
+```bash
+cd frontend && npm run dev
+```
+
+### 3) Smoke test checklist
+
+- [ ] Visit `/dashboard` twice within 5 minutes: second visit should render immediately from cache while live refresh runs.
+- [ ] Trigger a live refresh (reload after TTL or wait): dashboard should update once Render responds.
+- [ ] Without a valid Supabase session (or with an invalid token), `/api/ra/dashboard` should return 401.
+
+---
+
+## Admin Import/Export Setup (Phase 3 — T46+)
+
+This phase adds an RA-only Import/Export page and admin endpoints to support legacy imports and controlled exports.
+
+### 1) Backend dependencies
+
+Planned Python dependency for XLSX parsing and writing:
+- `openpyxl`
+
+After implementation, install/update backend deps as usual (Render deploy or local):
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### 2) DB migration
+
+After the Phase 3 migration task (T47) is implemented:
+
+```bash
+cd backend && alembic upgrade head
+```
+
+### 3) Smoke test checklist (developer-owned)
+
+- [ ] Sign in as RA and visit `/import-export`.
+- [ ] Import preview: upload `reference/data_full_1-230.xlsx` and confirm the preview shows total rows and create/update counts.
+- [ ] Import commit: click Confirm and verify a success summary (created vs updated counts).
+- [ ] Verify in Supabase Studio:
+  - `participants` has demographic columns populated (where present in the import)
+  - `sessions` includes complete sessions created/updated by the import
+  - `imported_session_measures` contains the imported aggregate values
+- [ ] Export XLSX downloads and opens; file name matches `Weather and wellness - YYYY-MM-DD.xlsx`.
+- [ ] Export CSV downloads as a zip; file name matches `Weather and wellness - YYYY-MM-DD.zip`; each CSV has headers.
+
+---
+
 ## Weather Ingestion Setup (Phase 2 — T32)
 
 > Canonical feature spec: `docs/WEATHER_INGESTION.md`
@@ -172,7 +258,9 @@ Add the following under **Settings → Secrets and variables → Actions → Rep
 After implementation of the one-click supervised workflow:
 
 - From `/dashboard`, click **Start New Entry**.
-- Confirm the app redirects directly into Survey 1 (`/session/<session_id>/uls8`) without copying a link.
+- Confirm the app redirects directly into the participant flow without copying a link.
+  - Current: starts at Survey 1 (`/session/<session_id>/uls8`)
+  - Planned (T52): consent-gated start (`/session/<session_id>/consent`)
 - Complete all four surveys, then Digit Span, then the completion screen.
 - Return to `/dashboard` and confirm KPIs (especially Completed sessions) reflect the new completion.
 

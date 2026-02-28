@@ -121,11 +121,20 @@ Indexes (planned):
 
 Participants are anonymous: no names or other direct identifiers are stored. The only human-facing identifier is `participant_number`; `participant_uuid` is the internal stable key.
 
+> Phase 3 (planned): `participants` will gain optional demographic/exposure columns to support legacy import mapping and lab ops.
+> This is a schema change and will be applied via Alembic (T47).
+
 | Column             | Type           | Constraints       | Notes                                      |
 |--------------------|----------------|-------------------|--------------------------------------------|
 | participant_uuid   | UUID           | PK                | Generated server-side                      |
 | participant_number | INT            | UNIQUE, NOT NULL  | Auto-incremented from 1; assigned by server |
 | created_at         | TIMESTAMPTZ    | DEFAULT NOW()     |                                            |
+| age_band           | VARCHAR        | NULLABLE          | Planned (T47). Stores categorical age band (e.g. "18-24") |
+| gender             | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
+| origin             | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
+| commute_method     | VARCHAR        | NULLABLE          | Planned (T47). Stored as free-text/category string |
+| time_outside       | VARCHAR        | NULLABLE          | Planned (T47). Stored as categorical label from instruments |
+| daylight_exposure_minutes | INT     | NULLABLE          | Planned (T47). Derived minutes value from legacy `daytime` column |
 
 ---
 
@@ -138,6 +147,28 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | status           | VARCHAR     | NOT NULL      | "created" / "active" / "complete"       |
 | created_at       | TIMESTAMPTZ | DEFAULT NOW() |                                         |
 | completed_at     | TIMESTAMPTZ | NULLABLE      | Set when status transitions to "complete" |
+| study_day_id     | UUID        | FK, NULLABLE  | Added T29. Set when session becomes complete; links to `study_days.study_day_id` |
+
+---
+
+## Table: `imported_session_measures` (planned)
+
+> Phase 3 (planned, T47): store imported legacy aggregate outcomes without forcing them into survey item tables.
+> This table is 1:1 with sessions and exists to preserve imported values and audit the original row mapping.
+
+| Column             | Type        | Constraints       | Notes |
+|--------------------|-------------|-------------------|------|
+| session_id         | UUID        | PK, FK            | → sessions.session_id (1:1) |
+| participant_uuid   | UUID        | FK, NOT NULL      | → participants.participant_uuid |
+| precipitation_mm   | DOUBLE PRECISION | NULLABLE    | Legacy import column `precipitation` (units as provided) |
+| temperature_c      | DOUBLE PRECISION | NULLABLE    | Legacy import column `temperature` (units as provided) |
+| anxiety_mean       | DOUBLE PRECISION | NULLABLE    | Legacy import column `anxiety` (aggregate/mean) |
+| loneliness_mean    | DOUBLE PRECISION | NULLABLE    | Legacy import column `loneliness` (aggregate/mean) |
+| depression_mean    | DOUBLE PRECISION | NULLABLE    | Legacy import column `depression` (aggregate/mean) |
+| digit_span_max_span| INT         | NULLABLE          | Legacy import column `digit_span_score` mapped to max span |
+| self_report        | DOUBLE PRECISION | NULLABLE    | Legacy import column `self_report` (mapping TBD) |
+| source_row_json    | JSONB       | NOT NULL          | Full raw row payload for audit/future remapping |
+| created_at         | TIMESTAMPTZ | DEFAULT NOW()     | |
 
 ---
 

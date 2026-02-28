@@ -109,7 +109,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 ## Layout Structure
 
-### RA Pages (`/participants`, `/sessions`, future `/dashboard`)
+### RA Pages (`/dashboard`, `/import-export`)
 ```
 <html class="dark">
   <body>
@@ -140,15 +140,27 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
-1. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("One click enrols an anonymous participant and opens a supervised session immediately"), primary shadcn `Button` (size lg, ubc-blue-700) that calls `startSession()` and redirects to Survey 1. Shows spinner + "Starting…" while in flight; non-technical inline error message on failure.
-2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
-3. **Recent Sessions list** — up to 8 rows. Each row: participant `#N` badge, truncated session ID, status badge, time-ago. "View all →" link to `/sessions`.
+1. **Weather card** — top-of-page card showing the last fetched weather data for today (current temp, forecast high/low, condition text) plus ingest run status (success/partial/fail and time-ago). Includes an "Update Weather" action.
+2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("One click enrols an anonymous participant and opens a supervised session immediately"), primary shadcn `Button` (size lg, ubc-blue-700) that calls `startSession()` and redirects into the participant flow. Shows spinner + "Starting…" while in flight; non-technical inline error message on failure.
+3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
 
-Loading state shows `—` in KPI values and a centered "Loading…" in the sessions panel. Error state shows an inline destructive banner. Empty sessions state shows a link to create the first session.
+**Data loading (T41+):**
+- Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then refresh from the live Render backend and update the UI when fresh data arrives.
+- The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather status/info.
+
+Loading state shows `—` in KPI values and weather card skeleton/loading text. Error state shows an inline destructive banner.
+
+**Filtering (planned):**
+- Dashboard will add date-range filtering controls for KPI summaries. Default view uses cache; filtered views may bypass cache initially.
 
 ---
 
 ## Participant Flow Pages (T24)
+
+### Consent Page (`/session/[id]/consent`) (planned)
+
+- Displays consent content and requires an explicit "I consent" checkbox before continuing.
+- No consent record is written to the database (UI-only gating).
 
 ### Digit Span Task (`/session/[id]/digitspan`)
 
@@ -175,22 +187,17 @@ All four surveys use the shared `SurveyForm` component with:
 
 ---
 
-## RA Participants Page (T23)
+## RA Import/Export Page (planned)
 
-The participants page at `/participants` layout (top to bottom):
+The Import/Export page at `/import-export` is RA-only and contains two sections:
 
-1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
-2. **Enrol participant form card** — Participants are anonymous; no names are collected. The form shows a single "Enrol participant" button that creates an anonymous participant. The one-click dashboard flow is the primary path for new entries.
-3. **Participants table** — `rounded-2xl` card; columns: `#` (participant number badge) and `Enrolled` (date). No name column.
-
-## RA Sessions Page (T23)
-
-The sessions page at `/sessions` layout (top to bottom):
-
-1. **Page header** — `text-3xl font-bold` heading + muted subtitle description.
-2. **Create session card** — may remain as a debugging/administrative tool, but the primary Phase 2 path is the one-click dashboard start.
-3. **Active session panel** — Participant info shows `#N` only (no name). The dashboard one-click flow is the primary path; this page remains for administrative use.
-4. **All Sessions table** — section label with count; `rounded-2xl` card. Columns: `#` (blue-700 badge), `Session ID` (8-char truncated, hidden on mobile), `Status` (colored badge), `Created` (time-ago). Loads on mount; refreshes after create/activate/complete.
+1. **Import (drag + drop)** — accepts `.csv` or `.xlsx` files (reference mapping: `reference/data_full_1-230.xlsx`). Upload flow is preview-first:
+   - On file selection, the backend returns a preview (counts + row-level validation issues).
+   - UI shows a confirmation panel including the number of participants/sessions that will be created/updated.
+   - A single explicit "Confirm import" action performs the write.
+2. **Export** — two download buttons:
+   - Export XLSX: one workbook with one sheet per DB table. Filename: `Weather and wellness - YYYY-MM-DD.xlsx`
+   - Export CSV: a zip containing one CSV per DB table. Filename: `Weather and wellness - YYYY-MM-DD.zip`
 
 ---
 

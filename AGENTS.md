@@ -3,8 +3,8 @@
 Internal lab web app for RAs to administer a Backwards Digit Span task and four validated
 surveys (ULS-8, CES-D 10, GAD-7, CogFunc 8a), auto-score server-side, and store results
 linked to a stable participant UUID and session ID. Lab team reads all data via Supabase
-Studio; no CSV export exists. Two roles: authenticated LabMember (RA) and unauthenticated
-Participant.
+Studio. Phase 3 adds an RA-only Import/Export page for controlled legacy data import and
+admin exports (CSV/XLSX). Two roles: authenticated LabMember (RA) and unauthenticated Participant.
 
 ---
 
@@ -22,9 +22,10 @@ Participant.
 ## Core Architectural Rules
 
 - **Client timing, server scoring.** Frontend handles digit presentation timing only. All scores computed in FastAPI. Never score on the client.
-- **UUID identity.** All result tables FK to `participant_uuid`. Names stored once in `participants`; must not appear in any result row.
+- **UUID identity.** All result tables FK to `participant_uuid`. Participants are anonymous; do not collect or store names or other direct identifiers.
 - **Session-scoped data.** Every result row references both `participant_uuid` AND `session_id`. No orphaned rows.
-- **No CSV export.** All data access via Supabase Studio or direct SQL. Do not build export endpoints or UI.
+- **No participant-facing export.** Participants never download data. Lab access remains via Supabase Studio by default.
+- **Admin Import/Export (Phase 3) is allowed.** RA-only Import/Export may provide controlled CSV/XLSX downloads and legacy imports. Keep endpoints RA-protected (`Depends(get_current_lab_member)`); do not expose secrets; avoid adding PII.
 - **Auth adapter.** `Depends(get_current_lab_member)` on all RA endpoints. Isolate Supabase JWT/SDK logic in `backend/app/auth.py`.
 - **No bare fetch.** All frontend API calls go through typed wrappers in `src/lib/api/`. Never call `fetch` directly from a component.
 - **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.

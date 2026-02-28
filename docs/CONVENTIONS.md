@@ -22,6 +22,12 @@
 - One router file per domain: `participants.py`, `sessions.py`, `digitspan.py`, `surveys.py`
 - Register routers in `backend/app/main.py` with appropriate prefixes
 
+### Admin endpoints (Import/Export)
+- Admin data operations (imports/exports) must be **RA-only** (`Depends(get_current_lab_member)`).
+- Import endpoints must be **preview-first** (no writes) and then explicit **commit**.
+- File uploads use `multipart/form-data`; file downloads must set `Content-Disposition` with the required filename.
+- Do not attempt to reconstruct raw survey item rows from imported aggregate values; store aggregates in a dedicated mapping table.
+
 ### Pydantic schemas
 - Naming: `...Create` for request bodies, `...Response` for responses
 - Never return SQLAlchemy ORM objects directly from endpoints — always serialize to a `...Response` schema
@@ -65,6 +71,14 @@
 - **All** API calls go through typed wrapper functions in `src/lib/api/`
 - Never call `fetch` directly from a component or page file
 - Wrapper functions handle headers (including auth tokens) and type the response
+
+### Caching (Vercel + Upstash)
+
+- Caching is implemented only in **Next.js Route Handlers** under `src/app/api/` (server-side only).
+- RA-only cached endpoints must **verify Supabase JWTs** before returning cached data (no auth bypass).
+- Cache is strictly for **read** performance; all canonical validation/scoring and all DB writes remain in FastAPI on Render.
+- Cache keys must use a clear prefix (e.g. `ww:`) and be versioned (e.g. `...:v1`) to allow safe invalidation on schema changes.
+- Cached values must not include direct identifiers (participants are anonymous) and must not include any secrets.
 
 ### Styling
 - Tailwind utility classes only
@@ -113,6 +127,8 @@ Follow this sequence when adding any new instrument in future phases:
 | `ALLOWED_ORIGINS`    | Comma-separated CORS allowed origins for FastAPI (backend). Defaults to localhost dev origins when unset. Set to Vercel URL(s) in production. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (frontend auth; only if auth enabled) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key (frontend auth; only if auth enabled) |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (server-side only; provided by Vercel integration or set for local dev). |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (server-side only; provided by Vercel integration or set for local dev). |
 | `WEATHER_INGEST_SHARED_SECRETS` | Comma-separated shared secrets accepted by `POST /weather/ingest/ubc-eos` (GitHub Actions path). |
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | Cooldown window (seconds) for per-station ingestion (default 600). |
 

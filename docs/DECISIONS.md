@@ -70,6 +70,23 @@ revisited in Phase 2 if lab workflows require it.
 
 ---
 
+### RESOLVED-11 — Admin Import/Export (CSV/XLSX) Allowed in Phase 3
+
+**Resolved:** 2026-02-28
+
+**Decision:** An RA-only **Import/Export** feature is allowed in Phase 3, including:
+- Import of legacy study data from CSV/XLSX into Supabase via FastAPI (controlled write path).
+- Export of current DB data for lab use as **XLSX** (workbook) and **CSV** (zipped, one CSV per table).
+
+**Why:** Phase 3 requires a practical migration path from existing data (reference XLSX) and a low-friction
+admin download workflow. This remains internal-only, RA-authenticated, and does not create any participant-facing
+data export surface. PII rules still apply (participants are anonymous; do not introduce names/signatures).
+
+**Affects:** Phase 3 tasks that add admin endpoints/UI and DB mapping tables. Update `AGENTS.md`, `docs/API.md`,
+`docs/SCHEMA.md`, `docs/DESIGN_SPEC.md`, and `docs/devSteps.md` before implementation.
+
+---
+
 ### RESOLVED-03 — Server-side Scoring, Client-side Timing
 
 **Resolved:** Pre-project (before T01)
