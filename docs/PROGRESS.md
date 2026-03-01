@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 3 (in progress)        |
-| Tasks completed    | 54 / 57                |
-| Remaining queue    | T52–T54                |
+| Tasks completed    | 55 / 57                |
+| Remaining queue    | T53–T54                |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-02-28             |
 
@@ -28,6 +28,29 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+---
+
+## T52 — Frontend: consent gating page (completed 2026-02-28, revised ×2 2026-02-28)
+
+**Acceptance criteria met:**
+
+- Participant consent page created at `frontend/src/app/session/[session_id]/consent/page.tsx`.
+- Displays the official lab consent form (`reference/Consent Form 2.pdf`) via a full-height `<iframe>` (file copied to `frontend/public/consent-form.pdf` for static serving). No text replication in code.
+- Two explicit action buttons replace the earlier checkbox design:
+  - **"I Consent"** — routes to `/session/<session_id>/uls8`, beginning the data-collection phase.
+  - **"I Do Not Consent"** — routes to `/dashboard`, returning the RA to the home screen.
+- No API call at consent step; no DB record written (UI-only gating).
+- Page is client-only (`"use client"`); uses `useRouter` from Next.js; no bare `fetch`.
+- **Second revision (routing restructure):** Consent now happens *before* session creation.
+  - Created `frontend/src/app/(ra)/new-session/page.tsx` — two-step RA-protected page: Step 1 = consent PDF iframe + "I Consent"/"I Do Not Consent"; Step 2 = demographics form + "Back"/"Start Session".
+  - "I Do Not Consent" → `/dashboard` (no participant/session created).
+  - "I Consent" → shows demographics form; on submit → `POST /sessions/start` → navigates to `result.start_path`.
+  - `(ra)/dashboard/page.tsx` simplified: "Start New Entry" now routes to `/new-session`; demographics dialog and all related state removed.
+  - `session/[session_id]/consent/page.tsx` deleted (consent no longer lives within the session flow).
+  - Backend `start_path` updated: `POST /sessions/start` now returns `/session/<session_id>/uls8` (not `/consent`).
+  - `tsc --noEmit` passes with zero errors.
+  - `API.md`, `DESIGN_SPEC.md` updated to reflect new flow order and removed `/consent` route.
 
 ---
 

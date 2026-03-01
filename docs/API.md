@@ -254,14 +254,14 @@
     "status": "active",
     "created_at": "datetime",
     "completed_at": null,
-    "start_path": "/session/<session_id>/consent"
+    "start_path": "/session/<session_id>/uls8"
   }
   ```
-- **Notes:** Supervised one-click start. Creates an anonymous participant (with demographics) and an active session atomically (single transaction via `flush` + `commit`), then returns a consent-gated start path. Session is immediately `active` so participant submissions are accepted on arrival.
+- **Notes:** Supervised one-click start. Creates an anonymous participant (with demographics) and an active session atomically (single transaction via `flush` + `commit`), then returns the first survey path. Session is immediately `active` so participant submissions are accepted on arrival.
   - All demographic fields are required. If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required; otherwise it is optional/ignored.
   - `participants.daylight_exposure_minutes` is computed at request time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`) using `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
-  - `start_path` is always `/session/<session_id>/consent` (consent-gated participant flow, T52).
-  - No consent record is stored in Supabase (UI-only gating, T52).
+  - `start_path` is always `/session/<session_id>/uls8`. Consent is collected at `(ra)/new-session` before session creation; there is no `/consent` page within the session flow.
+  - No consent record is stored in Supabase (UI-only gating).
   - Demographics are stored on `participants` only (never on `sessions`).
 
 ---

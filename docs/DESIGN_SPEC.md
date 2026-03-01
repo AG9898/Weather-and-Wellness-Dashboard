@@ -9,20 +9,22 @@ Visual language baseline: [docs/styleguide.md](styleguide.md)
 
 ## RA Flow
 1. Login
-2. Start new entry (demographics questionnaire required)
-3. Backend creates anonymous participant + active session automatically (participant demographics stored on `participants`)
-4. RA is redirected into the participant test flow (no copy-link step; begins at consent)
-5. After completion, return to RA dashboard; KPIs reflect the new complete session
-6. View data via Supabase Studio
+2. Click "Start New Entry" → navigates to `/new-session`
+3. **Step 1 (consent):** Participant reads the official consent PDF; clicks "I Consent" to proceed or "I Do Not Consent" to cancel and return to dashboard (no DB record in either case)
+4. **Step 2 (demographics):** RA fills required participant details; submits → backend creates anonymous participant + active session atomically
+5. RA is navigated directly into the participant survey flow (`/session/<id>/uls8`)
+6. After completion, return to RA dashboard; KPIs reflect the new complete session
+7. View data via Supabase Studio
 
 ## Participant Flow
-1. Consent (UI-only gating; no DB record) (planned)
-2. ULS-8 survey
-3. CES-D 10 survey
-4. GAD-7 survey
-5. Cognitive Function 8a survey
-6. Digit Span instructions → practice trial → 14 scored trials → session marked complete
-7. Completion screen (thank you) → return to RA dashboard
+1. ULS-8 survey
+2. CES-D 10 survey
+3. GAD-7 survey
+4. Cognitive Function 8a survey
+5. Digit Span instructions → practice trial → 14 scored trials → session marked complete
+6. Completion screen (thank you) → return to RA dashboard
+
+> **Note:** Consent is obtained at `/new-session` (Step 1 of the RA flow) before the participant session is created. There is no consent page within the `/session/[id]/` route tree.
 
 ---
 
@@ -147,18 +149,11 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
 1. **Weather card** — top-of-page card showing the last fetched weather data for today (current temp, forecast high/low, condition text) plus ingest run status (success/partial/fail and time-ago). Includes an "Update Weather" action.
-2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Collect participant details and open a supervised session immediately"), primary shadcn `Button` (size lg, ubc-blue-700) that opens a required demographics questionnaire. On submit, calls `startSession(payload)` and redirects into the participant flow. Shows spinner + "Starting…" while in flight; non-technical inline error message on failure.
+2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Present the consent form, collect participant details, and open a supervised session."), primary shadcn `Button` (size lg, ubc-blue-700) that navigates to `/new-session` to begin the two-step consent + demographics flow.
 3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
 
-**Start New Entry questionnaire (Phase 3 — implemented T51a + T51b):**
-- Required fields (preset options) are based on the current legacy import value set (`reference/data_full_1-230.xlsx`):
-  - **Age band:** `Under 18`, `18-24`, `25-31`, `32-38`, `>38`
-  - **Gender:** `Woman`, `Man`, `Non-binary`, `Prefer not to say`
-  - **Origin:** `Home`, `Work`, `Class`, `Library`, `Gym/Recreation Center`, `Other` (if `Other`, require free-text detail)
-  - **Commute method:** `Walk`, `Transit`, `Car`, `Bike/Scooter`, `Other` (if `Other`, require free-text detail)
-  - **Time outside:** `Never (0-30 minutes)`, `Rarely (31 minutes- 60 minutes)`, `Sometimes (61 minutes - 90 minutes)`, `Often (over 90 minutes)`
-- “Other” free-text inputs must include UI copy warning against entering names/PII and are stored in dedicated DB columns (`origin_other_text`, `commute_method_other_text`).
-- Backend computes `participants.daylight_exposure_minutes` at session start as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, `America/Vancouver`); this value is not shown to participants.
+**Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
+- Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
 - The supervised workflow treats participant↔session as 1:1 (a new participant is created for each new session); the DB does not enforce this constraint.
 
 **Data loading (T41–T43, implemented):**
@@ -184,11 +179,23 @@ Loading state shows `—` in KPI values and weather card skeleton/loading text. 
 
 ## Participant Flow Pages (T24)
 
-### Consent Page (`/session/[id]/consent`) (planned)
+### `/new-session` — Consent + Demographics (RA-protected, implemented T52)
 
-- Displays consent content and requires an explicit "I consent" checkbox before continuing.
+This is an RA-only two-step page (`src/app/(ra)/new-session/page.tsx`) that runs **before** any session is created.
+
+**Step 1 — Consent:**
+- Displays the official lab consent form (`reference/Consent Form 2.pdf`) in a full-height `<iframe>` (served from `frontend/public/consent-form.pdf`). Do not replicate the PDF text in code.
 - No consent record is written to the database (UI-only gating).
-- Continue routes to Survey 1 (`/session/[id]/uls8`).
+- **"I Do Not Consent"** → `/dashboard` (no participant or session is created).
+- **"I Consent"** → Step 2.
+
+**Step 2 — Participant Details:**
+- Same demographics form fields as the former dashboard dialog (age band, gender, origin, commute method, time outside).
+- **"Back"** → returns to Step 1 (form state is reset).
+- On submit → `POST /sessions/start` (creates participant + session atomically) → navigates to `result.start_path` (`/session/<id>/uls8`).
+- Error states preserved on failure; spinner + "Starting…" while in flight.
+
+> There is no `/session/[id]/consent` page. Consent happens before session creation.
 
 ### Digit Span Task (`/session/[id]/digitspan`)
 

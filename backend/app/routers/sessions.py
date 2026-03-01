@@ -213,7 +213,7 @@ async def start_session(
         status=session_obj.status,
         created_at=session_obj.created_at,
         completed_at=session_obj.completed_at,
-        start_path=f"/session/{session_obj.session_id}/consent",
+        start_path=f"/session/{session_obj.session_id}/uls8",
     )
 
 

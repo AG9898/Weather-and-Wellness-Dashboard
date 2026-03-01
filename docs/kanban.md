@@ -195,7 +195,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T52",
       "title": "Frontend + Backend — consent gating page (no DB record)",
-      "status": "todo",
+      "status": "done",
       "description": "Add a participant consent screen at /session/[session_id]/consent that gates the flow before Survey 1. Consent is not written to the DB (UI-only). Ensure the participant flow begins at consent and proceeds to Survey 1 only after explicit acceptance.",
       "depends_on": [
         "T51b"
