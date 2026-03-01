@@ -96,7 +96,9 @@ const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function fetchLiveBundle(token: string): Promise<DashboardBundle> {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Vancouver",
+  }).format(new Date());
   const headers: HeadersInit = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
