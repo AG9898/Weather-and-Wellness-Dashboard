@@ -188,8 +188,8 @@ Loading state shows `—` in KPI values and weather card skeleton/loading text. 
 - Dashboard renders a weather graph that is driven by the same date-range filter state.
 - Graph shows:
   - temperature (`weather_daily.current_temp_c`) as a line,
-  - participants-per-day as bars (derived from sessions completed on that `study_days.date_local`),
-  - precipitation (`weather_daily.current_precip_today_mm`) in hover/tooltip when available.
+  - participants-per-day as bars (sourced from `GET /dashboard/participants-per-day`),
+  - precipitation (`weather_daily.current_precip_today_mm`) in hover/tooltip when available (included in `GET /weather/daily` response as of T58).
 
 ---
 

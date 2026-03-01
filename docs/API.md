@@ -32,8 +32,8 @@
 | Method | Path | Auth | Status | Implemented by |
 |--------|------|------|--------|----------------|
 | GET    | /dashboard/summary | RA | implemented | T20 |
-| GET    | /dashboard/summary/range | RA | planned | T53 |
-| GET    | /dashboard/participants-per-day | RA | planned | T58 |
+| GET    | /dashboard/summary/range | RA | implemented | T58 |
+| GET    | /dashboard/participants-per-day | RA | implemented | T58 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
@@ -79,7 +79,7 @@
 
 ### GET /dashboard/summary/range
 - **Auth:** RA required
-- **Status:** planned (T53)
+- **Status:** implemented (T58)
 - **Query parameters:**
 
 | Parameter | Type | Description |
@@ -108,7 +108,7 @@
 
 ### GET /dashboard/participants-per-day
 - **Auth:** RA required
-- **Status:** planned (T58)
+- **Status:** implemented (T58)
 - **Query parameters:**
 
 | Parameter | Type | Description |
@@ -448,7 +448,7 @@
   - `latest_run` is the most recent ingest run for the station regardless of date range; `null` if no runs exist.
   - `latest_run.parse_status` values: `success | partial | fail`.
   - `date_local` is the analytic join key (study day in `America/Vancouver`). Metadata timestamps like `updated_at` / `current_observed_at` must not be used for day linking.
-- **Phase 4 note (planned):** include `current_precip_today_mm` in the response so the dashboard graph tooltip can show precipitation alongside temperature.
+- **Phase 4 (T58, implemented):** `current_precip_today_mm` is now included in each `WeatherDailyItem` for dashboard graph tooltip use.
 - **Verified:** 2026-02-26 — returned 1 item with `current_temp_c`, `forecast_periods`, and `latest_run` from live DB.
 
 ---

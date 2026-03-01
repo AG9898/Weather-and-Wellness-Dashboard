@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 4 (in progress)        |
-| Tasks completed    | 4 / 11                 |
-| Remaining queue    | T58–T64                |
+| Tasks completed    | 5 / 11                 |
+| Remaining queue    | T59–T64                |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-03-01             |
 
@@ -28,6 +28,19 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+---
+
+## T58 — Backend: range-filter dashboard reads + participants-per-day (completed 2026-03-01)
+
+**Acceptance criteria met:**
+
+- `GET /dashboard/summary/range` implemented in `backend/app/routers/dashboard.py`. Accepts `date_from` and `date_to` (YYYY-MM-DD) interpreted in `America/Vancouver` using inclusive local-day windows (UTC conversion via `_local_date_to_utc_range`). Returns `sessions_created`, `sessions_completed`, and `participants_completed` for the range. Single-pass conditional aggregation over all sessions (same pattern as `/dashboard/summary`). Validates `date_from <= date_to` → 422.
+- `GET /dashboard/participants-per-day` implemented. Accepts `start`/`end` local dates. Joins `sessions` with `study_days` via `study_day_id`, filters `status=complete`, groups by `study_days.date_local`, returns `sessions_completed` and `participants_completed` per day. Only sessions with a linked `study_day_id` are included. Results ordered `date_local` ASC.
+- `GET /weather/daily` response extended: `current_precip_today_mm` added to `WeatherDailyItem` schema (was already stored in `weather_daily` and serialised by `from_attributes`; only the Pydantic model needed updating).
+- All date semantics use `STUDY_TIMEZONE` from `app.config` (never hardcoded).
+- New schemas: `DashboardSummaryRangeResponse`, `ParticipantsPerDayItem`, `ParticipantsPerDayResponse` in `backend/app/schemas/dashboard.py`.
+- OpenAPI verified: all three endpoints correctly typed and registered.
 
 ---
 

@@ -29,6 +29,7 @@ class WeatherDailyItem(BaseModel):
     source_run_id: uuid.UUID
     updated_at: datetime
     current_temp_c: float | None
+    current_precip_today_mm: float | None
     forecast_high_c: float | None
     forecast_low_c: float | None
     forecast_condition_text: str | None

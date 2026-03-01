@@ -138,7 +138,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T58",
       "title": "Backend — range-filter dashboard reads + participants-per-day aggregation",
-      "status": "todo",
+      "status": "done",
       "description": "Implement RA dashboard date-range summary endpoints and per-day participant counts (America/Vancouver inclusive local-day windows). Extend GET /weather/daily response to include precip for tooltips.",
       "depends_on": [
         "T31",
