@@ -126,10 +126,10 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 </html>
 ```
 
-**Information architecture (Phase 3 planned):**
-- `/dashboard` remains the primary RA landing page.
-- `/import-export` is added for admin data operations.
-- Legacy RA pages `/participants` and `/sessions` are removed from navigation and routes (see T51). The backend endpoints remain available for internal operations and debugging.
+**Information architecture (Phase 3, T51 implemented):**
+- `/dashboard` is the primary RA landing page.
+- `/import-export` is the admin data operations page.
+- RA pages `/participants` and `/sessions` have been removed. The backend endpoints remain available for internal operations and debugging.
 
 ### Participant Pages (`/session/[id]/*`)
 ```
@@ -215,7 +215,7 @@ All four surveys use the shared `SurveyForm` component with:
 
 ---
 
-## RA Import/Export Page (planned)
+## RA Import/Export Page (implemented T50)
 
 The Import/Export page at `/import-export` is RA-only and contains two sections:
 

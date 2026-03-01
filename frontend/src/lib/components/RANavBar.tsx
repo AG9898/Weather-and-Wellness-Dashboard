@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/participants", label: "Participants" },
-  { href: "/sessions", label: "Sessions" },
+  { href: "/import-export", label: "Import / Export" },
 ];
 
 /**

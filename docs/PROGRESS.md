@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 3 (in progress)        |
-| Tasks completed    | 50 / 57                |
-| Remaining queue    | T50–T54 (including T51a, T51b) |
+| Tasks completed    | 52 / 57                |
+| Remaining queue    | T51a, T51b, T52–T54    |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-02-28             |
 
@@ -28,6 +28,33 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+---
+
+## T51 — Frontend: UI cleanup — remove /participants and /sessions, update nav (completed 2026-02-28)
+
+**Acceptance criteria met:**
+
+- `src/app/(ra)/participants/page.tsx` and its directory removed
+- `src/app/(ra)/sessions/page.tsx` and its directory removed
+- `RANavBar` now contains Dashboard + Import/Export + Sign out only; Participants and Sessions links removed
+- `DESIGN_SPEC.md` updated: IA section updated to reflect final nav (no longer describes removed pages)
+- `.next` build cache cleared; TypeScript strict-mode check passes with no errors
+
+---
+
+## T50 — Frontend: Import/Export page (completed 2026-02-28)
+
+**Acceptance criteria met:**
+
+- RA-only `/import-export` page created at `frontend/src/app/(ra)/import-export/page.tsx`
+- Import section: drag-and-drop or click-to-browse for `.csv` / `.xlsx` files; auto-previews on file select; shows participant/session create+update counts plus row-level errors and warnings
+- Errors disable the Confirm Import button with an explanatory message; warnings are shown but do not block commit
+- Confirm Import triggers commit; success summary shows created/updated counts; "Import another file" resets the flow
+- Export section: Export XLSX and Export CSV (zip) buttons; each shows loading state while downloading; triggers browser download with server-provided filename
+- All API calls go through typed wrappers in `src/lib/api/index.ts`: `importPreview`, `importCommit`, `exportXlsx`, `exportZip` — no bare `fetch` in page component
+- New types exported: `ImportRowIssue`, `ImportPreviewResponse`, `ImportCommitResponse`
+- TypeScript strict-mode check passes with no errors
 
 ---
 

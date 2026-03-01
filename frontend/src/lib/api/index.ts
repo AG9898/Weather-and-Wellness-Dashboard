@@ -282,3 +282,120 @@ export async function triggerWeatherIngest(): Promise<WeatherIngestResponse> {
   );
 }
 
+// ── Admin Import/Export types ──
+
+export interface ImportRowIssue {
+  row: number;
+  field: string | null;
+  message: string;
+}
+
+export interface ImportPreviewResponse {
+  file_type: "csv" | "xlsx";
+  rows_total: number;
+  participants_create: number;
+  participants_update: number;
+  sessions_create: number;
+  sessions_update: number;
+  errors: ImportRowIssue[];
+  warnings: ImportRowIssue[];
+}
+
+export interface ImportCommitResponse {
+  rows_total: number;
+  participants_created: number;
+  participants_updated: number;
+  sessions_created: number;
+  sessions_updated: number;
+}
+
+/**
+ * Build auth-only headers (no Content-Type — browser sets it for FormData).
+ * Used for multipart file upload requests.
+ */
+async function buildAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Upload a file for import preview. No DB writes are performed. */
+export async function importPreview(
+  file: File
+): Promise<ImportPreviewResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/admin/import/preview`, {
+    method: "POST",
+    headers: await buildAuthHeaders(),
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<ImportPreviewResponse>;
+}
+
+/** Commit an import. Performs transactional DB writes. */
+export async function importCommit(
+  file: File
+): Promise<ImportCommitResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/admin/import/commit`, {
+    method: "POST",
+    headers: await buildAuthHeaders(),
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<ImportCommitResponse>;
+}
+
+/** Parse the filename from a Content-Disposition header, or fall back to the given default. */
+function filenameFromContentDisposition(
+  header: string | null,
+  fallback: string
+): string {
+  if (!header) return fallback;
+  const match = header.match(/filename="([^"]+)"/);
+  return match?.[1] ?? fallback;
+}
+
+/** Download the admin XLSX export. Returns the blob and the server-provided filename. */
+export async function exportXlsx(): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_BASE}/admin/export.xlsx`, {
+    method: "GET",
+    headers: await buildAuthHeaders(),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  const blob = await res.blob();
+  const filename = filenameFromContentDisposition(
+    res.headers.get("Content-Disposition"),
+    "Weather and wellness - export.xlsx"
+  );
+  return { blob, filename };
+}
+
+/** Download the admin CSV zip export. Returns the blob and the server-provided filename. */
+export async function exportZip(): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_BASE}/admin/export.zip`, {
+    method: "GET",
+    headers: await buildAuthHeaders(),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  const blob = await res.blob();
+  const filename = filenameFromContentDisposition(
+    res.headers.get("Content-Disposition"),
+    "Weather and wellness - export.zip"
+  );
+  return { blob, filename };
+}
