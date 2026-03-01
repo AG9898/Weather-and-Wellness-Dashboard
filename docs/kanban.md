@@ -2,7 +2,7 @@ Current kanban for tasks. Historical kanban tasks have been moved to 'kanban_log
 Follow current JSON Schema when adding tasks.
 ---
 
-# Kanban — Phase 3
+# Kanban — Phase 4
 
 > This block follows the detailed machine-readable task format with dependencies, docs to read, acceptance criteria, and required doc updates.
 > Keep Phase 1 and Phase 2 above unchanged.
@@ -10,9 +10,9 @@ Follow current JSON Schema when adding tasks.
 ```json
 {
   "project": "Weather & Wellness + Misokinesia Research Web App",
-  "phase": 3,
-  "phase_status": "in_progress",
-  "goal": "Ship the supervised one-click participant flow, participant anonymization, production auth/reliability hardening, and release readiness.",
+  "phase": 4,
+  "phase_status": "planned",
+  "goal": "Demo launch final prep: remap legacy imported sessions into first-class tables, add a filter-aware weather graph, and apply final UI polish (including a system-default light/dark toggle).",
   "stack_overview": {
     "frontend": "Next.js (Vercel) + TypeScript + Tailwind",
     "backend": "FastAPI (Python, Render)",
@@ -21,45 +21,17 @@ Follow current JSON Schema when adding tasks.
   },
   "tasks": [
     {
-      "id": "T48",
-      "title": "Backend — admin import preview/commit (CSV/XLSX) with upsert rules",
-      "status": "done",
-      "description": "Implement RA-only import endpoints that accept CSV/XLSX uploads, validate rows, present a preview with counts/errors, then commit writes on confirmation. Import upserts participants by participant_number (overwriting demographics) and creates/updates a complete session per participant (workflow 1:1; ambiguous >1 sessions fails). Import links study_day_id from the imported date (America/Vancouver) and stores imported aggregate measures in imported_session_measures with a source_row_json audit payload. Daytime is parsed as a session start time-of-day used to compute participants.daylight_exposure_minutes (minutes since DAYLIGHT_START_LOCAL_TIME).",
+      "id": "T54",
+      "title": "DB — Phase 4 schema for legacy-import remapping into survey_* + digitspan_runs",
+      "status": "todo",
+      "description": "Add schema support for storing imported aggregate values in the canonical survey and digit span tables without fabricating raw item/trial rows. Add a data_source flag, legacy-value columns, and uniqueness constraints to prevent duplicates per session.",
       "depends_on": [
         "T47",
-        "T47a"
-      ],
-      "stack": [
-        "backend"
-      ],
-      "read_docs": [
-        "docs/API.md",
-        "docs/SCHEMA.md",
-        "docs/CONVENTIONS.md"
-      ],
-      "acceptance_criteria": [
-        "POST /admin/import/preview validates file and returns counts + row-level issues without writing",
-        "POST /admin/import/commit performs DB writes matching the preview (transactional; fails cleanly)",
-        "Excel date serials are converted deterministically and interpreted as America/Vancouver study dates",
-        "Daytime values (Excel fractions or HH:MM:SS) are parsed deterministically and used to compute daylight_exposure_minutes via DAYLIGHT_START_LOCAL_TIME",
-        "Import upsert behavior is documented and tested (create vs update counts match) and does not overwrite native survey/digit span rows"
-      ],
-      "updates_docs": [
-        "docs/API.md",
-        "docs/devSteps.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T49",
-      "title": "Backend — admin export (XLSX workbook + zipped CSV)",
-      "status": "done",
-      "description": "Implement RA-only export endpoints for current DB data. XLSX: README sheet plus one sheet per table (schema-faithful; includes join keys). CSV: zip containing one CSV per table (schema-faithful; includes join keys). Filenames: 'Weather and wellness - YYYY-MM-DD.xlsx' and '.zip'.",
-      "depends_on": [
         "T48"
       ],
       "stack": [
-        "backend"
+        "backend",
+        "database"
       ],
       "read_docs": [
         "docs/API.md",
@@ -67,110 +39,165 @@ Follow current JSON Schema when adding tasks.
         "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "GET /admin/export.xlsx returns a workbook with a README sheet plus one sheet per table and correct headers",
-        "GET /admin/export.zip returns a zip with one CSV per table and correct headers",
-        "Both endpoints require RA auth and do not expose secrets"
+        "Alembic migration adds a `data_source` column (default `native`) to survey and digit span run tables used for remapping",
+        "Legacy-mean and legacy-total columns exist for ULS-8 / CES-D 10 / GAD-7 as documented in SCHEMA.md",
+        "A session can have at most one row in each of: survey_uls8, survey_cesd10, survey_gad7, digitspan_runs (unique by session_id)",
+        "Existing native rows remain unchanged and remain the canonical source for their sessions"
       ],
       "updates_docs": [
-        "docs/API.md",
-        "docs/devSteps.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T50",
-      "title": "Frontend — Import/Export page (upload preview+confirm, export downloads)",
-      "status": "done",
-      "description": "Add an RA-only /import-export page. Import section supports drag+drop CSV/XLSX, preview, and explicit confirm before commit. Export section provides XLSX and CSV (zip) downloads with required filenames.",
-      "depends_on": [
-        "T49"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/API.md",
-        "docs/styleguide.md",
-        "docs/CONVENTIONS.md"
-      ],
-      "acceptance_criteria": [
-        "Import preview shows participant/session counts and validation errors before any writes",
-        "Confirm import triggers commit and shows a success summary (created vs updated counts)",
-        "Export buttons download files with required names and extensions",
-        "No bare fetch: all calls go through typed wrappers in src/lib/api/"
-      ],
-      "updates_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T51",
-      "title": "Frontend — UI cleanup (remove participants/sessions pages; update nav)",
-      "status": "done",
-      "description": "Remove the RA /participants and /sessions pages from the frontend and remove their navigation links. Ensure dashboard remains the primary RA landing page and add a nav link to Import/Export. Start-session demographics are collected via the dashboard flow (not a separate participants editor).",
-      "depends_on": [
-        "T50"
-      ],
-      "stack": [
-        "frontend"
-      ],
-      "read_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/styleguide.md"
-      ],
-      "acceptance_criteria": [
-        "No RA routes exist for /participants and /sessions",
-        "RANavBar contains Dashboard + Import/Export (and Sign out) only",
-        "DESIGN_SPEC.md no longer describes the removed pages"
-      ],
-      "updates_docs": [
-        "docs/DESIGN_SPEC.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T51a",
-      "title": "Backend — start session requires demographics + daylight exposure compute",
-      "status": "done",
-      "description": "Extend POST /sessions/start to accept required participant demographics (age band, gender, origin, commute_method, time_outside; plus origin_other_text/commute_method_other_text when applicable), store them on participants, compute daylight_exposure_minutes, and return start_path for the consent-gated flow.",
-      "depends_on": [
-        "T47",
-        "T47a"
-      ],
-      "stack": [
-        "backend"
-      ],
-      "read_docs": [
         "docs/API.md",
         "docs/SCHEMA.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/CONVENTIONS.md",
+        "docs/PROGRESS.md",
         "docs/DECISIONS.md"
+      ]
+    },
+    {
+      "id": "T55",
+      "title": "Backend — import commit writes remapped legacy rows into survey_* + digitspan_runs",
+      "status": "todo",
+      "description": "On admin import commit, upsert imported rows into survey_uls8 / survey_cesd10 / survey_gad7 / digitspan_runs using the Phase 4 schema. Do not fabricate raw survey items or digit span trials. Preserve auditability via imported_session_measures.source_row_json.",
+      "depends_on": [
+        "T54"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "POST /sessions/start accepts a demographics payload and persists values to participants (no demographics stored on sessions)",
-        "If origin or commute_method is Other, the corresponding *_other_text field is required and persisted",
-        "participants.daylight_exposure_minutes is computed deterministically from session start local time and DAYLIGHT_START_LOCAL_TIME (default 06:00 America/Vancouver)",
-        "start_path returned by /sessions/start is /session/<session_id>/consent"
+        "Import commit upserts digitspan_runs with data_source=imported and total_correct from legacy digit_span_score (0–14); max_span remains null",
+        "Import commit upserts survey rows with data_source=imported and legacy-value columns populated; canonical computed fields may remain null where no deterministic mapping exists",
+        "If legacy anxiety is an exact integer 0–21, GAD-7 total_score and severity_band are populated; otherwise only legacy_mean is stored",
+        "Re-import updates imported rows without overwriting native rows (native rows are treated as conflicts)"
       ],
       "updates_docs": [
         "docs/API.md",
         "docs/SCHEMA.md",
-        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T56",
+      "title": "Backend — legacy weather backfill (temp/precip only) from imported sessions",
+      "status": "todo",
+      "description": "Backfill weather_daily for days that do not have UBC-ingested weather, using mean temperature/precipitation from imported legacy sessions grouped by date_local. Do not overwrite existing weather_daily rows.",
+      "depends_on": [
+        "T55"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Backfill uses study_days.date_local (America/Vancouver) as the join key and supports a 1:M day↔session relationship",
+        "Only current_temp_c and current_precip_today_mm are populated for legacy-backfilled weather_daily rows; all other fields remain null/empty",
+        "weather_ingest_runs records the backfill run timestamp as an ingest audit trail without confusing day-linking (date_local remains the analytic join key)",
+        "Existing weather_daily rows are never overwritten by legacy backfill"
+      ],
+      "updates_docs": [
+        "docs/WEATHER_INGESTION.md",
+        "docs/SCHEMA.md",
+        "docs/PROGRESS.md",
+        "docs/API.md"
+      ]
+    },
+    {
+      "id": "T57",
+      "title": "Backend — one-off Phase 4 backfill for already-imported sessions",
+      "status": "todo",
+      "description": "Add an idempotent one-off backfill script that remaps existing imported_session_measures rows into the new Phase 4 survey/digitspan schema and performs the legacy weather backfill for missing days.",
+      "depends_on": [
+        "T56"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
         "docs/CONVENTIONS.md",
+        "docs/devSteps.md"
+      ],
+      "acceptance_criteria": [
+        "Script is safe to re-run (idempotent) and logs created/updated counts per table",
+        "Script never overwrites native rows (data_source=native) and only upserts imported rows (data_source=imported)",
+        "Script ensures sessions.study_day_id is set consistently from the session’s local completion date when needed"
+      ],
+      "updates_docs": [
         "docs/devSteps.md",
         "docs/PROGRESS.md"
       ]
     },
     {
-      "id": "T51b",
-      "title": "Frontend — Start New Entry demographics questionnaire (dashboard)",
-      "status": "done",
-      "description": "Update the RA dashboard Start New Entry flow to require a demographics questionnaire before creating a session. Use preset options derived from the legacy XLSX value set; allow free-text when Other is selected (with no-PII UI copy). Call POST /sessions/start with the payload and route to the returned start_path.",
+      "id": "T58",
+      "title": "Backend — range-filter dashboard reads + participants-per-day aggregation",
+      "status": "todo",
+      "description": "Implement RA dashboard date-range summary endpoints and per-day participant counts (America/Vancouver inclusive local-day windows). Extend GET /weather/daily response to include precip for tooltips.",
       "depends_on": [
-        "T51a"
+        "T31",
+        "T21"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "GET /dashboard/summary/range is implemented and returns range-aware KPI counts for the selected local-day window",
+        "GET /dashboard/participants-per-day (planned Phase 4 endpoint) returns per-day participant/session counts aligned to study_days.date_local",
+        "GET /weather/daily response includes both current_temp_c and current_precip_today_mm for display/tooltip use",
+        "All date_from/date_to semantics use America/Vancouver inclusive local-day windows"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T59",
+      "title": "Frontend — range dashboard bundle route handler + typed wrappers",
+      "status": "todo",
+      "description": "Add a Vercel Route Handler that verifies the Supabase JWT and fetches range-filtered dashboard data from the backend (bypassing Redis). Add typed API wrappers for the new route and bundle shape.",
+      "depends_on": [
+        "T58"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Route handler verifies Supabase JWT before returning any data",
+        "Filtered range bundle bypasses Redis caching by default",
+        "All frontend calls use src/lib/api wrappers (no bare fetch from components/pages)"
+      ],
+      "updates_docs": [
+        "docs/ARCHITECTURE.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T60",
+      "title": "Frontend — dashboard date-range filter + remove Recent Sessions panel",
+      "status": "todo",
+      "description": "Add a date-range filter UI (with presets) to the dashboard. Filtered views update KPIs, weather card context, and the weather graph. Remove the Recent Sessions section from the dashboard.",
+      "depends_on": [
+        "T59"
       ],
       "stack": [
         "frontend"
@@ -182,10 +209,10 @@ Follow current JSON Schema when adding tasks.
         "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "Start New Entry opens a required demographics form with the specified preset options",
-        "Origin/commute_method Other requires free-text detail before submit and includes a warning not to enter names/PII",
-        "On submit, the dashboard calls the typed API wrapper (no bare fetch) and routes to /session/<id>/consent",
-        "Error states are inline and non-technical; form state is preserved on failure"
+        "Dashboard provides date-range filter controls with clear defaults (system timezone = America/Vancouver semantics)",
+        "Default (unfiltered) dashboard continues using cached→live SWR behavior",
+        "Filtered dashboard uses the range bundle and does not show/remove cached data on transient errors",
+        "Recent Sessions section is removed and no longer fetches /sessions for dashboard rendering"
       ],
       "updates_docs": [
         "docs/DESIGN_SPEC.md",
@@ -193,90 +220,122 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T52",
-      "title": "Frontend + Backend — consent gating page (no DB record)",
-      "status": "done",
-      "description": "Add a participant consent screen at /session/[session_id]/consent that gates the flow before Survey 1. Consent is not written to the DB (UI-only). Ensure the participant flow begins at consent and proceeds to Survey 1 only after explicit acceptance.",
+      "id": "T61",
+      "title": "Frontend — weather graph (Recharts) + filter wiring",
+      "status": "todo",
+      "description": "Add a graph view of weather data that is driven by the dashboard date-range filter. Show temperature over time and participant counts per day, with precipitation available in hover/tooltip details.",
       "depends_on": [
-        "T51b"
+        "T60"
       ],
       "stack": [
-        "frontend",
-        "backend"
+        "frontend"
       ],
       "read_docs": [
-        "docs/API.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/styleguide.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Graph renders a temperature series for the selected range (skipping missing values safely)",
+        "Graph shows participant counts per day for the same date range",
+        "Graph respects the dashboard filter state and updates with it (no independent fetch)",
+        "Tooltip shows date_local + temp + precip (when available) + participant count"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T62",
+      "title": "Frontend — system-default light/dark theme toggle (UBC light palette)",
+      "status": "todo",
+      "description": "Add a light/dark theme toggle (default = system, persisted in localStorage). Base light palette on the UBC color guide; keep references as inspiration (not 1:1 remakes) and preserve the clean, shipped research-tool aesthetic.",
+      "depends_on": [
+        "T60"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/styleguide.md",
+        "docs/shadcn.md",
         "docs/DESIGN_SPEC.md",
         "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "Participant flow begins at the consent page and requires explicit acceptance to continue",
-        "No consent record is stored in Supabase (UI-only gating)"
+        "Theme default is system (`prefers-color-scheme`) and persisted choice overrides system",
+        "All pages use semantic tokens (background/foreground/card/etc.) so the toggle works globally",
+        "Theme toggle is available on RA navigation and does not break participant flows"
       ],
       "updates_docs": [
-        "docs/API.md",
+        "docs/styleguide.md",
         "docs/DESIGN_SPEC.md",
         "docs/PROGRESS.md"
       ]
     },
     {
-      "id": "T53",
-      "title": "Dashboard — filtering controls (scope: KPIs + weather)",
+      "id": "T63",
+      "title": "Frontend — UI polish (dashboard, weather components, surveys, favicon/top bar)",
       "status": "todo",
-      "description": "Add dashboard filtering controls (initially date range) that affect KPI summaries and weather display where applicable. Weather behavior: if range is one day, show that day's weather; if multi-day, show date_to weather context. Cache policy: default view uses cache; filtered views bypass Redis initially.",
+      "description": "Polish UI for demo launch: consistent hover/focus interactions for buttons, update WeatherCard and KPI look per provided references (inspiration-only), clean survey page visuals, and update favicon/top bar styling.",
       "depends_on": [
-        "T52"
+        "T61",
+        "T62"
       ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/styleguide.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Dashboard no longer shows Recent Sessions and presents a coherent KPI + weather + graph hierarchy",
+        "Button hover/focus behavior is visually consistent across the app",
+        "Survey pages remain legible and calm; references are used as inspiration only (not cloned 1:1)",
+        "Favicon and top bar are updated and consistent with the Phase 4 palette"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T64",
+      "title": "Docs — Phase 4 documentation sweep and consistency pass",
+      "status": "todo",
+      "description": "Update docs to be Phase 4 decision-complete: kanban tasks, API contracts, schema notes, design spec, styleguide, and runbooks. Fix any Phase 3 doc mismatches discovered during implementation.",
+      "depends_on": [],
       "stack": [
         "backend",
-        "frontend"
+        "frontend",
+        "database"
       ],
       "read_docs": [
+        "docs/kanban.md",
         "docs/API.md",
+        "docs/SCHEMA.md",
         "docs/DESIGN_SPEC.md",
+        "docs/styleguide.md",
+        "docs/devSteps.md",
         "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "Dashboard provides date-range filtering controls with clear defaults",
-        "Backend supports filtered summary reads (GET /dashboard/summary/range) without breaking existing callers",
-        "Filtered requests interpret date_from/date_to in America/Vancouver and use inclusive local-day windows",
-        "Cache behavior for filtered vs default view is documented and matches implementation"
+        "Docs match current implementation status markers (planned vs implemented) accurately",
+        "Phase 4 kanban is broken into single-target tasks with explicit acceptance criteria",
+        "Phase 4 mapping rules and date_local linking semantics are clearly documented"
       ],
       "updates_docs": [
-        "docs/API.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/devSteps.md",
-        "docs/PROGRESS.md"
-      ]
-    },
-    {
-      "id": "T54",
-      "title": "Verification — import/export + consent + UI cleanup smoke tests",
-      "status": "todo",
-      "description": "Run end-to-end smoke tests for start-session demographics, consent gating, import preview/commit, export downloads, dashboard filtering, and the cleaned RA navigation. Record results in PROGRESS.md.",
-      "depends_on": [
-        "T53"
-      ],
-      "stack": [
-        "qa",
-        "ops"
-      ],
-      "read_docs": [
-        "docs/devSteps.md",
+        "docs/kanban.md",
+        "docs/kanban_log.md",
         "docs/API.md",
         "docs/SCHEMA.md",
-        "docs/ARCHITECTURE.md"
-      ],
-      "acceptance_criteria": [
-        "Start New Entry requires demographics and routes to consent; participants row has demographics + daylight_exposure_minutes set",
-        "Import preview and commit run successfully on a small sample and the reference XLSX",
-        "Exported XLSX and CSV zip contain expected tables/sheets and correct filenames",
-        "Consent page gates the participant flow before Survey 1",
-        "Dashboard filtering works for single-day and multi-day ranges (weather uses date_to for multi-day)",
-        "Removed pages are not accessible and nav reflects the new IA",
-        "Results are recorded in PROGRESS.md with dates"
-      ],
-      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/styleguide.md",
+        "docs/devSteps.md",
+        "docs/CONVENTIONS.md",
         "docs/PROGRESS.md"
       ]
     }

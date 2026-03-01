@@ -33,6 +33,7 @@
 |--------|------|------|--------|----------------|
 | GET    | /dashboard/summary | RA | implemented | T20 |
 | GET    | /dashboard/summary/range | RA | planned | T53 |
+| GET    | /dashboard/participants-per-day | RA | planned | T58 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
@@ -91,14 +92,44 @@
     "date_from": "YYYY-MM-DD",
     "date_to": "YYYY-MM-DD",
     "sessions_created": "integer",
-    "sessions_completed": "integer"
+    "sessions_completed": "integer",
+    "participants_completed": "integer"
   }
   ```
 - **Notes:**
   - `sessions_created` counts sessions where `created_at` is within `[date_from, date_to]` (inclusive bounds).
   - `sessions_completed` counts sessions where `completed_at` is within `[date_from, date_to]` (inclusive bounds).
+  - `participants_completed` counts distinct participants among sessions completed within the selected range.
   - Date bounds are interpreted in the study timezone (`America/Vancouver`) using inclusive local-day windows.
   - This endpoint supports the Phase 3 dashboard date-range filter without changing the existing `/dashboard/summary` response contract.
+
+---
+
+### GET /dashboard/participants-per-day
+- **Auth:** RA required
+- **Status:** planned (T58)
+- **Query parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `start` | date `YYYY-MM-DD` | Inclusive start local date (`America/Vancouver`) |
+| `end` | date `YYYY-MM-DD` | Inclusive end local date (`America/Vancouver`) |
+
+- **Response:**
+  ```json
+  {
+    "items": [
+      {
+        "date_local": "YYYY-MM-DD",
+        "sessions_completed": "integer",
+        "participants_completed": "integer"
+      }
+    ]
+  }
+  ```
+- **Notes:**
+  - Aggregation is by `study_days.date_local` (America/Vancouver).
+  - Intended for dashboard graphing and filtered analytics UI; this does not expose participant identifiers.
 
 ---
 
@@ -395,6 +426,7 @@
         "source_run_id": "uuid",
         "updated_at": "datetime",
         "current_temp_c": "number | null",
+        "current_precip_today_mm": "number | null",
         "forecast_high_c": "number | null",
         "forecast_low_c": "number | null",
         "forecast_condition_text": "string | null",
@@ -414,11 +446,13 @@
   - `items` ordered by `date_local` ASC. Empty array if no data for the range.
   - `latest_run` is the most recent ingest run for the station regardless of date range; `null` if no runs exist.
   - `latest_run.parse_status` values: `success | partial | fail`.
+  - `date_local` is the analytic join key (study day in `America/Vancouver`). Metadata timestamps like `updated_at` / `current_observed_at` must not be used for day linking.
+- **Phase 4 note (planned):** include `current_precip_today_mm` in the response so the dashboard graph tooltip can show precipitation alongside temperature.
 - **Verified:** 2026-02-26 — returned 1 item with `current_temp_c`, `forecast_periods`, and `latest_run` from live DB.
 
 ---
 
-## Admin Data (Phase 3) (planned)
+## Admin Data (Phase 3)
 
 > These endpoints are RA-only and are intended for internal lab administration. They are not participant-facing.
 > Imports must be preview-first (no writes on preview), then explicit commit.
@@ -471,10 +505,16 @@
       (e.g. `"Man "` → `"Man"`, `"Nonbinary person"` → `"Non-binary"`).
     - If `origin` / `commute_method` is an “Other” category and includes a free-text detail, store it in `origin_other_text` / `commute_method_other_text` (length-limited; avoid PII).
     - All numeric measures (`precipitation`, `temperature`, `anxiety`, `loneliness`, `depression`, `self_report`) parse as floats; blanks become nulls.
+      - Note: `anxiety`, `loneliness`, and `depression` are legacy aggregate values (often fractional), not raw item-level responses.
     - `digit_span_score` parses as integer; blank becomes null.
+      - Note: legacy `digit_span_score` ranges 0–14 and is treated as a Digit Span run outcome (total correct), not max span.
   - Storage mapping (commit):
     - Participant demographics are stored on `participants` (nullable columns planned in T47).
-    - Imported aggregates are stored in `imported_session_measures` (planned in T47) with a full `source_row_json` audit payload.
+    - Imported aggregates are stored in `imported_session_measures` (applied in T47) with a full `source_row_json` audit payload.
+
+**Phase 4 note (planned):** commit also upserts “imported” rows into:
+- `digitspan_runs` (data_source=`imported`, `total_correct` populated; no trials reconstructed)
+- `survey_uls8`, `survey_cesd10`, `survey_gad7` (data_source=`imported`, legacy-value columns populated; raw `r*` columns remain null)
 
 ### POST /admin/import/commit
 - **Auth:** RA required

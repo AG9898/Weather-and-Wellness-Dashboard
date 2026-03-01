@@ -15,16 +15,21 @@ It defines the shared look-and-feel across pages so individual page work stays c
 
 - This guide is for visual direction and token consistency, not component parity.
 - Do not recreate the full `WeatherMind` landing page as-is.
-- Keep only the vibe: dark, calm, data-oriented, modern lab interface.
+- References are **inspiration only** (not 1:1 remakes).
+- Keep the vibe: clean, calm, data-oriented, modern lab interface (research tool, not marketing).
 - Omit decorative components that are not part of the product requirements.
 
 ## 3) Visual Direction (Target Vibe)
 
-- Dark, atmospheric background with layered depth (not flat black).
+- Dark-first baseline with layered depth (not flat black).
 - Glass-like surfaces for cards/panels with subtle borders and blur.
 - Quiet, high-contrast typography tuned for long-form task flow.
 - Minimal, deliberate motion; no excessive animation.
 - Clinical/research tone over marketing tone.
+
+**Phase 4 (planned):** Add a system-default light/dark toggle. Light mode should feel:
+- Bright but not stark-white (slight cool/blue tint is OK)
+- Still “lab tool” (structured, low-noise), not playful
 
 ## 4) Brand Tokens (UBC-Based)
 
@@ -66,6 +71,17 @@ Notes:
 - `#001328` is exact from PDF metadata (`UBC Video Blue`).
 - Other hex values are web approximations derived from the PDF swatches.
 - Do not introduce off-brand purple/pink as a default accent.
+
+### 4.3 Light Mode Guidance (Phase 4)
+
+Light mode is implemented by swapping **semantic** tokens (shadcn tokens) in `frontend/src/app/globals.css`:
+- `:root` becomes the light theme token set
+- `.dark` becomes the dark theme token set (current baseline)
+
+Light mode palette rules:
+- Background and cards use near-white surfaces with subtle cool tint; avoid pure `#fff` as the global background.
+- Text uses UBC Video Blue / ink-dark equivalents for strong contrast.
+- Primary actions remain UBC blue (`--ubc-blue-700`) with consistent hover/focus states.
 
 ## 5) Typography
 

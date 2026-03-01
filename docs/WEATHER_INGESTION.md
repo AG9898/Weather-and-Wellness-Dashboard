@@ -104,6 +104,22 @@ See `docs/SCHEMA.md` for the column-level schema.
 
 ---
 
+## Legacy Import Backfill (Phase 4 planned)
+
+When legacy sessions are imported (Phase 3 admin import), we may not have UBC-ingested weather for the historical study day.
+
+Phase 4 adds an optional backfill rule:
+- If a `weather_daily` row does **not** exist for `(station_id=3510, date_local)`, create a partial `weather_daily` row populated only with:
+  - `current_temp_c` (mean of imported session `temperature` values for that `date_local`)
+  - `current_precip_today_mm` (mean of imported session `precipitation` values for that `date_local`)
+- All other `weather_daily` fields remain null/empty (no fabricated forecast series).
+- The backfill creates a corresponding `weather_ingest_runs` audit row with `parser_version="legacy-import-v1"`.
+- Existing UBC-ingested `weather_daily` rows are never overwritten by legacy backfill.
+
+**Important:** day-level linking is always by `study_days.date_local` (America/Vancouver). Metadata timestamps like `weather_daily.updated_at` and `weather_daily.current_observed_at` must not be treated as the analytic join key.
+
+---
+
 ## Parsing & Normalization
 
 ### Parsed outputs

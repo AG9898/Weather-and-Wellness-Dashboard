@@ -1,6 +1,6 @@
 # SCHEMA.md — Database Schema
 
-> Full reference for all 8 tables. Read before writing SQLAlchemy models, Alembic
+> Full reference for all core study tables. Read before writing SQLAlchemy models, Alembic
 > migrations, Pydantic schemas, or any DB query. Updated in-place when columns change;
 > Migration History section is append-only.
 
@@ -21,6 +21,7 @@
 
 ```
 participants (1) ──────────────── (many) sessions
+study_days (1) ────────────────── (many) sessions
 sessions (1) ──────────────────── (1) digitspan_runs
 digitspan_runs (1) ─────────────── (14) digitspan_trials
 sessions (1) ──────────────────── (1) survey_uls8
@@ -28,6 +29,8 @@ sessions (1) ──────────────────── (1) su
 sessions (1) ──────────────────── (1) survey_gad7
 sessions (1) ──────────────────── (1) survey_cogfunc8a
 sessions (1) ──────────────────── (0..1) imported_session_measures
+study_days (1) ────────────────── (many) weather_daily
+weather_ingest_runs (1) ───────── (many) weather_daily
 ```
 
 ---
@@ -59,7 +62,7 @@ Addition to `sessions` applied in migration `20260226_000005`:
 |--------------|------|-------------|------|
 | study_day_id | UUID | FK, NULLABLE | Set when session becomes `complete`; links to `study_days.study_day_id` |
 
-### Table: `weather_daily` (planned)
+### Table: `weather_daily` (applied)
 
 | Column                 | Type        | Constraints   | Notes |
 |------------------------|-------------|---------------|-------|
@@ -86,11 +89,11 @@ Addition to `sessions` applied in migration `20260226_000005`:
 | structured_json        | JSONB       | NOT NULL      | Full normalized per-day payload |
 | created_at             | TIMESTAMPTZ | DEFAULT NOW() |      |
 
-Constraints/indexes (planned):
+Constraints/indexes (applied):
 - UNIQUE (`station_id`, `study_day_id`) for idempotent upserts
 - Index (`station_id`, `date_local`)
 
-### Table: `weather_ingest_runs` (planned)
+### Table: `weather_ingest_runs` (applied)
 
 | Column                | Type        | Constraints   | Notes |
 |-----------------------|-------------|---------------|-------|
@@ -114,7 +117,7 @@ Constraints/indexes (planned):
 | parser_version        | VARCHAR     | NOT NULL      | e.g. `ubc-eos-v1` |
 | created_at            | TIMESTAMPTZ | DEFAULT NOW() |      |
 
-Indexes (planned):
+Indexes (applied):
 - Index (`station_id`, `ingested_at` DESC)
 - Index (`station_id`, `date_local`)
 
@@ -186,7 +189,7 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | anxiety_mean       | DOUBLE PRECISION | NULLABLE    | Legacy import column `anxiety` (aggregate/mean) |
 | loneliness_mean    | DOUBLE PRECISION | NULLABLE    | Legacy import column `loneliness` (aggregate/mean) |
 | depression_mean    | DOUBLE PRECISION | NULLABLE    | Legacy import column `depression` (aggregate/mean) |
-| digit_span_max_span| INT         | NULLABLE          | Legacy import column `digit_span_score` mapped to max span |
+| digit_span_max_span| INT         | NULLABLE          | Legacy import column `digit_span_score` stored as provided (0–14). Phase 4 treats this as Digit Span run outcome (total correct), not max span. |
 | self_report        | DOUBLE PRECISION | NULLABLE    | Legacy import column `self_report` (stored as provided) |
 | source_row_json    | JSONB       | NOT NULL          | Full raw row payload for audit/future remapping |
 | created_at         | TIMESTAMPTZ | DEFAULT NOW()     | |
@@ -194,6 +197,30 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 **Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
 - Measures map 1:1 from columns `precipitation`, `temperature`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
 - `source_row_json` stores the complete row (including demographic fields and the original `date`) to preserve auditability and enable future remapping without re-uploading the original file.
+
+---
+
+## Phase 4 Planned Additions — Legacy Import Remapping into Canonical Tables (T54 planned)
+
+Goal: preserve imported aggregate values inside the canonical outcome tables used for analysis/exports, **without** fabricating raw survey item rows or digit span trials.
+
+Planned schema pattern:
+- Add `data_source` (`native` | `imported`) with default `native` to:
+  - `digitspan_runs`
+  - `survey_uls8`
+  - `survey_cesd10`
+  - `survey_gad7`
+- Enforce 1:1 per session with unique constraints on `session_id` for each of the above tables.
+- For imported rows:
+  - raw response columns (`r1…`) are nullable (stored only for native submissions)
+  - canonical computed columns may be nullable if no deterministic mapping exists from legacy aggregates
+  - legacy aggregate values are stored in dedicated legacy columns:
+    - `survey_uls8.legacy_mean_1_4` (NUMERIC)
+    - `survey_cesd10.legacy_mean_1_4` (NUMERIC)
+    - `survey_gad7.legacy_mean_1_4` (NUMERIC) and `survey_gad7.legacy_total_score` (SMALLINT)
+  - Digit span import maps legacy `digit_span_score` (0–14) to `digitspan_runs.total_correct` when available; `max_span` remains null.
+
+`imported_session_measures` remains the audit/source-of-truth mapping table and retains the full `source_row_json`.
 
 ---
 

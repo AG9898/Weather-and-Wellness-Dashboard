@@ -77,13 +77,18 @@ All scoring is server-side. See per-instrument docs for full formulas.
 
 ---
 
-# Design System — Phase 2 (T19+)
+# Design System — Phase 2 (T19+) + Phase 4 Theme Toggle (planned)
 
 > Implemented in T19. All new pages must follow this system.
 
 ## Design Tokens
 
-All brand and semantic tokens are defined in `frontend/src/app/globals.css`. The app is **always dark** (clinical/research tool — no light mode toggle).
+All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
+
+**Phase 4 (planned):** Add a light/dark theme toggle:
+- Default = **system** (`prefers-color-scheme`)
+- Persist explicit user choice in `localStorage`
+- References are **inspiration only** (not 1:1 remakes); preserve the clean, shipped research-tool aesthetic
 
 ### UBC Brand Palette (CSS variables)
 
@@ -100,7 +105,9 @@ All brand and semantic tokens are defined in `frontend/src/app/globals.css`. The
 
 ### Shadcn Semantic Token Mapping
 
-Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to the UBC palette in `:root`. The `.dark` block mirrors `:root` so shadcn component dark-variant internals work.
+Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to the UBC palette.
+- Current implementation uses `.dark` tokens as the baseline.
+- Phase 4 will make `:root` represent light tokens and `.dark` represent dark tokens so shadcn components switch cleanly.
 
 ## Shared Components
 
@@ -114,7 +121,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 ### RA Pages (`/dashboard`, `/import-export`)
 ```
-<html class="dark">
+<html class="dark|light">
   <body>
     <RALayout>           ← auth guard
       <RANavBar />       ← sticky navy nav (--ubc-navy)
@@ -135,7 +142,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 ### Participant Pages (`/session/[id]/*`)
 ```
-<html class="dark">
+<html class="dark|light">
   <body>
     <SessionLayout>      ← no-auth, max-w-3xl centered shell
       {page content}
@@ -152,6 +159,8 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Present the consent form, collect participant details, and open a supervised session."), primary shadcn `Button` (size lg, ubc-blue-700) that navigates to `/new-session` to begin the two-step consent + demographics flow.
 3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
 
+**Phase 4 (planned):** Remove the "Recent Sessions" panel from the dashboard. The dashboard remains KPI + weather + filter + graph focused (RA navigation stays minimal).
+
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
 - The supervised workflow treats participant↔session as 1:1 (a new participant is created for each new session); the DB does not enforce this constraint.
@@ -163,7 +172,7 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 
 Loading state shows `—` in KPI values and weather card skeleton/loading text. Error state shows an inline destructive banner.
 
-**Filtering (planned):**
+**Filtering (Phase 4 — planned):**
 - Dashboard adds a date-range filter control that affects:
   - the **Created** KPI (sessions created within the selected range), and
   - the **Completed** KPI (sessions completed within the selected range),
@@ -171,9 +180,16 @@ Loading state shows `—` in KPI values and weather card skeleton/loading text. 
 - Default view (no custom range selected) uses the cached dashboard bundle (`/api/ra/dashboard?mode=cached` then SWR live refresh).
 - Filtered views bypass Redis initially and fetch live from Render using the planned `/dashboard/summary/range` contract plus `GET /weather/daily` for the selected date.
 
-**Weather behavior under filtering (planned):**
+**Weather behavior under filtering (Phase 4 — planned):**
 - If the selected range is a single day (`date_from == date_to`), the weather card shows that day's `weather_daily` (if present).
 - If the selected range spans multiple days, the weather card shows the **end date** (`date_to`) as the most relevant day context for the filtered KPIs.
+
+**Weather graph behavior under filtering (Phase 4 — planned):**
+- Dashboard renders a weather graph that is driven by the same date-range filter state.
+- Graph shows:
+  - temperature (`weather_daily.current_temp_c`) as a line,
+  - participants-per-day as bars (derived from sessions completed on that `study_days.date_local`),
+  - precipitation (`weather_daily.current_precip_today_mm`) in hover/tooltip when available.
 
 ---
 
