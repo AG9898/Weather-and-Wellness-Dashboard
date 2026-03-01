@@ -133,7 +133,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T51a",
       "title": "Backend — start session requires demographics + daylight exposure compute",
-      "status": "todo",
+      "status": "done",
       "description": "Extend POST /sessions/start to accept required participant demographics (age band, gender, origin, commute_method, time_outside; plus origin_other_text/commute_method_other_text when applicable), store them on participants, compute daylight_exposure_minutes, and return start_path for the consent-gated flow.",
       "depends_on": [
         "T47",

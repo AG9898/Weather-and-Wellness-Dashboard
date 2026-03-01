@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_lab_member
-from app.config import STUDY_TIMEZONE
+from app.config import STUDY_TIMEZONE, compute_daylight_exposure_minutes
 from app.db import get_session
 from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
@@ -23,6 +23,7 @@ from app.schemas.sessions import (
     SessionListResponse,
     SessionResponse,
     SessionStatusUpdate,
+    StartSessionCreate,
     StartSessionResponse,
 )
 
@@ -168,16 +169,31 @@ async def create_session(
     dependencies=[Depends(get_current_lab_member)],
 )
 async def start_session(
+    payload: StartSessionCreate,
     db: AsyncSession = Depends(get_session),
 ) -> StartSessionResponse:
-    """One-click supervised flow: atomically create an anonymous participant and an
-    active session, returning the participant start path for Survey 1."""
+    """One-click supervised flow: atomically create an anonymous participant (with
+    demographics) and an active session, returning the consent-gated start path."""
+    # Capture session start time for daylight exposure computation
+    session_start_utc = datetime.now(timezone.utc)
+    daylight_minutes = compute_daylight_exposure_minutes(session_start_utc)
+
     # Auto-increment participant number
     result = await db.execute(select(func.max(Participant.participant_number)))
     current_max: int | None = result.scalar_one()
     next_number = (current_max or 0) + 1
 
-    participant = Participant(participant_number=next_number)
+    participant = Participant(
+        participant_number=next_number,
+        age_band=payload.age_band,
+        gender=payload.gender,
+        origin=payload.origin,
+        origin_other_text=payload.origin_other_text,
+        commute_method=payload.commute_method,
+        commute_method_other_text=payload.commute_method_other_text,
+        time_outside=payload.time_outside,
+        daylight_exposure_minutes=daylight_minutes,
+    )
     db.add(participant)
     await db.flush()  # assigns participant_uuid without committing
 
@@ -197,7 +213,7 @@ async def start_session(
         status=session_obj.status,
         created_at=session_obj.created_at,
         completed_at=session_obj.completed_at,
-        start_path=f"/session/{session_obj.session_id}/uls8",
+        start_path=f"/session/{session_obj.session_id}/consent",
     )
 
 

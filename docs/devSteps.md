@@ -288,15 +288,17 @@ Add the following under **Settings → Secrets and variables → Actions → Rep
 
 ---
 
-## One-Click Session Flow (Phase 2 — planned)
+## One-Click Session Flow (Phase 3)
 
-After implementation of the one-click supervised workflow:
+After implementation of the supervised demographic + consent workflow:
 
-- From `/dashboard`, click **Start New Entry**.
-- Confirm the app redirects directly into the participant flow without copying a link.
-  - Current: starts at Survey 1 (`/session/<session_id>/uls8`)
-  - Planned (T52): consent-gated start (`/session/<session_id>/consent`)
-- Complete all four surveys, then Digit Span, then the completion screen.
+- From `/dashboard`, click **Start New Entry** — a required demographics form appears.
+- Fill in all preset fields (age band, gender, origin, commute method, time outside). Selecting `Other` for origin/commute requires a free-text detail.
+- On submit, backend creates an anonymous participant+session and returns `start_path = /session/<session_id>/consent`.
+  - T51a (backend): implemented — `POST /sessions/start` accepts demographics, validates presets, stores on `participants`, computes `daylight_exposure_minutes`.
+  - T51b (frontend): demographics form on dashboard — pending.
+  - T52 (consent page): `/session/<session_id>/consent` — pending.
+- After consent, participant completes all four surveys, then Digit Span, then the completion screen.
 - Return to `/dashboard` and confirm KPIs (especially Completed sessions) reflect the new completion.
 
 ---

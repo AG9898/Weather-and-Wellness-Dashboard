@@ -138,7 +138,11 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | commute_method     | VARCHAR        | NULLABLE          | Stored as free-text/category string |
 | commute_method_other_text | VARCHAR | NULLABLE          | Detail when `commute_method` is `"Other"` (length-limited; avoid PII) |
 | time_outside       | VARCHAR        | NULLABLE          | Stored as categorical label from instruments |
-| daylight_exposure_minutes | INT     | NULLABLE          | Minutes since `DAYLIGHT_START_LOCAL_TIME` (default 06:00 local) at session start time |
+| daylight_exposure_minutes | INT     | NULLABLE          | Minutes since `DAYLIGHT_START_LOCAL_TIME` (default 06:00 local) at session start time. Set by `POST /sessions/start` (T51a) and by admin import (T48). |
+
+**Start-session mapping (Phase 3, T51a):** `POST /sessions/start` demographics payload
+- `age_band`, `gender`, `origin`, `origin_other_text`, `commute_method`, `commute_method_other_text`, `time_outside` stored directly from validated preset values.
+- `daylight_exposure_minutes` computed at request time via `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
 
 **Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
 - `participant ID` → `participants.participant_number` (upsert key)

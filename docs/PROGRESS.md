@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 3 (in progress)        |
-| Tasks completed    | 52 / 57                |
-| Remaining queue    | T51a, T51b, T52–T54    |
+| Tasks completed    | 53 / 57                |
+| Remaining queue    | T51b, T52–T54          |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-02-28             |
 
@@ -28,6 +28,22 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+---
+
+## T51a — Backend: start session requires demographics + daylight exposure compute (completed 2026-02-28)
+
+**Acceptance criteria met:**
+
+- `POST /sessions/start` now requires a demographics payload: `age_band`, `gender`, `origin`, `commute_method`, `time_outside` (all required); `origin_other_text` and `commute_method_other_text` conditionally required when the corresponding field is `"Other"`.
+- All fields validated server-side against canonical preset option lists (defined in `backend/app/schemas/sessions.py`). Invalid values return HTTP 422 with descriptive messages.
+- If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required and must be non-empty; otherwise it is ignored.
+- Demographics stored on the `participants` row only (not on `sessions`): `age_band`, `gender`, `origin`, `origin_other_text`, `commute_method`, `commute_method_other_text`, `time_outside`.
+- `participants.daylight_exposure_minutes` computed at request time using `compute_daylight_exposure_minutes(datetime.now(utc))` from `backend/app/config.py` and stored on the participant row.
+- `start_path` in the response is now `/session/<session_id>/consent` (was `/session/<session_id>/uls8`), consistent with the consent-gated participant flow (T52).
+- `StartSessionCreate` Pydantic schema added to `backend/app/schemas/sessions.py` with a `model_validator` enforcing all preset and conditional rules.
+- Verified: schema imports cleanly; validator accepts valid payloads; rejects invalid `age_band`, missing `*_other_text` when `Other` selected.
+- Docs updated: `docs/API.md` (endpoint status, full request/response), `docs/DESIGN_SPEC.md` (questionnaire note), `docs/devSteps.md` (one-click flow section), `docs/PROGRESS.md`.
 
 ---
 

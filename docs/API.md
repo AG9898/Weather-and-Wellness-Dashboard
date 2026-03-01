@@ -38,7 +38,7 @@
 | GET    | /participants/{uuid} | RA | implemented | T07 |
 | GET    | /sessions | RA | implemented | T21 |
 | POST   | /sessions | RA | implemented | T08 |
-| POST   | /sessions/start | RA | implemented | T36 |
+| POST   | /sessions/start | RA | implemented | T36, T51a |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
@@ -226,9 +226,8 @@
 
 ### POST /sessions/start
 - **Auth:** RA required
-- **Status:** implemented (T36)
-- **Request body:** Empty body accepted (T36). Phase 3 extends this endpoint to accept participant demographics.
-- **Phase 3 request body (planned):**
+- **Status:** implemented (T51a)
+- **Request body:**
   ```json
   {
     "age_band": "string",
@@ -240,6 +239,12 @@
     "time_outside": "string"
   }
   ```
+- **Preset options (validated server-side):**
+  - `age_band`: `"Under 18"`, `"18-24"`, `"25-31"`, `"32-38"`, `">38"`
+  - `gender`: `"Woman"`, `"Man"`, `"Non-binary"`, `"Prefer not to say"`
+  - `origin`: `"Home"`, `"Work"`, `"Class"`, `"Library"`, `"Gym/Recreation Center"`, `"Other"`
+  - `commute_method`: `"Walk"`, `"Transit"`, `"Car"`, `"Bike/Scooter"`, `"Other"`
+  - `time_outside`: `"Never (0-30 minutes)"`, `"Rarely (31 minutes- 60 minutes)"`, `"Sometimes (61 minutes - 90 minutes)"`, `"Often (over 90 minutes)"`
 - **Response:**
   ```json
   {
@@ -252,13 +257,12 @@
     "start_path": "/session/<session_id>/consent"
   }
   ```
-- **Notes:** Supervised one-click start. Creates an anonymous participant and an active session atomically (single transaction via `flush` + `commit`), then returns a start path for the consent-gated participant flow. Session is immediately `active` so participant submissions are accepted on arrival.
-- **Phase 3 changes (T52 + Phase 3 start form):**
-  - `start_path` becomes `/session/<session_id>/consent` so the participant flow is consent-gated before Survey 1.
-  - No consent record is stored in Supabase (UI-only gating).
-  - When demographics are provided, they are stored on the `participants` row.
-  - Backend validates demographic values against the canonical preset option lists (see `docs/DESIGN_SPEC.md`). If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required.
-  - `participants.daylight_exposure_minutes` is computed at session start time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`).
+- **Notes:** Supervised one-click start. Creates an anonymous participant (with demographics) and an active session atomically (single transaction via `flush` + `commit`), then returns a consent-gated start path. Session is immediately `active` so participant submissions are accepted on arrival.
+  - All demographic fields are required. If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required; otherwise it is optional/ignored.
+  - `participants.daylight_exposure_minutes` is computed at request time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`) using `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
+  - `start_path` is always `/session/<session_id>/consent` (consent-gated participant flow, T52).
+  - No consent record is stored in Supabase (UI-only gating, T52).
+  - Demographics are stored on `participants` only (never on `sessions`).
 
 ---
 
