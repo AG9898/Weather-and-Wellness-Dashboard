@@ -150,7 +150,7 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Collect participant details and open a supervised session immediately"), primary shadcn `Button` (size lg, ubc-blue-700) that opens a required demographics questionnaire. On submit, calls `startSession(payload)` and redirects into the participant flow. Shows spinner + "Starting…" while in flight; non-technical inline error message on failure.
 3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
 
-**Start New Entry questionnaire (Phase 3 — backend implemented T51a; frontend T51b):**
+**Start New Entry questionnaire (Phase 3 — implemented T51a + T51b):**
 - Required fields (preset options) are based on the current legacy import value set (`reference/data_full_1-230.xlsx`):
   - **Age band:** `Under 18`, `18-24`, `25-31`, `32-38`, `>38`
   - **Gender:** `Woman`, `Man`, `Non-binary`, `Prefer not to say`

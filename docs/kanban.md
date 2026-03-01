@@ -167,7 +167,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T51b",
       "title": "Frontend — Start New Entry demographics questionnaire (dashboard)",
-      "status": "todo",
+      "status": "done",
       "description": "Update the RA dashboard Start New Entry flow to require a demographics questionnaire before creating a session. Use preset options derived from the legacy XLSX value set; allow free-text when Other is selected (with no-PII UI copy). Call POST /sessions/start with the payload and route to the returned start_path.",
       "depends_on": [
         "T51a"

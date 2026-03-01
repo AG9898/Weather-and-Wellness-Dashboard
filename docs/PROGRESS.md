@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 3 (in progress)        |
-| Tasks completed    | 53 / 57                |
-| Remaining queue    | T51b, T52–T54          |
+| Tasks completed    | 54 / 57                |
+| Remaining queue    | T52–T54                |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-02-28             |
 
@@ -28,6 +28,22 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+---
+
+## T51b — Frontend: Start New Entry demographics questionnaire (completed 2026-02-28)
+
+**Acceptance criteria met:**
+
+- "Start New Entry" button now opens a shadcn Dialog with a required demographics form before creating any session.
+- Form fields: Age band, Gender, Coming from (origin), Commute method, Time spent outside — each with the canonical preset options from the legacy XLSX value set.
+- When `origin` or `commute_method` is `"Other"`, a free-text Input appears immediately below the select, with a visible PII warning ("Do not enter names, initials, or any information that could identify the participant."). Submit is disabled until the free-text field is non-empty.
+- Submit button disabled until all required fields are complete (including conditional Other text); form state fully preserved on API failure.
+- On submit, calls `startSession(payload)` from `src/lib/api/index.ts` (typed wrapper, no bare fetch) with the full demographics payload; routes to `result.start_path` (i.e., `/session/<id>/consent`).
+- Inline error messages on failure are non-technical (auth expiry / server error / network error).
+- Added `StartSessionCreate` interface and updated `startSession(payload)` signature in `src/lib/api/index.ts`.
+- Installed shadcn components: `dialog`, `select`, `label`, `input`.
+- Build passes with no TypeScript errors.
 
 ---
 

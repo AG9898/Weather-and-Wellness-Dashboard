@@ -215,6 +215,16 @@ export interface WeatherDailyResponse {
   latest_run: WeatherLatestRun | null;
 }
 
+export interface StartSessionCreate {
+  age_band: string;
+  gender: string;
+  origin: string;
+  origin_other_text: string | null;
+  commute_method: string;
+  commute_method_other_text: string | null;
+  time_outside: string;
+}
+
 export interface StartSessionResponse {
   participant_uuid: string;
   participant_number: number;
@@ -242,8 +252,10 @@ export interface DashboardRouteResponse {
 }
 
 /** One-click supervised flow: create anonymous participant + active session. */
-export async function startSession(): Promise<StartSessionResponse> {
-  return apiPost<StartSessionResponse>("/sessions/start", {}, { auth: true });
+export async function startSession(
+  payload: StartSessionCreate
+): Promise<StartSessionResponse> {
+  return apiPost<StartSessionResponse>("/sessions/start", payload, { auth: true });
 }
 
 /**
