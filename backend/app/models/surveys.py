@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, SmallInteger, String, Numeric
+from sqlalchemy import DateTime, ForeignKey, SmallInteger, String, Numeric, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -13,6 +14,9 @@ from app.db import Base
 
 class SurveyULS8(Base):
     __tablename__ = "survey_uls8"
+    __table_args__ = (
+        UniqueConstraint("session_id", name="uq_survey_uls8_session_id"),
+    )
 
     response_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -24,17 +28,27 @@ class SurveyULS8(Base):
         UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
     )
 
-    r1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r4: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r8: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Raw responses — nullable for imported rows (no raw item data available)
+    r1: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r2: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r3: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r4: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r5: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r6: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r7: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r8: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
 
-    computed_mean: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
-    score_0_100: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
+    # Computed scores — nullable for imported rows where no deterministic mapping exists
+    computed_mean: Mapped[Optional[float]] = mapped_column(Numeric(5, 4), nullable=True)
+    score_0_100: Mapped[Optional[float]] = mapped_column(Numeric(6, 2), nullable=True)
+
+    # Legacy aggregate value from imported data (loneliness mean on 1–4 scale)
+    legacy_mean_1_4: Mapped[Optional[float]] = mapped_column(Numeric(), nullable=True)
+
+    # 'native' = submitted via live app; 'imported' = loaded from legacy data
+    data_source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="native"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -43,6 +57,9 @@ class SurveyULS8(Base):
 
 class SurveyCESD10(Base):
     __tablename__ = "survey_cesd10"
+    __table_args__ = (
+        UniqueConstraint("session_id", name="uq_survey_cesd10_session_id"),
+    )
 
     response_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -54,18 +71,28 @@ class SurveyCESD10(Base):
         UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
     )
 
-    r1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r4: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r8: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r9: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r10: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Raw responses — nullable for imported rows
+    r1: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r2: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r3: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r4: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r5: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r6: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r7: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r8: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r9: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r10: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
 
-    total_score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Computed score — nullable for imported rows
+    total_score: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+
+    # Legacy aggregate value from imported data (depression mean on 1–4 scale)
+    legacy_mean_1_4: Mapped[Optional[float]] = mapped_column(Numeric(), nullable=True)
+
+    # 'native' = submitted via live app; 'imported' = loaded from legacy data
+    data_source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="native"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -74,6 +101,9 @@ class SurveyCESD10(Base):
 
 class SurveyGAD7(Base):
     __tablename__ = "survey_gad7"
+    __table_args__ = (
+        UniqueConstraint("session_id", name="uq_survey_gad7_session_id"),
+    )
 
     response_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -85,16 +115,28 @@ class SurveyGAD7(Base):
         UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
     )
 
-    r1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r4: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Raw responses — nullable for imported rows
+    r1: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r2: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r3: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r4: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r5: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r6: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r7: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
 
-    total_score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    severity_band: Mapped[str] = mapped_column(String, nullable=False)
+    # Computed scores — nullable for imported rows
+    total_score: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    severity_band: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # Legacy aggregate values from imported data (anxiety on 1–4 scale)
+    legacy_mean_1_4: Mapped[Optional[float]] = mapped_column(Numeric(), nullable=True)
+    # Integer 0–21 total when legacy anxiety maps exactly; null otherwise
+    legacy_total_score: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+
+    # 'native' = submitted via live app; 'imported' = loaded from legacy data
+    data_source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="native"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

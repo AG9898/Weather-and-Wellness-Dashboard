@@ -28,8 +28,14 @@ class ImportCommitResponse(BaseModel):
     sessions_updated: int
 
 
+class LegacyWeatherBackfillResponse(BaseModel):
+    days_backfilled: int
+    days_skipped: int  # dates that already had a weather_daily row
+
+
 __all__ = [
     "ImportRowIssue",
     "ImportPreviewResponse",
     "ImportCommitResponse",
+    "LegacyWeatherBackfillResponse",
 ]

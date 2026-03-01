@@ -23,7 +23,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T54",
       "title": "DB — Phase 4 schema for legacy-import remapping into survey_* + digitspan_runs",
-      "status": "todo",
+      "status": "done",
       "description": "Add schema support for storing imported aggregate values in the canonical survey and digit span tables without fabricating raw item/trial rows. Add a data_source flag, legacy-value columns, and uniqueness constraints to prevent duplicates per session.",
       "depends_on": [
         "T47",
@@ -54,7 +54,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T55",
       "title": "Backend — import commit writes remapped legacy rows into survey_* + digitspan_runs",
-      "status": "todo",
+      "status": "done",
       "description": "On admin import commit, upsert imported rows into survey_uls8 / survey_cesd10 / survey_gad7 / digitspan_runs using the Phase 4 schema. Do not fabricate raw survey items or digit span trials. Preserve auditability via imported_session_measures.source_row_json.",
       "depends_on": [
         "T54"
@@ -82,7 +82,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T56",
       "title": "Backend — legacy weather backfill (temp/precip only) from imported sessions",
-      "status": "todo",
+      "status": "done",
       "description": "Backfill weather_daily for days that do not have UBC-ingested weather, using mean temperature/precipitation from imported legacy sessions grouped by date_local. Do not overwrite existing weather_daily rows.",
       "depends_on": [
         "T55"
@@ -111,7 +111,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T57",
       "title": "Backend — one-off Phase 4 backfill for already-imported sessions",
-      "status": "todo",
+      "status": "done",
       "description": "Add an idempotent one-off backfill script that remaps existing imported_session_measures rows into the new Phase 4 survey/digitspan schema and performs the legacy weather backfill for missing days.",
       "depends_on": [
         "T56"

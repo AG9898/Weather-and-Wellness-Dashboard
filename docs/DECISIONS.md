@@ -110,6 +110,23 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 
 ---
 
+### RESOLVED-14 — Phase 4 Legacy Remapping Schema Pattern (T54)
+
+**Resolved:** 2026-03-01
+
+**Decision:** Store imported legacy aggregate values in the canonical outcome tables (`digitspan_runs`, `survey_uls8`, `survey_cesd10`, `survey_gad7`) using the following schema additions:
+- `data_source VARCHAR(16) DEFAULT 'native'` — distinguishes native app submissions from imported rows.
+- UNIQUE constraint on `session_id` per table — enforces the 1:1 session↔outcome row invariant at DB level.
+- Raw item columns (`r1…rN`) and canonical computed scores made nullable — imported rows cannot supply raw items; native submissions are still validated via Pydantic (unchanged).
+- Dedicated legacy columns (`legacy_mean_1_4`, `legacy_total_score`) — store imported aggregate values without overloading or conflicting with canonical computed fields.
+- `digitspan_runs.max_span` made nullable — imported data has `total_correct` (from `digit_span_score`) but not `max_span`.
+
+**Why:** The alternative — storing imported data only in `imported_session_measures` — would exclude it from analysis queries and exports that join canonical tables. Adding `data_source` and legacy columns preserves both native and imported rows in the same table while making the distinction explicit and queryable. The `imported_session_measures` table remains the full audit trail via `source_row_json`.
+
+**Affects:** `docs/SCHEMA.md`, `docs/API.md`, `backend/app/models/digitspan.py`, `backend/app/models/surveys.py`, migration `20260301_000010`.
+
+---
+
 ### RESOLVED-13 — Start Session Requires Demographics (Phase 3)
 
 **Resolved:** 2026-02-28

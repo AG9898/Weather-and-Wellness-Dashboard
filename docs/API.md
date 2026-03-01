@@ -50,9 +50,10 @@
 | POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
 | GET    | /weather/daily | RA | implemented | T31 |
 | POST   | /admin/import/preview | RA | implemented | T48 |
-| POST   | /admin/import/commit | RA | implemented | T48 |
+| POST   | /admin/import/commit | RA | implemented | T48, T55 |
 | GET    | /admin/export.xlsx | RA | implemented | T49 |
 | GET    | /admin/export.zip | RA | implemented | T49 |
+| POST   | /admin/backfill/legacy-weather | RA | implemented | T56 |
 
 ---
 
@@ -512,9 +513,12 @@
     - Participant demographics are stored on `participants` (nullable columns planned in T47).
     - Imported aggregates are stored in `imported_session_measures` (applied in T47) with a full `source_row_json` audit payload.
 
-**Phase 4 note (planned):** commit also upserts “imported” rows into:
-- `digitspan_runs` (data_source=`imported`, `total_correct` populated; no trials reconstructed)
-- `survey_uls8`, `survey_cesd10`, `survey_gad7` (data_source=`imported`, legacy-value columns populated; raw `r*` columns remain null)
+**Phase 4 (T55, implemented):** commit also upserts “imported” rows into:
+- `digitspan_runs` — `data_source='imported'`, `total_correct` = legacy `digit_span_score` (0–14); `max_span` remains null; no trials reconstructed.
+- `survey_uls8` — `data_source='imported'`, `legacy_mean_1_4` = legacy `loneliness` mean; raw `r*` and computed columns remain null.
+- `survey_cesd10` — `data_source='imported'`, `legacy_mean_1_4` = legacy `depression` mean; raw `r*` and computed columns remain null.
+- `survey_gad7` — `data_source='imported'`, `legacy_mean_1_4` = legacy `anxiety` mean; if anxiety is an exact integer 0–21, `total_score` and `severity_band` are also set; otherwise only `legacy_mean_1_4` is stored.
+- Re-import is idempotent: updates imported rows, never overwrites native rows (`data_source='native'` rows are guarded in the upsert WHERE clause).
 
 ### POST /admin/import/commit
 - **Auth:** RA required
@@ -557,6 +561,26 @@
   - All join keys (`participant_uuid`, `session_id`, `study_day_id`, `run_id`, `source_run_id`) are present on every relevant sheet.
   - UUIDs and timestamps are ISO strings. JSONB columns are JSON strings.
   - Date in filename is today in the study timezone (`America/Vancouver`).
+
+### POST /admin/backfill/legacy-weather
+- **Auth:** RA required
+- **Status:** implemented (T56)
+- **Request body:** none
+- **Response:**
+  ```json
+  {
+    "days_backfilled": "integer",
+    "days_skipped": "integer"
+  }
+  ```
+- **Notes:**
+  - For each study day that has imported session data (via `imported_session_measures`) but no existing `weather_daily` row for station 3510, inserts a partial row with only `current_temp_c` and `current_precip_today_mm` (means across all imported sessions for that day). All other weather fields remain null.
+  - Writes one `weather_ingest_runs` audit row per backfilled day with `parser_version="legacy-import-v1"` and `requested_via="legacy_backfill"`.
+  - `days_skipped` counts dates that already had a `weather_daily` row — those are never touched.
+  - Idempotent: safe to call multiple times.
+- **Verified:** 2026-03-01 — backfilled 109 days from reference XLSX data; second call returned `days_backfilled=0, days_skipped=109`.
+
+---
 
 ### GET /admin/export.zip
 - **Auth:** RA required

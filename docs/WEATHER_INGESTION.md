@@ -104,17 +104,20 @@ See `docs/SCHEMA.md` for the column-level schema.
 
 ---
 
-## Legacy Import Backfill (Phase 4 planned)
+## Legacy Import Backfill (Phase 4, T56 — implemented 2026-03-01)
 
-When legacy sessions are imported (Phase 3 admin import), we may not have UBC-ingested weather for the historical study day.
+When legacy sessions are imported (Phase 3 admin import), we may not have UBC-ingested weather for the historical study days.
 
-Phase 4 adds an optional backfill rule:
-- If a `weather_daily` row does **not** exist for `(station_id=3510, date_local)`, create a partial `weather_daily` row populated only with:
-  - `current_temp_c` (mean of imported session `temperature` values for that `date_local`)
-  - `current_precip_today_mm` (mean of imported session `precipitation` values for that `date_local`)
-- All other `weather_daily` fields remain null/empty (no fabricated forecast series).
-- The backfill creates a corresponding `weather_ingest_runs` audit row with `parser_version="legacy-import-v1"`.
-- Existing UBC-ingested `weather_daily` rows are never overwritten by legacy backfill.
+`POST /admin/backfill/legacy-weather` (RA-protected) implements this backfill:
+- For each study day that has imported session data but **no** existing `weather_daily` row for station 3510:
+  - Computes mean `temperature_c` and mean `precipitation_mm` from `imported_session_measures` rows for that `date_local`.
+  - Inserts a partial `weather_daily` row with only `current_temp_c` and `current_precip_today_mm` populated. All other fields remain null/empty (no fabricated forecast data). The JSONB-NOT-NULL `forecast_periods` and `structured_json` columns are set to `[]` and `{}` respectively.
+  - Writes one `weather_ingest_runs` audit row per backfilled day: `parser_version="legacy-import-v1"`, `requested_via="legacy_backfill"`.
+- Existing `weather_daily` rows are **never overwritten** (`on_conflict_do_nothing`).
+- Idempotent: safe to call multiple times; subsequent calls return `days_backfilled=0, days_skipped=N`.
+- Implemented in `backend/app/services/weather_backfill_service.py` and exposed via `backend/app/routers/admin.py`.
+
+**Verified 2026-03-01:** backfilled 109 days from reference XLSX data; second call returned `days_backfilled=0, days_skipped=109`.
 
 **Important:** day-level linking is always by `study_days.date_local` (America/Vancouver). Metadata timestamps like `weather_daily.updated_at` and `weather_daily.current_observed_at` must not be treated as the analytic join key.
 

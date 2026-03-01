@@ -12,7 +12,10 @@ Upsert rules (commit):
 - Participant upsert key: participant_number (demographics overwrite)
 - Session: 0 sessions → create; 1 session (no native rows) → update; else → error
 - Imported sessions: status="complete", study_day_id from date_local, timestamps at 12:00 local→UTC
-- imported_session_measures upserted (keyed by session_id)
+- imported_session_measures upserted (keyed by session_id) — full audit trail
+- Phase 4: also upserts into canonical outcome tables (digitspan_runs, survey_uls8,
+  survey_cesd10, survey_gad7) with data_source='imported'. Native rows are never
+  overwritten — the upsert WHERE clause guards against this at the DB level.
 - All writes are transactional; any error rolls back everything.
 """
 from __future__ import annotations
@@ -43,6 +46,19 @@ from app.schemas.admin import (
     ImportPreviewResponse,
     ImportRowIssue,
 )
+
+# ── GAD-7 severity helper ──────────────────────────────────────────────────────
+
+def _gad7_severity_from_total(total: int) -> str:
+    """Return GAD-7 severity band for a total score 0–21."""
+    if total <= 4:
+        return "minimal"
+    if total <= 9:
+        return "mild"
+    if total <= 14:
+        return "moderate"
+    return "severe"
+
 
 # ── Column name constants (canonical lowercase) ────────────────────────────────
 
@@ -557,18 +573,36 @@ async def _get_sessions_with_native_rows(
     db: AsyncSession,
     session_ids: list[uuid.UUID],
 ) -> set[uuid.UUID]:
-    """Return the subset of session_ids that have any native survey or digit span rows."""
+    """Return the subset of session_ids that have any *native* survey or digit span rows.
+
+    Tables that carry data_source (Phase 4): only rows with data_source='native' count.
+    SurveyCogFunc8a has no data_source — any row in it is native (no import path).
+    """
     if not session_ids:
         return set()
 
     found: set[uuid.UUID] = set()
-    for model in (DigitSpanRun, SurveyULS8, SurveyCESD10, SurveyGAD7, SurveyCogFunc8a):
+
+    # Phase 4: these tables have data_source; only 'native' rows block re-import
+    for model in (DigitSpanRun, SurveyULS8, SurveyCESD10, SurveyGAD7):
         result = await db.execute(
             select(model.session_id)
-            .where(model.session_id.in_(session_ids))
+            .where(
+                model.session_id.in_(session_ids),
+                model.data_source == "native",
+            )
             .distinct()
         )
         found.update(result.scalars().all())
+
+    # SurveyCogFunc8a has no data_source — any row is native
+    result = await db.execute(
+        select(SurveyCogFunc8a.session_id)
+        .where(SurveyCogFunc8a.session_id.in_(session_ids))
+        .distinct()
+    )
+    found.update(result.scalars().all())
+
     return found
 
 
@@ -888,7 +922,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
             session_obj.study_day_id = study_day_id
             sessions_updated += 1
 
-        # Upsert imported_session_measures
+        # Upsert imported_session_measures (audit trail — always write)
         m_stmt = (
             pg_insert(ImportedSessionMeasures)
             .values(
@@ -919,6 +953,113 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
             )
         )
         await db.execute(m_stmt)
+
+        # ── Phase 4: upsert canonical outcome tables ──────────────────────
+        # digit_span_score maps to digitspan_runs.total_correct (max_span unknown)
+        if row.digit_span_max_span is not None:
+            ds_stmt = (
+                pg_insert(DigitSpanRun)
+                .values(
+                    run_id=uuid.uuid4(),
+                    session_id=session_id,
+                    participant_uuid=p_uuid,
+                    total_correct=row.digit_span_max_span,
+                    max_span=None,
+                    data_source="imported",
+                )
+                .on_conflict_do_update(
+                    index_elements=["session_id"],
+                    set_={
+                        "total_correct": row.digit_span_max_span,
+                        "max_span": None,
+                        "data_source": "imported",
+                    },
+                    where=DigitSpanRun.data_source == "imported",
+                )
+            )
+            await db.execute(ds_stmt)
+
+        # loneliness_mean → survey_uls8.legacy_mean_1_4
+        if row.loneliness_mean is not None:
+            uls8_stmt = (
+                pg_insert(SurveyULS8)
+                .values(
+                    response_id=uuid.uuid4(),
+                    session_id=session_id,
+                    participant_uuid=p_uuid,
+                    legacy_mean_1_4=row.loneliness_mean,
+                    data_source="imported",
+                )
+                .on_conflict_do_update(
+                    index_elements=["session_id"],
+                    set_={
+                        "legacy_mean_1_4": row.loneliness_mean,
+                        "data_source": "imported",
+                    },
+                    where=SurveyULS8.data_source == "imported",
+                )
+            )
+            await db.execute(uls8_stmt)
+
+        # depression_mean → survey_cesd10.legacy_mean_1_4
+        if row.depression_mean is not None:
+            cesd10_stmt = (
+                pg_insert(SurveyCESD10)
+                .values(
+                    response_id=uuid.uuid4(),
+                    session_id=session_id,
+                    participant_uuid=p_uuid,
+                    legacy_mean_1_4=row.depression_mean,
+                    data_source="imported",
+                )
+                .on_conflict_do_update(
+                    index_elements=["session_id"],
+                    set_={
+                        "legacy_mean_1_4": row.depression_mean,
+                        "data_source": "imported",
+                    },
+                    where=SurveyCESD10.data_source == "imported",
+                )
+            )
+            await db.execute(cesd10_stmt)
+
+        # anxiety_mean → survey_gad7.legacy_mean_1_4
+        # If anxiety is an exact integer 0–21, also populate total_score + severity_band
+        if row.anxiety_mean is not None:
+            anx = row.anxiety_mean
+            anx_int = int(anx)
+            if anx == anx_int and 0 <= anx_int <= 21:
+                gad7_total: int | None = anx_int
+                gad7_band: str | None = _gad7_severity_from_total(anx_int)
+            else:
+                gad7_total = None
+                gad7_band = None
+
+            gad7_stmt = (
+                pg_insert(SurveyGAD7)
+                .values(
+                    response_id=uuid.uuid4(),
+                    session_id=session_id,
+                    participant_uuid=p_uuid,
+                    legacy_mean_1_4=row.anxiety_mean,
+                    legacy_total_score=gad7_total,
+                    total_score=gad7_total,
+                    severity_band=gad7_band,
+                    data_source="imported",
+                )
+                .on_conflict_do_update(
+                    index_elements=["session_id"],
+                    set_={
+                        "legacy_mean_1_4": row.anxiety_mean,
+                        "legacy_total_score": gad7_total,
+                        "total_score": gad7_total,
+                        "severity_band": gad7_band,
+                        "data_source": "imported",
+                    },
+                    where=SurveyGAD7.data_source == "imported",
+                )
+            )
+            await db.execute(gad7_stmt)
 
     await db.commit()
 

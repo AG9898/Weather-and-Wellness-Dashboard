@@ -84,24 +84,25 @@ Optional env vars (Render and local dev):
 
 ---
 
-## Phase 4 Runbook (planned) — Backfill legacy imports into canonical tables (T57)
+## Phase 4 Runbook — Backfill legacy imports into canonical tables (T57, implemented 2026-03-01)
 
-Phase 4 introduces a one-off, idempotent backfill for already-imported legacy sessions to:
-- ensure `sessions.study_day_id` is set consistently (America/Vancouver day semantics),
-- populate imported rows in `survey_uls8` / `survey_cesd10` / `survey_gad7` / `digitspan_runs` (without fabricating raw items/trials),
-- optionally backfill missing `weather_daily` rows (temp + precip only) for historical days using imported session values.
+Phase 4 includes an idempotent one-off backfill for already-imported legacy sessions that:
+- ensures `sessions.study_day_id` is set consistently (America/Vancouver day semantics),
+- populates imported rows in `survey_uls8` / `survey_cesd10` / `survey_gad7` / `digitspan_runs` (no raw items/trials fabricated),
+- backfills missing `weather_daily` rows (temp + precip only) for historical days using imported session values.
 
-**Note:** This runbook becomes executable once the backfill script is implemented (T57). Until then, treat the steps below as placeholders.
+Script: `backend/app/scripts/phase4_backfill.py`
 
-Planned execution (local):
+Execution (from `backend/`):
 ```bash
 cd backend
 alembic upgrade head
-python -m app.scripts.phase4_backfill --dry-run
-python -m app.scripts.phase4_backfill
+python -m app.scripts.phase4_backfill --dry-run   # preview counts, no writes
+python -m app.scripts.phase4_backfill              # apply
 ```
 
 Verification checklist:
-- Script reports created/updated counts and is safe to re-run (idempotent).
-- No `data_source="native"` survey or digit span rows are modified.
-- For a historical day missing ingestion, `weather_daily` exists with only temp/precip populated and `forecast_periods` empty.
+- `--dry-run` prints per-table create/update/skip counts for all four canonical tables.
+- After a real run, re-running reports 0 creates and N updates (idempotent).
+- No `data_source="native"` survey or digit span rows are modified (guarded by `WHERE data_source='imported'` in each upsert).
+- For a historical day missing ingestion, `weather_daily` exists with only `current_temp_c` and `current_precip_today_mm` populated; `forecast_periods` is `[]` and `structured_json` is `{}`.

@@ -121,6 +121,8 @@ Indexes (applied):
 - Index (`station_id`, `ingested_at` DESC)
 - Index (`station_id`, `date_local`)
 
+**Phase 4 note (T56):** Legacy backfill rows use `requested_via="legacy_backfill"` and `parser_version="legacy-import-v1"`. `source_primary_url` and `source_secondary_url` are empty strings for backfill runs (no HTTP fetch performed).
+
 ---
 
 ## Table: `participants`
@@ -200,40 +202,50 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 
 ---
 
-## Phase 4 Planned Additions — Legacy Import Remapping into Canonical Tables (T54 planned)
+## Phase 4 Additions — Legacy Import Remapping into Canonical Tables (T54, applied 2026-03-01)
 
 Goal: preserve imported aggregate values inside the canonical outcome tables used for analysis/exports, **without** fabricating raw survey item rows or digit span trials.
 
-Planned schema pattern:
-- Add `data_source` (`native` | `imported`) with default `native` to:
+Applied by migration `20260301_000010`:
+
+- Added `data_source VARCHAR(16) DEFAULT 'native' NOT NULL` to:
   - `digitspan_runs`
   - `survey_uls8`
   - `survey_cesd10`
   - `survey_gad7`
-- Enforce 1:1 per session with unique constraints on `session_id` for each of the above tables.
+  - Values: `native` = submitted via the live app; `imported` = remapped from legacy data.
+- Added UNIQUE constraint on `session_id` for each of the above four tables (at most one row per session).
 - For imported rows:
-  - raw response columns (`r1…`) are nullable (stored only for native submissions)
-  - canonical computed columns may be nullable if no deterministic mapping exists from legacy aggregates
-  - legacy aggregate values are stored in dedicated legacy columns:
-    - `survey_uls8.legacy_mean_1_4` (NUMERIC)
-    - `survey_cesd10.legacy_mean_1_4` (NUMERIC)
-    - `survey_gad7.legacy_mean_1_4` (NUMERIC) and `survey_gad7.legacy_total_score` (SMALLINT)
-  - Digit span import maps legacy `digit_span_score` (0–14) to `digitspan_runs.total_correct` when available; `max_span` remains null.
+  - raw response columns (`r1…`) are now nullable (native submissions still provide all items via Pydantic validation)
+  - canonical computed columns are nullable where no deterministic mapping exists from legacy aggregates
+  - legacy aggregate values stored in dedicated columns:
+    - `survey_uls8.legacy_mean_1_4` NUMERIC NULLABLE — loneliness mean (1–4 scale)
+    - `survey_cesd10.legacy_mean_1_4` NUMERIC NULLABLE — depression mean (1–4 scale)
+    - `survey_gad7.legacy_mean_1_4` NUMERIC NULLABLE — anxiety mean (1–4 scale)
+    - `survey_gad7.legacy_total_score` SMALLINT NULLABLE — integer 0–21 when legacy anxiety maps exactly; null otherwise
+  - `digitspan_runs.max_span` is now nullable; `total_correct` stays NOT NULL
+  - Digit span import maps legacy `digit_span_score` (0–14) to `digitspan_runs.total_correct`; `max_span` remains null.
+  - Legacy column mappings implemented (T55): `loneliness_mean` → `survey_uls8.legacy_mean_1_4`; `depression_mean` → `survey_cesd10.legacy_mean_1_4`; `anxiety_mean` → `survey_gad7.legacy_mean_1_4` (and `total_score`/`severity_band` if value is an exact integer 0–21).
 
 `imported_session_measures` remains the audit/source-of-truth mapping table and retains the full `source_row_json`.
+
+**Re-import safety:** `_get_sessions_with_native_rows` only flags sessions with `data_source='native'` rows in the four remapped tables (SurveyCogFunc8a has no import path — any row is native). The `on_conflict_do_update WHERE data_source='imported'` clause provides an additional DB-level guard against overwriting native rows.
 
 ---
 
 ## Table: `digitspan_runs`
 
-| Column           | Type        | Constraints   | Notes                           |
-|------------------|-------------|---------------|---------------------------------|
-| run_id           | UUID        | PK            |                                 |
-| session_id       | UUID        | FK, NOT NULL  | → sessions.session_id           |
-| participant_uuid | UUID        | FK, NOT NULL  | → participants.participant_uuid |
-| total_correct    | INT         | NOT NULL      | 0–14                            |
-| max_span         | INT         | NOT NULL      | 0–9 (0 if all wrong)            |
-| created_at       | TIMESTAMPTZ | DEFAULT NOW() |                                 |
+> Phase 4 additions (T54, applied 2026-03-01): `data_source` column, `max_span` made nullable, UNIQUE constraint on `session_id`.
+
+| Column           | Type        | Constraints           | Notes                                          |
+|------------------|-------------|-----------------------|------------------------------------------------|
+| run_id           | UUID        | PK                    |                                                |
+| session_id       | UUID        | FK, NOT NULL, UNIQUE  | → sessions.session_id; at most 1 run per session |
+| participant_uuid | UUID        | FK, NOT NULL          | → participants.participant_uuid                |
+| total_correct    | INT         | NOT NULL              | 0–14                                           |
+| max_span         | INT         | NULLABLE              | 0–9 for native rows; null for imported rows    |
+| data_source      | VARCHAR(16) | NOT NULL              | `native` (default) or `imported`               |
+| created_at       | TIMESTAMPTZ | DEFAULT NOW()         |                                                |
 
 ---
 
@@ -253,49 +265,55 @@ Planned schema pattern:
 
 ## Table: `survey_uls8`
 
-| Column           | Type          | Constraints   | Notes                       |
-|------------------|---------------|---------------|-----------------------------|
-| response_id      | UUID          | PK            |                             |
-| session_id       | UUID          | FK, NOT NULL  | → sessions.session_id       |
-| participant_uuid | UUID          | FK, NOT NULL  | → participants.participant_uuid |
-| r1               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| r2               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| r3               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| r4               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| r5               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| r6               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| r7               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| r8               | SMALLINT      | NOT NULL      | Raw response, 1–4           |
-| computed_mean    | NUMERIC(5,4)  | NOT NULL      | Mean of reversed items      |
-| score_0_100      | NUMERIC(6,2)  | NOT NULL      | 0–100 transform             |
-| created_at       | TIMESTAMPTZ   | DEFAULT NOW() |                             |
+> Phase 4 additions (T54, applied 2026-03-01): `data_source`, `legacy_mean_1_4`; raw and computed columns made nullable; UNIQUE on `session_id`.
+
+| Column           | Type          | Constraints           | Notes                                              |
+|------------------|---------------|-----------------------|----------------------------------------------------|
+| response_id      | UUID          | PK                    |                                                    |
+| session_id       | UUID          | FK, NOT NULL, UNIQUE  | → sessions.session_id; at most 1 row per session   |
+| participant_uuid | UUID          | FK, NOT NULL          | → participants.participant_uuid                     |
+| r1–r8            | SMALLINT      | NULLABLE              | Raw response, 1–4; null for imported rows          |
+| computed_mean    | NUMERIC(5,4)  | NULLABLE              | Mean of reversed items; null for imported rows     |
+| score_0_100      | NUMERIC(6,2)  | NULLABLE              | 0–100 transform; null for imported rows            |
+| legacy_mean_1_4  | NUMERIC       | NULLABLE              | Loneliness mean (1–4 scale) from legacy import     |
+| data_source      | VARCHAR(16)   | NOT NULL              | `native` (default) or `imported`                   |
+| created_at       | TIMESTAMPTZ   | DEFAULT NOW()         |                                                    |
 
 ---
 
 ## Table: `survey_cesd10`
 
-| Column           | Type        | Constraints   | Notes                          |
-|------------------|-------------|---------------|--------------------------------|
-| response_id      | UUID        | PK            |                                |
-| session_id       | UUID        | FK, NOT NULL  | → sessions.session_id          |
-| participant_uuid | UUID        | FK, NOT NULL  | → participants.participant_uuid |
-| r1–r10           | SMALLINT    | NOT NULL      | Raw responses, 1–4             |
-| total_score      | SMALLINT    | NOT NULL      | 0–30                           |
-| created_at       | TIMESTAMPTZ | DEFAULT NOW() |                                |
+> Phase 4 additions (T54, applied 2026-03-01): `data_source`, `legacy_mean_1_4`; raw and computed columns made nullable; UNIQUE on `session_id`.
+
+| Column           | Type        | Constraints           | Notes                                              |
+|------------------|-------------|-----------------------|----------------------------------------------------|
+| response_id      | UUID        | PK                    |                                                    |
+| session_id       | UUID        | FK, NOT NULL, UNIQUE  | → sessions.session_id; at most 1 row per session   |
+| participant_uuid | UUID        | FK, NOT NULL          | → participants.participant_uuid                     |
+| r1–r10           | SMALLINT    | NULLABLE              | Raw responses, 1–4; null for imported rows         |
+| total_score      | SMALLINT    | NULLABLE              | 0–30; null for imported rows                       |
+| legacy_mean_1_4  | NUMERIC     | NULLABLE              | Depression mean (1–4 scale) from legacy import     |
+| data_source      | VARCHAR(16) | NOT NULL              | `native` (default) or `imported`                   |
+| created_at       | TIMESTAMPTZ | DEFAULT NOW()         |                                                    |
 
 ---
 
 ## Table: `survey_gad7`
 
-| Column           | Type        | Constraints   | Notes                                      |
-|------------------|-------------|---------------|--------------------------------------------|
-| response_id      | UUID        | PK            |                                            |
-| session_id       | UUID        | FK, NOT NULL  | → sessions.session_id                      |
-| participant_uuid | UUID        | FK, NOT NULL  | → participants.participant_uuid            |
-| r1–r7            | SMALLINT    | NOT NULL      | Raw responses, 1–4                         |
-| total_score      | SMALLINT    | NOT NULL      | 0–21                                       |
-| severity_band    | VARCHAR     | NOT NULL      | "minimal" / "mild" / "moderate" / "severe" |
-| created_at       | TIMESTAMPTZ | DEFAULT NOW() |                                            |
+> Phase 4 additions (T54, applied 2026-03-01): `data_source`, `legacy_mean_1_4`, `legacy_total_score`; raw and computed columns made nullable; UNIQUE on `session_id`.
+
+| Column              | Type        | Constraints           | Notes                                                                      |
+|---------------------|-------------|-----------------------|----------------------------------------------------------------------------|
+| response_id         | UUID        | PK                    |                                                                            |
+| session_id          | UUID        | FK, NOT NULL, UNIQUE  | → sessions.session_id; at most 1 row per session                           |
+| participant_uuid    | UUID        | FK, NOT NULL          | → participants.participant_uuid                                             |
+| r1–r7               | SMALLINT    | NULLABLE              | Raw responses, 1–4; null for imported rows                                 |
+| total_score         | SMALLINT    | NULLABLE              | 0–21; null for imported rows unless exact mapping available                |
+| severity_band       | VARCHAR     | NULLABLE              | "minimal"/"mild"/"moderate"/"severe"; null for imported rows               |
+| legacy_mean_1_4     | NUMERIC     | NULLABLE              | Anxiety mean (1–4 scale) from legacy import                                |
+| legacy_total_score  | SMALLINT    | NULLABLE              | Integer 0–21 when legacy anxiety maps exactly to GAD-7 total; null otherwise |
+| data_source         | VARCHAR(16) | NOT NULL              | `native` (default) or `imported`                                           |
+| created_at          | TIMESTAMPTZ | DEFAULT NOW()         |                                                                            |
 
 ---
 
@@ -328,9 +346,9 @@ Planned schema pattern:
 | 2026-02-27 | T35 | Drop participants.first_name and participants.last_name (anonymous participants) |
 | 2026-02-28 | T47 | Add participant demographic/exposure columns (age_band, gender, origin, origin_other_text, commute_method, commute_method_other_text, time_outside, daylight_exposure_minutes); add imported_session_measures table |
 | 2026-02-28 | T47a | Fix study_days.tz_name server_default and existing rows from America/Edmonton to America/Vancouver |
+| 2026-03-01 | T54 | Add data_source, legacy columns, nullable relaxation, and UNIQUE session_id constraints to digitspan_runs, survey_uls8, survey_cesd10, survey_gad7 |
 
-As of 2026-02-28, migrations were applied and verified on Supabase through
-revision `20260228_000008` (`head`).
+As of 2026-03-01, migration `20260301_000010` (T54) applied and verified on Supabase. DB is at `head`.
 
 ---
 

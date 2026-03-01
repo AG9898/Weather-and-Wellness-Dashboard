@@ -9,9 +9,9 @@
 
 | Field              | Value                  |
 |--------------------|------------------------|
-| Phase              | 4 (planned)            |
-| Tasks completed    | 0 / 11                 |
-| Remaining queue    | T54                    |
+| Phase              | 4 (in progress)        |
+| Tasks completed    | 4 / 11                 |
+| Remaining queue    | T58–T64                |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-03-01             |
 
@@ -28,6 +28,66 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+---
+
+## T57 — Backend: one-off Phase 4 backfill for already-imported sessions (completed 2026-03-01)
+
+**Acceptance criteria met:**
+
+- `backend/app/scripts/phase4_backfill.py` created as an idempotent standalone script runnable via `python -m app.scripts.phase4_backfill [--dry-run]`.
+- Script loads all `imported_session_measures` rows, batch-queries which canonical table rows already exist, then upserts `digitspan_runs`, `survey_uls8`, `survey_cesd10`, and `survey_gad7` with `data_source='imported'` and the legacy-value columns populated — matching the same logic used by `commit_import` in T55.
+- GAD-7: if `anxiety_mean` is an exact integer 0–21, `total_score` and `severity_band` are also set; otherwise only `legacy_mean_1_4` is stored.
+- Idempotent: all canonical-table upserts use `ON CONFLICT (session_id) DO UPDATE WHERE data_source='imported'`; the DB-level guard prevents overwriting native rows. Re-running reports 0 creates and N updates per table.
+- `sessions.study_day_id` is fixed for any session where it is null: derived from `sessions.completed_at` in America/Vancouver, using get-or-create on `study_days`.
+- After canonical upserts are committed, the script calls `run_legacy_weather_backfill()` (T56 service) for a unified, idempotent weather backfill pass.
+- `--dry-run` flag prints per-table create/update/skip counts and the study_day_id fix count without writing any data.
+- Logs structured `INFO` output: session count found, commit confirmation, and a final summary table with per-category counts.
+- `backend/app/scripts/__init__.py` created to enable `python -m app.scripts.phase4_backfill` module invocation.
+- `docs/devSteps.md` Phase 4 runbook updated to mark the steps as executable.
+
+---
+
+## T56 — Backend: legacy weather backfill (completed 2026-03-01)
+
+**Acceptance criteria met:**
+
+- `POST /admin/backfill/legacy-weather` (RA-protected) implemented in `backend/app/routers/admin.py`; service logic in `backend/app/services/weather_backfill_service.py`.
+- Backfill groups `imported_session_measures` by `study_days.date_local` (America/Vancouver), computing mean `temperature_c` and `precipitation_mm` per day. Supports 1:M day↔session relationship via aggregate.
+- Only `current_temp_c` and `current_precip_today_mm` are populated in `weather_daily`; all other fields are null (JSONB NOT-NULL columns set to `[]`/`{}`).
+- One `weather_ingest_runs` audit row per backfilled day: `parser_version="legacy-import-v1"`, `requested_via="legacy_backfill"`. `date_local` on the run row matches the backfilled day, preserving the analytic join key.
+- Existing `weather_daily` rows are never overwritten (`on_conflict_do_nothing` guard).
+- Idempotent: second call returns `days_backfilled=0, days_skipped=109`.
+- Verified: 109 days backfilled from reference XLSX. 2 existing UBC-ingest rows untouched.
+
+---
+
+## T55 — Backend: import commit writes remapped legacy rows (completed 2026-03-01)
+
+**Acceptance criteria met:**
+
+- Import commit upserts `digitspan_runs` with `data_source='imported'` and `total_correct` from legacy `digit_span_score` (0–14); `max_span` remains null. 199 rows populated from 207-row reference XLSX.
+- Import commit upserts survey rows with `data_source='imported'` and `legacy_mean_1_4` populated: `survey_uls8` (205 rows), `survey_cesd10` (206 rows), `survey_gad7` (205 rows).
+- GAD-7: if legacy `anxiety` is an exact integer 0–21, `total_score` and `severity_band` are set (132/205 rows had deterministic mappings). Otherwise only `legacy_mean_1_4` is stored.
+- Re-import is idempotent: second commit ran cleanly — 207 updated, 0 errors; no duplication. `_get_sessions_with_native_rows` updated to filter by `data_source='native'` so sessions with only imported rows allow re-import. `on_conflict_do_update WHERE data_source='imported'` guards against overwriting native rows at DB level.
+- Implemented in `backend/app/services/import_service.py`: `_gad7_severity_from_total` helper, updated `_get_sessions_with_native_rows`, and four canonical upsert blocks in `commit_import`.
+- Verified against `reference/data_full_1-230.xlsx` (207 rows, 0 errors).
+
+---
+
+## T54 — DB schema: Phase 4 legacy import remapping (completed 2026-03-01)
+
+**Acceptance criteria met:**
+
+- Alembic migration `20260301_000010` adds `data_source VARCHAR(16) DEFAULT 'native' NOT NULL` to `survey_uls8`, `survey_cesd10`, `survey_gad7`, and `digitspan_runs`.
+- Legacy-mean columns added: `survey_uls8.legacy_mean_1_4`, `survey_cesd10.legacy_mean_1_4`, `survey_gad7.legacy_mean_1_4` (all NUMERIC NULLABLE). Legacy-total added: `survey_gad7.legacy_total_score` (SMALLINT NULLABLE).
+- UNIQUE constraint on `session_id` added to all four tables (`uq_digitspan_runs_session_id`, `uq_survey_uls8_session_id`, `uq_survey_cesd10_session_id`, `uq_survey_gad7_session_id`).
+- `digitspan_runs.max_span` made nullable; raw `r*` columns and computed score columns in the three survey tables made nullable to accommodate imported rows that lack item-level data.
+- Existing native rows are unaffected: they receive `data_source='native'` via the column default and all previously-NOT-NULL columns already have data. Native submissions continue to be validated via Pydantic (unchanged).
+- SQLAlchemy models updated: `digitspan.py`, `surveys.py` — `Optional` typing added for nullable columns, `UniqueConstraint` added via `__table_args__`.
+- Docs updated: `SCHEMA.md` (table definitions + migration history), `API.md` (Phase 4 note), `PROGRESS.md`, `DECISIONS.md`.
+- Migration structure verified: revision chain correct (`20260228_000009` → `20260301_000010`); model assertions pass.
+- **Run `alembic upgrade head` to apply migration to Supabase.**
 
 ---
 

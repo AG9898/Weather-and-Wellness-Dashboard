@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -13,6 +14,9 @@ from app.db import Base
 
 class DigitSpanRun(Base):
     __tablename__ = "digitspan_runs"
+    __table_args__ = (
+        UniqueConstraint("session_id", name="uq_digitspan_runs_session_id"),
+    )
 
     run_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -24,7 +28,12 @@ class DigitSpanRun(Base):
         UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
     )
     total_correct: Mapped[int] = mapped_column(Integer, nullable=False)
-    max_span: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Nullable for imported rows (legacy data has total_correct but not max_span)
+    max_span: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # 'native' = submitted via the live app; 'imported' = loaded from legacy data
+    data_source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="native"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -47,4 +56,3 @@ class DigitSpanTrial(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-
