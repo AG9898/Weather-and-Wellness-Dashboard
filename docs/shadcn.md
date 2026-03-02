@@ -56,7 +56,8 @@ Use shadcn as the component primitive layer, but match this project's style lang
 - Keep component structure/variants from shadcn unless there is a concrete product need.
 - Prefer adjusting semantic CSS variables in `src/app/globals.css` over hardcoding random hex values in component files.
 - Keep visual tone aligned with current guide:
-  - dark, calm, data-oriented surfaces
+  - light-first, calm, data-oriented surfaces
+  - tonal dark theme (when enabled) derived from the same hues
   - UBC token usage from `docs/styleguide.md`
   - clear focus/hover/disabled states
 - When composing new UI:

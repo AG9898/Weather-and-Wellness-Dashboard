@@ -286,14 +286,14 @@ export default function ImportExportPage() {
 
                 {/* Warnings */}
                 {phase.data.warnings.length > 0 && (
-                  <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
-                    <p className="text-sm font-medium text-yellow-300 mb-2">
+                  <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-4">
+                    <p className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-300">
                       {phase.data.warnings.length} warning
                       {phase.data.warnings.length !== 1 ? "s" : ""}
                     </p>
                     <ul className="space-y-1 max-h-32 overflow-y-auto">
                       {phase.data.warnings.map((w, i) => (
-                        <li key={i} className="text-xs text-yellow-300/80">
+                        <li key={i} className="text-xs text-amber-700/90 dark:text-amber-200/85">
                           Row {w.row}
                           {w.field ? ` · ${w.field}` : ""}: {w.message}
                         </li>

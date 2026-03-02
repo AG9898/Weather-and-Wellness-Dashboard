@@ -89,25 +89,32 @@ All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
 - Default = **system** (`prefers-color-scheme`)
 - Persist explicit user choice in `localStorage`
 - References are **inspiration only** (not 1:1 remakes); preserve the clean, shipped research-tool aesthetic
+- Current rollout note: semantic tokens are now light-first in `:root`; toggle behavior is not wired yet.
 
 ### UBC Brand Palette (CSS variables)
 
 | Variable | Hex | Usage |
 |---|---|---|
-| `--ubc-video-blue` | `#001328` | Global background |
-| `--ubc-navy` | `#000847` | Nav bar / deepest surfaces |
-| `--ubc-blue-700` | `#0052f5` | Primary action buttons |
-| `--ubc-blue-600` | `#00a2fa` | Secondary actions / activate |
-| `--ubc-blue-500` | `#33e0fc` | Focus ring / highlight |
-| `--ink-100` | `#e6edf8` | Primary text |
-| `--ink-70` | `#a9b6cc` | Secondary / muted text |
-| `--ink-45` | `#6e7c95` | Labels / meta text |
+| `--ubc-video-blue` | `#001328` | Primary “ink” / deepest anchor (light); background anchor (dark) |
+| `--ubc-navy` | `#000847` | Deepest surfaces / nav bar (dark) |
+| `--ubc-blue-700` | `#0052F5` | Primary actions / emphasis |
+| `--ubc-blue-600` | `#00A2FA` | Secondary emphasis / interactive |
+| `--ubc-blue-500` | `#33E0FC` | Focus ring / highlight |
+| `--ubc-blue-300` | `#5CE5FC` | Soft accent / glow |
+| `--ubc-blue-200` | `#7AF2F7` | Softer accent tint |
+| `--ubc-blue-100` | `#9EFAF2` | Lightest accent tint |
+| `--ubc-earth` | `#878343` | Rare warm accent only |
+| `--ink-100` | `#E6EDF8` | Light theme background; dark theme primary text |
+| `--ink-70` | `#A9B6CC` | Secondary text (dark) / muted UI (light) |
+| `--ink-45` | `#6E7C95` | Labels / meta text |
 
 ### Shadcn Semantic Token Mapping
 
 Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to the UBC palette.
-- Current implementation uses `.dark` tokens as the baseline.
-- Phase 4 will make `:root` represent light tokens and `.dark` represent dark tokens so shadcn components switch cleanly.
+- Target implementation (Phase 4) is **light-first**:
+  - `:root` = light theme semantic tokens
+  - `.dark` = tonal dark theme semantic tokens
+- Current code hard-sets `class="dark"` at the document root and mirrors `.dark` to `:root`; this will be changed when the theme toggle ships.
 
 ## Shared Components
 

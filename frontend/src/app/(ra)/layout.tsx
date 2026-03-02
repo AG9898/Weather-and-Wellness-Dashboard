@@ -19,7 +19,17 @@ export default function RALayout({
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(async ({ data, error }) => {
+      if (!mounted) return;
+      if (error) {
+        if (error.message.toLowerCase().includes("refresh token")) {
+          await supabase.auth.signOut({ scope: "local" });
+        }
+        router.replace("/login");
+        return;
+      }
       if (!data.session) {
         router.replace("/login");
       } else {
@@ -35,7 +45,10 @@ export default function RALayout({
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   if (!authorized) {

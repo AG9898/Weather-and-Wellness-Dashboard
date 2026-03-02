@@ -28,9 +28,9 @@ function timeAgo(iso: string): string {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  created: "border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
-  active: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-  complete: "border-white/10 bg-white/5 text-muted-foreground",
+  created: "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  active: "border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  complete: "border-border bg-muted/40 text-muted-foreground",
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ function SessionRow({ session }: { session: SessionListItemResponse }) {
       <div className="flex items-center gap-3 min-w-0">
         <span
           className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold tabular-nums"
-          style={{ background: "var(--ubc-blue-700)", color: "#fff" }}
+          style={{ background: "var(--ubc-blue-700)", color: "var(--primary-foreground)" }}
         >
           #{session.participant_number}
         </span>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-2 shrink-0">
             <Button
               size="lg"
-              className="rounded-xl px-6 font-semibold text-white"
+              className="rounded-xl px-6 font-semibold text-primary-foreground"
               style={{ background: "var(--ubc-blue-700)" }}
               onClick={() => router.push("/new-session")}
             >

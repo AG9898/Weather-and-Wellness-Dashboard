@@ -21,67 +21,68 @@ It defines the shared look-and-feel across pages so individual page work stays c
 
 ## 3) Visual Direction (Target Vibe)
 
-- Dark-first baseline with layered depth (not flat black).
-- Glass-like surfaces for cards/panels with subtle borders and blur.
+- Light-first baseline with cool-tinted surfaces (not stark white).
+- Glass-like surfaces for cards/panels with subtle borders and (optional) blur.
 - Quiet, high-contrast typography tuned for long-form task flow.
 - Minimal, deliberate motion; no excessive animation.
 - Clinical/research tone over marketing tone.
 
-**Phase 4 (planned):** Add a system-default light/dark toggle. Light mode should feel:
-- Bright but not stark-white (slight cool/blue tint is OK)
-- Still “lab tool” (structured, low-noise), not playful
+**Phase 4 (planned):** Add a system-default light/dark toggle (default = system).
+- **Light theme (default):** uses this document’s **hex token set** as the source of truth.
+- **Dark theme:** a **tonal dark theme** derived from the light theme hues (same hue family, darker tones, controlled chroma).
+- Current implementation note: UI is intentionally running light-only until the toggle is implemented.
 
 ## 4) Brand Tokens (UBC-Based)
 
-The PDF is print-first and mostly CMYK/Pantone. Values below are extracted from the PDF.
-For web implementation, use the web token set and keep the relative hue order.
+The UBC PDF is print-first and mostly CMYK/Pantone. In the PDF, some RGB/CMYK values are not internally consistent with the displayed web hex approximations.
 
-### 4.1 Official Swatches Found in PDF
+For this repo:
+- **Hex values are the source of truth** for the palette.
+- Any RGB/CMYK values are informational and (when needed) should be derived from the hex tokens below, not copied from the PDF.
 
-| Swatch | Source value in PDF |
-|---|---|
-| `UBC Video Blue` | `RGB(0, 19, 40)` |
-| `PANTONE 282 C` | `CMYK(100, 90, 13, 68)` |
-| `PANTONE 2935 C` | `CMYK(100, 68, 4, 0)` |
-| `PANTONE 3005 C` | `CMYK(100, 35, 0, 2)` |
-| `PANTONE 2995 C` | `CMYK(80, 12, 1, 0)` |
-| `PANTONE 298 C` | `CMYK(64, 10, 1, 0)` |
-| `PANTONE 297 C` | `CMYK(52, 5, 3, 0)` |
-| `PANTONE 2975 C` | `CMYK(38, 2, 5, 0)` |
-| `PANTONE 8383 C` | `CMYK(34, 36, 67, 20)` |
+### 4.1 Print Swatches (Reference Only)
 
-### 4.2 Web Token Set (Use in Frontend)
+- If you need Pantone/CMYK for print assets, consult `reference/UI Reference/ubc_colour_guide_august_2025.pdf` directly.
+- Do not use PDF swatch tables as web implementation guidance for this project.
+
+### 4.2 Hex Token Set (Source of Truth)
 
 | Token | Hex | Usage |
 |---|---|---|
-| `--ubc-video-blue` | `#001328` | Global dark background anchor |
-| `--ubc-navy` | `#000847` | Deepest surfaces/nav |
-| `--ubc-blue-700` | `#0052F5` | Primary action emphasis |
-| `--ubc-blue-600` | `#00A2FA` | Secondary action/interactive hover |
-| `--ubc-blue-500` | `#33E0FC` | Data highlights, selected states |
-| `--ubc-blue-300` | `#5CE5FC` | Subtle accents |
-| `--ubc-blue-200` | `#7AF2F7` | Soft glow/surface tint |
+| `--ubc-video-blue` | `#001328` | Primary “ink” / deepest anchor |
+| `--ubc-navy` | `#000847` | Nav bar / deepest surfaces (dark theme) |
+| `--ubc-blue-700` | `#0052F5` | Primary actions / emphasis |
+| `--ubc-blue-600` | `#00A2FA` | Secondary emphasis / interactive |
+| `--ubc-blue-500` | `#33E0FC` | Focus ring / highlight |
+| `--ubc-blue-300` | `#5CE5FC` | Soft accent / glow |
+| `--ubc-blue-200` | `#7AF2F7` | Softer accent tint |
 | `--ubc-blue-100` | `#9EFAF2` | Lightest accent tint |
 | `--ubc-earth` | `#878343` | Rare warm accent only |
-| `--ink-100` | `#E6EDF8` | Primary text on dark |
-| `--ink-70` | `#A9B6CC` | Secondary text |
+| `--ink-100` | `#E6EDF8` | Light theme background / dark theme primary text |
+| `--ink-70` | `#A9B6CC` | Secondary text (dark) / muted UI (light) |
 | `--ink-45` | `#6E7C95` | Labels/meta text |
 
 Notes:
-- `#001328` is exact from PDF metadata (`UBC Video Blue`).
-- Other hex values are web approximations derived from the PDF swatches.
+- `#001328` corresponds to `RGB(0, 19, 40)` (UBC Video Blue).
 - Do not introduce off-brand purple/pink as a default accent.
 
-### 4.3 Light Mode Guidance (Phase 4)
+### 4.3 Theme Guidance (Phase 4)
 
-Light mode is implemented by swapping **semantic** tokens (shadcn tokens) in `frontend/src/app/globals.css`:
-- `:root` becomes the light theme token set
-- `.dark` becomes the dark theme token set (current baseline)
+Theme switching is implemented by swapping **semantic** tokens (shadcn tokens) in `frontend/src/app/globals.css`:
+- `:root` = **light theme** semantic tokens
+- `.dark` = **tonal dark theme** semantic tokens
 
-Light mode palette rules:
-- Background and cards use near-white surfaces with subtle cool tint; avoid pure `#fff` as the global background.
-- Text uses UBC Video Blue / ink-dark equivalents for strong contrast.
-- Primary actions remain UBC blue (`--ubc-blue-700`) with consistent hover/focus states.
+Brand tokens (`--ubc-*`, `--ink-*`) remain constant across themes; only the semantic mapping changes.
+
+**Light theme rules (default):**
+- Background uses `--ink-100` (cool-tinted off-white); cards can be `white` or a slightly brighter tint of `--ink-100`.
+- Text/headers use `--ubc-video-blue` for maximum contrast without harsh black.
+- Primary actions use `--ubc-blue-700`; focus ring uses `--ubc-blue-500`.
+
+**Tonal dark theme rules:**
+- Background uses a deep blue tone (typically `--ubc-video-blue` or `--ubc-navy`); cards are a slightly lighter tone of the same hue family.
+- Text uses `--ink-100`; muted text uses `--ink-70`.
+- Accents remain the same hue family as the light theme (UBC blues), but avoid “neon on black” by keeping chroma controlled in semantic token mapping.
 
 ## 5) Typography
 
@@ -111,7 +112,7 @@ Rules:
 - Section vertical spacing: 48-96px depending on density.
 - Card radius: 16-24px.
 - Control radius: 10-16px.
-- Border style: 1px low-contrast border (`white/8-14%` equivalent).
+- Border style: 1px low-contrast border (light: `--ubc-video-blue` at ~8–14% alpha; dark: `white` at ~8–14% alpha).
 - Preferred card treatment: soft gradient + low-opacity border + subtle backdrop blur.
 
 ## 7) Component Language
@@ -172,4 +173,4 @@ When asked to build/update a frontend page:
 }
 ```
 
-This token block is a starter; adapt naming to the local design-token system if one already exists.
+This token block is a starter; treat these hex values as canonical and map shadcn semantic tokens to them per theme.

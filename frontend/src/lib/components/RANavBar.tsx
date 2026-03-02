@@ -26,7 +26,7 @@ export default function RANavBar() {
   return (
     <header
       className="sticky top-0 z-50 border-b border-border"
-      style={{ background: "var(--ubc-navy)" }}
+      style={{ background: "var(--card)" }}
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
@@ -48,8 +48,8 @@ export default function RANavBar() {
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-white/10 text-foreground"
-                    : "text-foreground/60 hover:bg-white/5 hover:text-foreground"
+                    ? "bg-primary/15 text-foreground"
+                    : "text-foreground/70 hover:bg-accent hover:text-foreground"
                 )}
               >
                 {label}
@@ -61,7 +61,7 @@ export default function RANavBar() {
         {/* Sign out */}
         <button
           onClick={handleSignOut}
-          className="rounded-md px-3 py-1.5 text-sm text-foreground/60 hover:bg-white/5 hover:text-foreground transition-colors"
+          className="rounded-md px-3 py-1.5 text-sm text-foreground/70 hover:bg-accent hover:text-foreground transition-colors"
         >
           Sign out
         </button>

@@ -9,7 +9,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /** Get the Supabase access token from the current session. */
 async function getAuthToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    if (error.message.toLowerCase().includes("refresh token")) {
+      await supabase.auth.signOut({ scope: "local" });
+    }
+    return null;
+  }
   return data.session?.access_token ?? null;
 }
 

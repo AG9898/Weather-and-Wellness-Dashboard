@@ -79,7 +79,7 @@ export default function SurveyForm({
                     key={opt.value}
                     className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                       selected
-                        ? "border-transparent text-white"
+                        ? "border-transparent text-primary-foreground"
                         : "border-border text-muted-foreground hover:border-ring hover:text-foreground"
                     }`}
                     style={selected ? { background: "var(--ubc-blue-700)" } : undefined}

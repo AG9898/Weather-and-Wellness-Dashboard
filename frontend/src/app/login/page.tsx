@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -10,6 +10,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const recoverStaleSession = async () => {
+      const { error: sessionError } = await supabase.auth.getSession();
+      if (!mounted || !sessionError) return;
+      if (sessionError.message.toLowerCase().includes("refresh token")) {
+        await supabase.auth.signOut({ scope: "local" });
+      }
+    };
+
+    recoverStaleSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

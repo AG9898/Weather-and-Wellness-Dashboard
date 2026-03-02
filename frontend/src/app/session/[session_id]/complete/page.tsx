@@ -13,7 +13,7 @@ export default function CompletePage() {
           style={{ background: "var(--ubc-blue-700)" }}
         >
           <svg
-            className="h-8 w-8 text-white"
+            className="h-8 w-8 text-primary-foreground"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -39,7 +39,7 @@ export default function CompletePage() {
         <Button
           asChild
           size="lg"
-          className="w-full rounded-xl font-semibold text-white"
+          className="w-full rounded-xl font-semibold text-primary-foreground"
           style={{ background: "var(--ubc-blue-700)" }}
         >
           <Link href="/dashboard">Return to Dashboard</Link>
