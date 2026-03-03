@@ -304,38 +304,120 @@ Follow current JSON Schema when adding tasks.
     },
     {
       "id": "T64",
-      "title": "Docs — Phase 4 documentation sweep and consistency pass",
+      "title": "DB — add sunshine_duration_hours column to weather_daily",
       "status": "todo",
-      "description": "Update docs to be Phase 4 decision-complete: kanban tasks, API contracts, schema notes, design spec, styleguide, and runbooks. Fix any Phase 3 doc mismatches discovered during implementation.",
+      "description": "Add a new nullable DOUBLE PRECISION column sunshine_duration_hours to the weather_daily table via Alembic migration. This column will be populated by the Open-Meteo historical backfill (T65–T66) and exposed through the existing GET /weather/daily endpoint. No existing rows or logic are modified.",
       "depends_on": [],
       "stack": [
         "backend",
-        "frontend",
         "database"
       ],
       "read_docs": [
-        "docs/kanban.md",
-        "docs/API.md",
         "docs/SCHEMA.md",
-        "docs/DESIGN_SPEC.md",
-        "docs/styleguide.md",
-        "docs/devSteps.md",
+        "docs/HISTORICAL_WEATHER_BACKFILL.md",
         "docs/CONVENTIONS.md"
       ],
       "acceptance_criteria": [
-        "Docs match current implementation status markers (planned vs implemented) accurately",
-        "Phase 4 kanban is broken into single-target tasks with explicit acceptance criteria",
-        "Phase 4 mapping rules and date_local linking semantics are clearly documented"
+        "Alembic migration adds sunshine_duration_hours DOUBLE PRECISION NULL to weather_daily; down migration drops it",
+        "WeatherDaily SQLAlchemy model updated with the new column (Double, nullable=True)",
+        "WeatherDailyItem Pydantic schema updated with sunshine_duration_hours: float | None = None",
+        "GET /weather/daily response now includes sunshine_duration_hours (null for all existing rows)",
+        "alembic upgrade head applies cleanly; alembic downgrade -1 reverses cleanly"
       ],
       "updates_docs": [
-        "docs/kanban.md",
-        "docs/kanban_log.md",
-        "docs/API.md",
         "docs/SCHEMA.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T65",
+      "title": "Backend — Open-Meteo fetch service + historical backfill service",
+      "status": "todo",
+      "description": "Implement two new backend services. (1) historical_weather_service.py: async HTTP GET to Open-Meteo Archive API for UBC coordinates with timezone=America/Vancouver; returns a dict keyed by date_local (DATE) with all six mapped daily fields. (2) historical_weather_backfill_service.py: precedence-aware backfill logic following the three-case rule: full insert for missing dates, COALESCE update of null fields for import-sourced rows, skip for UBC live rows. Mirrors the pattern of weather_backfill_service.py.",
+      "depends_on": [
+        "T64"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/HISTORICAL_WEATHER_BACKFILL.md",
+        "docs/WEATHER_INGESTION.md",
+        "docs/SCHEMA.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "fetch_open_meteo(start_date, end_date) returns a dict[date, OpenMeteoDay] keyed by local date; sunshine_duration is divided by 3600 to produce hours",
+        "Open-Meteo request uses timezone=America/Vancouver; returned daily.time strings are used directly as date_local without any further conversion",
+        "Backfill service queries existing weather_daily rows joined to weather_ingest_runs.parser_version to classify each date into no_data / import_partial / live_skip",
+        "Case A (no row): full insert with all six fields; get-or-create study_days row; on_conflict_do_nothing idempotency guard",
+        "Case B (legacy-import-v1 row): UPDATE only null fields (current_relative_humidity_pct, sunshine_duration_hours, forecast_high_c, forecast_low_c) using COALESCE; current_temp_c and current_precip_today_mm are never touched",
+        "Case C (ubc-eos-v1 row): skipped entirely",
+        "One weather_ingest_runs audit row per affected day: requested_via=historical_api_backfill, parser_version=open-meteo-v1",
+        "Returns HistoricalWeatherBackfillResult(days_inserted, days_enhanced, days_skipped)",
+        "Running the service twice over the same range returns days_inserted=0, days_enhanced=0 (idempotent)"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T66",
+      "title": "Backend — POST /weather/backfill/historical endpoint",
+      "status": "todo",
+      "description": "Add POST /weather/backfill/historical to the weather router. LabMember JWT required. Optional request body fields: start_date (default 2025-01-01), end_date (default today in America/Vancouver), station_id (default 3510). Calls the T65 backfill service and returns days_inserted, days_enhanced, days_skipped.",
+      "depends_on": [
+        "T65"
+      ],
+      "stack": [
+        "backend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/HISTORICAL_WEATHER_BACKFILL.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "POST /weather/backfill/historical is LabMember JWT-protected (same as GET /weather/daily)",
+        "start_date defaults to 2025-01-01; end_date defaults to today in America/Vancouver; station_id defaults to 3510",
+        "start_date > end_date returns 422; date range > 400 days returns 422",
+        "Calls run_historical_weather_backfill and returns HistoricalBackfillResponse(days_inserted, days_enhanced, days_skipped)",
+        "502 returned with descriptive detail if Open-Meteo returns a non-2xx status",
+        "Endpoint registered in API.md as implemented after verification"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T67",
+      "title": "Frontend — sunshine_duration_hours type + sunshine series in WeatherTrendChart",
+      "status": "todo",
+      "description": "Add sunshine_duration_hours to the WeatherDailyItem TypeScript interface. Then extend WeatherTrendChart to render a sunshine duration line (dashed, amber/yellow) on a dedicated Y-axis (0–14 h). Only render the line when at least one non-null value exists in the date range. Tooltip updated to include sunshine hours.",
+      "depends_on": [
+        "T66"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/HISTORICAL_WEATHER_BACKFILL.md",
         "docs/DESIGN_SPEC.md",
         "docs/styleguide.md",
-        "docs/devSteps.md",
-        "docs/CONVENTIONS.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "WeatherDailyItem in frontend/src/lib/api/index.ts includes sunshine_duration_hours: number | null",
+        "WeatherTrendChart renders a dashed amber/yellow Line for sunshine_duration_hours on a right-side Y-axis (domain 0–14, label in hours)",
+        "Sunshine line only renders when at least one item in the range has a non-null sunshine_duration_hours value",
+        "Tooltip shows Sunshine: X.X h when the value is non-null for the hovered date",
+        "Chart remains correct and does not error when all sunshine_duration_hours values are null (backfill not yet run)",
+        "tsc --noEmit passes; npm run build passes"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
         "docs/PROGRESS.md"
       ]
     }

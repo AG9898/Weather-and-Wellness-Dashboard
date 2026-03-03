@@ -49,6 +49,7 @@
 | POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
 | POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
 | GET    | /weather/daily | RA | implemented | T31 |
+| POST   | /weather/backfill/historical | RA | planned | — |
 | POST   | /admin/import/preview | RA | implemented | T48 |
 | POST   | /admin/import/commit | RA | implemented | T48, T55 |
 | GET    | /admin/export.xlsx | RA | implemented | T49 |
@@ -561,6 +562,44 @@
   - All join keys (`participant_uuid`, `session_id`, `study_day_id`, `run_id`, `source_run_id`) are present on every relevant sheet.
   - UUIDs and timestamps are ISO strings. JSONB columns are JSON strings.
   - Date in filename is today in the study timezone (`America/Vancouver`).
+
+### POST /weather/backfill/historical
+- **Auth:** LabMember JWT required
+- **Status:** planned
+- **Request body (all fields optional):**
+  ```json
+  {
+    "start_date": "YYYY-MM-DD",
+    "end_date": "YYYY-MM-DD",
+    "station_id": 3510
+  }
+  ```
+  - `start_date` defaults to `2025-01-01`
+  - `end_date` defaults to today (`America/Vancouver`)
+  - `station_id` defaults to `3510`
+- **Response:**
+  ```json
+  {
+    "days_inserted": "integer",
+    "days_enhanced": "integer",
+    "days_skipped": "integer"
+  }
+  ```
+- **Notes:**
+  - Fetches daily weather from the **Open-Meteo Archive API** for UBC coordinates (`49.2606°N, 123.2460°W`). No API key required.
+  - Open-Meteo is queried with `timezone=America/Vancouver`; its `daily.time` strings are therefore already local `date_local` values and require no conversion.
+  - Fields retrieved: `temperature_2m_mean` → `current_temp_c`, `temperature_2m_max` → `forecast_high_c`, `temperature_2m_min` → `forecast_low_c`, `relative_humidity_2m_mean` → `current_relative_humidity_pct`, `precipitation_sum` → `current_precip_today_mm`, `sunshine_duration` (seconds ÷ 3600) → `sunshine_duration_hours`.
+  - **Precedence rules (import data always wins):**
+    - Date with **no existing row**: full insert of all 6 fields → counted in `days_inserted`.
+    - Date with an **import-sourced row** (`parser_version="legacy-import-v1"`): updates only null fields (`current_relative_humidity_pct`, `sunshine_duration_hours`, `forecast_high_c`, `forecast_low_c`). `current_temp_c` and `current_precip_today_mm` from the import are **never overwritten** → counted in `days_enhanced`.
+    - Date with a **UBC live row** (`parser_version="ubc-eos-v1"`): skipped entirely → counted in `days_skipped`.
+  - Always writes one `weather_ingest_runs` audit row per affected day with `requested_via="historical_api_backfill"` and `parser_version="open-meteo-v1"`.
+  - `study_days` rows are get-or-created as needed (same pattern as live ingest).
+  - Idempotent: calling twice returns `days_inserted=0, days_enhanced=0, days_skipped=N`.
+  - Max date range: 400 days. `start_date > end_date` returns 422.
+  - See `docs/HISTORICAL_WEATHER_BACKFILL.md` for full spec.
+
+---
 
 ### POST /admin/backfill/legacy-weather
 - **Auth:** RA required

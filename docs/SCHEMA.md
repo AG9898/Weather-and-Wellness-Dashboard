@@ -87,6 +87,7 @@ Addition to `sessions` applied in migration `20260226_000005`:
 | forecast_condition_text| VARCHAR     | NULLABLE      | Day-level summary |
 | forecast_periods       | JSONB       | NOT NULL      | List of structured forecast blocks |
 | structured_json        | JSONB       | NOT NULL      | Full normalized per-day payload |
+| sunshine_duration_hours| DOUBLE PRECISION | NULLABLE | Hours of sunshine (0–24). Populated by Open-Meteo historical backfill; null for UBC EOS live rows and legacy import rows unless enhanced by backfill. See `docs/HISTORICAL_WEATHER_BACKFILL.md`. |
 | created_at             | TIMESTAMPTZ | DEFAULT NOW() |      |
 
 Constraints/indexes (applied):
@@ -122,6 +123,8 @@ Indexes (applied):
 - Index (`station_id`, `date_local`)
 
 **Phase 4 note (T56):** Legacy backfill rows use `requested_via="legacy_backfill"` and `parser_version="legacy-import-v1"`. `source_primary_url` and `source_secondary_url` are empty strings for backfill runs (no HTTP fetch performed).
+
+**Historical backfill note (planned):** Open-Meteo backfill rows use `requested_via="historical_api_backfill"` and `parser_version="open-meteo-v1"`. `source_primary_url` is the Open-Meteo Archive URL used. See `docs/HISTORICAL_WEATHER_BACKFILL.md`.
 
 ---
 
@@ -347,6 +350,7 @@ Applied by migration `20260301_000010`:
 | 2026-02-28 | T47 | Add participant demographic/exposure columns (age_band, gender, origin, origin_other_text, commute_method, commute_method_other_text, time_outside, daylight_exposure_minutes); add imported_session_measures table |
 | 2026-02-28 | T47a | Fix study_days.tz_name server_default and existing rows from America/Edmonton to America/Vancouver |
 | 2026-03-01 | T54 | Add data_source, legacy columns, nullable relaxation, and UNIQUE session_id constraints to digitspan_runs, survey_uls8, survey_cesd10, survey_gad7 |
+| planned | — | Add `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily` (Open-Meteo historical backfill) |
 
 As of 2026-03-01, migration `20260301_000010` (T54) applied and verified on Supabase. DB is at `head`.
 

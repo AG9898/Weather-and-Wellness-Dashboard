@@ -8,6 +8,7 @@
 > - API contract: `docs/API.md` (Weather section)
 > - Planned schema additions: `docs/SCHEMA.md` (Planned Additions section)
 > - Deployment boundaries: `docs/ARCHITECTURE.md` (Scheduled Jobs section)
+> - Historical gap-fill spec: `docs/HISTORICAL_WEATHER_BACKFILL.md`
 
 ---
 
@@ -101,6 +102,52 @@ See `docs/SCHEMA.md` for the column-level schema.
   - `weather_ingest_runs.ingested_at` (debug/ops)
   - optional `weather_daily.current_observed_at` (display-only if parseable)
 - Do not attempt to store a full hourly time series in this iteration.
+
+---
+
+## Historical Weather Backfill via Open-Meteo (Planned)
+
+When the live UBC EOS scraper was not yet running (before the study started using `POST /weather/ingest/ubc-eos`) and no legacy import data exists for a date, `weather_daily` rows for that period have no data. To make the dashboard's weather trend graph continuous from the beginning of 2025, a one-time (and re-runnable) backfill fetches data from the Open-Meteo Archive API.
+
+`POST /weather/backfill/historical` (LabMember JWT required) implements this backfill:
+
+### Data source
+
+- **API:** Open-Meteo Archive — `https://archive-api.open-meteo.com/v1/archive`
+- **Coordinates:** `latitude=49.2606`, `longitude=-123.2460` (UBC main campus, ~2 km from EOS station 3510)
+- **No API key required.** Free tier allows 10 000 calls/day; the full 2025-to-present range is a single request.
+- **Timezone:** `timezone=America/Vancouver` is passed in the request. Open-Meteo returns `daily.time` strings (e.g. `"2025-01-15"`) anchored to the local Vancouver calendar day, matching `date_local` in `study_days` and `weather_daily` exactly. No conversion is needed.
+- **Data lag:** Open-Meteo typically provides data up to ~2–5 days before the current date.
+
+### Fields fetched and their `weather_daily` mappings
+
+| Open-Meteo variable | Column | Notes |
+|---|---|---|
+| `temperature_2m_mean` | `current_temp_c` | Daily mean temperature (°C) |
+| `temperature_2m_max` | `forecast_high_c` | Daily high (°C) |
+| `temperature_2m_min` | `forecast_low_c` | Daily low (°C) |
+| `relative_humidity_2m_mean` | `current_relative_humidity_pct` | Cast to integer |
+| `precipitation_sum` | `current_precip_today_mm` | Daily total (mm) |
+| `sunshine_duration` | `sunshine_duration_hours` | Seconds ÷ 3600; new column (see `docs/SCHEMA.md`) |
+
+### Precedence rules
+
+For each date in the requested range, the existing `weather_daily` row (if any) is checked via its linked `weather_ingest_runs.parser_version`:
+
+| Existing state | Action | Counter |
+|---|---|---|
+| No row for station 3510 | Full insert of all 6 fields + audit run row | `days_inserted` |
+| Import row (`parser_version="legacy-import-v1"`) | Update only null fields: `current_relative_humidity_pct`, `sunshine_duration_hours`, `forecast_high_c`, `forecast_low_c`. **Never overwrites** `current_temp_c` or `current_precip_today_mm` from the import | `days_enhanced` |
+| Live UBC row (`parser_version="ubc-eos-v1"`) | Skipped entirely | `days_skipped` |
+
+### Audit trail
+
+- One `weather_ingest_runs` row is written per **affected** day (insert or enhance).
+- `requested_via = "historical_api_backfill"`, `parser_version = "open-meteo-v1"`.
+- `source_primary_url` = the Open-Meteo URL used for that batch.
+- Idempotent: a second call with the same range returns `days_inserted=0, days_enhanced=0, days_skipped=N`.
+
+See `docs/HISTORICAL_WEATHER_BACKFILL.md` for the complete spec and API contract.
 
 ---
 

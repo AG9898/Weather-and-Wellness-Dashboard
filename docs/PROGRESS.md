@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 4 (in progress)        |
-| Tasks completed    | 10 / 11                |
-| Remaining queue    | T64                    |
+| Tasks completed    | 10 / 14                |
+| Remaining queue    | T64, T65, T66, T67     |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-03-03             |
 
@@ -28,6 +28,26 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T64–T67 — Open-Meteo Historical Weather Backfill (planned 2026-03-03)
+
+Phase 4 extended with four new tasks to implement historical weather gap-filling via the Open-Meteo Archive API. Goal: make the weather trend graph continuous from 2025-01-01 by backfilling temperature, humidity, precipitation, and sunshine duration for dates that have no UBC EOS live data.
+
+**New tasks added:**
+- **T64** — DB migration: `sunshine_duration_hours DOUBLE PRECISION NULL` added to `weather_daily`; ORM model + Pydantic schema updated
+- **T65** — Backend: `historical_weather_service.py` (Open-Meteo fetch) + `historical_weather_backfill_service.py` (precedence logic: insert / enhance import rows / skip UBC live rows)
+- **T66** — Backend: `POST /weather/backfill/historical` endpoint (LabMember JWT, optional date range, returns `days_inserted / days_enhanced / days_skipped`)
+- **T67** — Frontend: `sunshine_duration_hours` TypeScript type + dashed amber sunshine line in `WeatherTrendChart`
+
+**Key design decisions documented in `docs/HISTORICAL_WEATHER_BACKFILL.md`:**
+- Open-Meteo queried with `timezone=America/Vancouver` → returned `daily.time` strings are already `date_local` values; no conversion needed
+- Import-sourced temperature/precipitation is never overwritten (import wins on `current_temp_c` and `current_precip_today_mm`)
+- UBC EOS live rows are never touched
+- Audit trail: one `weather_ingest_runs` row per affected day, `parser_version=open-meteo-v1`, `requested_via=historical_api_backfill`
+
+**Docs updated:** `docs/API.md`, `docs/WEATHER_INGESTION.md`, `docs/SCHEMA.md`, `docs/HISTORICAL_WEATHER_BACKFILL.md` (new), `docs/kanban.md`
+
+---
 
 ## T63 — Frontend: UI polish (dashboard, weather components, surveys, favicon/top bar) (completed 2026-03-03)
 
