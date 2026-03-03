@@ -195,7 +195,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T60",
       "title": "Frontend — dashboard date-range filter + remove Recent Sessions panel",
       "status": "todo",
-      "description": "Add a date-range filter UI (with presets) to the dashboard. Filtered views update KPIs, weather card context, and the weather graph. Remove the Recent Sessions section from the dashboard.",
+      "description": "Use Add a date-range filter UI (with presets) to the dashboard. Filtered views update KPIs, weather card context, and the weather graph. Remove the Recent Sessions section from the dashboard.",
       "depends_on": [
         "T59"
       ],
