@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { apiPost, apiPatch, getParticipantErrorMessage, type DigitSpanRunResponse, type SessionResponse } from "@/lib/api";
 
 // ── Constants ──
@@ -282,14 +283,16 @@ export default function DigitSpanPage() {
             {error}
           </div>
         )}
-        <button
+        <Button
           onClick={handleSubmitToBackend}
           disabled={submitting}
-          className="mt-8 rounded-lg px-8 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-          style={{ background: "var(--ubc-blue-700)" }}
+          className="mt-8 rounded-xl px-8 text-primary-foreground"
+          style={{
+            background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
+          }}
         >
           {submitting ? "Submitting…" : "Continue"}
-        </button>
+        </Button>
       </Screen>
     );
   }

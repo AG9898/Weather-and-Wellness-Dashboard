@@ -277,7 +277,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T63",
       "title": "Frontend — UI polish (dashboard, weather components, surveys, favicon/top bar)",
-      "status": "todo",
+      "status": "done",
       "description": "Polish UI for demo launch: consistent hover/focus interactions for buttons, update WeatherCard and KPI look per provided references (inspiration-only), clean survey page visuals, and update favicon/top bar styling.",
       "depends_on": [
         "T61",

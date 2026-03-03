@@ -90,7 +90,7 @@ All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
 - Persist explicit user choice in `localStorage`
 - References are **inspiration only** (not 1:1 remakes); preserve the clean, shipped research-tool aesthetic
 - Theme preference key: `ww-theme-preference`
-- RA navigation includes a theme control that cycles `system -> light -> dark`
+- RA navigation includes a light/dark toggle control; startup still defaults to `system` when no preference is stored
 
 ### UBC Brand Palette (CSS variables)
 
@@ -122,10 +122,10 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 | Component | Path | Usage |
 |---|---|---|
 | `PageContainer` | `src/lib/components/PageContainer.tsx` | Max-width content wrapper for all pages. Use `narrow` prop for survey/task flows. |
-| `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky top nav for RA pages (brand, nav links, theme control, sign-out). |
-| `ThemeToggle` | `src/lib/components/ThemeToggle.tsx` | Cycles theme preference (`system`, `light`, `dark`) and persists it globally. |
+| `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky capsule-style top nav for RA pages (logo mark, icon-first nav links, theme control, sign-out). |
+| `ThemeToggle` | `src/lib/components/ThemeToggle.tsx` | Toggles between `light` and `dark`; startup still resolves from `system` when no preference is stored. |
 | `WeatherTrendChart` | `src/lib/components/WeatherTrendChart.tsx` | Recharts weather/participants trend visualization for filtered dashboard ranges. |
-| `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments. |
+| `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments with shared progress bar + calm card-shell styling. |
 
 ## Layout Structure
 
@@ -165,12 +165,13 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
-1. **Weather card** — top-of-page card showing weather for the current dashboard context day (default: today; filtered: `date_to` or selected day), plus ingest run status (success/partial/fail and time-ago). Includes an "Update Weather" action.
-2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Present the consent form, collect participant details, and open a supervised session."), primary shadcn `Button` (size lg, ubc-blue-700) that navigates to `/new-session` to begin the two-step consent + demographics flow.
-3. **Date-range filter row** — preset chips (`Default`, `Today`, `Last 7 days`, `Last 30 days`, `This month`) plus custom `date_from`/`date_to` inputs and Apply/Reset actions.
-4. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created, Completed. In default mode, Created/Completed are `(7d)` values from `/dashboard/summary`; in filtered mode they are `(range)` values from `/dashboard/summary/range`.
+1. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Present the consent form, collect participant details, and open a supervised session."), primary shadcn `Button` (size lg, ubc-blue-700/600 gradient) that navigates to `/new-session`.
+2. **Date-range filter row** — preset chips (`Default`, `Today`, `Last 7 days`, `Last 30 days`, `This month`) plus custom `date_from`/`date_to` inputs and Apply/Reset actions.
+3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created, Completed. In default mode, Created/Completed are `(7d)` values from `/dashboard/summary`; in filtered mode they are `(range)` values from `/dashboard/summary/range`.
+4. **Weather card** — weather for the current dashboard context day (default: today; filtered: `date_to` or selected day), ingest run status, and "Update Weather" action.
+5. **Weather trend graph** — range-driven temperature + precipitation tooltip + participants/day trend card.
 
-The "Recent Sessions" panel has been removed. Dashboard hierarchy now includes weather context, hero action, range controls, KPI cards, and a filter-driven weather trend graph.
+The "Recent Sessions" panel has been removed. Dashboard hierarchy now emphasizes action + KPI context first, then weather detail and trend.
 
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
@@ -239,12 +240,21 @@ This is an RA-only two-step page (`src/app/(ra)/new-session/page.tsx`) that runs
 ### Survey Pages (`/session/[id]/uls8|cesd10|gad7|cogfunc`)
 
 All four surveys use the shared `SurveyForm` component with:
-- **`stepLabel` prop:** "Survey 1 of 4" … "Survey 4 of 4" — rendered as `text-xs uppercase tracking-widest text-muted-foreground` above the title.
-- **Selected radio option:** `background: var(--ubc-blue-700)` fill with white text.
-- **Unselected radio option:** `border-border text-muted-foreground hover:border-ring hover:text-foreground`.
-- **Submit button:** `--ubc-blue-700` + `text-primary-foreground`, disabled until all items answered and not currently submitting. Shows "Submitting…" label while pending.
+- **Card-shell presentation:** rounded glass-like panel with subtle blue glow accents; calm, high-contrast typography for long-form completion.
+- **`stepLabel` + progress bar:** "Survey 1 of 4" … "Survey 4 of 4" label with auto-derived progress fill when pattern matches `N of M`.
+- **Question blocks:** each item is rendered in its own rounded bordered panel for easier scanning.
+- **Selected radio option:** blue gradient (`--ubc-blue-700` → `--ubc-blue-600`) with `text-primary-foreground`.
+- **Unselected radio option:** muted bordered chips with hover/focus ring states.
+- **Submit button:** shared shadcn `Button` styling, disabled until all items answered and not currently submitting. Shows "Submitting…" while pending.
+- **Completion helper:** answered count (`X/Y answered`) shown near submit action.
 - **Error state:** bordered destructive banner (same pattern as RA pages). Error messages are participant-safe (non-technical) via `getParticipantErrorMessage()`. Form state is preserved on error so the participant can retry.
 - **Duplicate submission prevention:** `SurveyForm.handleSubmit` guards against `submitting === true` so concurrent submissions cannot occur even via non-button paths.
+
+### Branding + Favicon (Phase 4 polish, T63)
+
+- RA top bar uses the provided logo mark (`frontend/public/ww-mark.png`) and capsule navigation treatment inspired by the navbar references.
+- App icon is wired from `src/app/icon.png` (derived from the provided logo reference).
+- Browser theme colors are declared via `viewport.themeColor` for light and dark modes (`#e6edf8` / `#001328`) to keep top-bar coloring aligned with the active theme.
 
 ### Completion Page (`/session/[id]/complete`)
 

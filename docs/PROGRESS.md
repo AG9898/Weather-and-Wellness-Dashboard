@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 4 (in progress)        |
-| Tasks completed    | 9 / 11                 |
-| Remaining queue    | T63–T64                |
+| Tasks completed    | 10 / 11                |
+| Remaining queue    | T64                    |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-03-03             |
 
@@ -29,6 +29,30 @@ _No tasks in progress._
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
 
+## T63 — Frontend: UI polish (dashboard, weather components, surveys, favicon/top bar) (completed 2026-03-03)
+
+**Acceptance criteria met:**
+
+- Dashboard hierarchy is polished and coherent with no Recent Sessions panel:
+  - order now emphasizes Hero action -> date-range controls -> KPI cards -> weather context -> weather trend chart
+  - KPI cards and weather card received consistent card treatment (border, glow accents, spacing hierarchy)
+- Button hover/focus behavior is now consistent across key RA + participant surfaces:
+  - improved shared shadcn `Button` interaction baseline (focus ring offset, transition set, shadow consistency)
+  - migrated custom action buttons in `login`, `import-export`, `digitspan`, `dashboard` preset chips, and `SurveyForm` submit to shared button styling
+- Survey pages were redesigned via shared `SurveyForm` using the provided survey-page references as inspiration only:
+  - calmer card-shell container, clearer question grouping, optional progress bar derived from step label, and answered-count helper
+  - submission/error/duplicate-submit behavior remains unchanged
+- Top bar + favicon branding updated from provided references while preserving theme consistency:
+  - new RA capsule navbar with integrated logo mark (`frontend/public/ww-mark.png`)
+  - app icon now served from `frontend/src/app/icon.png` (logo-derived)
+  - browser theme colors moved to `viewport.themeColor` for light/dark alignment
+
+**Verification:**
+
+- `npm run lint` (frontend) passes.
+- `npx tsc --noEmit` (frontend) passes.
+- `npm run build` (frontend) passes.
+
 ## T62 — Frontend: system-default light/dark theme toggle (completed 2026-03-03)
 
 **Acceptance criteria met:**
@@ -38,7 +62,7 @@ _No tasks in progress._
   - `frontend/src/lib/components/ThemeProvider.tsx` applies the resolved theme globally, persists preference in `localStorage`, and reacts to system theme changes.
   - `frontend/src/app/layout.tsx` now injects an early theme init script and wraps the app with `ThemeProvider` so first paint and hydrated state remain aligned.
 - Added RA-nav theme control:
-  - `frontend/src/lib/components/ThemeToggle.tsx` cycles `system -> light -> dark`.
+  - `frontend/src/lib/components/ThemeToggle.tsx` now exposes a light/dark toggle; startup still defaults to system-resolved theme when no preference is saved.
   - `frontend/src/lib/components/RANavBar.tsx` now exposes the theme control alongside sign-out.
 - Updated semantic theming in `frontend/src/app/globals.css`:
   - UBC-based light semantic tokens remain in `:root`.

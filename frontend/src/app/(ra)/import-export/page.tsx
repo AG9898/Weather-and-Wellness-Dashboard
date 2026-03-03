@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { DragEvent } from "react";
+import { Button } from "@/components/ui/button";
 import PageContainer from "@/lib/components/PageContainer";
 import { cn } from "@/lib/utils";
 import {
@@ -163,13 +164,15 @@ export default function ImportExportPage() {
                 <li>Sessions updated: {phase.result.sessions_updated}</li>
               </ul>
             </div>
-            <button
+            <Button
               type="button"
               onClick={handleReset}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              variant="ghost"
+              size="sm"
+              className="h-auto px-1 text-sm text-muted-foreground"
             >
               Import another file
-            </button>
+            </Button>
           </div>
         ) : (
           <>
@@ -211,16 +214,18 @@ export default function ImportExportPage() {
                   <p className="text-sm text-muted-foreground mt-1">
                     {(file.size / 1024).toFixed(1)} KB
                   </p>
-                  <button
+                  <Button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleReset();
                     }}
-                    className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors underline"
+                    variant="link"
+                    size="xs"
+                    className="mt-2 h-auto p-0 text-xs text-muted-foreground"
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -304,17 +309,19 @@ export default function ImportExportPage() {
 
                 {/* Confirm button */}
                 <div className="flex items-center gap-3">
-                  <button
+                  <Button
                     type="button"
                     onClick={handleCommit}
                     disabled={
                       phase.tag === "committing" || phase.data.errors.length > 0
                     }
-                    className="rounded-md px-4 py-2 text-sm font-medium text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ background: "var(--ubc-blue-700)" }}
+                    className="rounded-xl px-4 text-primary-foreground"
+                    style={{
+                      background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
+                    }}
                   >
                     {phase.tag === "committing" ? "Importing…" : "Confirm Import"}
-                  </button>
+                  </Button>
                   {phase.data.errors.length > 0 && (
                     <p className="text-xs text-muted-foreground">
                       Resolve all errors before confirming.
@@ -340,24 +347,28 @@ export default function ImportExportPage() {
         )}
 
         <div className="flex flex-wrap gap-3">
-          <button
+          <Button
             type="button"
             onClick={handleExportXlsx}
             disabled={xlsxLoading}
-            className="rounded-md px-4 py-2 text-sm font-medium text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: "var(--ubc-blue-700)" }}
+            className="rounded-xl px-4 text-primary-foreground"
+            style={{
+              background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
+            }}
           >
             {xlsxLoading ? "Downloading…" : "Export XLSX"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleExportZip}
             disabled={zipLoading}
-            className="rounded-md px-4 py-2 text-sm font-medium text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: "var(--ubc-blue-700)" }}
+            className="rounded-xl px-4 text-primary-foreground"
+            style={{
+              background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
+            }}
           >
             {zipLoading ? "Downloading…" : "Export CSV (zip)"}
-          </button>
+          </Button>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           XLSX includes a README sheet and one sheet per table. CSV (zip) contains one

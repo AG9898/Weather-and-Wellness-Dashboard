@@ -15,6 +15,7 @@ import PageContainer from "@/lib/components/PageContainer";
 import WeatherCard from "@/lib/components/WeatherCard";
 import WeatherTrendChart from "@/lib/components/WeatherTrendChart";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Helpers
 
@@ -94,17 +95,23 @@ interface KpiCardProps {
 function KpiCard({ label, value, icon, accent = "bg-primary/15" }: KpiCardProps) {
   return (
     <div
-      className="flex flex-col gap-4 rounded-2xl border border-border p-5"
+      className="relative overflow-hidden rounded-2xl border border-border/90 p-5 shadow-[0_20px_40px_-42px_rgb(0_19_40/0.95)]"
       style={{ background: "var(--card)" }}
     >
-      <div className={`inline-flex w-fit items-center justify-center rounded-xl p-2.5 ${accent}`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-3xl font-bold tabular-nums text-foreground">{value}</p>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          {label}
-        </p>
+      <div
+        className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full opacity-25 blur-2xl"
+        style={{ background: "var(--ubc-blue-500)" }}
+      />
+      <div className="relative">
+        <div className={`inline-flex w-fit items-center justify-center rounded-xl p-2.5 ${accent}`}>
+          {icon}
+        </div>
+        <div className="mt-4">
+          <p className="text-3xl font-bold tabular-nums text-foreground">{value}</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {label}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -118,17 +125,20 @@ interface FilterPresetButtonProps {
 
 function FilterPresetButton({ active, label, onClick }: FilterPresetButtonProps) {
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+      size="sm"
+      variant={active ? "default" : "outline"}
+      className={cn(
+        "h-8 rounded-full px-3 text-[11px] uppercase tracking-wide",
         active
-          ? "border-primary/40 bg-primary/15 text-primary"
+          ? "border-primary bg-primary text-primary-foreground"
           : "border-border bg-background/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
-      }`}
+      )}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -445,21 +455,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Weather card */}
-      <div className="mb-8">
-        <WeatherCard weather={displayWeather} focusDate={weatherFocusDate} />
-      </div>
-
-      {/* Weather trend graph */}
-      <div className="mb-8">
-        <WeatherTrendChart
-          range={appliedRange}
-          weather={graphWeather}
-          participantsPerDay={graphParticipants}
-          loading={rangeLoading}
-        />
-      </div>
-
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 mb-8">
         <KpiCard
@@ -511,6 +506,21 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           }
+        />
+      </div>
+
+      {/* Weather card */}
+      <div className="mb-6">
+        <WeatherCard weather={displayWeather} focusDate={weatherFocusDate} />
+      </div>
+
+      {/* Weather trend graph */}
+      <div className="mb-8">
+        <WeatherTrendChart
+          range={appliedRange}
+          weather={graphWeather}
+          participantsPerDay={graphParticipants}
+          loading={rangeLoading}
         />
       </div>
     </PageContainer>

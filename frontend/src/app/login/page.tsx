@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -64,39 +67,39 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-1.5">
-            <label
+            <Label
               htmlFor="email"
               className="block text-sm font-medium text-muted-foreground"
             >
               Email
-            </label>
-            <input
+            </Label>
+            <Input
               id="email"
               type="email"
               required
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="block w-full rounded-lg border border-border bg-input/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              className="rounded-lg border-border bg-input/30"
               placeholder="you@example.com"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label
+            <Label
               htmlFor="password"
               className="block text-sm font-medium text-muted-foreground"
             >
               Password
-            </label>
-            <input
+            </Label>
+            <Input
               id="password"
               type="password"
               required
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-lg border border-border bg-input/30 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+              className="rounded-lg border-border bg-input/30"
               placeholder="••••••••"
             />
           </div>
@@ -105,14 +108,16 @@ export default function LoginPage() {
             <p className="text-sm text-destructive">{error}</p>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "var(--ubc-blue-700)" }}
+            className="w-full rounded-xl text-primary-foreground"
+            style={{
+              background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
+            }}
           >
             {loading ? "Logging in…" : "Log in"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

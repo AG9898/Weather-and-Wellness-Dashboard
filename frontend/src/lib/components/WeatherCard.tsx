@@ -28,6 +28,11 @@ function formatTemp(c: number | null): string | null {
   return `${Math.round(c)}°C`;
 }
 
+function formatPrecip(mm: number | null): string | null {
+  if (mm === null) return null;
+  return `${mm.toFixed(1)} mm`;
+}
+
 function formatDisplayDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
   const dt = new Date(Date.UTC(year, month - 1, day));
@@ -106,6 +111,7 @@ export default function WeatherCard({ weather, focusDate = null }: WeatherCardPr
   const currentTemp = formatTemp(displayItem?.current_temp_c ?? null);
   const forecastHigh = formatTemp(displayItem?.forecast_high_c ?? null);
   const forecastLow  = formatTemp(displayItem?.forecast_low_c ?? null);
+  const precipToday = formatPrecip(displayItem?.current_precip_today_mm ?? null);
   const conditionText = displayItem?.forecast_condition_text ?? null;
 
   async function handleUpdate() {
@@ -134,145 +140,154 @@ export default function WeatherCard({ weather, focusDate = null }: WeatherCardPr
 
   return (
     <div
-      className="rounded-2xl border border-border p-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+      className="relative overflow-hidden rounded-3xl border border-border/90 p-5 shadow-[0_24px_48px_-46px_rgb(0_19_40/0.75)] sm:p-6"
       style={{ background: "var(--card)" }}
     >
-      {/* Left — label + weather data + status */}
-      <div className="flex flex-col gap-3">
+      <div
+        className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-30 blur-3xl"
+        style={{ background: "var(--ubc-blue-500)" }}
+      />
 
-        {/* Section label */}
-        <div className="flex items-center gap-2">
-          <svg
-            className="w-4 h-4 shrink-0"
-            style={{ color: "var(--ubc-blue-500)" }}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
-            />
-          </svg>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Weather Data
-          </p>
-        </div>
-        {!isLoading && contextDate && (
-          <p className="text-xs text-muted-foreground">
-            Context day: {formatDisplayDate(contextDate)}
-          </p>
-        )}
+      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        {/* Left — label + weather data + status */}
+        <div className="flex flex-col gap-3">
 
-        {/* Weather summary for context day */}
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : (currentTemp || conditionText) ? (
-          <div className="flex flex-col gap-1">
-            {/* Temperature row */}
-            <div className="flex flex-wrap items-baseline gap-3">
-              {currentTemp && (
-                <span className="text-2xl font-bold tabular-nums text-foreground">
-                  {currentTemp}
-                </span>
-              )}
-              {(forecastHigh || forecastLow) && (
-                <span className="text-sm tabular-nums text-muted-foreground">
-                  {forecastHigh && <span>↑ {forecastHigh}</span>}
-                  {forecastHigh && forecastLow && <span className="mx-1 opacity-40">·</span>}
-                  {forecastLow && <span>↓ {forecastLow}</span>}
-                </span>
-              )}
-            </div>
-            {/* Condition text */}
-            {conditionText && (
-              <p className="text-sm text-muted-foreground">{conditionText}</p>
-            )}
-            {missingContextDate && contextDate && displayItem && (
-              <p className="text-xs text-muted-foreground">
-                No weather row for {formatDisplayDate(contextDate)}. Showing nearest available day ({formatDisplayDate(displayItem.date_local)}).
-              </p>
-            )}
-          </div>
-        ) : (
-          // Have weather response but no item data for selected context day.
-          <p className="text-sm text-muted-foreground">
-            No weather data for {contextDate ? formatDisplayDate(contextDate) : "the selected day"} yet.
-          </p>
-        )}
-
-        {/* Ingest run status */}
-        {!isLoading && (
-          latestRun ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                className={`border font-semibold ${STATUS_BADGE_CLASS[latestRun.parse_status]}`}
-                variant="outline"
-              >
-                {latestRun.parse_status}
-              </Badge>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                Last updated {timeAgo(latestRun.ingested_at)}
-              </span>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No ingestion runs yet.</p>
-          )
-        )}
-
-        {/* Inline feedback after manual update */}
-        {updateResult && (
-          <p
-            className={`text-sm ${
-              updateResult.kind === "success"
-                ? "text-emerald-700 dark:text-emerald-300"
-                : "text-destructive"
-            }`}
-          >
-            {updateResult.message}
-          </p>
-        )}
-      </div>
-
-      {/* Right — action button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="shrink-0 self-start"
-        onClick={handleUpdate}
-        disabled={updating || isLoading}
-      >
-        {updating ? (
-          <>
+          {/* Section label */}
+          <div className="flex items-center gap-2">
             <svg
-              className="mr-1.5 h-3.5 w-3.5 animate-spin"
+              className="h-4 w-4 shrink-0"
+              style={{ color: "var(--ubc-blue-500)" }}
               fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
               aria-hidden="true"
             >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
               <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
               />
             </svg>
-            Updating…
-          </>
-        ) : (
-          "Update Weather"
-        )}
-      </Button>
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Weather Data
+            </p>
+          </div>
+          {!isLoading && contextDate && (
+            <p className="text-xs text-muted-foreground">
+              Context day: {formatDisplayDate(contextDate)}
+            </p>
+          )}
+
+          {/* Weather summary for context day */}
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (currentTemp || conditionText || precipToday) ? (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap items-baseline gap-3">
+                {currentTemp && (
+                  <span className="text-3xl font-bold tabular-nums text-foreground">
+                    {currentTemp}
+                  </span>
+                )}
+                {(forecastHigh || forecastLow) && (
+                  <span className="text-sm tabular-nums text-muted-foreground">
+                    {forecastHigh && <span>↑ {forecastHigh}</span>}
+                    {forecastHigh && forecastLow && <span className="mx-1 opacity-40">·</span>}
+                    {forecastLow && <span>↓ {forecastLow}</span>}
+                  </span>
+                )}
+              </div>
+              {conditionText && (
+                <p className="text-sm text-muted-foreground">{conditionText}</p>
+              )}
+              {precipToday && (
+                <p className="inline-flex w-fit rounded-full border border-border/80 bg-background/70 px-2.5 py-1 text-xs text-muted-foreground">
+                  Precipitation: {precipToday}
+                </p>
+              )}
+              {missingContextDate && contextDate && displayItem && (
+                <p className="text-xs text-muted-foreground">
+                  No weather row for {formatDisplayDate(contextDate)}. Showing nearest available day ({formatDisplayDate(displayItem.date_local)}).
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No weather data for {contextDate ? formatDisplayDate(contextDate) : "the selected day"} yet.
+            </p>
+          )}
+
+          {/* Ingest run status */}
+          {!isLoading && (
+            latestRun ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  className={`border font-semibold ${STATUS_BADGE_CLASS[latestRun.parse_status]}`}
+                  variant="outline"
+                >
+                  {latestRun.parse_status}
+                </Badge>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  Last updated {timeAgo(latestRun.ingested_at)}
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No ingestion runs yet.</p>
+            )
+          )}
+
+          {/* Inline feedback after manual update */}
+          {updateResult && (
+            <p
+              className={`text-sm ${
+                updateResult.kind === "success"
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : "text-destructive"
+              }`}
+            >
+              {updateResult.message}
+            </p>
+          )}
+        </div>
+
+        {/* Right — action button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0 self-start rounded-full px-4"
+          onClick={handleUpdate}
+          disabled={updating || isLoading}
+        >
+          {updating ? (
+            <>
+              <svg
+                className="mr-1.5 h-3.5 w-3.5 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8H4z"
+                />
+              </svg>
+              Updating…
+            </>
+          ) : (
+            "Update Weather"
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

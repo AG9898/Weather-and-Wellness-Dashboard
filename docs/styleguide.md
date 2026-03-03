@@ -32,6 +32,7 @@ It defines the shared look-and-feel across pages so individual page work stays c
 - **Dark theme:** a **tonal dark theme** derived from the light theme hues (same hue family, darker tones, controlled chroma).
 - Theme preference is persisted in `localStorage` and the stored preference overrides system when set.
 - Toggle control is exposed in RA navigation and applies globally to RA + participant pages.
+- The visible toggle is binary (`light`/`dark`); if no explicit preference exists, initial theme resolution still uses system (`prefers-color-scheme`).
 
 ## 4) Brand Tokens (UBC-Based)
 

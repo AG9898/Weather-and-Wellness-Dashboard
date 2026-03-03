@@ -16,8 +16,6 @@ interface ThemeContextValue {
   cyclePreference: () => void;
 }
 
-const THEME_CYCLE_ORDER: ThemePreference[] = ["system", "light", "dark"];
-
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function getStoredPreference(): ThemePreference {
@@ -79,9 +77,7 @@ export default function ThemeProvider({
       resolvedTheme,
       setPreference,
       cyclePreference: () => {
-        const currentIndex = THEME_CYCLE_ORDER.indexOf(preference);
-        const nextIndex = (currentIndex + 1) % THEME_CYCLE_ORDER.length;
-        setPreference(THEME_CYCLE_ORDER[nextIndex]);
+        setPreference(resolvedTheme === "dark" ? "light" : "dark");
       },
     };
   }, [preference, resolvedTheme]);
