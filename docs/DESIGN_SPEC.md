@@ -122,6 +122,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 |---|---|---|
 | `PageContainer` | `src/lib/components/PageContainer.tsx` | Max-width content wrapper for all pages. Use `narrow` prop for survey/task flows. |
 | `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky top nav for RA pages (brand, nav links, sign-out). |
+| `WeatherTrendChart` | `src/lib/components/WeatherTrendChart.tsx` | Recharts weather/participants trend visualization for filtered dashboard ranges. |
 | `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments. |
 
 ## Layout Structure
@@ -167,7 +168,7 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 3. **Date-range filter row** — preset chips (`Default`, `Today`, `Last 7 days`, `Last 30 days`, `This month`) plus custom `date_from`/`date_to` inputs and Apply/Reset actions.
 4. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created, Completed. In default mode, Created/Completed are `(7d)` values from `/dashboard/summary`; in filtered mode they are `(range)` values from `/dashboard/summary/range`.
 
-The "Recent Sessions" panel has been removed. Dashboard hierarchy is now weather + hero + range filter + KPIs (+ graph in T61).
+The "Recent Sessions" panel has been removed. Dashboard hierarchy now includes weather context, hero action, range controls, KPI cards, and a filter-driven weather trend graph.
 
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
@@ -193,12 +194,15 @@ Loading state shows `—` in KPI values and weather card skeleton/loading text. 
 - If the selected range is a single day (`date_from == date_to`), the weather card shows that day's `weather_daily` (if present).
 - If the selected range spans multiple days, the weather card shows the **end date** (`date_to`) as the most relevant day context for the filtered KPIs.
 
-**Weather graph behavior under filtering (Phase 4 — planned):**
+**Weather graph behavior under filtering (Phase 4 — implemented in T61):**
 - Dashboard renders a weather graph that is driven by the same date-range filter state.
 - Graph shows:
   - temperature (`weather_daily.current_temp_c`) as a line,
   - participants-per-day as bars (sourced from `GET /dashboard/participants-per-day`),
   - precipitation (`weather_daily.current_precip_today_mm`) in hover/tooltip when available (included in `GET /weather/daily` response as of T58).
+- Graph does not perform its own API request. It renders strictly from the range bundle already loaded by `/api/ra/dashboard/range`.
+- Tooltip content includes: `date_local`, `temp`, `precip`, and participant count.
+- Missing temperature values are rendered as gaps in the line (safe skip); participant counts default to 0 when a day has no participants row.
 
 ---
 

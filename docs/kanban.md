@@ -222,7 +222,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T61",
       "title": "Frontend — weather graph (Recharts) + filter wiring",
-      "status": "todo",
+      "status": "done",
       "description": "Add a graph view of weather data that is driven by the dashboard date-range filter. Show temperature over time and participant counts per day, with precipitation available in hover/tooltip details.",
       "depends_on": [
         "T60"

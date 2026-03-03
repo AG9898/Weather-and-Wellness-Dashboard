@@ -6,12 +6,14 @@ import {
   ApiError,
   getDashboardBundle,
   getDashboardRangeBundle,
+  type DashboardParticipantsPerDayResponse,
   type DashboardSummaryRangeResponse,
   type DashboardSummaryResponse,
   type WeatherDailyResponse,
 } from "@/lib/api";
 import PageContainer from "@/lib/components/PageContainer";
 import WeatherCard from "@/lib/components/WeatherCard";
+import WeatherTrendChart from "@/lib/components/WeatherTrendChart";
 import { Button } from "@/components/ui/button";
 
 // Helpers
@@ -144,6 +146,7 @@ export default function DashboardPage() {
   // Filtered range summary + weather (live-only)
   const [rangeSummary, setRangeSummary] = useState<DashboardSummaryRangeResponse | null>(null);
   const [rangeWeatherData, setRangeWeatherData] = useState<WeatherDailyResponse | null>(null);
+  const [rangeParticipantsData, setRangeParticipantsData] = useState<DashboardParticipantsPerDayResponse | null>(null);
   const [rangeLoading, setRangeLoading] = useState(false);
   const [rangeError, setRangeError] = useState<string | null>(null);
 
@@ -218,6 +221,7 @@ export default function DashboardPage() {
       if (rangeRequestSeqRef.current !== requestId) return;
       setRangeSummary(rangeRes.data.summary);
       setRangeWeatherData(rangeRes.data.weather);
+      setRangeParticipantsData(rangeRes.data.participants_per_day);
       setAppliedRange(nextRange);
     } catch (err) {
       if (rangeRequestSeqRef.current !== requestId) return;
@@ -236,6 +240,7 @@ export default function DashboardPage() {
     setAppliedRange(null);
     setRangeSummary(null);
     setRangeWeatherData(null);
+    setRangeParticipantsData(null);
     setRangeLoading(false);
     setRangeError(null);
   }
@@ -272,6 +277,8 @@ export default function DashboardPage() {
     : 0;
 
   const displayWeather = isFiltered ? (rangeWeatherData ?? weatherData) : weatherData;
+  const graphWeather = isFiltered ? rangeWeatherData : null;
+  const graphParticipants = isFiltered ? rangeParticipantsData : null;
   const weatherFocusDate = isFiltered ? appliedRange.dateTo : todayRef.current;
 
   const createdLabel = isFiltered ? "Created (range)" : "Created (7d)";
@@ -441,6 +448,16 @@ export default function DashboardPage() {
       {/* Weather card */}
       <div className="mb-8">
         <WeatherCard weather={displayWeather} focusDate={weatherFocusDate} />
+      </div>
+
+      {/* Weather trend graph */}
+      <div className="mb-8">
+        <WeatherTrendChart
+          range={appliedRange}
+          weather={graphWeather}
+          participantsPerDay={graphParticipants}
+          loading={rangeLoading}
+        />
       </div>
 
       {/* KPI cards */}
