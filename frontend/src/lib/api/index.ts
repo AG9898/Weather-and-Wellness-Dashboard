@@ -171,6 +171,24 @@ export interface DashboardSummaryResponse {
   sessions_completed_last_7_days: number;
 }
 
+export interface DashboardSummaryRangeResponse {
+  date_from: string;
+  date_to: string;
+  sessions_created: number;
+  sessions_completed: number;
+  participants_completed: number;
+}
+
+export interface DashboardParticipantsPerDayItem {
+  date_local: string;
+  sessions_completed: number;
+  participants_completed: number;
+}
+
+export interface DashboardParticipantsPerDayResponse {
+  items: DashboardParticipantsPerDayItem[];
+}
+
 export interface SessionListItemResponse {
   session_id: string;
   participant_uuid: string;
@@ -210,6 +228,7 @@ export interface WeatherDailyItem {
   source_run_id: string | null;
   updated_at: string;
   current_temp_c: number | null;
+  current_precip_today_mm: number | null;
   forecast_high_c: number | null;
   forecast_low_c: number | null;
   forecast_condition_text: string | null;
@@ -257,6 +276,23 @@ export interface DashboardRouteResponse {
   data: DashboardBundle | null;
 }
 
+/**
+ * Bundle returned by GET /api/ra/dashboard/range.
+ * Always live (cache-bypass) for filter-specific analytics.
+ */
+export interface DashboardRangeBundle {
+  summary: DashboardSummaryRangeResponse;
+  weather: WeatherDailyResponse;
+  participants_per_day: DashboardParticipantsPerDayResponse;
+  cached_at: string; // ISO 8601
+}
+
+/** Response envelope from GET /api/ra/dashboard/range. */
+export interface DashboardRangeRouteResponse {
+  cached: false;
+  data: DashboardRangeBundle;
+}
+
 /** One-click supervised flow: create anonymous participant + active session. */
 export async function startSession(
   payload: StartSessionCreate
@@ -289,6 +325,35 @@ export async function getDashboardBundle(
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
   return res.json() as Promise<DashboardRouteResponse>;
+}
+
+/**
+ * Fetch range-filtered dashboard data from the same-origin Route Handler.
+ * This endpoint is intentionally live-only (no Redis read path).
+ */
+export async function getDashboardRangeBundle(
+  dateFrom: string,
+  dateTo: string
+): Promise<DashboardRangeRouteResponse> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const params = new URLSearchParams({
+    date_from: dateFrom,
+    date_to: dateTo,
+  });
+  const res = await fetch(`/api/ra/dashboard/range?${params.toString()}`, {
+    method: "GET",
+    headers,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<DashboardRangeRouteResponse>;
 }
 
 /** Trigger manual weather ingestion via LabMember JWT (RA-only). */

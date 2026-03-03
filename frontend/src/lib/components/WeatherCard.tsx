@@ -28,6 +28,17 @@ function formatTemp(c: number | null): string | null {
   return `${Math.round(c)}°C`;
 }
 
+function formatDisplayDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(dt);
+}
+
 function getIngestErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.status === 409) return "Another ingestion is already in progress. Try again shortly.";
@@ -54,11 +65,17 @@ interface WeatherCardProps {
    * null = bundle not yet loaded — shows loading skeleton.
    */
   weather: WeatherDailyResponse | null;
+  /**
+   * Optional day context for display. When present, the card attempts to show
+   * weather for this local date (`YYYY-MM-DD`) and falls back to the nearest
+   * available day in the bundle if missing.
+   */
+  focusDate?: string | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function WeatherCard({ weather }: WeatherCardProps) {
+export default function WeatherCard({ weather, focusDate = null }: WeatherCardProps) {
   // Override latest_run after a manual ingest without waiting for a full bundle refresh
   const [ingestOverride, setIngestOverride] = useState<WeatherLatestRun | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -69,13 +86,27 @@ export default function WeatherCard({ weather }: WeatherCardProps) {
 
   // Derive display values — ingestOverride wins for latestRun after a manual update
   const latestRun = ingestOverride ?? weather?.latest_run ?? null;
-  const todayItem = weather?.items[0] ?? null;
+  const lastItem = weather && weather.items.length > 0 ? weather.items[weather.items.length - 1] : null;
+  const contextDate = focusDate ?? lastItem?.date_local ?? null;
+  const displayItem = weather
+    ? (
+      (contextDate
+        ? weather.items.find((item) => item.date_local === contextDate)
+        : null
+      ) ?? lastItem
+    )
+    : null;
+  const missingContextDate = Boolean(
+    contextDate &&
+    displayItem &&
+    displayItem.date_local !== contextDate
+  );
   const isLoading = weather === null;
 
-  const currentTemp = formatTemp(todayItem?.current_temp_c ?? null);
-  const forecastHigh = formatTemp(todayItem?.forecast_high_c ?? null);
-  const forecastLow  = formatTemp(todayItem?.forecast_low_c ?? null);
-  const conditionText = todayItem?.forecast_condition_text ?? null;
+  const currentTemp = formatTemp(displayItem?.current_temp_c ?? null);
+  const forecastHigh = formatTemp(displayItem?.forecast_high_c ?? null);
+  const forecastLow  = formatTemp(displayItem?.forecast_low_c ?? null);
+  const conditionText = displayItem?.forecast_condition_text ?? null;
 
   async function handleUpdate() {
     setUpdating(true);
@@ -130,8 +161,13 @@ export default function WeatherCard({ weather }: WeatherCardProps) {
             Weather Data
           </p>
         </div>
+        {!isLoading && contextDate && (
+          <p className="text-xs text-muted-foreground">
+            Context day: {formatDisplayDate(contextDate)}
+          </p>
+        )}
 
-        {/* Today's weather summary */}
+        {/* Weather summary for context day */}
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (currentTemp || conditionText) ? (
@@ -155,10 +191,17 @@ export default function WeatherCard({ weather }: WeatherCardProps) {
             {conditionText && (
               <p className="text-sm text-muted-foreground">{conditionText}</p>
             )}
+            {missingContextDate && contextDate && displayItem && (
+              <p className="text-xs text-muted-foreground">
+                No weather row for {formatDisplayDate(contextDate)}. Showing nearest available day ({formatDisplayDate(displayItem.date_local)}).
+              </p>
+            )}
           </div>
         ) : (
-          // Have weather response but no item data (no ingestion yet today)
-          <p className="text-sm text-muted-foreground">No weather data for today yet.</p>
+          // Have weather response but no item data for selected context day.
+          <p className="text-sm text-muted-foreground">
+            No weather data for {contextDate ? formatDisplayDate(contextDate) : "the selected day"} yet.
+          </p>
         )}
 
         {/* Ingest run status */}

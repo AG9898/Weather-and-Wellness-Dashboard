@@ -162,11 +162,12 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
-1. **Weather card** — top-of-page card showing the last fetched weather data for today (current temp, forecast high/low, condition text) plus ingest run status (success/partial/fail and time-ago). Includes an "Update Weather" action.
+1. **Weather card** — top-of-page card showing weather for the current dashboard context day (default: today; filtered: `date_to` or selected day), plus ingest run status (success/partial/fail and time-ago). Includes an "Update Weather" action.
 2. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Present the consent form, collect participant details, and open a supervised session."), primary shadcn `Button` (size lg, ubc-blue-700) that navigates to `/new-session` to begin the two-step consent + demographics flow.
-3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). Each card: rounded icon chip + large bold number + uppercase label.
+3. **Date-range filter row** — preset chips (`Default`, `Today`, `Last 7 days`, `Last 30 days`, `This month`) plus custom `date_from`/`date_to` inputs and Apply/Reset actions.
+4. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created, Completed. In default mode, Created/Completed are `(7d)` values from `/dashboard/summary`; in filtered mode they are `(range)` values from `/dashboard/summary/range`.
 
-**Phase 4 (planned):** Remove the "Recent Sessions" panel from the dashboard. The dashboard remains KPI + weather + filter + graph focused (RA navigation stays minimal).
+The "Recent Sessions" panel has been removed. Dashboard hierarchy is now weather + hero + range filter + KPIs (+ graph in T61).
 
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
@@ -179,15 +180,16 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 
 Loading state shows `—` in KPI values and weather card skeleton/loading text. Error state shows an inline destructive banner.
 
-**Filtering (Phase 4 — planned):**
+**Filtering (Phase 4 — implemented in T60):**
 - Dashboard adds a date-range filter control that affects:
   - the **Created** KPI (sessions created within the selected range), and
   - the **Completed** KPI (sessions completed within the selected range),
   - and the weather card **date context** (see below).
 - Default view (no custom range selected) uses the cached dashboard bundle (`/api/ra/dashboard?mode=cached` then SWR live refresh).
-- Filtered views bypass Redis initially and fetch live from Render using the planned `/dashboard/summary/range` contract plus `GET /weather/daily` for the selected date.
+- Filtered views bypass Redis and fetch live from Render using `/api/ra/dashboard/range`, which fans out to `/dashboard/summary/range` plus `GET /weather/daily` and `GET /dashboard/participants-per-day`.
+- On transient filtered-fetch errors, the dashboard keeps currently displayed values and shows an inline error instead of clearing data.
 
-**Weather behavior under filtering (Phase 4 — planned):**
+**Weather behavior under filtering (Phase 4 — implemented in T60):**
 - If the selected range is a single day (`date_from == date_to`), the weather card shows that day's `weather_daily` (if present).
 - If the selected range spans multiple days, the weather card shows the **end date** (`date_to`) as the most relevant day context for the filtered KPIs.
 

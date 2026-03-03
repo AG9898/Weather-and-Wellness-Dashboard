@@ -3,35 +3,82 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  apiGet,
+  ApiError,
   getDashboardBundle,
+  getDashboardRangeBundle,
+  type DashboardSummaryRangeResponse,
   type DashboardSummaryResponse,
   type WeatherDailyResponse,
-  type SessionListResponse,
-  type SessionListItemResponse,
 } from "@/lib/api";
 import PageContainer from "@/lib/components/PageContainer";
 import WeatherCard from "@/lib/components/WeatherCard";
 import { Button } from "@/components/ui/button";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+const STUDY_TIMEZONE = "America/Vancouver";
+
+type DateRange = {
+  dateFrom: string;
+  dateTo: string;
+};
+
+type FilterPreset =
+  | "default"
+  | "today"
+  | "last_7_days"
+  | "last_30_days"
+  | "this_month"
+  | "custom";
+
+function getStudyToday(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: STUDY_TIMEZONE,
+  }).format(new Date());
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  created: "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  active: "border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  complete: "border-border bg-muted/40 text-muted-foreground",
-};
+function shiftIsoDate(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+function startOfMonth(isoDate: string): string {
+  const [year, month] = isoDate.split("-").map(Number);
+  const dt = new Date(Date.UTC(year, month - 1, 1));
+  return dt.toISOString().slice(0, 10);
+}
+
+function getPresetRange(preset: Exclude<FilterPreset, "default" | "custom">): DateRange {
+  const today = getStudyToday();
+  if (preset === "today") {
+    return { dateFrom: today, dateTo: today };
+  }
+  if (preset === "last_7_days") {
+    return { dateFrom: shiftIsoDate(today, -6), dateTo: today };
+  }
+  if (preset === "this_month") {
+    return { dateFrom: startOfMonth(today), dateTo: today };
+  }
+  return { dateFrom: shiftIsoDate(today, -29), dateTo: today };
+}
+
+function formatRangeLabel(range: DateRange): string {
+  if (range.dateFrom === range.dateTo) {
+    return range.dateFrom;
+  }
+  return `${range.dateFrom} to ${range.dateTo}`;
+}
+
+function getFilterErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 422) return "Invalid date range. Confirm date_from is not after date_to.";
+    if (err.status >= 500) return "Range data is temporarily unavailable. Keeping current dashboard values.";
+    return `Range update failed (${err.status}): ${err.message}`;
+  }
+  return "Unable to refresh the selected range right now. Keeping current dashboard values.";
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -61,32 +108,25 @@ function KpiCard({ label, value, icon, accent = "bg-primary/15" }: KpiCardProps)
   );
 }
 
-function SessionRow({ session }: { session: SessionListItemResponse }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3.5 border-b border-border last:border-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <span
-          className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold tabular-nums"
-          style={{ background: "var(--ubc-blue-700)", color: "var(--primary-foreground)" }}
-        >
-          #{session.participant_number}
-        </span>
-        <span className="truncate font-mono text-xs text-muted-foreground">
-          {session.session_id.slice(0, 8)}…
-        </span>
-      </div>
+interface FilterPresetButtonProps {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}
 
-      <div className="flex items-center gap-3 shrink-0">
-        <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_BADGE[session.status] ?? STATUS_BADGE.complete}`}
-        >
-          {session.status}
-        </span>
-        <span className="text-xs text-muted-foreground tabular-nums w-16 text-right">
-          {timeAgo(session.created_at)}
-        </span>
-      </div>
-    </div>
+function FilterPresetButton({ active, label, onClick }: FilterPresetButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+        active
+          ? "border-primary/40 bg-primary/15 text-primary"
+          : "border-border bg-background/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -94,19 +134,29 @@ function SessionRow({ session }: { session: SessionListItemResponse }) {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const todayRef = useRef(getStudyToday());
 
-  // Summary + weather
+  // Base summary + weather (cached -> live SWR)
   const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
   const [weatherData, setWeatherData] = useState<WeatherDailyResponse | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
 
-  // Sessions list
-  const [sessions, setSessions] = useState<SessionListItemResponse[]>([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
+  // Filtered range summary + weather (live-only)
+  const [rangeSummary, setRangeSummary] = useState<DashboardSummaryRangeResponse | null>(null);
+  const [rangeWeatherData, setRangeWeatherData] = useState<WeatherDailyResponse | null>(null);
+  const [rangeLoading, setRangeLoading] = useState(false);
+  const [rangeError, setRangeError] = useState<string | null>(null);
+
+  // Filter controls
+  const [preset, setPreset] = useState<FilterPreset>("default");
+  const [customFrom, setCustomFrom] = useState(shiftIsoDate(todayRef.current, -6));
+  const [customTo, setCustomTo] = useState(todayRef.current);
+  const [requestedRange, setRequestedRange] = useState<DateRange | null>(null);
+  const [appliedRange, setAppliedRange] = useState<DateRange | null>(null);
 
   const [error, setError] = useState<string | null>(null);
-
   const hasCachedSummaryRef = useRef(false);
+  const rangeRequestSeqRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,16 +175,12 @@ export default function DashboardPage() {
       }
 
       try {
-        const [liveRes, sessionsData] = await Promise.all([
-          getDashboardBundle("live"),
-          apiGet<SessionListResponse>("/sessions?page_size=8", { auth: true }),
-        ]);
+        const liveRes = await getDashboardBundle("live");
         if (!cancelled) {
           if (liveRes.data) {
             setSummary(liveRes.data.summary);
             setWeatherData(liveRes.data.weather);
           }
-          setSessions(sessionsData.items);
         }
       } catch {
         if (!cancelled && !hasCachedSummaryRef.current) {
@@ -143,23 +189,106 @@ export default function DashboardPage() {
       } finally {
         if (!cancelled) {
           setSummaryLoading(false);
-          setSessionsLoading(false);
         }
       }
     };
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  async function applyRange(nextRange: DateRange, nextPreset: FilterPreset): Promise<void> {
+    if (nextRange.dateFrom > nextRange.dateTo) {
+      setRangeError("Start date must be on or before end date.");
+      return;
+    }
+
+    setPreset(nextPreset);
+    setRequestedRange(nextRange);
+    setRangeLoading(true);
+    setRangeError(null);
+
+    const requestId = rangeRequestSeqRef.current + 1;
+    rangeRequestSeqRef.current = requestId;
+
+    try {
+      const rangeRes = await getDashboardRangeBundle(nextRange.dateFrom, nextRange.dateTo);
+      if (rangeRequestSeqRef.current !== requestId) return;
+      setRangeSummary(rangeRes.data.summary);
+      setRangeWeatherData(rangeRes.data.weather);
+      setAppliedRange(nextRange);
+    } catch (err) {
+      if (rangeRequestSeqRef.current !== requestId) return;
+      setRangeError(getFilterErrorMessage(err));
+    } finally {
+      if (rangeRequestSeqRef.current === requestId) {
+        setRangeLoading(false);
+      }
+    }
+  }
+
+  function clearRangeFilter(): void {
+    rangeRequestSeqRef.current += 1;
+    setPreset("default");
+    setRequestedRange(null);
+    setAppliedRange(null);
+    setRangeSummary(null);
+    setRangeWeatherData(null);
+    setRangeLoading(false);
+    setRangeError(null);
+  }
+
+  function handlePresetClick(nextPreset: Exclude<FilterPreset, "custom">): void {
+    if (nextPreset === "default") {
+      clearRangeFilter();
+      return;
+    }
+
+    const nextRange = getPresetRange(nextPreset);
+    setCustomFrom(nextRange.dateFrom);
+    setCustomTo(nextRange.dateTo);
+    void applyRange(nextRange, nextPreset);
+  }
+
+  function handleApplyCustomRange(): void {
+    if (!customFrom || !customTo) {
+      setRangeError("Select both date_from and date_to before applying a custom range.");
+      return;
+    }
+    void applyRange(
+      {
+        dateFrom: customFrom,
+        dateTo: customTo,
+      },
+      "custom"
+    );
+  }
+
+  const isFiltered = appliedRange !== null;
   const totalSessions = summary
     ? summary.sessions_created + summary.sessions_active + summary.sessions_complete
     : 0;
 
+  const displayWeather = isFiltered ? (rangeWeatherData ?? weatherData) : weatherData;
+  const weatherFocusDate = isFiltered ? appliedRange.dateTo : todayRef.current;
+
+  const createdLabel = isFiltered ? "Created (range)" : "Created (7d)";
+  const completedLabel = isFiltered ? "Completed (range)" : "Completed (7d)";
+  const createdValue = isFiltered
+    ? (rangeSummary?.sessions_created ?? "—")
+    : (summaryLoading ? "—" : (summary?.sessions_created_last_7_days ?? 0));
+  const completedValue = isFiltered
+    ? (rangeSummary?.sessions_completed ?? "—")
+    : (summaryLoading ? "—" : (summary?.sessions_completed_last_7_days ?? 0));
+  const rangeStatusText = isFiltered && appliedRange
+    ? `Showing ${formatRangeLabel(appliedRange)} (${STUDY_TIMEZONE})`
+    : `Default overview (cached + live refresh, ${STUDY_TIMEZONE})`;
+
   return (
     <PageContainer>
-
-      {/* ── Hero action zone ─────────────────────────────── */}
+      {/* Hero action zone */}
       <div
         className="relative overflow-hidden rounded-2xl border border-border px-8 py-10 mb-8"
         style={{ background: "var(--card)" }}
@@ -195,23 +324,130 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Error state (only when no data available at all) ─ */}
+      {/* Fatal error (only when no dashboard data is available) */}
       {error && (
         <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {/* ── Weather card ─────────────────────────────────── */}
-      <div className="mb-8">
-        <WeatherCard weather={weatherData} />
+      {/* Date range controls */}
+      <div
+        className="mb-6 rounded-2xl border border-border p-5"
+        style={{ background: "var(--card)" }}
+      >
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Dashboard Range
+            </p>
+            <p className="text-sm text-foreground">
+              {rangeStatusText}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <FilterPresetButton
+              active={preset === "default"}
+              label="Default"
+              onClick={() => handlePresetClick("default")}
+            />
+            <FilterPresetButton
+              active={preset === "today"}
+              label="Today"
+              onClick={() => handlePresetClick("today")}
+            />
+            <FilterPresetButton
+              active={preset === "last_7_days"}
+              label="Last 7 days"
+              onClick={() => handlePresetClick("last_7_days")}
+            />
+            <FilterPresetButton
+              active={preset === "last_30_days"}
+              label="Last 30 days"
+              onClick={() => handlePresetClick("last_30_days")}
+            />
+            <FilterPresetButton
+              active={preset === "this_month"}
+              label="This month"
+              onClick={() => handlePresetClick("this_month")}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <label className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Date from
+            </span>
+            <input
+              type="date"
+              value={customFrom}
+              max={customTo}
+              onChange={(event) => setCustomFrom(event.target.value)}
+              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring/60"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Date to
+            </span>
+            <input
+              type="date"
+              value={customTo}
+              min={customFrom}
+              onChange={(event) => setCustomTo(event.target.value)}
+              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring/60"
+            />
+          </label>
+          <div className="flex items-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 rounded-xl"
+              disabled={rangeLoading}
+              onClick={handleApplyCustomRange}
+            >
+              Apply Custom
+            </Button>
+            {isFiltered && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 rounded-xl"
+                disabled={rangeLoading}
+                onClick={clearRangeFilter}
+              >
+                Reset
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {(rangeLoading || rangeError) && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+            {rangeLoading && (
+              <span className="text-muted-foreground">
+                Updating range {requestedRange ? formatRangeLabel(requestedRange) : ""}...
+              </span>
+            )}
+            {rangeError && (
+              <span className="text-destructive">{rangeError}</span>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── KPI cards ────────────────────────────────────── */}
+      {/* Weather card */}
+      <div className="mb-8">
+        <WeatherCard weather={displayWeather} focusDate={weatherFocusDate} />
+      </div>
+
+      {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 mb-8">
         <KpiCard
           label="Participants"
-          value={summaryLoading ? "—" : (summary?.total_participants ?? 0)}
+          value={summaryLoading ? "—" : (summary ? summary.total_participants : "—")}
           accent="bg-primary/15"
           icon={
             <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +457,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="Active Sessions"
-          value={summaryLoading ? "—" : (summary?.sessions_active ?? 0)}
+          value={summaryLoading ? "—" : (summary ? summary.sessions_active : "—")}
           accent="bg-emerald-500/15"
           icon={
             <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -231,7 +467,7 @@ export default function DashboardPage() {
         />
         <KpiCard
           label="Total Sessions"
-          value={summaryLoading ? "—" : totalSessions}
+          value={summaryLoading ? "—" : (summary ? totalSessions : "—")}
           accent="bg-accent/15"
           icon={
             <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,8 +476,8 @@ export default function DashboardPage() {
           }
         />
         <KpiCard
-          label="Created (7d)"
-          value={summaryLoading ? "—" : (summary?.sessions_created_last_7_days ?? 0)}
+          label={createdLabel}
+          value={createdValue}
           accent="bg-ring/15"
           icon={
             <svg className="w-4 h-4 text-ring" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,8 +486,8 @@ export default function DashboardPage() {
           }
         />
         <KpiCard
-          label="Completed (7d)"
-          value={summaryLoading ? "—" : (summary?.sessions_completed_last_7_days ?? 0)}
+          label={completedLabel}
+          value={completedValue}
           accent="bg-primary/15"
           icon={
             <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,35 +496,6 @@ export default function DashboardPage() {
           }
         />
       </div>
-
-      {/* ── Recent sessions ──────────────────────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Recent Sessions
-          </p>
-        </div>
-
-        <div
-          className="rounded-2xl border border-border overflow-hidden"
-          style={{ background: "var(--card)" }}
-        >
-          {sessionsLoading ? (
-            <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Loading…
-            </div>
-          ) : sessions.length === 0 ? (
-            <div className="px-4 py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                No sessions yet. Use the button above to start the first entry.
-              </p>
-            </div>
-          ) : (
-            sessions.map((s) => <SessionRow key={s.session_id} session={s} />)
-          )}
-        </div>
-      </div>
-
     </PageContainer>
   );
 }

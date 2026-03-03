@@ -34,6 +34,19 @@
 
 **Cache key:** `ww:ra:dashboard:v1` — versioned prefix allows safe invalidation on schema changes.
 
+## Vercel Range Bundle Route Handler (Phase 4)
+
+`GET /api/ra/dashboard/range?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD` is a separate Next.js Route Handler for filtered dashboard views.
+
+- **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before any backend call.
+- **Cache behavior:** Intentionally **live-only** and bypasses Redis by default. It also sends backend fetches with `cache: "no-store"` to avoid serving stale filter data.
+- **Backend fan-out:** Fetches these Render endpoints in parallel:
+  - `/dashboard/summary/range?date_from=<...>&date_to=<...>`
+  - `/weather/daily?start=<date_from>&end=<date_to>`
+  - `/dashboard/participants-per-day?start=<date_from>&end=<date_to>`
+- **Bundle type:** `{ summary, weather, participants_per_day, cached_at }` wrapped in `{ cached: false, data }`.
+- **Purpose:** Provides a single typed payload for date-range dashboard KPIs + weather context + graph-ready participant counts.
+
 ---
 
 ## Auth (Optional)

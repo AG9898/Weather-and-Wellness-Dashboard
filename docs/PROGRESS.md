@@ -10,10 +10,10 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 4 (in progress)        |
-| Tasks completed    | 5 / 11                 |
-| Remaining queue    | T59–T64                |
+| Tasks completed    | 7 / 11                 |
+| Remaining queue    | T61–T64                |
 | Tasks in progress  | 0                      |
-| Last updated       | 2026-03-01             |
+| Last updated       | 2026-03-03             |
 
 ---
 
@@ -28,6 +28,56 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T60 — Frontend: dashboard date-range filter + remove Recent Sessions panel (completed 2026-03-03)
+
+**Acceptance criteria met:**
+
+- Dashboard now includes date-range controls with clear defaults and study-timezone semantics:
+  - Presets: `Default`, `Today`, `Last 7 days`, `Last 30 days`, `This month`
+  - Custom controls: `date_from` + `date_to` inputs with explicit Apply
+  - Context copy states that filtering semantics use `America/Vancouver`
+- Default (unfiltered) mode still uses existing cached -> live SWR behavior through `getDashboardBundle("cached")` then `getDashboardBundle("live")`.
+- Filtered mode uses `getDashboardRangeBundle(dateFrom, dateTo)` only (live-only range bundle path) and does not fall back to or re-show cached dashboard bundle data for filtered requests.
+- Range-fetch error handling is non-destructive:
+  - Transient errors do not clear currently displayed dashboard values.
+  - Inline error messaging is shown while previously displayed values remain visible.
+- Removed the Recent Sessions dashboard panel and eliminated dashboard `/sessions` fetch usage:
+  - Removed `apiGet("/sessions?...")` from `frontend/src/app/(ra)/dashboard/page.tsx`
+  - Removed all Recent Sessions rendering/state code.
+- Weather card date context now aligns with filter state:
+  - Added `focusDate` prop to `WeatherCard`
+  - In filtered mode, dashboard passes `date_to` as the weather context day
+  - Card safely falls back to nearest available weather day if the exact context day is missing.
+
+**Verification:**
+
+- `npm run lint` (frontend) passes.
+- `npm run build` still fails in this sandbox due blocked outbound access to Google Fonts (`Geist`, `Geist Mono`), consistent with prior runs and unrelated to T60 code changes.
+
+---
+
+## T59 — Frontend: range dashboard bundle route handler + typed wrappers (completed 2026-03-03)
+
+**Acceptance criteria met:**
+
+- Added a new Next.js Route Handler at `frontend/src/app/api/ra/dashboard/range/route.ts`:
+  - Verifies Supabase JWT from `Authorization: Bearer <token>` before returning any data.
+  - Requires `date_from` and `date_to` (`YYYY-MM-DD`) and returns 422 when missing/invalid.
+  - Fetches backend range endpoints in parallel: `/dashboard/summary/range`, `/weather/daily`, `/dashboard/participants-per-day`.
+- Filtered range bundle is live-only and bypasses Redis by default:
+  - No Upstash Redis read/write path exists in the range route.
+  - Backend `fetch()` calls use `cache: "no-store"` and route is marked `dynamic = "force-dynamic"` to avoid stale filter responses.
+- Added typed API contracts in `frontend/src/lib/api/index.ts`:
+  - `DashboardSummaryRangeResponse`
+  - `DashboardParticipantsPerDayItem` / `DashboardParticipantsPerDayResponse`
+  - `DashboardRangeBundle` / `DashboardRangeRouteResponse`
+  - New wrapper `getDashboardRangeBundle(dateFrom, dateTo)` for same-origin calls to `/api/ra/dashboard/range`.
+- Kept component/page API call convention intact: no bare `fetch` introduced in components/pages; all UI-side calls continue through `src/lib/api` wrappers.
+- Updated weather typing for Phase 4 graph needs: `WeatherDailyItem` now includes `current_precip_today_mm`.
+- Verification:
+  - `npm run lint` (frontend) passes.
+  - `npm run build` fails in this sandbox due to blocked outbound access to Google Fonts (`Geist`, `Geist Mono`), not due to TypeScript or route-handler contract errors.
 
 ---
 

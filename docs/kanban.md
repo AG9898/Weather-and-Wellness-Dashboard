@@ -168,7 +168,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T59",
       "title": "Frontend — range dashboard bundle route handler + typed wrappers",
-      "status": "todo",
+      "status": "done",
       "description": "Add a Vercel Route Handler that verifies the Supabase JWT and fetches range-filtered dashboard data from the backend (bypassing Redis). Add typed API wrappers for the new route and bundle shape.",
       "depends_on": [
         "T58"
@@ -194,7 +194,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T60",
       "title": "Frontend — dashboard date-range filter + remove Recent Sessions panel",
-      "status": "todo",
+      "status": "done",
       "description": "Use Add a date-range filter UI (with presets) to the dashboard. Filtered views update KPIs, weather card context, and the weather graph. Remove the Recent Sessions section from the dashboard.",
       "depends_on": [
         "T59"
