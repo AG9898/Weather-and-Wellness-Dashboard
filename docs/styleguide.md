@@ -127,6 +127,8 @@ Rules:
 
 ## 8) Motion and Interaction
 
+> For imperative/sequenced animation beyond CSS, see [animejs.md](animejs.md).
+
 - Keep transitions 150-300ms.
 - Use opacity/translate/scale lightly; avoid bouncy motion.
 - Hover: slightly brighter surface + subtle elevation.

@@ -1,5 +1,7 @@
 # shadcn.md — Component Library Guide (CLI Agent)
 
+> **Related docs:** [styleguide.md](styleguide.md) · [animejs.md](animejs.md) (imperative animation)
+
 Use this guide for all `shadcn/ui` work in this repo. It defines how to install, add, and style components consistently with our existing UI conventions.
 
 ## 1) Official References

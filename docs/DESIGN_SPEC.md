@@ -1,6 +1,6 @@
 # Design Spec — Phase 1 + Phase 2 + Phase 3 (planned)
 
-Visual language baseline: [docs/styleguide.md](styleguide.md)
+Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation library: [docs/animejs.md](animejs.md)
 
 ## UX Goals
 - Guided, simple flow — one screen per step, no back navigation during session
