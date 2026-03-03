@@ -249,7 +249,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T62",
       "title": "Frontend — system-default light/dark theme toggle (UBC light palette)",
-      "status": "todo",
+      "status": "done",
       "description": "Add a light/dark theme toggle (default = system, persisted in localStorage). Base light palette on the UBC color guide; keep references as inspiration (not 1:1 remakes) and preserve the clean, shipped research-tool aesthetic.",
       "depends_on": [
         "T60"

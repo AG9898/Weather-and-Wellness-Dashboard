@@ -10,8 +10,8 @@
 | Field              | Value                  |
 |--------------------|------------------------|
 | Phase              | 4 (in progress)        |
-| Tasks completed    | 8 / 11                 |
-| Remaining queue    | T62–T64                |
+| Tasks completed    | 9 / 11                 |
+| Remaining queue    | T63–T64                |
 | Tasks in progress  | 0                      |
 | Last updated       | 2026-03-03             |
 
@@ -28,6 +28,32 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T62 — Frontend: system-default light/dark theme toggle (completed 2026-03-03)
+
+**Acceptance criteria met:**
+
+- Added global theme runtime wiring:
+  - `frontend/src/lib/theme.ts` defines preference types, resolver logic, storage key (`ww-theme-preference`), and boot script.
+  - `frontend/src/lib/components/ThemeProvider.tsx` applies the resolved theme globally, persists preference in `localStorage`, and reacts to system theme changes.
+  - `frontend/src/app/layout.tsx` now injects an early theme init script and wraps the app with `ThemeProvider` so first paint and hydrated state remain aligned.
+- Added RA-nav theme control:
+  - `frontend/src/lib/components/ThemeToggle.tsx` cycles `system -> light -> dark`.
+  - `frontend/src/lib/components/RANavBar.tsx` now exposes the theme control alongside sign-out.
+- Updated semantic theming in `frontend/src/app/globals.css`:
+  - UBC-based light semantic tokens remain in `:root`.
+  - Replaced placeholder dark tokens with a UBC-tonal dark mapping in `.dark` (no purple-biased palette).
+  - Added `color-scheme` synchronization for native control rendering.
+- Ensured UI elements remain theme-compatible by replacing non-semantic hardcoded text colors in key pages/components (session placeholder, import warnings/success text, weather status states, digit span feedback, etc.).
+- **Requested add-on completed after T62 implementation:** global typography now uses JetBrains Mono only:
+  - Removed Geist font imports from `frontend/src/app/layout.tsx`.
+  - Mapped both `--font-sans` and `--font-mono` to the JetBrains Mono stack in `frontend/src/app/globals.css`.
+
+**Verification:**
+
+- `npm run lint` (frontend) passes.
+- `npx tsc --noEmit` (frontend) passes.
+- `npm run build` (frontend) passes.
 
 ## T61 — Frontend: weather graph (Recharts) + filter wiring (completed 2026-03-03)
 

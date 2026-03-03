@@ -259,7 +259,7 @@ export default function NewSessionPage() {
                     className="border-border bg-input/30 focus-visible:ring-ring"
                     maxLength={200}
                   />
-                  <p className="text-xs text-yellow-400">
+                  <p className="text-xs text-muted-foreground">
                     Do not enter names, initials, or any information that could identify the participant.
                   </p>
                 </div>
@@ -306,7 +306,7 @@ export default function NewSessionPage() {
                     className="border-border bg-input/30 focus-visible:ring-ring"
                     maxLength={200}
                   />
-                  <p className="text-xs text-yellow-400">
+                  <p className="text-xs text-muted-foreground">
                     Do not enter names, initials, or any information that could identify the participant.
                   </p>
                 </div>

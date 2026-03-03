@@ -27,10 +27,11 @@ It defines the shared look-and-feel across pages so individual page work stays c
 - Minimal, deliberate motion; no excessive animation.
 - Clinical/research tone over marketing tone.
 
-**Phase 4 (planned):** Add a system-default light/dark toggle (default = system).
+**Phase 4 (implemented):** System-default light/dark toggle is active (default = system).
 - **Light theme (default):** uses this document’s **hex token set** as the source of truth.
 - **Dark theme:** a **tonal dark theme** derived from the light theme hues (same hue family, darker tones, controlled chroma).
-- Current implementation note: UI is intentionally running light-only until the toggle is implemented.
+- Theme preference is persisted in `localStorage` and the stored preference overrides system when set.
+- Toggle control is exposed in RA navigation and applies globally to RA + participant pages.
 
 ## 4) Brand Tokens (UBC-Based)
 
@@ -88,9 +89,9 @@ Brand tokens (`--ubc-*`, `--ink-*`) remain constant across themes; only the sema
 
 ### 5.1 Font Families
 
-- Primary UI font: `Whitney Salishan` (PDF source family: Book/Medium/MediumItalic/Semibold/Bold).
-- Fallback stack (if Whitney unavailable): `Inter`, `Segoe UI`, `Helvetica Neue`, `Arial`, sans-serif.
-- Numeric/meta font: `JetBrains Mono`, `SFMono-Regular`, `Menlo`, monospace.
+- Primary UI font: `JetBrains Mono`.
+- Fallback stack: `SFMono-Regular`, `Menlo`, `Monaco`, `Consolas`, `Liberation Mono`, `Courier New`, monospace.
+- This repo maps both `font-sans` and `font-mono` to the JetBrains Mono stack for full UI consistency.
 
 ### 5.2 Type Scale and Weight
 
@@ -102,7 +103,7 @@ Brand tokens (`--ubc-*`, `--ink-*`) remain constant across themes; only the sema
 
 Rules:
 - Keep headings concise and high-contrast.
-- Use mono only for IDs, counts, telemetry, and timestamps.
+- Use weight/size/tracking (not family changes) to establish hierarchy.
 - Avoid compressed text blocks; preserve breathing room.
 
 ## 6) Layout, Spacing, Shape

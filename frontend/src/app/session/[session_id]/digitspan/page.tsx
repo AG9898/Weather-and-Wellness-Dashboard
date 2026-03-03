@@ -321,7 +321,11 @@ export default function DigitSpanPage() {
     const isCorrect = practiceFeedback === "Correct";
     return (
       <Screen>
-        <p className={`text-3xl font-bold ${isCorrect ? "text-emerald-400" : "text-red-400"}`}>
+        <p
+          className={`text-3xl font-bold ${
+            isCorrect ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"
+          }`}
+        >
           {practiceFeedback}
         </p>
       </Screen>

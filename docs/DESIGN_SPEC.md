@@ -77,7 +77,7 @@ All scoring is server-side. See per-instrument docs for full formulas.
 
 ---
 
-# Design System — Phase 2 (T19+) + Phase 4 Theme Toggle (planned)
+# Design System — Phase 2 (T19+) + Phase 4 Theme Toggle (implemented)
 
 > Implemented in T19. All new pages must follow this system.
 
@@ -85,11 +85,12 @@ All scoring is server-side. See per-instrument docs for full formulas.
 
 All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
 
-**Phase 4 (planned):** Add a light/dark theme toggle:
+**Phase 4 (implemented in T62):** Light/dark theme toggle is live:
 - Default = **system** (`prefers-color-scheme`)
 - Persist explicit user choice in `localStorage`
 - References are **inspiration only** (not 1:1 remakes); preserve the clean, shipped research-tool aesthetic
-- Current rollout note: semantic tokens are now light-first in `:root`; toggle behavior is not wired yet.
+- Theme preference key: `ww-theme-preference`
+- RA navigation includes a theme control that cycles `system -> light -> dark`
 
 ### UBC Brand Palette (CSS variables)
 
@@ -111,17 +112,18 @@ All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
 ### Shadcn Semantic Token Mapping
 
 Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to the UBC palette.
-- Target implementation (Phase 4) is **light-first**:
+- Current implementation is **light-first**:
   - `:root` = light theme semantic tokens
   - `.dark` = tonal dark theme semantic tokens
-- Current code hard-sets `class="dark"` at the document root and mirrors `.dark` to `:root`; this will be changed when the theme toggle ships.
+  - root class is controlled by theme preference (`system` resolves via `prefers-color-scheme`)
 
 ## Shared Components
 
 | Component | Path | Usage |
 |---|---|---|
 | `PageContainer` | `src/lib/components/PageContainer.tsx` | Max-width content wrapper for all pages. Use `narrow` prop for survey/task flows. |
-| `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky top nav for RA pages (brand, nav links, sign-out). |
+| `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky top nav for RA pages (brand, nav links, theme control, sign-out). |
+| `ThemeToggle` | `src/lib/components/ThemeToggle.tsx` | Cycles theme preference (`system`, `light`, `dark`) and persists it globally. |
 | `WeatherTrendChart` | `src/lib/components/WeatherTrendChart.tsx` | Recharts weather/participants trend visualization for filtered dashboard ranges. |
 | `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments. |
 
@@ -132,7 +134,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 <html class="dark|light">
   <body>
     <RALayout>           ← auth guard
-      <RANavBar />       ← sticky navy nav (--ubc-navy)
+      <RANavBar />       ← sticky nav with theme control
       <main>
         <PageContainer>  ← max-w-5xl, responsive padding
           {page content}
@@ -231,7 +233,7 @@ This is an RA-only two-step page (`src/app/(ra)/new-session/page.tsx`) that runs
 - **Instruction screens:** full-viewport centered (`flex min-h-screen items-center justify-center`); "STUDY TASK" uppercase muted label above bold title; example shown in a `rounded-xl border border-border` card; "Press Space to continue" in muted text below.
 - **Digit display phase:** `text-8xl font-bold text-foreground select-none` centered; uses `\u00A0` to hold space when digit is blank.
 - **Input phase:** "PRACTICE TRIAL" / "TRIAL N OF 14" uppercase label at top; `border-b-2 border-border` input line; large mono (`text-4xl`) entered digits; `text-muted-foreground` hint row at bottom.
-- **Practice feedback:** `text-emerald-400` (Correct) / `text-red-400` (Incorrect).
+- **Practice feedback:** uses theme-aware success/error text (`text-emerald-700 dark:text-emerald-300` / `text-red-700 dark:text-red-300`).
 - **End of task / Continue button:** `--ubc-blue-700` styled, same as primary buttons on RA pages.
 
 ### Survey Pages (`/session/[id]/uls8|cesd10|gad7|cogfunc`)

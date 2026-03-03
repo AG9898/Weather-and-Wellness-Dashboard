@@ -14,8 +14,8 @@ import {
 import type { DashboardParticipantsPerDayResponse, WeatherDailyResponse } from "@/lib/api";
 
 const STUDY_TIMEZONE = "America/Vancouver";
-const TEMP_COLOR = "#0052f5";
-const PARTICIPANT_COLOR = "#00a2fa";
+const TEMP_COLOR = "var(--chart-1)";
+const PARTICIPANT_COLOR = "var(--chart-2)";
 
 interface DateRange {
   dateFrom: string;
@@ -235,7 +235,7 @@ export default function WeatherTrendChart({
                 strokeWidth={2.5}
                 dot={false}
                 connectNulls={false}
-                activeDot={{ r: 4, fill: TEMP_COLOR, stroke: "#ffffff", strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: TEMP_COLOR, stroke: "var(--card)", strokeWidth: 2 }}
               />
             </ComposedChart>
           </ResponsiveContainer>

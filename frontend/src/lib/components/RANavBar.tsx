@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import ThemeToggle from "@/lib/components/ThemeToggle";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -58,13 +59,16 @@ export default function RANavBar() {
           })}
         </nav>
 
-        {/* Sign out */}
-        <button
-          onClick={handleSignOut}
-          className="rounded-md px-3 py-1.5 text-sm text-foreground/70 hover:bg-accent hover:text-foreground transition-colors"
-        >
-          Sign out
-        </button>
+        {/* Theme + sign out */}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={handleSignOut}
+            className="rounded-md px-3 py-1.5 text-sm text-foreground/70 hover:bg-accent hover:text-foreground transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
     </header>
   );

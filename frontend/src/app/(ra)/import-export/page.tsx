@@ -154,8 +154,8 @@ export default function ImportExportPage() {
           /* Success summary */
           <div>
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 mb-4">
-              <p className="font-medium text-emerald-300 mb-2">Import complete</p>
-              <ul className="text-sm text-emerald-300/80 space-y-1">
+              <p className="font-medium text-emerald-700 dark:text-emerald-300 mb-2">Import complete</p>
+              <ul className="text-sm text-emerald-700/85 dark:text-emerald-200/85 space-y-1">
                 <li>Rows processed: {phase.result.rows_total}</li>
                 <li>Participants created: {phase.result.participants_created}</li>
                 <li>Participants updated: {phase.result.participants_updated}</li>
@@ -286,14 +286,14 @@ export default function ImportExportPage() {
 
                 {/* Warnings */}
                 {phase.data.warnings.length > 0 && (
-                  <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-4">
-                    <p className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+                  <div className="rounded-lg border border-ring/35 bg-ring/10 p-4">
+                    <p className="mb-2 text-sm font-medium text-foreground">
                       {phase.data.warnings.length} warning
                       {phase.data.warnings.length !== 1 ? "s" : ""}
                     </p>
                     <ul className="space-y-1 max-h-32 overflow-y-auto">
                       {phase.data.warnings.map((w, i) => (
-                        <li key={i} className="text-xs text-amber-700/90 dark:text-amber-200/85">
+                        <li key={i} className="text-xs text-muted-foreground">
                           Row {w.row}
                           {w.field ? ` · ${w.field}` : ""}: {w.message}
                         </li>

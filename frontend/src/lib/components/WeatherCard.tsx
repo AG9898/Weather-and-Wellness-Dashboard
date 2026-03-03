@@ -52,9 +52,9 @@ function getIngestErrorMessage(err: unknown): string {
 type ParseStatus = "success" | "partial" | "fail";
 
 const STATUS_BADGE_CLASS: Record<ParseStatus, string> = {
-  success: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-  partial: "border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
-  fail:    "border-red-500/40 bg-red-500/10 text-red-300",
+  success: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  partial: "border-yellow-500/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
+  fail: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300",
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -227,7 +227,9 @@ export default function WeatherCard({ weather, focusDate = null }: WeatherCardPr
         {updateResult && (
           <p
             className={`text-sm ${
-              updateResult.kind === "success" ? "text-emerald-300" : "text-destructive"
+              updateResult.kind === "success"
+                ? "text-emerald-700 dark:text-emerald-300"
+                : "text-destructive"
             }`}
           >
             {updateResult.message}
