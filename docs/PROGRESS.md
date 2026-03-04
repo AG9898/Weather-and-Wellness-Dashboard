@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 16 / 17                                                      |
-| Remaining queue    | — (T67 superseded; all T68–T70 complete)                    |
+| Tasks completed    | 17 (T54–T70; T67 superseded) — Phase 4 ongoing              |
+| Remaining queue    | TBD — new tasks to be added to kanban.md                    |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-04                                                   |
 

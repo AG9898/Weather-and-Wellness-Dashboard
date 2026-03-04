@@ -536,3 +536,104 @@
   ]
 }
 ```
+
+---
+
+# Kanban — Phase 4 (archived 2026-03-04)
+
+> Collapsed summary format. Archived from `docs/kanban.md` when the Phase 4 initial wave (T54–T70) completed and the board was cleared for new tasks.
+
+```json
+{
+  "project": "Weather & Wellness + Misokinesia Research Web App",
+  "phase": 4,
+  "phase_status": "in_progress",
+  "tasks": [
+    {
+      "task_number": "T54",
+      "title": "DB — Phase 4 schema for legacy-import remapping into survey_* + digitspan_runs",
+      "description": "Added data_source column (default native) and legacy-value columns to survey and digitspan tables; added unique-per-session constraints to prevent duplicate imported rows."
+    },
+    {
+      "task_number": "T55",
+      "title": "Backend — import commit writes remapped legacy rows into survey_* + digitspan_runs",
+      "description": "Import commit upserts imported rows into survey_uls8/cesd10/gad7 and digitspan_runs with data_source=imported; never overwrites native rows; preserves audit trail in imported_session_measures.source_row_json."
+    },
+    {
+      "task_number": "T56",
+      "title": "Backend — legacy weather backfill (temp/precip only) from imported sessions",
+      "description": "POST /admin/backfill/legacy-weather inserts partial weather_daily rows (temp + precip only) for days with imported session data but no existing weather row; writes one weather_ingest_runs audit row per day; idempotent."
+    },
+    {
+      "task_number": "T57",
+      "title": "Backend — one-off Phase 4 backfill for already-imported sessions",
+      "description": "Idempotent backfill script that remaps existing imported_session_measures rows into the Phase 4 survey/digitspan schema and runs the legacy weather backfill for missing days; logs created/updated counts per table."
+    },
+    {
+      "task_number": "T58",
+      "title": "Backend — range-filter dashboard reads + participants-per-day aggregation",
+      "description": "GET /dashboard/summary/range and GET /dashboard/participants-per-day implemented with America/Vancouver inclusive local-day windows; GET /weather/daily extended to include current_precip_today_mm."
+    },
+    {
+      "task_number": "T59",
+      "title": "Frontend — range dashboard bundle route handler + typed wrappers",
+      "description": "Added Vercel Route Handler GET /api/ra/dashboard/range with JWT verification and typed getDashboardRangeBundle wrapper; live-only (no Redis read path)."
+    },
+    {
+      "task_number": "T60",
+      "title": "Frontend — dashboard date-range filter + remove Recent Sessions panel",
+      "description": "Added date-range filter UI (presets + custom dates) to dashboard; filtered views update KPIs and weather context; Recent Sessions section removed; default view continues using cached→live SWR."
+    },
+    {
+      "task_number": "T61",
+      "title": "Frontend — weather graph (Recharts) + filter wiring",
+      "description": "Added temperature and participant-count line chart to dashboard driven by the date-range filter; tooltip shows date, temp, precip, and participant count. (Superseded by T68–T70 which replaced Recharts with Highcharts and unified the weather card.)"
+    },
+    {
+      "task_number": "T62",
+      "title": "Frontend — system-default light/dark theme toggle (UBC light palette)",
+      "description": "Added light/dark toggle (default=system, persisted in localStorage); UBC-based semantic token mapping in globals.css; ThemeToggle in RANavBar; applies globally to RA and participant pages."
+    },
+    {
+      "task_number": "T63",
+      "title": "Frontend — UI polish (dashboard, weather components, surveys, favicon/top bar)",
+      "description": "Polished dashboard KPI hierarchy, consistent button hover/focus, survey page legibility, favicon and RANavBar branding updated to ww-mark.png with capsule nav treatment."
+    },
+    {
+      "task_number": "T64",
+      "title": "DB — add sunshine_duration_hours column to weather_daily",
+      "description": "Alembic migration added sunshine_duration_hours DOUBLE PRECISION NULL to weather_daily; SQLAlchemy model and WeatherDailyItem Pydantic schema updated; GET /weather/daily now returns the field."
+    },
+    {
+      "task_number": "T65",
+      "title": "Backend — Open-Meteo fetch service + historical backfill service",
+      "description": "fetch_open_meteo() returns daily fields keyed by date_local; run_historical_weather_backfill() applies three-case precedence logic (insert / COALESCE-enhance / skip) with one weather_ingest_runs audit row per affected day; idempotent."
+    },
+    {
+      "task_number": "T66",
+      "title": "Backend — POST /weather/backfill/historical endpoint",
+      "description": "RA-JWT-protected endpoint that calls the Open-Meteo historical backfill service; defaults start_date=2025-01-01, end_date=today, station_id=3510; returns days_inserted/enhanced/skipped; 422 for invalid range; 502 if Open-Meteo is unavailable."
+    },
+    {
+      "task_number": "T67",
+      "title": "Frontend — sunshine_duration_hours in WeatherTrendChart (SUPERSEDED)",
+      "description": "Superseded by T68–T70. WeatherTrendChart was removed entirely in favour of the unified Highcharts-based WeatherUnifiedCard."
+    },
+    {
+      "task_number": "T68",
+      "title": "Frontend — Install Highcharts + update WeatherDailyItem type + remove Recharts",
+      "description": "Installed highcharts and highcharts-react-official; added sunshine_duration_hours: number | null to WeatherDailyItem; removed recharts from dependencies."
+    },
+    {
+      "task_number": "T69",
+      "title": "Frontend — WeatherUnifiedCard: unified weather display + Highcharts line chart + internal date filter",
+      "description": "Created WeatherUnifiedCard.tsx merging WeatherCard and WeatherTrendChart. Top section: current-day weather summary + Update Weather ingest trigger. Bottom section: 3-series Highcharts chart (Temperature/areaspline with gradient fill, Precipitation/spline/dashed, Sunlight/spline/dotted) with internal preset date-range filter (Study Start / Last 30d / Last 90d / Custom) and per-series toggle buttons. CSS vars read at mount; MutationObserver re-themes on light/dark toggle."
+    },
+    {
+      "task_number": "T70",
+      "title": "Frontend — Dashboard page: replace old weather components with WeatherUnifiedCard + simplify range state",
+      "description": "Removed WeatherCard, WeatherTrendChart, and dashboard-level date-range filter section. Replaced with WeatherUnifiedCard. Removed all range-related state from the page. KPI labels simplified to static 'Created (7d)' / 'Completed (7d)'. Deleted WeatherCard.tsx."
+    }
+  ]
+}
+```
