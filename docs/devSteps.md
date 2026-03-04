@@ -106,3 +106,36 @@ Verification checklist:
 - After a real run, re-running reports 0 creates and N updates (idempotent).
 - No `data_source="native"` survey or digit span rows are modified (guarded by `WHERE data_source='imported'` in each upsert).
 - For a historical day missing ingestion, `weather_daily` exists with only `current_temp_c` and `current_precip_today_mm` populated; `forecast_periods` is `[]` and `structured_json` is `{}`.
+
+---
+
+## Demo Runbook — Wipe Study Data + Restore from Reference Import
+
+This runbook is for resetting a demo database by deleting all study-domain rows while leaving the schema intact.
+
+### Wipe (IRREVERSIBLE)
+
+The wipe deletes rows from these tables (CASCADE): `participants`, `sessions`, `study_days`, `imported_session_measures`, all survey tables, digit span tables, and weather tables.
+
+Script (mirrors Alembic wipe migration `20260228_000009_clear_all_test_data.py`):
+
+```bash
+cd backend
+python -m app.scripts.clear_all_test_data --dry-run
+python -m app.scripts.clear_all_test_data --apply
+```
+
+Optional safety step before wiping:
+- Download a backup via `GET /admin/export.zip` or `GET /admin/export.xlsx` (RA-only). The legacy import file cannot restore native item/trial-level rows.
+
+### Restore (from the legacy reference XLSX/CSV)
+
+1) Re-import via the RA Import/Export page (or `POST /admin/import/commit`) using the unchanged reference file.
+
+2) Restore derived weather rows (if you want weather_daily populated for imported days):
+
+- Call `POST /admin/backfill/legacy-weather` (idempotent).
+
+Notes:
+- Import commit repopulates: `participants`, `sessions`, `study_days`, `imported_session_measures`, and imported rows in `digitspan_runs` + `survey_uls8` + `survey_cesd10` + `survey_gad7`.
+- Import does not reconstruct raw `digitspan_trials` or `survey_cogfunc8a` rows; those only exist for native sessions.
