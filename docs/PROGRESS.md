@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 10 / 17                                                      |
-| Remaining queue    | T64, T65, T66, T68, T69, T70 (T67 superseded by T68–T70)    |
+| Tasks completed    | 13 / 17                                                      |
+| Remaining queue    | T68, T69, T70 (T67 superseded by T68–T70)                   |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-03                                                   |
 
@@ -28,6 +28,55 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T66 — Backend: POST /weather/backfill/historical endpoint (completed 2026-03-03)
+
+**Acceptance criteria met:**
+
+- `POST /weather/backfill/historical` added to `backend/app/routers/weather.py`; requires LabMember JWT (`Depends(get_current_lab_member)`).
+- Request body is fully optional (all fields have defaults): `start_date` (default `2025-01-01`), `end_date` (default today in `America/Vancouver`), `station_id` (default `3510`).
+- `start_date > end_date` → HTTP 422. Date range > 400 days → HTTP 422.
+- Calls `run_historical_weather_backfill(db, start_date, end_date, station_id)` from `historical_weather_backfill_service.py` (T65).
+- `OpenMeteoError` from the fetch service is caught and re-raised as HTTP 502 with descriptive detail.
+- Returns `HistoricalBackfillResponse(days_inserted, days_enhanced, days_skipped)`.
+- New imports added to router: `ZoneInfo`, `Body`, `HistoricalBackfillRequest`, `HistoricalBackfillResponse`, `run_historical_weather_backfill`, `OpenMeteoError`.
+- `docs/API.md` updated: endpoint status changed from `planned` to `implemented (T66)`.
+
+## Weather hierarchy correction (2026-03-03)
+
+`backend/app/services/weather_backfill_service.py` updated to correctly enforce the data hierarchy: legacy import temp/precip now **overwrites** existing Open-Meteo rows (not just fills gaps). Previously, the service used `on_conflict_do_nothing` and silently lost import measurements when Open-Meteo data already existed for a date.
+
+New behaviour:
+- **No row** → insert partial row (temp + precip only) — `days_inserted`
+- **open-meteo-v1 row** → UPDATE `current_temp_c` + `current_precip_today_mm`; preserve humidity/sunshine — `days_updated`
+- **ubc-eos-v1 row** → skip (highest quality, never touched) — `days_skipped`
+- **legacy-import-v1 row** → no-op (idempotent)
+
+`LegacyWeatherBackfillResult` updated: `days_backfilled` renamed to `days_inserted`; `days_updated` added.
+`phase4_backfill.py` and `weather_backfill.py` updated to reflect new counter names.
+`docs/HISTORICAL_WEATHER_BACKFILL.md` and `docs/WEATHER_INGESTION.md` updated with corrected hierarchy and run-order guidance.
+
+Current DB state (2026-03-03): 427 `weather_daily` rows with `parser_version=open-meteo-v1` covering 2025-01-01 → 2026-03-03. After XLSX import, running `weather_backfill.py` will overwrite temp/precip for import dates with actual measurements.
+
+## T65 — Backend: Open-Meteo fetch + historical backfill services (completed 2026-03-03)
+
+- `backend/app/services/historical_weather_service.py` — `fetch_open_meteo(start_date, end_date)` returns `dict[date, OpenMeteoDay]` keyed by local date; `sunshine_duration` divided by 3600 to produce hours. Raises `OpenMeteoError` on non-2xx response. URL built with `timezone=America%2FVancouver`; returned `daily.time` strings used directly as `date_local` (no conversion).
+- `backend/app/services/historical_weather_backfill_service.py` — `run_historical_weather_backfill(db, start_date, end_date, station_id)` applies the three-case precedence rule:
+  - **Case A (no row):** full insert of all six mapped fields; get-or-create `study_days` row; `ON CONFLICT DO NOTHING` idempotency guard. Counted in `days_inserted`.
+  - **Case B (legacy-import-v1):** UPDATE only null fields via `COALESCE(existing, new)` for `current_relative_humidity_pct`, `sunshine_duration_hours`, `forecast_high_c`, `forecast_low_c`. `current_temp_c` and `current_precip_today_mm` never touched. `source_run_id` updated to new open-meteo-v1 run, so second pass classifies the row as Case C (idempotent). Counted in `days_enhanced`.
+  - **Case C (ubc-eos-v1 or open-meteo-v1):** skipped entirely. Counted in `days_skipped`.
+- One `weather_ingest_runs` audit row per affected day: `requested_via="historical_api_backfill"`, `parser_version="open-meteo-v1"`.
+- Idempotent: second run returns `days_inserted=0, days_enhanced=0, days_skipped=N`.
+- `HistoricalBackfillRequest` and `HistoricalBackfillResponse` Pydantic schemas added to `backend/app/schemas/weather.py` (used by T66 endpoint).
+
+## T64 — DB: sunshine_duration_hours column (completed 2026-03-03)
+
+- Alembic migration `20260303_000001` adds `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily`. Down migration drops it.
+- `WeatherDaily` SQLAlchemy model updated with `sunshine_duration_hours: Mapped[float | None]`.
+- `WeatherDailyItem` Pydantic schema updated with `sunshine_duration_hours: float | None = None`.
+- `GET /weather/daily` now includes `sunshine_duration_hours` (null for all existing rows).
+- Migration applied and verified on Supabase. Upgrade and downgrade both confirmed clean.
+- Docs updated: `SCHEMA.md` (migration history + column reference), `PROGRESS.md`.
 
 ## T68–T70 — Unified WeatherUnifiedCard + Highcharts Migration (planned 2026-03-03)
 

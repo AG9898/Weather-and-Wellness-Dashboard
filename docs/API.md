@@ -49,7 +49,7 @@
 | POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
 | POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
 | GET    | /weather/daily | RA | implemented | T31 |
-| POST   | /weather/backfill/historical | RA | planned | — |
+| POST   | /weather/backfill/historical | RA | implemented | T66 |
 | POST   | /admin/import/preview | RA | implemented | T48 |
 | POST   | /admin/import/commit | RA | implemented | T48, T55 |
 | GET    | /admin/export.xlsx | RA | implemented | T49 |
@@ -565,7 +565,7 @@
 
 ### POST /weather/backfill/historical
 - **Auth:** LabMember JWT required
-- **Status:** planned
+- **Status:** implemented (T66)
 - **Request body (all fields optional):**
   ```json
   {

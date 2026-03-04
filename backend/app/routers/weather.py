@@ -18,8 +18,9 @@ from datetime import date as date_type
 from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -30,12 +31,16 @@ from app.config import STUDY_TIMEZONE
 from app.db import get_session
 from app.models.weather import StudyDay, WeatherDaily, WeatherIngestRun
 from app.schemas.weather import (
+    HistoricalBackfillRequest,
+    HistoricalBackfillResponse,
     LatestRunInfo,
     WeatherDailyItem,
     WeatherDailyResponse,
     WeatherIngestRequest,
     WeatherIngestResponse,
 )
+from app.services.historical_weather_backfill_service import run_historical_weather_backfill
+from app.services.historical_weather_service import OpenMeteoError
 from app.services.weather_parser import fetch_and_parse
 
 logger = logging.getLogger(__name__)
@@ -295,4 +300,65 @@ async def get_weather_daily(
             if latest_run is not None
             else None
         ),
+    )
+
+
+# ── POST /backfill/historical ─────────────────────────────────────────────────
+
+_MAX_HISTORICAL_DATE_RANGE_DAYS = 400
+
+
+@router.post(
+    "/backfill/historical",
+    response_model=HistoricalBackfillResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def backfill_historical_weather(
+    payload: HistoricalBackfillRequest = Body(default=None),
+    _: LabMember = Depends(get_current_lab_member),
+    db: AsyncSession = Depends(get_session),
+) -> HistoricalBackfillResponse:
+    """Backfill historical weather from Open-Meteo Archive API.
+
+    Applies the three-case precedence rule:
+    - No existing row → full insert (days_inserted)
+    - Legacy-import row → COALESCE update of null fields (days_enhanced)
+    - UBC EOS or already-Open-Meteo row → skipped (days_skipped)
+    """
+    if payload is None:
+        payload = HistoricalBackfillRequest()
+
+    start_date = payload.start_date
+    end_date = payload.end_date
+    if end_date is None:
+        end_date = datetime.now(ZoneInfo(STUDY_TIMEZONE)).date()
+
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="start_date must not be after end_date",
+        )
+    if (end_date - start_date).days > _MAX_HISTORICAL_DATE_RANGE_DAYS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Date range exceeds maximum of {_MAX_HISTORICAL_DATE_RANGE_DAYS} days",
+        )
+
+    try:
+        result = await run_historical_weather_backfill(
+            db=db,
+            start_date=start_date,
+            end_date=end_date,
+            station_id=payload.station_id,
+        )
+    except OpenMeteoError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Open-Meteo API error ({exc.status_code}): {exc.detail}",
+        )
+
+    return HistoricalBackfillResponse(
+        days_inserted=result.days_inserted,
+        days_enhanced=result.days_enhanced,
+        days_skipped=result.days_skipped,
     )

@@ -79,7 +79,8 @@ class BackfillCounts:
     gad7_created: int = 0
     gad7_updated: int = 0
     gad7_skipped: int = 0
-    weather_backfilled: int = 0
+    weather_inserted: int = 0
+    weather_updated: int = 0   # open-meteo rows overwritten with import temp/precip
     weather_skipped: int = 0
 
 
@@ -308,7 +309,8 @@ async def run_backfill(dry_run: bool = False) -> BackfillCounts:
     if not dry_run:
         async with session_factory() as db2:
             weather_result = await run_legacy_weather_backfill(db2)
-            counts.weather_backfilled = weather_result.days_backfilled
+            counts.weather_inserted = weather_result.days_inserted
+            counts.weather_updated = weather_result.days_updated
             counts.weather_skipped = weather_result.days_skipped
 
     return counts
@@ -336,8 +338,8 @@ def _print_summary(counts: BackfillCounts, dry_run: bool) -> None:
     )
     if not dry_run:
         log.info(
-            "  weather_daily   — backfilled: %d days, skipped (exists): %d days",
-            counts.weather_backfilled, counts.weather_skipped,
+            "  weather_daily   — inserted: %d days, updated (overwrote open-meteo): %d days, skipped (ubc-eos): %d days",
+            counts.weather_inserted, counts.weather_updated, counts.weather_skipped,
         )
 
 

@@ -305,7 +305,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T64",
       "title": "DB — add sunshine_duration_hours column to weather_daily",
-      "status": "todo",
+      "status": "done",
       "description": "Add a new nullable DOUBLE PRECISION column sunshine_duration_hours to the weather_daily table via Alembic migration. This column will be populated by the Open-Meteo historical backfill (T65–T66) and exposed through the existing GET /weather/daily endpoint. No existing rows or logic are modified.",
       "depends_on": [],
       "stack": [
@@ -332,7 +332,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T65",
       "title": "Backend — Open-Meteo fetch service + historical backfill service",
-      "status": "todo",
+      "status": "done",
       "description": "Implement two new backend services. (1) historical_weather_service.py: async HTTP GET to Open-Meteo Archive API for UBC coordinates with timezone=America/Vancouver; returns a dict keyed by date_local (DATE) with all six mapped daily fields. (2) historical_weather_backfill_service.py: precedence-aware backfill logic following the three-case rule: full insert for missing dates, COALESCE update of null fields for import-sourced rows, skip for UBC live rows. Mirrors the pattern of weather_backfill_service.py.",
       "depends_on": [
         "T64"
@@ -364,7 +364,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T66",
       "title": "Backend — POST /weather/backfill/historical endpoint",
-      "status": "todo",
+      "status": "done",
       "description": "Add POST /weather/backfill/historical to the weather router. LabMember JWT required. Optional request body fields: start_date (default 2025-01-01), end_date (default today in America/Vancouver), station_id (default 3510). Calls the T65 backfill service and returns days_inserted, days_enhanced, days_skipped.",
       "depends_on": [
         "T65"

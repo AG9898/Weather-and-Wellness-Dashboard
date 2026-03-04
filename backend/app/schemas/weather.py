@@ -34,6 +34,7 @@ class WeatherDailyItem(BaseModel):
     forecast_low_c: float | None
     forecast_condition_text: str | None
     forecast_periods: list[Any]
+    sunshine_duration_hours: float | None = None
 
 
 class LatestRunInfo(BaseModel):
@@ -47,10 +48,24 @@ class WeatherDailyResponse(BaseModel):
     latest_run: LatestRunInfo | None
 
 
+class HistoricalBackfillRequest(BaseModel):
+    start_date: date = Field(default=date(2025, 1, 1), description="Start date inclusive (YYYY-MM-DD)")
+    end_date: date | None = Field(default=None, description="End date inclusive (YYYY-MM-DD); defaults to today in America/Vancouver")
+    station_id: int = Field(default=3510, description="UBC EOS station ID")
+
+
+class HistoricalBackfillResponse(BaseModel):
+    days_inserted: int
+    days_enhanced: int
+    days_skipped: int
+
+
 __all__ = [
     "WeatherIngestRequest",
     "WeatherIngestResponse",
     "WeatherDailyItem",
     "LatestRunInfo",
     "WeatherDailyResponse",
+    "HistoricalBackfillRequest",
+    "HistoricalBackfillResponse",
 ]

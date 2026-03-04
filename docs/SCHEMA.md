@@ -350,9 +350,9 @@ Applied by migration `20260301_000010`:
 | 2026-02-28 | T47 | Add participant demographic/exposure columns (age_band, gender, origin, origin_other_text, commute_method, commute_method_other_text, time_outside, daylight_exposure_minutes); add imported_session_measures table |
 | 2026-02-28 | T47a | Fix study_days.tz_name server_default and existing rows from America/Edmonton to America/Vancouver |
 | 2026-03-01 | T54 | Add data_source, legacy columns, nullable relaxation, and UNIQUE session_id constraints to digitspan_runs, survey_uls8, survey_cesd10, survey_gad7 |
-| planned | — | Add `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily` (Open-Meteo historical backfill) |
+| 2026-03-03 | T64 | Add `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily` (Open-Meteo historical backfill) |
 
-As of 2026-03-01, migration `20260301_000010` (T54) applied and verified on Supabase. DB is at `head`.
+As of 2026-03-03, migration `20260303_000001` (T64) applied and verified. DB is at `head`.
 
 ---
 

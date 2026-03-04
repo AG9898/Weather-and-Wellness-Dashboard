@@ -1,6 +1,6 @@
 # HISTORICAL_WEATHER_BACKFILL.md — Open-Meteo Historical Weather Backfill
 
-> Canonical spec for the Open-Meteo historical weather backfill feature (planned).
+> Canonical spec for the Open-Meteo historical weather backfill feature (T65–T66).
 > This document defines the external data source, field mappings, precedence rules,
 > timezone handling, DB writes, and idempotency guarantees.
 >
@@ -14,17 +14,54 @@
 ## Goal
 
 The UBC EOS scraper (`POST /weather/ingest/ubc-eos`) only captures current-day conditions.
-Legacy import data partially fills historical gaps with temperature and precipitation, but
-leaves humidity and sunshine null. This backfill fetches all three missing focal-point variables
-— **temperature, relative humidity, and sunshine duration** — from the Open-Meteo Archive API
-for dates from 2025-01-01 onward, making the dashboard's weather trend graph continuous.
+Legacy import data fills historical gaps with temperature and precipitation from actual
+study-session measurements, but leaves humidity and sunshine null. This backfill fetches
+the remaining focal-point variables — **relative humidity** and **sunshine duration**
+(and temperature/precipitation for dates with no data at all) — from the Open-Meteo
+Archive API for dates from 2025-01-01 onward, making the dashboard's weather trend graph
+continuous.
+
+---
+
+## Weather Data Hierarchy (Highest → Lowest Priority)
+
+This hierarchy is enforced across all three ingestion paths:
+
+| Priority | Source | `parser_version` | `requested_via` | Behaviour |
+|---|---|---|---|---|
+| 1 (highest) | UBC EOS live ingest | `ubc-eos-v1` | `ra_manual` / `github_actions` | Never overwritten by any other source |
+| 2 | Legacy import (session measurements) | `legacy-import-v1` | `legacy_backfill` | Overwrites Open-Meteo temp/precip for the same date; never overwritten by Open-Meteo |
+| 3 (lowest) | Open-Meteo historical backfill | `open-meteo-v1` | `historical_api_backfill` | Fills all remaining gaps; never overwrites priority 1 or 2 sources |
+
+**Key rule:** actual study-session measurements (import data) always take precedence
+over ERA5 satellite reanalysis (Open-Meteo). ERA5 is used only as a gap-filler.
+
+---
+
+## Recommended Run Order
+
+Run the two backfills in this order to respect the hierarchy:
+
+1. **Legacy weather backfill** (`POST /admin/backfill/legacy-weather`) — writes
+   import-measured temp/precip for all study days that have imported session data.
+   If Open-Meteo rows already exist for those dates, they are overwritten for
+   `current_temp_c` and `current_precip_today_mm`; existing humidity/sunshine are
+   preserved.
+
+2. **Open-Meteo historical backfill** (`POST /weather/backfill/historical`) — fills
+   any remaining gaps (days with no data at all) with all six mapped fields; for
+   import-sourced rows it adds only the null fields (humidity, sunshine, high, low)
+   without touching temp/precip.
+
+The `backend/app/scripts/weather_backfill.py` script runs both steps in the correct
+order and is safe to re-run at any time.
 
 ---
 
 ## Non-goals (explicit)
 
 - Do not backfill dates before 2025-01-01 (outside study period).
-- Do not overwrite temperature or precipitation sourced from the import feature.
+- Do not overwrite temperature or precipitation that came from the legacy import.
 - Do not replace UBC EOS live rows; they are the highest-quality data source.
 - Do not store hourly data (daily aggregates only).
 - Do not require an API key or any registration.
@@ -137,7 +174,7 @@ Fields not populated by this backfill (remain null or as-is):
 
 ---
 
-## Precedence Rules
+## Open-Meteo Backfill Precedence Rules
 
 For each date returned by Open-Meteo, the backfill checks the existing `weather_daily` row
 (if any) for station 3510 by joining to `weather_ingest_runs` via `source_run_id`:
@@ -152,32 +189,64 @@ Insert a full `weather_daily` row with all 6 mapped fields above.
 
 ### Case B — Import-sourced row (`parser_version = "legacy-import-v1"`)
 
-The import backfill already set `current_temp_c` and `current_precip_today_mm`.
+Import measurements have already set `current_temp_c` and `current_precip_today_mm`.
 Update **only null fields** using `COALESCE(existing_value, new_value)`:
 - `current_relative_humidity_pct`
 - `sunshine_duration_hours`
 - `forecast_high_c`
 - `forecast_low_c`
 
-`current_temp_c` and `current_precip_today_mm` are **never overwritten**.
+`current_temp_c` and `current_precip_today_mm` are **never overwritten** — import
+measurements take priority over ERA5 reanalysis.
 Insert one `weather_ingest_runs` audit row.
 Counted in `days_enhanced`.
 
-### Case C — Live UBC EOS row (`parser_version = "ubc-eos-v1"`)
+### Case C — Live UBC EOS row (`parser_version = "ubc-eos-v1"`) or already-enhanced row
 
-Skip entirely. UBC EOS live data is the highest-fidelity source for the study.
+Skip entirely. UBC EOS live data is the highest-fidelity source.
+A row that was already enhanced by a prior Open-Meteo run (`parser_version = "open-meteo-v1"`
+at the time of classification) is also skipped for idempotency.
 Counted in `days_skipped`.
 
-**Priority summary (highest to lowest):**
-1. UBC EOS live ingest (`ubc-eos-v1`) — never touched
-2. Legacy import temperature/precipitation (`legacy-import-v1`) — never overwritten
-3. Open-Meteo historical backfill (`open-meteo-v1`) — fills all other gaps
+---
+
+## Legacy Import Backfill Precedence Rules
+
+The legacy weather backfill (`POST /admin/backfill/legacy-weather`,
+`backend/app/services/weather_backfill_service.py`) applies separate precedence rules
+when writing import-measured temp/precip:
+
+### No existing row
+
+Insert a new partial `weather_daily` row with `current_temp_c` and `current_precip_today_mm`
+only. JSONB NOT-NULL columns (`forecast_periods`, `structured_json`) are set to `[]`/`{}`.
+`parser_version = "legacy-import-v1"`, `requested_via = "legacy_backfill"`.
+Counted in `days_inserted`.
+
+### Open-Meteo row (`parser_version = "open-meteo-v1"`)
+
+Overwrite `current_temp_c` and `current_precip_today_mm` with import values.
+Existing `current_relative_humidity_pct`, `sunshine_duration_hours`, `forecast_high_c`,
+`forecast_low_c` are preserved — Open-Meteo satellite values for those fields remain.
+The `source_run_id` is updated to a new `legacy-import-v1` audit run.
+Counted in `days_updated`.
+
+### UBC EOS row (`parser_version = "ubc-eos-v1"`)
+
+Skip entirely. Live station measurements are the highest-quality data source.
+Counted in `days_skipped`.
+
+### Already an import row (`parser_version = "legacy-import-v1"`)
+
+No-op (idempotent). The import values are already in place.
 
 ---
 
 ## Audit Trail
 
-One `weather_ingest_runs` row is written per **affected** day (Case A or B):
+One `weather_ingest_runs` row is written per **affected** day.
+
+For Open-Meteo backfill runs (Case A or B):
 
 | Field | Value |
 |---|---|
@@ -189,13 +258,28 @@ One `weather_ingest_runs` row is written per **affected** day (Case A or B):
 | `parsed_json` | Summary dict of the mapped day's values |
 | `raw_html_primary` / `raw_html_secondary` | `null` (JSON API, no HTML) |
 
+For legacy import backfill runs (insert or update):
+
+| Field | Value |
+|---|---|
+| `requested_via` | `"legacy_backfill"` |
+| `parser_version` | `"legacy-import-v1"` |
+| `source_primary_url` | `""` (no HTTP fetch) |
+| `parsed_json` | `{}` |
+
 ---
 
 ## Idempotency
 
+**Open-Meteo backfill:**
 - Case A insert uses `ON CONFLICT DO NOTHING` on `UNIQUE (station_id, study_day_id)`.
 - Case B update uses `COALESCE` so re-running does not change already-populated columns.
+- After the first run, Case B rows have `source_run_id` pointing to an `open-meteo-v1` run and are classified as Case C (skipped) on subsequent runs.
 - Running the backfill twice over the same date range returns `days_inserted=0, days_enhanced=0, days_skipped=N`.
+
+**Legacy import backfill:**
+- After overwriting an open-meteo row, `source_run_id` is updated to a new `legacy-import-v1` run. Subsequent legacy backfill runs see a `legacy-import-v1` row and skip it (no-op).
+- Re-running the full `weather_backfill.py` script after both steps have completed returns all zeros for inserted/updated.
 
 ---
 
@@ -249,11 +333,12 @@ See `docs/SCHEMA.md` — `weather_daily` table for the full column reference.
 
 | File | Change |
 |---|---|
-| `backend/alembic/versions/20260303_000001_add_sunshine_duration.py` | New migration |
-| `backend/app/models/weather.py` | Add `sunshine_duration_hours` to `WeatherDaily` ORM model |
-| `backend/app/schemas/weather.py` | Add `sunshine_duration_hours: float \| None` to `WeatherDailyItem` |
-| `backend/app/services/historical_weather_service.py` | New — Open-Meteo fetch + parse |
-| `backend/app/services/historical_weather_backfill_service.py` | New — precedence logic + DB writes |
-| `backend/app/routers/weather.py` | Add `POST /weather/backfill/historical` endpoint |
-| `frontend/src/lib/api/index.ts` | Add `sunshine_duration_hours` to `WeatherDailyItem` TypeScript type |
-| `frontend/src/lib/components/WeatherTrendChart.tsx` | Optional: add sunshine line to trend chart |
+| `backend/alembic/versions/20260303_000001_add_sunshine_duration.py` | Migration (applied) |
+| `backend/app/models/weather.py` | `sunshine_duration_hours` ORM column (applied) |
+| `backend/app/schemas/weather.py` | `sunshine_duration_hours: float \| None` Pydantic field (applied) |
+| `backend/app/services/historical_weather_service.py` | Open-Meteo fetch + parse (T65) |
+| `backend/app/services/historical_weather_backfill_service.py` | Open-Meteo precedence logic + DB writes (T65) |
+| `backend/app/services/weather_backfill_service.py` | Legacy import backfill — updated to overwrite open-meteo rows |
+| `backend/app/routers/weather.py` | `POST /weather/backfill/historical` endpoint (T66, planned) |
+| `backend/app/scripts/weather_backfill.py` | Combined weather-only backfill script (legacy → Open-Meteo order) |
+| `frontend/src/lib/api/index.ts` | `sunshine_duration_hours` TypeScript type (T68) |

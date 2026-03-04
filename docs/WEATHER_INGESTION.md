@@ -151,20 +151,27 @@ See `docs/HISTORICAL_WEATHER_BACKFILL.md` for the complete spec and API contract
 
 ---
 
-## Legacy Import Backfill (Phase 4, T56 — implemented 2026-03-01)
+## Legacy Import Backfill (Phase 4, T56 — implemented 2026-03-01; updated 2026-03-03)
 
 When legacy sessions are imported (Phase 3 admin import), we may not have UBC-ingested weather for the historical study days.
 
-`POST /admin/backfill/legacy-weather` (RA-protected) implements this backfill:
-- For each study day that has imported session data but **no** existing `weather_daily` row for station 3510:
-  - Computes mean `temperature_c` and mean `precipitation_mm` from `imported_session_measures` rows for that `date_local`.
-  - Inserts a partial `weather_daily` row with only `current_temp_c` and `current_precip_today_mm` populated. All other fields remain null/empty (no fabricated forecast data). The JSONB-NOT-NULL `forecast_periods` and `structured_json` columns are set to `[]` and `{}` respectively.
-  - Writes one `weather_ingest_runs` audit row per backfilled day: `parser_version="legacy-import-v1"`, `requested_via="legacy_backfill"`.
-- Existing `weather_daily` rows are **never overwritten** (`on_conflict_do_nothing`).
-- Idempotent: safe to call multiple times; subsequent calls return `days_backfilled=0, days_skipped=N`.
-- Implemented in `backend/app/services/weather_backfill_service.py` and exposed via `backend/app/routers/admin.py`.
+`POST /admin/backfill/legacy-weather` (RA-protected) implements this backfill. The service computes mean `temperature_c` and `precipitation_mm` from `imported_session_measures` rows per `date_local` and writes to `weather_daily` with the following precedence:
 
-**Verified 2026-03-01:** backfilled 109 days from reference XLSX data; second call returned `days_backfilled=0, days_skipped=109`.
+| Existing row | Action | Counter |
+|---|---|---|
+| No row | Insert partial `weather_daily` (temp + precip only; JSONB NOT-NULL columns set to `[]`/`{}`) | `days_inserted` |
+| `parser_version="open-meteo-v1"` | **Overwrite** `current_temp_c` and `current_precip_today_mm` with import values; preserve existing humidity/sunshine; update `source_run_id` | `days_updated` |
+| `parser_version="ubc-eos-v1"` | Skip — live station measurements are the highest-quality source | `days_skipped` |
+| `parser_version="legacy-import-v1"` | No-op — import values already in place (idempotent) | — |
+
+**Data quality rationale:** actual temperature and precipitation recorded during study sessions (from the XLSX import) take priority over ERA5 satellite reanalysis data (Open-Meteo). The legacy backfill deliberately overwrites Open-Meteo temp/precip for import dates while preserving the Open-Meteo humidity and sunshine values it filled in.
+
+- Writes one `weather_ingest_runs` audit row per affected day: `parser_version="legacy-import-v1"`, `requested_via="legacy_backfill"`.
+- Idempotent: after overwriting open-meteo rows, `source_run_id` is updated to the new `legacy-import-v1` run. Subsequent calls see `legacy-import-v1` rows and skip them.
+- Implemented in `backend/app/services/weather_backfill_service.py` and exposed via `backend/app/routers/admin.py`.
+- Combined script: `backend/app/scripts/weather_backfill.py` runs legacy backfill then Open-Meteo in the correct order.
+
+**Recommended run order:** always run the legacy import backfill **before** the Open-Meteo backfill. If Open-Meteo was run first (e.g., to fill the full date range), run the legacy backfill afterward to overwrite temp/precip for import dates. See `docs/HISTORICAL_WEATHER_BACKFILL.md` for full details.
 
 **Important:** day-level linking is always by `study_days.date_local` (America/Vancouver). Metadata timestamps like `weather_daily.updated_at` and `weather_daily.current_observed_at` must not be treated as the analytic join key.
 

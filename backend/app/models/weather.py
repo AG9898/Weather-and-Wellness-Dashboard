@@ -111,6 +111,8 @@ class WeatherDaily(Base):
     forecast_periods: Mapped[list] = mapped_column(JSONB, nullable=False)
     # Full normalized per-day payload
     structured_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # Populated by Open-Meteo historical backfill (T65–T66); null for live/legacy rows
+    sunshine_duration_hours: Mapped[float | None] = mapped_column(Double, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
