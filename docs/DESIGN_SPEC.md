@@ -124,7 +124,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 | `PageContainer` | `src/lib/components/PageContainer.tsx` | Max-width content wrapper for all pages. Use `narrow` prop for survey/task flows. |
 | `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky capsule-style top nav for RA pages (logo mark, icon-first nav links, theme control, sign-out). |
 | `ThemeToggle` | `src/lib/components/ThemeToggle.tsx` | Toggles between `light` and `dark`; startup still resolves from `system` when no preference is stored. |
-| `WeatherTrendChart` | `src/lib/components/WeatherTrendChart.tsx` | Recharts weather/participants trend visualization for filtered dashboard ranges. |
+| `WeatherUnifiedCard` | `src/lib/components/WeatherUnifiedCard.tsx` | Unified weather display + Highcharts 3-series line chart (Temperature/Precipitation/Sunlight) + internal date range filter (default: study start → today). Replaces the former `WeatherCard` + `WeatherTrendChart` pair (T69–T70). |
 | `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments with shared progress bar + calm card-shell styling. |
 
 ## Layout Structure
@@ -165,13 +165,11 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
-1. **Hero action zone** — card with blue glow accent, headline "Start a New Entry", description ("Present the consent form, collect participant details, and open a supervised session."), primary shadcn `Button` (size lg, ubc-blue-700/600 gradient) that navigates to `/new-session`.
-2. **Date-range filter row** — preset chips (`Default`, `Today`, `Last 7 days`, `Last 30 days`, `This month`) plus custom `date_from`/`date_to` inputs and Apply/Reset actions.
-3. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created, Completed. In default mode, Created/Completed are `(7d)` values from `/dashboard/summary`; in filtered mode they are `(range)` values from `/dashboard/summary/range`.
-4. **Weather card** — weather for the current dashboard context day (default: today; filtered: `date_to` or selected day), ingest run status, and "Update Weather" action.
-5. **Weather trend graph** — range-driven temperature + precipitation tooltip + participants/day trend card.
+1. **Hero action zone** — card with blue glow accent, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, ubc-blue-700/600 gradient) that navigates to `/new-session`.
+2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). KPI values are sourced from the base dashboard bundle and are always all-time totals / last-7-day counts (not range-filtered).
+3. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts line chart with an internal date-range filter. See below for full spec.
 
-The "Recent Sessions" panel has been removed. Dashboard hierarchy now emphasizes action + KPI context first, then weather detail and trend.
+The “Recent Sessions” panel has been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
 
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
@@ -180,32 +178,41 @@ The "Recent Sessions" panel has been removed. Dashboard hierarchy now emphasizes
 **Data loading (T41–T43, implemented):**
 - Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then refresh from the live Render backend and update the UI when fresh data arrives.
 - The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather data (`WeatherDailyResponse`).
-- WeatherCard receives data from the bundle via the `weather` prop — no independent on-mount fetch. Manual "Update Weather" button still works (triggers ingest, overrides displayed run status locally).
+- `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
 
-Loading state shows `—` in KPI values and weather card skeleton/loading text. Error state shows an inline destructive banner.
+Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 
-**Filtering (Phase 4 — implemented in T60):**
-- Dashboard adds a date-range filter control that affects:
-  - the **Created** KPI (sessions created within the selected range), and
-  - the **Completed** KPI (sessions completed within the selected range),
-  - and the weather card **date context** (see below).
-- Default view (no custom range selected) uses the cached dashboard bundle (`/api/ra/dashboard?mode=cached` then SWR live refresh).
-- Filtered views bypass Redis and fetch live from Render using `/api/ra/dashboard/range`, which fans out to `/dashboard/summary/range` plus `GET /weather/daily` and `GET /dashboard/participants-per-day`.
-- On transient filtered-fetch errors, the dashboard keeps currently displayed values and shows an inline error instead of clearing data.
+**WeatherUnifiedCard spec (Phase 4 — planned T69–T70):**
 
-**Weather behavior under filtering (Phase 4 — implemented in T60):**
-- If the selected range is a single day (`date_from == date_to`), the weather card shows that day's `weather_daily` (if present).
-- If the selected range spans multiple days, the weather card shows the **end date** (`date_to`) as the most relevant day context for the filtered KPIs.
+The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx` replaces the former `WeatherCard` + `WeatherTrendChart` pair. Layout within the card (top to bottom):
 
-**Weather graph behavior under filtering (Phase 4 — implemented in T61):**
-- Dashboard renders a weather graph that is driven by the same date-range filter state.
-- Graph shows:
-  - temperature (`weather_daily.current_temp_c`) as a line,
-  - participants-per-day as bars (sourced from `GET /dashboard/participants-per-day`),
-  - precipitation (`weather_daily.current_precip_today_mm`) in hover/tooltip when available (included in `GET /weather/daily` response as of T58).
-- Graph does not perform its own API request. It renders strictly from the range bundle already loaded by `/api/ra/dashboard/range`.
-- Tooltip content includes: `date_local`, `temp`, `precip`, and participant count.
-- Missing temperature values are rendered as gaps in the line (safe skip); participant counts default to 0 when a day has no participants row.
+1. **Header row**: cloud icon + “Weather” label | “Update Weather” button (triggers `triggerWeatherIngest()`; shows spinner + inline feedback)
+2. **Current-day weather summary**: large temperature, forecast ↑/↓ high/low, condition text, precipitation pill, ingest run status badge (success/partial/fail). Sourced from the base `weather` prop passed by the dashboard page (last item in the bundle).
+3. **Divider**
+4. **Graph controls row**: preset filter buttons (Study Start, Last 30 days, Last 90 days, Custom) | series visibility toggle buttons (Temp / Precip / Sunlight — all default visible)
+5. **Custom date pickers row** (visible only when “Custom” preset is active): Date From input, Date To input, Apply button
+6. **Inline loading / error feedback** (range fetch state)
+7. **Highcharts line chart** (h-72)
+
+**Chart defaults and behavior:**
+- Default filter range: `2025-03-03` (study start) → today (America/Vancouver).
+- Chart library: Highcharts (`highcharts` + `highcharts-react-official`). Recharts is removed.
+- Chart type: line only (no bars). Three series:
+  - **Temperature** — `weather_daily.current_temp_c`, left Y-axis (°C), solid line, `--chart-1` color, full opacity
+  - **Precipitation** — `weather_daily.current_precip_today_mm`, right Y-axis (mm), semi-transparent line (`opacity: 0.5`), `--chart-2` color
+  - **Sunlight Hours** — `weather_daily.sunshine_duration_hours`, right Y-axis (h), semi-transparent line (`opacity: 0.5`), `--chart-3` color. Silently renders empty until backfill data (T64–T66) is available.
+- Highcharts theming: CSS variable colors are read at mount via `getComputedStyle(document.documentElement)` and re-applied on light/dark theme change. Grid: `--border`; tick labels: `--muted-foreground`; chart background: `transparent`.
+- Shared tooltip (`tooltip.shared: true`) shows date + all three series values.
+- Legend: disabled (custom toggle UI used instead).
+- Range data is fetched internally via `getDashboardRangeBundle(dateFrom, dateTo)` — no bare fetch.
+
+**Chart color assignments:**
+
+| Series | CSS Variable | Light hex | Dark hex |
+|--------|-------------|-----------|----------|
+| Temperature | `--chart-1` | `#0052f5` | `#00a2fa` |
+| Precipitation | `--chart-2` | `#00a2fa` | `#33e0fc` |
+| Sunlight Hours | `--chart-3` | `#33e0fc` | `#0052f5` |
 
 ---
 

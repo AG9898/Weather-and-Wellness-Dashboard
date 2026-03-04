@@ -7,13 +7,13 @@
 
 ## Current State
 
-| Field              | Value                  |
-|--------------------|------------------------|
-| Phase              | 4 (in progress)        |
-| Tasks completed    | 10 / 14                |
-| Remaining queue    | T64, T65, T66, T67     |
-| Tasks in progress  | 0                      |
-| Last updated       | 2026-03-03             |
+| Field              | Value                                                        |
+|--------------------|--------------------------------------------------------------|
+| Phase              | 4 (in progress)                                              |
+| Tasks completed    | 10 / 17                                                      |
+| Remaining queue    | T64, T65, T66, T68, T69, T70 (T67 superseded by T68–T70)    |
+| Tasks in progress  | 0                                                            |
+| Last updated       | 2026-03-03                                                   |
 
 ---
 
@@ -28,6 +28,28 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T68–T70 — Unified WeatherUnifiedCard + Highcharts Migration (planned 2026-03-03)
+
+Phase 4 extended with three new tasks to replace the separate `WeatherCard` and `WeatherTrendChart` components with a single self-contained `WeatherUnifiedCard` that owns its own date-range filter and uses Highcharts for all chart rendering.
+
+**T67 is superseded** by T68–T70. The `sunshine_duration_hours` type addition and sunlight series are incorporated into T68 and T69 respectively; `WeatherTrendChart` is deleted entirely.
+
+**New tasks added:**
+- **T68** — Frontend: Install `highcharts` + `highcharts-react-official`; add `sunshine_duration_hours: number | null` to `WeatherDailyItem` in `src/lib/api/index.ts`; remove `recharts` dependency
+- **T69** — Frontend: `WeatherUnifiedCard.tsx` — unified current-day weather summary (temperature, forecast high/low, condition, precipitation, ingest status) + Highcharts 3-series line chart (Temperature / Precipitation / Sunlight Hours) + internal date range filter (default: 2025-03-03 → today in America/Vancouver) + per-series visibility toggle buttons. Component fetches its own range data via `getDashboardRangeBundle`.
+- **T70** — Frontend: Dashboard page refactor — remove `WeatherCard`, `WeatherTrendChart`, and the top-level "Dashboard Range" filter section; add `WeatherUnifiedCard`; simplify KPI labels to static last-7-day strings; delete `WeatherCard.tsx` and `WeatherTrendChart.tsx`
+
+**Key design decisions:**
+- Highcharts does not natively read CSS variables; colors are read via `getComputedStyle(document.documentElement).getPropertyValue(name)` at mount and re-read on light/dark theme change
+- Default chart range is fixed at 2025-03-03 (study start date) → today (America/Vancouver)
+- Precipitation and Sunlight series rendered with 0.5 opacity to visually differentiate from the primary Temperature line
+- Dashboard KPI cards are no longer range-filtered; they always show all-time totals + last-7-day metrics
+- Chart series presets: Study Start → Today, Last 30 days, Last 90 days, Custom (date pickers)
+
+**Docs updated:** `docs/DESIGN_SPEC.md`, `docs/styleguide.md`, `docs/kanban.md`, `docs/PROGRESS.md`
+
+---
 
 ## T64–T67 — Open-Meteo Historical Weather Backfill (planned 2026-03-03)
 

@@ -158,7 +158,38 @@ When asked to build/update a frontend page:
 - Keep shadcn semantic tokens (`bg-background`, `text-foreground`, `border-border`, `ring-ring`) aligned to this style guide's UBC-based token direction.
 - Prefer token-level updates in `frontend/src/app/globals.css` over scattered per-component color overrides.
 
-## 12) Quick CSS Token Seed
+## 12) Data Visualization / Highcharts
+
+**Chart library:** Highcharts (`highcharts` + `highcharts-react-official`). Recharts has been removed from the project (T68).
+
+**CSS variable theming:** Highcharts does not natively read CSS variables. Always resolve colors at component mount via:
+```ts
+function getCssVar(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+```
+Re-read on theme change by watching `document.documentElement.classList` (via `MutationObserver` or a `useEffect` dependency array). Never hardcode hex values directly in chart config — use the CSS variable reader so charts respect light/dark theme.
+
+**Chart token assignments (weather chart):**
+
+| Series | CSS Variable | Purpose |
+|--------|-------------|---------|
+| Temperature | `--chart-1` | Primary solid line (full opacity) |
+| Precipitation | `--chart-2` | Secondary line (0.5 opacity) |
+| Sunlight Hours | `--chart-3` | Tertiary line (0.5 opacity) |
+| Grid lines | `--border` | CartesianGrid / xAxis / yAxis lines |
+| Tick labels | `--muted-foreground` | Axis label text |
+| Chart background | `transparent` | Inherits `var(--card)` from the parent card |
+
+**General chart rules:**
+- `chart.backgroundColor: "transparent"` always — let the parent card surface show through.
+- `credits.enabled: false` always.
+- `legend.enabled: false` when custom toggle UI is provided above the chart.
+- `tooltip.shared: true` for multi-series charts.
+- `plotOptions.series.connectNulls: false` — do not interpolate across missing data points.
+- Semi-transparent series (opacity 0.5) are used to visually subordinate secondary data series to the primary one.
+
+## 13) Quick CSS Token Seed
 
 ```css
 :root {

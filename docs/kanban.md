@@ -393,7 +393,8 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T67",
       "title": "Frontend — sunshine_duration_hours type + sunshine series in WeatherTrendChart",
-      "status": "todo",
+      "status": "superseded",
+      "update_note": "Superseded by T68–T70 (WeatherUnifiedCard + Highcharts migration replaces WeatherTrendChart entirely, 2026-03-03)",
       "description": "Add sunshine_duration_hours to the WeatherDailyItem TypeScript interface. Then extend WeatherTrendChart to render a sunshine duration line (dashed, amber/yellow) on a dedicated Y-axis (0–14 h). Only render the line when at least one non-null value exists in the date range. Tooltip updated to include sunshine hours.",
       "depends_on": [
         "T66"
@@ -414,6 +415,99 @@ Follow current JSON Schema when adding tasks.
         "Sunshine line only renders when at least one item in the range has a non-null sunshine_duration_hours value",
         "Tooltip shows Sunshine: X.X h when the value is non-null for the hovered date",
         "Chart remains correct and does not error when all sunshine_duration_hours values are null (backfill not yet run)",
+        "tsc --noEmit passes; npm run build passes"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T68",
+      "title": "Frontend — Install Highcharts + update WeatherDailyItem type + remove Recharts",
+      "status": "todo",
+      "description": "Install highcharts and highcharts-react-official in the frontend. Add sunshine_duration_hours: number | null to the WeatherDailyItem TypeScript interface in src/lib/api/index.ts. Remove recharts from dependencies (it will no longer be used after T69). This is a prerequisite step for T69.",
+      "depends_on": [
+        "T64"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/API.md",
+        "docs/HISTORICAL_WEATHER_BACKFILL.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "highcharts and highcharts-react-official are listed in frontend/package.json dependencies",
+        "WeatherDailyItem in frontend/src/lib/api/index.ts includes sunshine_duration_hours: number | null",
+        "recharts is removed from frontend/package.json dependencies",
+        "tsc --noEmit passes with no errors after type update"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T69",
+      "title": "Frontend — WeatherUnifiedCard: unified weather display + Highcharts line chart + internal date filter",
+      "status": "todo",
+      "description": "Create frontend/src/lib/components/WeatherUnifiedCard.tsx that merges WeatherCard and WeatherTrendChart into one card. The component owns its own date-range filter state (default: 2025-03-03 to today in America/Vancouver) and fetches range data internally via getDashboardRangeBundle. Chart uses Highcharts with three line series: Temperature (solid, chart-1), Precipitation (semi-transparent, chart-2), Sunlight Hours (semi-transparent, chart-3). Toggle buttons above the chart control per-series visibility. The top of the card shows the current-day weather summary and manual ingest trigger (carried over from WeatherCard).",
+      "depends_on": [
+        "T68"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/styleguide.md",
+        "docs/API.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "WeatherUnifiedCard.tsx created at frontend/src/lib/components/WeatherUnifiedCard.tsx",
+        "Card header shows current-day temperature, forecast high/low, condition text, precipitation pill, and ingest status badge sourced from the weather prop (base dashboard bundle data)",
+        "Update Weather button triggers triggerWeatherIngest(); spinner + inline feedback shown on result",
+        "Date range filter presets: Study Start (2025-03-03 to today), Last 30 days, Last 90 days, Custom. Default preset is Study Start.",
+        "Custom preset shows date-from / date-to pickers and an Apply button",
+        "Range data is fetched internally via getDashboardRangeBundle; loading and error states handled inline",
+        "Highcharts line chart renders Temperature (chart-1), Precipitation (chart-2), Sunlight Hours (chart-3) series for the selected range",
+        "Precipitation and Sunlight series have reduced opacity (0.5) to appear more transparent than Temperature",
+        "Toggle buttons (Temp / Precip / Sunlight) above the chart show/hide each series; all default visible",
+        "Chart colors are read from CSS variables via getComputedStyle at mount; chart re-themes correctly on light/dark toggle",
+        "Chart handles null values gracefully (no errors when sunshine_duration_hours is all null)",
+        "Shared tooltip shows date + all three values for the hovered date",
+        "tsc --noEmit passes; npm run build passes"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/styleguide.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T70",
+      "title": "Frontend — Dashboard page: replace old weather components with WeatherUnifiedCard + simplify range state",
+      "status": "todo",
+      "description": "Remove WeatherCard, WeatherTrendChart, and the dashboard-level date-range filter section from the dashboard page. Add WeatherUnifiedCard in their place. Remove all range-related state (appliedRange, rangeSummary, rangeWeatherData, rangeParticipantsData, rangeLoading, etc.) since that state now lives inside WeatherUnifiedCard. Simplify KPI labels to static strings (no longer range-aware). Delete the now-unused WeatherCard.tsx and WeatherTrendChart.tsx component files.",
+      "depends_on": [
+        "T69"
+      ],
+      "stack": [
+        "frontend"
+      ],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "dashboard/page.tsx no longer imports WeatherCard, WeatherTrendChart, or getDashboardRangeBundle",
+        "The 'Dashboard Range' filter UI section (preset buttons + date inputs) is removed from the dashboard page JSX",
+        "WeatherUnifiedCard is rendered in place of both the WeatherCard and WeatherTrendChart sections",
+        "All range-related state variables and functions are removed from the dashboard page",
+        "KPI card labels for created/completed are now static ('Created (7d)' / 'Completed (7d)') and always show last-7-day summary values",
+        "WeatherCard.tsx and WeatherTrendChart.tsx files are deleted",
         "tsc --noEmit passes; npm run build passes"
       ],
       "updates_docs": [
