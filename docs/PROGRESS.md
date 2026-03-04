@@ -10,10 +10,10 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 13 / 17                                                      |
-| Remaining queue    | T68, T69, T70 (T67 superseded by T68–T70)                   |
+| Tasks completed    | 16 / 17                                                      |
+| Remaining queue    | — (T67 superseded; all T68–T70 complete)                    |
 | Tasks in progress  | 0                                                            |
-| Last updated       | 2026-03-03                                                   |
+| Last updated       | 2026-03-04                                                   |
 
 ---
 
@@ -28,6 +28,37 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T70 — Frontend: Dashboard simplification + WeatherUnifiedCard swap (completed 2026-03-04)
+
+**Acceptance criteria met:**
+
+- `dashboard/page.tsx` no longer imports `WeatherCard`, `WeatherTrendChart`, or `getDashboardRangeBundle`.
+- All range-related state and functions removed (`rangeSummary`, `rangeWeatherData`, `rangeParticipantsData`, `rangeLoading`, `rangeError`, `preset`, `customFrom`, `customTo`, `requestedRange`, `appliedRange`, `rangeRequestSeqRef`, `applyRange`, `clearRangeFilter`, `handlePresetClick`, `handleApplyCustomRange`, `FilterPresetButton`, helper functions).
+- Dashboard range filter UI section removed entirely.
+- `WeatherUnifiedCard` rendered in place of `WeatherCard`.
+- KPI labels "Created (7d)" and "Completed (7d)" are static strings; values always come from `sessions_created_last_7_days` / `sessions_completed_last_7_days` from the base bundle.
+- `WeatherCard.tsx` deleted. (`WeatherTrendChart.tsx` was already deleted in T68.)
+- **Chart improvements (T69/T70 combined):** Temperature series upgraded to `areaspline` with gradient fill; Precipitation and Sunlight use `spline` with dashed/dotted dash styles to visually differentiate the three trends. Precipitation and Sunlight each have their own right y-axis (separate scales — mm vs hours). Temperature axis uses `°` formatter. Tooltip has improved styling with date header.
+- `tsc --noEmit` passes; `npm run build` passes.
+
+## T69 — Frontend: WeatherUnifiedCard (completed 2026-03-04)
+
+**Acceptance criteria met:**
+
+- `WeatherUnifiedCard.tsx` created at `frontend/src/lib/components/WeatherUnifiedCard.tsx`.
+- Card header shows cloud icon + "Weather" label (section label) + "Update Weather" button with spinner and inline feedback.
+- Current-day weather summary (large temperature, forecast ↑/↓ high/low, condition text, precipitation pill, ingest status badge) sourced from the base `weather` prop.
+- Date range filter presets: Study Start (2025-03-03 to today), Last 30d, Last 90d, Custom. Default = Study Start. Custom preset reveals date-from/date-to inputs + Apply button.
+- Range data fetched internally via `getDashboardRangeBundle`; loading and error states handled inline; race-condition guard via sequence counter.
+- Highcharts line chart renders Temperature (chart-1, left Y-axis), Precipitation (chart-2, right Y-axis, opacity 0.5), Sunlight Hours (chart-3, right Y-axis, opacity 0.5).
+- Toggle buttons (Temp / Precip / Sunlight) control per-series visibility; all default visible.
+- CSS variable colors read at mount via `getComputedStyle`; `MutationObserver` on `document.documentElement` re-themes chart on light/dark toggle.
+- `connectNulls: false` — null sunshine values render as gaps, no errors.
+- Shared tooltip shows date + all three series values for the hovered date.
+- `tsc --noEmit` passes; `npm run build` passes.
+- `docs/DESIGN_SPEC.md` WeatherUnifiedCard spec updated to reflect implemented component.
+- `docs/styleguide.md` Section 12 updated with Highcharts theming convention.
 
 ## T66 — Backend: POST /weather/backfill/historical endpoint (completed 2026-03-03)
 
@@ -97,6 +128,16 @@ Phase 4 extended with three new tasks to replace the separate `WeatherCard` and 
 - Chart series presets: Study Start → Today, Last 30 days, Last 90 days, Custom (date pickers)
 
 **Docs updated:** `docs/DESIGN_SPEC.md`, `docs/styleguide.md`, `docs/kanban.md`, `docs/PROGRESS.md`
+
+### T68 — Completed 2026-03-03
+
+**Acceptance criteria met:**
+
+- Installed `highcharts@^12.5.0` and `highcharts-react-official@^3.2.3` in `frontend/package.json`
+- Removed `recharts` from `frontend/package.json` dependencies
+- Added `sunshine_duration_hours: number | null` to `WeatherDailyItem` in `frontend/src/lib/api/index.ts`
+- Deleted `frontend/src/lib/components/WeatherTrendChart.tsx` (superseded; imports removed from dashboard page)
+- `tsc --noEmit` passes with no errors
 
 ---
 

@@ -167,7 +167,7 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 
 1. **Hero action zone** — card with blue glow accent, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, ubc-blue-700/600 gradient) that navigates to `/new-session`.
 2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). KPI values are sourced from the base dashboard bundle and are always all-time totals / last-7-day counts (not range-filtered).
-3. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts line chart with an internal date-range filter. See below for full spec.
+3. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
 
 The “Recent Sessions” panel has been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
 
@@ -182,7 +182,7 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 
-**WeatherUnifiedCard spec (Phase 4 — planned T69–T70):**
+**WeatherUnifiedCard spec (Phase 4 — implemented T69):**
 
 The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx` replaces the former `WeatherCard` + `WeatherTrendChart` pair. Layout within the card (top to bottom):
 

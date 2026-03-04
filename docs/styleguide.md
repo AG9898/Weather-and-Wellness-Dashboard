@@ -185,9 +185,12 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 - `chart.backgroundColor: "transparent"` always — let the parent card surface show through.
 - `credits.enabled: false` always.
 - `legend.enabled: false` when custom toggle UI is provided above the chart.
-- `tooltip.shared: true` for multi-series charts.
+- `tooltip.shared: true` for multi-series charts. Use `useHTML: true` for rich tooltip HTML; set `backgroundColor: "var(--card)"` so the tooltip inherits the card theme.
 - `plotOptions.series.connectNulls: false` — do not interpolate across missing data points.
 - Semi-transparent series (opacity 0.5) are used to visually subordinate secondary data series to the primary one.
+- **SSR guard:** Wrap `<HighchartsReact>` in a `mounted` state guard (`useState(false)` + `useEffect(() => setMounted(true), [])`) to prevent SSR/hydration errors since Highcharts requires `window`.
+- **Tooltip `this` typing:** Highcharts 12 types `formatter` as `(this: Point) => string`. For shared tooltip access, cast: `const ctx = this as unknown as { points?: Point[]; x?: number }`.
+- **Theme re-read pattern:** Use `MutationObserver` on `document.documentElement` with `attributeFilter: ["class"]` to detect theme class changes and call `setChartColors(readChartColors())` so charts re-theme without a page reload.
 
 ## 13) Quick CSS Token Seed
 

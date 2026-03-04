@@ -233,6 +233,7 @@ export interface WeatherDailyItem {
   forecast_low_c: number | null;
   forecast_condition_text: string | null;
   forecast_periods: unknown[];
+  sunshine_duration_hours: number | null;
 }
 
 export interface WeatherDailyResponse {

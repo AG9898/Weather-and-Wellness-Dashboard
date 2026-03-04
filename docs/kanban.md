@@ -425,7 +425,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T68",
       "title": "Frontend — Install Highcharts + update WeatherDailyItem type + remove Recharts",
-      "status": "todo",
+      "status": "done",
       "description": "Install highcharts and highcharts-react-official in the frontend. Add sunshine_duration_hours: number | null to the WeatherDailyItem TypeScript interface in src/lib/api/index.ts. Remove recharts from dependencies (it will no longer be used after T69). This is a prerequisite step for T69.",
       "depends_on": [
         "T64"
@@ -451,7 +451,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T69",
       "title": "Frontend — WeatherUnifiedCard: unified weather display + Highcharts line chart + internal date filter",
-      "status": "todo",
+      "status": "done",
       "description": "Create frontend/src/lib/components/WeatherUnifiedCard.tsx that merges WeatherCard and WeatherTrendChart into one card. The component owns its own date-range filter state (default: 2025-03-03 to today in America/Vancouver) and fetches range data internally via getDashboardRangeBundle. Chart uses Highcharts with three line series: Temperature (solid, chart-1), Precipitation (semi-transparent, chart-2), Sunlight Hours (semi-transparent, chart-3). Toggle buttons above the chart control per-series visibility. The top of the card shows the current-day weather summary and manual ingest trigger (carried over from WeatherCard).",
       "depends_on": [
         "T68"
@@ -489,7 +489,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T70",
       "title": "Frontend — Dashboard page: replace old weather components with WeatherUnifiedCard + simplify range state",
-      "status": "todo",
+      "status": "done",
       "description": "Remove WeatherCard, WeatherTrendChart, and the dashboard-level date-range filter section from the dashboard page. Add WeatherUnifiedCard in their place. Remove all range-related state (appliedRange, rangeSummary, rangeWeatherData, rangeParticipantsData, rangeLoading, etc.) since that state now lives inside WeatherUnifiedCard. Simplify KPI labels to static strings (no longer range-aware). Delete the now-unused WeatherCard.tsx and WeatherTrendChart.tsx component files.",
       "depends_on": [
         "T69"
