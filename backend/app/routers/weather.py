@@ -248,9 +248,6 @@ async def ingest_weather(
 
 # ── GET /daily ────────────────────────────────────────────────────────────────
 
-_MAX_DATE_RANGE_DAYS = 365
-
-
 @router.get("/daily", response_model=WeatherDailyResponse)
 async def get_weather_daily(
     start: date_type = Query(..., description="Start date inclusive (YYYY-MM-DD, America/Vancouver)"),
@@ -263,11 +260,6 @@ async def get_weather_daily(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="start must not be after end",
-        )
-    if (end - start).days > _MAX_DATE_RANGE_DAYS:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Date range exceeds maximum of {_MAX_DATE_RANGE_DAYS} days",
         )
 
     rows_result = await db.execute(

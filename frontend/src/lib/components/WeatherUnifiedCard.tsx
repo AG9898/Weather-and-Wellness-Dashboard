@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 const STUDY_START = "2025-03-03";
 const STUDY_TIMEZONE = "America/Vancouver";
 
-type FilterPreset = "study_start" | "last_30" | "last_90" | "custom";
+type FilterPreset = "study_start" | "last_7" | "last_30" | "last_90" | "custom";
 type ParseStatus = "success" | "partial" | "fail";
 
 interface ChartColors {
@@ -300,6 +300,8 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
     let to = today;
     if (next === "study_start") {
       from = STUDY_START;
+    } else if (next === "last_7") {
+      from = shiftDate(today, -6);
     } else if (next === "last_30") {
       from = shiftDate(today, -29);
     } else {
@@ -679,6 +681,11 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
               active={preset === "study_start"}
               label="Study Start"
               onClick={() => applyPreset("study_start")}
+            />
+            <PresetButton
+              active={preset === "last_7"}
+              label="Last 7d"
+              onClick={() => applyPreset("last_7")}
             />
             <PresetButton
               active={preset === "last_30"}
