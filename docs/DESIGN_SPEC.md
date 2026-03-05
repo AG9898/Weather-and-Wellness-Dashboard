@@ -189,7 +189,7 @@ The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx
 1. **Header row**: cloud icon + “Weather” label | “Update Weather” button (triggers `triggerWeatherIngest()`; shows spinner + inline feedback)
 2. **Current-day weather summary**: large temperature, forecast ↑/↓ high/low, condition text, precipitation pill, ingest run status badge (success/partial/fail). Sourced from the base `weather` prop passed by the dashboard page (last item in the bundle).
 3. **Divider**
-4. **Graph controls row**: preset filter buttons (Study Start, Last 30 days, Last 90 days, Custom) | series visibility toggle buttons (Temp / Precip / Sunlight — all default visible)
+4. **Graph controls row**: preset filter buttons (Study Start, Last 7 days, Last 30 days, Last 90 days, Custom) | series visibility toggle buttons (Temp / Precip / Sunlight — all default visible)
 5. **Custom date pickers row** (visible only when “Custom” preset is active): Date From input, Date To input, Apply button
 6. **Inline loading / error feedback** (range fetch state)
 7. **Highcharts line chart** (h-72)

@@ -49,7 +49,7 @@ _No tasks in progress._
 - `WeatherUnifiedCard.tsx` created at `frontend/src/lib/components/WeatherUnifiedCard.tsx`.
 - Card header shows cloud icon + "Weather" label (section label) + "Update Weather" button with spinner and inline feedback.
 - Current-day weather summary (large temperature, forecast ↑/↓ high/low, condition text, precipitation pill, ingest status badge) sourced from the base `weather` prop.
-- Date range filter presets: Study Start (2025-03-03 to today), Last 30d, Last 90d, Custom. Default = Study Start. Custom preset reveals date-from/date-to inputs + Apply button.
+- Date range filter presets: Study Start (2025-03-03 to today), Last 7d, Last 30d, Last 90d, Custom. Default = Study Start. Custom preset reveals date-from/date-to inputs + Apply button.
 - Range data fetched internally via `getDashboardRangeBundle`; loading and error states handled inline; race-condition guard via sequence counter.
 - Highcharts line chart renders Temperature (chart-1, left Y-axis), Precipitation (chart-2, right Y-axis, opacity 0.5), Sunlight Hours (chart-3, right Y-axis, opacity 0.5).
 - Toggle buttons (Temp / Precip / Sunlight) control per-series visibility; all default visible.
@@ -125,7 +125,7 @@ Phase 4 extended with three new tasks to replace the separate `WeatherCard` and 
 - Default chart range is fixed at 2025-03-03 (study start date) → today (America/Vancouver)
 - Precipitation and Sunlight series rendered with 0.5 opacity to visually differentiate from the primary Temperature line
 - Dashboard KPI cards are no longer range-filtered; they always show all-time totals + last-7-day metrics
-- Chart series presets: Study Start → Today, Last 30 days, Last 90 days, Custom (date pickers)
+- Chart series presets: Study Start → Today, Last 7 days, Last 30 days, Last 90 days, Custom (date pickers)
 
 **Docs updated:** `docs/DESIGN_SPEC.md`, `docs/styleguide.md`, `docs/kanban.md`, `docs/PROGRESS.md`
 

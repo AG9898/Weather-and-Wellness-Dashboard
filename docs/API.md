@@ -444,7 +444,7 @@
   ```
 - **Notes:**
   - Both `start` and `end` are required. `start` > `end` returns 422.
-  - Max range is 365 days; exceeding it returns 422.
+  - No fixed max range cap (supports multi-year study windows); very large ranges may be slower.
   - `items` ordered by `date_local` ASC. Empty array if no data for the range.
   - `latest_run` is the most recent ingest run for the station regardless of date range; `null` if no runs exist.
   - `latest_run.parse_status` values: `success | partial | fail`.
