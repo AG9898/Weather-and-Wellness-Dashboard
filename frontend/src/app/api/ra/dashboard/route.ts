@@ -43,7 +43,7 @@ const redis =
 
 const CACHE_KEY = "ww:ra:dashboard:v1";
 // Keep cache around long enough to survive backend cold starts; UI can still refresh live when needed.
-const CACHE_TTL = 60 * 60 * 6; // 6 hours
+const CACHE_TTL = 60 * 60 * 24; // 24 hours — matches weather/range TTL; ensures stale fallback survives overnight cold starts
 
 // ── JWT verification ──────────────────────────────────────────────────────────
 
