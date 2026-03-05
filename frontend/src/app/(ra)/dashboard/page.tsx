@@ -61,6 +61,7 @@ export default function DashboardPage() {
 
     const load = async () => {
       // Fast path: try cache first
+      let cachedAt: string | null = null;
       try {
         const cached = await getDashboardBundle("cached");
         if (!cancelled && cached.cached && cached.data) {
@@ -68,12 +69,35 @@ export default function DashboardPage() {
           setWeatherData(cached.data.weather);
           setSummaryLoading(false);
           hasCachedRef.current = true;
+          cachedAt = cached.data.cached_at;
         }
       } catch {
         // proceed to live
       }
 
-      // Live refresh
+      const REFRESH_AFTER_MS = 10 * 60 * 1000; // only refresh live when cached data is older than ~10 minutes
+      const shouldRefreshLive =
+        !cachedAt ||
+        Date.now() - new Date(cachedAt).getTime() > REFRESH_AFTER_MS;
+
+      // If we have cached data, refresh in the background (do not block first render).
+      if (hasCachedRef.current && !shouldRefreshLive) return;
+      if (hasCachedRef.current && shouldRefreshLive) {
+        void (async () => {
+          try {
+            const live = await getDashboardBundle("live");
+            if (!cancelled && live.data) {
+              setSummary(live.data.summary);
+              setWeatherData(live.data.weather);
+            }
+          } catch {
+            // Ignore live refresh failures when we already have cached data rendered.
+          }
+        })();
+        return;
+      }
+
+      // Cache miss: block on live data (best-effort) before removing the loading state.
       try {
         const live = await getDashboardBundle("live");
         if (!cancelled && live.data) {
@@ -81,7 +105,7 @@ export default function DashboardPage() {
           setWeatherData(live.data.weather);
         }
       } catch {
-        if (!cancelled && !hasCachedRef.current) {
+        if (!cancelled) {
           setError("Unable to load dashboard data. You can still start a new entry.");
         }
       } finally {

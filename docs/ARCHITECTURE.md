@@ -24,7 +24,7 @@
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:dashboard:v1`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/dashboard/summary` + `/weather/daily` from the Render backend in parallel. Writes the result bundle to Redis (TTL 300 s). Returns `{ cached: false, data }`. |
+| `live` | Fetches `/dashboard/summary` + `/weather/daily` from the Render backend in parallel. Writes the result bundle to Redis (TTL 6 hours; write is awaited). Returns `{ cached: false, data }`. |
 
 **Auth:** The handler verifies the Supabase JWT from `Authorization: Bearer <token>` before touching the cache or making backend calls. No auth bypass via cache. Returns 401 for missing or invalid tokens.
 
@@ -33,6 +33,15 @@
 **Bundle type:** `{ summary: DashboardSummaryResponse, weather: WeatherDailyResponse, cached_at: string }` — no PII, no secrets.
 
 **Cache key:** `ww:ra:dashboard:v1` — versioned prefix allows safe invalidation on schema changes.
+
+## Vercel Weather Range Cache Route Handler
+
+`GET /api/ra/weather/range?mode=cached|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD` is a Next.js Route Handler used by the dashboard weather trend chart.
+
+| Mode | Behaviour |
+|---|---|
+| `cached` | Reads bundle from Upstash Redis (`ww:ra:weather:range:v1:<date_from>:<date_to>`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
+| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>` from the Render backend. Writes the result bundle to Redis (TTL 24 hours; write is awaited). Returns `{ cached: false, data }`. |
 
 ## Vercel Range Bundle Route Handler (Phase 4)
 

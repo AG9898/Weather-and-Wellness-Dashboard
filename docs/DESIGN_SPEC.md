@@ -176,7 +176,7 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - The supervised workflow treats participant↔session as 1:1 (a new participant is created for each new session); the DB does not enforce this constraint.
 
 **Data loading (T41–T43, implemented):**
-- Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then refresh from the live Render backend and update the UI when fresh data arrives.
+- Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then (optionally) refresh from the live Render backend and update the UI when fresh data arrives. The dashboard avoids triggering a live refresh on every visit when cached data is still recent (prevents waking the Render backend unnecessarily).
 - The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather data (`WeatherDailyResponse`).
 - `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
 
@@ -204,7 +204,7 @@ The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx
 - Highcharts theming: CSS variable colors are read at mount via `getComputedStyle(document.documentElement)` and re-applied on light/dark theme change. Grid: `--border`; tick labels: `--muted-foreground`; chart background: `transparent`.
 - Shared tooltip (`tooltip.shared: true`) shows date + all three series values.
 - Legend: disabled (custom toggle UI used instead).
-- Range data is fetched internally via `getDashboardRangeBundle(dateFrom, dateTo)` — no bare fetch.
+- Range data is fetched internally via `getWeatherRangeBundle('cached'|'live', dateFrom, dateTo)` (same-origin `/api/ra/weather/range`) — cached-first with live fallback; no bare fetch.
 
 **Chart color assignments:**
 

@@ -1,33 +1,29 @@
 /**
- * GET /api/ra/dashboard?mode=cached|live
+ * GET /api/ra/weather/range?mode=cached|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
  *
- * Server-only Vercel Route Handler for RA dashboard data.
+ * Server-only Vercel Route Handler for RA weather range data.
  * - Verifies the Supabase JWT from Authorization: Bearer <token>
- * - mode=cached  → returns bundle from Upstash Redis (fast path)
- * - mode=live    → fetches fresh data from the Render backend, writes to Redis, returns bundle
- *
- * Redis credentials (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN) are server-only env vars
- * set by the Vercel Upstash integration. If absent the cache layer is skipped gracefully.
+ * - mode=cached → returns bundle from Upstash Redis (fast path)
+ * - mode=live   → fetches fresh data from the Render backend, writes to Redis, returns bundle
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { Redis } from "@upstash/redis";
-import type { DashboardSummaryResponse, WeatherDailyResponse } from "@/lib/api";
+import type { WeatherDailyResponse } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface DashboardBundle {
-  summary: DashboardSummaryResponse;
+export interface WeatherRangeBundle {
   weather: WeatherDailyResponse;
   cached_at: string; // ISO 8601
 }
 
-export interface DashboardRouteResponse {
+export interface WeatherRangeRouteResponse {
   cached: boolean;
-  data: DashboardBundle | null;
+  data: WeatherRangeBundle | null;
 }
 
 // ── Redis client (server-only; graceful no-op if env vars absent) ─────────────
@@ -41,13 +37,11 @@ const redis =
       })
     : null;
 
-const CACHE_KEY = "ww:ra:dashboard:v1";
-// Keep cache around long enough to survive backend cold starts; UI can still refresh live when needed.
-const CACHE_TTL = 60 * 60 * 6; // 6 hours
+const CACHE_KEY_PREFIX = "ww:ra:weather:range:v1";
+const CACHE_TTL = 60 * 60 * 24; // 24 hours
 
 // ── JWT verification ──────────────────────────────────────────────────────────
 
-// Lazy JWKS set — created once on first request; jose caches the fetched keys.
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
 function getJWKS(): ReturnType<typeof createRemoteJWKSet> | null {
@@ -61,13 +55,7 @@ function getJWKS(): ReturnType<typeof createRemoteJWKSet> | null {
   return jwks;
 }
 
-/**
- * Verify a Supabase JWT.
- * Tries ES256 via JWKS first; falls back to HS256 using SUPABASE_JWT_SECRET if set.
- * Returns true if the token is valid, false otherwise.
- */
 async function verifySupabaseJWT(token: string): Promise<boolean> {
-  // Primary: ES256 via JWKS
   const jwksSet = getJWKS();
   if (jwksSet) {
     try {
@@ -78,7 +66,6 @@ async function verifySupabaseJWT(token: string): Promise<boolean> {
     }
   }
 
-  // Fallback: HS256 using JWT secret
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
   if (jwtSecret) {
     try {
@@ -93,50 +80,44 @@ async function verifySupabaseJWT(token: string): Promise<boolean> {
   return false;
 }
 
-// ── Live bundle fetch ─────────────────────────────────────────────────────────
+// ── Live fetch ────────────────────────────────────────────────────────────────
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-async function fetchLiveBundle(token: string): Promise<DashboardBundle> {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Vancouver",
-  }).format(new Date());
+function isIsoDate(value: string): boolean {
+  return DATE_RE.test(value);
+}
+
+async function fetchLiveWeatherRange(
+  token: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<WeatherRangeBundle> {
   const headers: HeadersInit = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
 
-  const [summaryRes, weatherRes] = await Promise.all([
-    fetch(`${BACKEND_URL}/dashboard/summary`, { headers }),
-    fetch(`${BACKEND_URL}/weather/daily?start=${today}&end=${today}`, {
-      headers,
-    }),
-  ]);
-
-  if (!summaryRes.ok) {
-    throw new Error(
-      `Backend /dashboard/summary returned ${summaryRes.status}`
-    );
-  }
+  const weatherRes = await fetch(
+    `${BACKEND_URL}/weather/daily?start=${dateFrom}&end=${dateTo}`,
+    { headers, cache: "no-store" }
+  );
   if (!weatherRes.ok) {
-    throw new Error(
-      `Backend /weather/daily returned ${weatherRes.status}`
-    );
+    throw new Error(`Backend /weather/daily returned ${weatherRes.status}`);
   }
+  const weather = (await weatherRes.json()) as WeatherDailyResponse;
+  return { weather, cached_at: new Date().toISOString() };
+}
 
-  const [summary, weather] = (await Promise.all([
-    summaryRes.json(),
-    weatherRes.json(),
-  ])) as [DashboardSummaryResponse, WeatherDailyResponse];
-
-  return { summary, weather, cached_at: new Date().toISOString() };
+function getCacheKey(dateFrom: string, dateTo: string): string {
+  return `${CACHE_KEY_PREFIX}:${dateFrom}:${dateTo}`;
 }
 
 // ── Route Handler ─────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  // 1. Extract and verify JWT
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ")
     ? authHeader.slice(7)
@@ -157,54 +138,65 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // 2. Dispatch by mode
   const mode = req.nextUrl.searchParams.get("mode") ?? "cached";
+  const dateFrom = req.nextUrl.searchParams.get("date_from") ?? "";
+  const dateTo = req.nextUrl.searchParams.get("date_to") ?? "";
+
+  if (!dateFrom || !dateTo) {
+    return NextResponse.json(
+      { detail: "date_from and date_to are required" },
+      { status: 422, headers: { "x-ww-cache": "skip" } }
+    );
+  }
+  if (!isIsoDate(dateFrom) || !isIsoDate(dateTo)) {
+    return NextResponse.json(
+      { detail: "date_from and date_to must be YYYY-MM-DD" },
+      { status: 422, headers: { "x-ww-cache": "skip" } }
+    );
+  }
+
+  const cacheKey = getCacheKey(dateFrom, dateTo);
 
   if (mode === "cached") {
     if (redis) {
       try {
-        const cached = await redis.get<DashboardBundle>(CACHE_KEY);
+        const cached = await redis.get<WeatherRangeBundle>(cacheKey);
         if (cached) {
-          return NextResponse.json<DashboardRouteResponse>(
+          return NextResponse.json<WeatherRangeRouteResponse>(
             { cached: true, data: cached },
             { headers: { "x-ww-cache": "hit" } }
           );
         }
       } catch {
-        // Redis unavailable — fall through to indicate cache miss
+        // fall through
       }
     }
-    // Cache miss or Redis unavailable
-    return NextResponse.json<DashboardRouteResponse>(
+    return NextResponse.json<WeatherRangeRouteResponse>(
       { cached: false, data: null },
       { headers: { "x-ww-cache": redis ? "miss" : "disabled" } }
     );
   }
 
-  // mode === "live": fetch fresh data, populate cache, return
   try {
-    const bundle = await fetchLiveBundle(token);
-
-    // Write to Redis (awaited) — in serverless environments, fire-and-forget writes may be
-    // dropped when the function returns.
+    const bundle = await fetchLiveWeatherRange(token, dateFrom, dateTo);
     if (redis) {
       try {
-        await redis.set(CACHE_KEY, bundle, { ex: CACHE_TTL });
+        await redis.set(cacheKey, bundle, { ex: CACHE_TTL });
       } catch {
-        // Ignore Redis write errors — live data is still returned
+        // ignore write errors
       }
     }
-
-    return NextResponse.json<DashboardRouteResponse>(
+    return NextResponse.json<WeatherRangeRouteResponse>(
       { cached: false, data: bundle },
       { headers: { "x-ww-cache": "refresh" } }
     );
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : "Failed to fetch live data";
+      err instanceof Error ? err.message : "Failed to fetch live weather range";
     return NextResponse.json(
       { detail: message },
       { status: 502, headers: { "x-ww-cache": "error" } }
     );
   }
 }
+

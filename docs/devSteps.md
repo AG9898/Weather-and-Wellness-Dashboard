@@ -23,6 +23,42 @@
 
 ---
 
+## Frontend Runbook — Vercel + Upstash Cache (T41, T71)
+
+This runbook covers the optional Redis cache layer used to reduce perceived cold-start latency for RA dashboard reads.
+
+### 1) Vercel environment variables
+
+The cache Route Handlers are server-only and require one of the following env var pairs to exist in Vercel:
+
+- **Preferred (Vercel KV / Upstash integration):** `KV_REST_API_URL`, `KV_REST_API_TOKEN`
+- **Fallback (direct Upstash REST):** `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+
+JWT verification in Route Handlers requires one of:
+- `SUPABASE_URL` (server-only), or
+- `NEXT_PUBLIC_SUPABASE_URL` (already needed by the frontend auth client)
+
+### 2) What is cached
+
+- `GET /api/ra/dashboard?mode=cached|live` caches a bundle of dashboard summary KPIs + today’s weather.
+- `GET /api/ra/weather/range?mode=cached|live&date_from=...&date_to=...` caches weather-only range data for the trend chart.
+
+### 3) Smoke test checklist (browser)
+
+1) Login as an RA and open `/dashboard`.
+2) In DevTools → Network, inspect:
+   - `/api/ra/dashboard?mode=cached` → response header `x-ww-cache: hit|miss|disabled`
+   - (if a cache miss occurred) `/api/ra/dashboard?mode=live` → `x-ww-cache: refresh`
+   - `/api/ra/weather/range?...&mode=cached` → `x-ww-cache: hit|miss|disabled`
+3) Reload `/dashboard`:
+   - `/api/ra/dashboard?mode=cached` should become `x-ww-cache: hit` after the cache has been populated.
+
+Troubleshooting:
+- `x-ww-cache: disabled` → Upstash/Vercel KV env vars are missing in Vercel.
+- Repeated `miss` even after a `live` call → confirm the Upstash integration is connected to the project and env vars are present in the deployment environment.
+
+---
+
 ## T27 Runbook — Render Backend Service
 
 > **Status (2026-02-25):** Service is live at `https://weather-and-wellness-dashboard.onrender.com`.

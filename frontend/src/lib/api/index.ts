@@ -294,6 +294,21 @@ export interface DashboardRangeRouteResponse {
   data: DashboardRangeBundle;
 }
 
+/**
+ * Bundle returned by GET /api/ra/weather/range (Vercel Route Handler).
+ * Cached payload for weather-only trend charts.
+ */
+export interface WeatherRangeBundle {
+  weather: WeatherDailyResponse;
+  cached_at: string; // ISO 8601
+}
+
+/** Response envelope from GET /api/ra/weather/range. */
+export interface WeatherRangeRouteResponse {
+  cached: boolean;
+  data: WeatherRangeBundle | null;
+}
+
 /** One-click supervised flow: create anonymous participant + active session. */
 export async function startSession(
   payload: StartSessionCreate
@@ -355,6 +370,38 @@ export async function getDashboardRangeBundle(
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
   return res.json() as Promise<DashboardRangeRouteResponse>;
+}
+
+/**
+ * Fetch a weather-only range bundle from the same-origin Route Handler.
+ * mode=cached → returns the Upstash Redis bundle if present (fast path).
+ * mode=live   → fetches fresh data from the Render backend, refreshes the cache.
+ */
+export async function getWeatherRangeBundle(
+  mode: "cached" | "live",
+  dateFrom: string,
+  dateTo: string
+): Promise<WeatherRangeRouteResponse> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const params = new URLSearchParams({
+    mode,
+    date_from: dateFrom,
+    date_to: dateTo,
+  });
+  const res = await fetch(`/api/ra/weather/range?${params.toString()}`, {
+    method: "GET",
+    headers,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<WeatherRangeRouteResponse>;
 }
 
 /** Trigger manual weather ingestion via LabMember JWT (RA-only). */

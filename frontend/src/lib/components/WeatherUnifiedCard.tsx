@@ -5,7 +5,7 @@ import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import {
   ApiError,
-  getDashboardRangeBundle,
+  getWeatherRangeBundle,
   triggerWeatherIngest,
   type WeatherDailyItem,
   type WeatherDailyResponse,
@@ -267,19 +267,47 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
   }, []);
 
   // ── Fetch range data ──────────────────────────────────────────────────────
-  const fetchRange = useCallback(async (dateFrom: string, dateTo: string) => {
-    setRangeLoading(true);
+  const fetchRange = useCallback(async (
+    dateFrom: string,
+    dateTo: string,
+    options?: { forceLive?: boolean }
+  ) => {
     setRangeError(null);
     const seq = rangeSeqRef.current + 1;
     rangeSeqRef.current = seq;
+    let loadingTimer: ReturnType<typeof setTimeout> | null = null;
+    const setLoadingIfStillCurrent = () => {
+      if (rangeSeqRef.current === seq) setRangeLoading(true);
+    };
+    loadingTimer = setTimeout(setLoadingIfStillCurrent, 250);
+
     try {
-      const res = await getDashboardRangeBundle(dateFrom, dateTo);
+      if (options?.forceLive) {
+        setLoadingIfStillCurrent();
+        const live = await getWeatherRangeBundle("live", dateFrom, dateTo);
+        if (rangeSeqRef.current !== seq) return;
+        if (!live.data) throw new Error("No weather data returned");
+        setRangeItems(live.data.weather.items);
+        return;
+      }
+
+      const cached = await getWeatherRangeBundle("cached", dateFrom, dateTo);
       if (rangeSeqRef.current !== seq) return;
-      setRangeItems(res.data.weather.items);
+      if (cached.cached && cached.data) {
+        setRangeItems(cached.data.weather.items);
+        return;
+      }
+
+      setLoadingIfStillCurrent();
+      const live = await getWeatherRangeBundle("live", dateFrom, dateTo);
+      if (rangeSeqRef.current !== seq) return;
+      if (!live.data) throw new Error("No weather data returned");
+      setRangeItems(live.data.weather.items);
     } catch (err) {
       if (rangeSeqRef.current !== seq) return;
       setRangeError(getRangeErrorMessage(err));
     } finally {
+      if (loadingTimer) clearTimeout(loadingTimer);
       if (rangeSeqRef.current === seq) setRangeLoading(false);
     }
   }, []);
@@ -297,7 +325,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
     }
     const today = getStudyToday();
     let from: string;
-    let to = today;
+    const to = today;
     if (next === "study_start") {
       from = STUDY_START;
     } else if (next === "last_7") {
@@ -341,6 +369,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
           ? "Update complete with partial data."
           : "Update ran but no data could be parsed.";
       setUpdateResult({ kind: "success", message: label });
+      void fetchRange(customFrom, customTo, { forceLive: true });
     } catch (err) {
       setUpdateResult({ kind: "error", message: getIngestErrorMessage(err) });
     } finally {

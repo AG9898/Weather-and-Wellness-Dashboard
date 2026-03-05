@@ -10,10 +10,10 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 17 (T54–T70; T67 superseded) — Phase 4 ongoing              |
+| Tasks completed    | 18 (T54–T71; T67 superseded) — Phase 4 ongoing              |
 | Remaining queue    | TBD — new tasks to be added to kanban.md                    |
 | Tasks in progress  | 0                                                            |
-| Last updated       | 2026-03-04                                                   |
+| Last updated       | 2026-03-05                                                   |
 
 ---
 
@@ -28,6 +28,19 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T71 — Frontend perf: cache hardening + weather range caching (completed 2026-03-05)
+
+- `/api/ra/dashboard` cache behaviour hardened:
+  - Redis write is awaited (prevents dropped writes in serverless runtimes).
+  - Cache TTL increased to 6 hours (reduces repeated cold-start misses).
+  - Response header `x-ww-cache` added (`hit|miss|disabled|refresh|error|skip`) to aid production diagnostics.
+- Dashboard page avoids waking the Render backend on every visit: it skips the immediate live refresh when cached data is still recent.
+- New cached route handler added for the weather trend chart:
+  - `GET /api/ra/weather/range?mode=cached|live&date_from=...&date_to=...`
+  - Cache key `ww:ra:weather:range:v1:<date_from>:<date_to>` with TTL 24 hours.
+- WeatherUnifiedCard range fetch updated to cached-first weather-only calls (no longer uses the live-only dashboard range bundle).
+- Docs updated: `docs/ARCHITECTURE.md`, `docs/CONVENTIONS.md`, `docs/DESIGN_SPEC.md`, `docs/devSteps.md`.
 
 ## T70 — Frontend: Dashboard simplification + WeatherUnifiedCard swap (completed 2026-03-04)
 
