@@ -10,7 +10,7 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 19 (T54–T72; T67 superseded) — Phase 4 ongoing              |
+| Tasks completed    | 20 (T54–T73; T67 superseded) — Phase 4 ongoing              |
 | Remaining queue    | TBD — new tasks to be added to kanban.md                    |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-05                                                   |
@@ -28,6 +28,15 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T73 — Frontend — Login page glassmorphism refactor (completed 2026-03-05)
+
+- Redesigned `src/app/login/page.tsx` to match the glassmorphism reference (`reference/UI Reference/login/Glass Effect Login Page - Blue.png`).
+- Full-viewport UBC blue gradient background (`#001328 → #001f5e → #002d80`) replaces the theme `--background` variable on this standalone page.
+- Glassmorphism card: `backdrop-filter: blur(18px)`, semi-transparent `rgba(0,28,76,0.38)` background, `rgba(255,255,255,0.13)` border.
+- 5 abstract SVG blob shapes distributed around viewport, each with UBC blue gradient fill (`blue-700 → blue-500/300`), 0.17–0.28 opacity, 2–5px blur, and independent CSS `@keyframes blob-drift-N` animations (~19–26s, `alternate`, `ease-in-out`).
+- Animation keyframes and `prefers-reduced-motion` guard added to `globals.css`.
+- All auth logic (Supabase sign-in, stale session recovery, redirect to `/dashboard`) unchanged.
 
 ## T72 — Frontend reliability: live fetch timeout + stale-cache fallback docs (completed 2026-03-05)
 
