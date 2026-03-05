@@ -48,14 +48,16 @@ JWT verification in Route Handlers requires one of:
 1) Login as an RA and open `/dashboard`.
 2) In DevTools → Network, inspect:
    - `/api/ra/dashboard?mode=cached` → response header `x-ww-cache: hit|miss|disabled`
-   - (if a cache miss occurred) `/api/ra/dashboard?mode=live` → `x-ww-cache: refresh`
+   - (if a cache miss occurred) `/api/ra/dashboard?mode=live` → `x-ww-cache: refresh|stale-fallback|error`
    - `/api/ra/weather/range?...&mode=cached` → `x-ww-cache: hit|miss|disabled`
+   - (if a cache miss occurred) `/api/ra/weather/range?...&mode=live` → `x-ww-cache: refresh|stale-fallback|error`
 3) Reload `/dashboard`:
    - `/api/ra/dashboard?mode=cached` should become `x-ww-cache: hit` after the cache has been populated.
 
 Troubleshooting:
 - `x-ww-cache: disabled` → Upstash/Vercel KV env vars are missing in Vercel.
 - Repeated `miss` even after a `live` call → confirm the Upstash integration is connected to the project and env vars are present in the deployment environment.
+- Repeated `x-ww-cache: error` on `mode=live` with low latency (~15s) indicates backend timeout protection is active and Render should be checked (`/health`, service status, cold-start/load).
 
 ---
 

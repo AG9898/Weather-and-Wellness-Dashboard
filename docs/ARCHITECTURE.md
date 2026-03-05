@@ -24,7 +24,7 @@
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:dashboard:v1`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/dashboard/summary` + `/weather/daily` from the Render backend in parallel. Writes the result bundle to Redis (TTL 6 hours; write is awaited). Returns `{ cached: false, data }`. |
+| `live` | Fetches `/dashboard/summary` + `/weather/daily` from the Render backend in parallel with a 15s timeout per backend request. On success, writes the result bundle to Redis (TTL 6 hours; write is awaited) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 **Auth:** The handler verifies the Supabase JWT from `Authorization: Bearer <token>` before touching the cache or making backend calls. No auth bypass via cache. Returns 401 for missing or invalid tokens.
 
@@ -41,7 +41,7 @@
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:weather:range:v1:<date_from>:<date_to>`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>` from the Render backend. Writes the result bundle to Redis (TTL 24 hours; write is awaited). Returns `{ cached: false, data }`. |
+| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 ## Vercel Range Bundle Route Handler (Phase 4)
 

@@ -179,6 +179,7 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then (optionally) refresh from the live Render backend and update the UI when fresh data arrives. The dashboard avoids triggering a live refresh on every visit when cached data is still recent (prevents waking the Render backend unnecessarily).
 - The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather data (`WeatherDailyResponse`).
 - `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
+- Route handlers enforce backend fetch timeouts (15s) and use stale-cache fallback when `mode=live` fails, so dashboard loading does not hang indefinitely on Render outages.
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 

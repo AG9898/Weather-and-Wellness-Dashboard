@@ -91,6 +91,8 @@
 - JWT verification in Route Handlers uses `jose`: ES256 via JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`) as primary; HS256 with `SUPABASE_JWT_SECRET` as fallback.
 - Redis client (`@upstash/redis`) is instantiated only when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set; handlers degrade gracefully without them.
 - Redis writes should be awaited in Route Handlers; fire-and-forget writes can be dropped in serverless runtimes.
+- Route Handler calls from Vercel to Render should use explicit request timeouts (current standard: 15s per backend fetch) so UI paths fail fast instead of hanging on backend stalls.
+- For cached endpoints, `mode=live` should attempt a stale-cache fallback when backend fetches fail, and expose cache-state diagnostics via `x-ww-cache` response headers.
 - Current cache keys:
   - `ww:ra:dashboard:v1` (TTL 6 hours) — summary + today weather bundle
   - `ww:ra:weather:range:v1:<date_from>:<date_to>` (TTL 24 hours) — weather-only trend bundle

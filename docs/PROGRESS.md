@@ -10,7 +10,7 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 18 (T54–T71; T67 superseded) — Phase 4 ongoing              |
+| Tasks completed    | 19 (T54–T72; T67 superseded) — Phase 4 ongoing              |
 | Remaining queue    | TBD — new tasks to be added to kanban.md                    |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-05                                                   |
@@ -28,6 +28,18 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T72 — Frontend reliability: live fetch timeout + stale-cache fallback docs (completed 2026-03-05)
+
+- Diagnosed deployed dashboard stall: both cache reads were misses while live Route Handler calls hung waiting on Render; no timeout existed in Vercel->Render fetch path.
+- Implemented route-level protection in `GET /api/ra/dashboard` and `GET /api/ra/weather/range`:
+  - 15s backend fetch timeout per upstream Render request.
+  - `mode=live` stale-cache fallback on live-fetch failure when cache exists.
+- Updated docs for operational behavior and verification:
+  - `docs/ARCHITECTURE.md` (live-mode timeout + stale-fallback semantics)
+  - `docs/CONVENTIONS.md` (timeout/fallback conventions for cached Route Handlers)
+  - `docs/devSteps.md` (smoke-test/troubleshooting with `x-ww-cache: refresh|stale-fallback|error`)
+  - `docs/DESIGN_SPEC.md` (fail-fast loading behavior note)
 
 ## T71 — Frontend perf: cache hardening + weather range caching (completed 2026-03-05)
 
