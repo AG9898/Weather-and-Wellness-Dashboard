@@ -132,6 +132,28 @@ Complete end-to-end change record for T35–T40 covering all routing, API, and b
 
 ---
 
+### Bug fix — Dashboard cache TTL extended to 24h — 2026-03-05
+
+**Symptom:** RA dashboard showed "Unable to load dashboard data. You can still start a new entry." while the Highcharts weather trend chart continued to display correctly.
+
+**Root cause:** The Upstash Redis cache for `GET /api/ra/dashboard` (key `ww:ra:dashboard:v1`) had a 6-hour TTL, while the weather/range cache (`ww:ra:weather:range:v1:…`) had a 24-hour TTL. After 6+ hours of inactivity (e.g. overnight), the dashboard key expired. On the next page load:
+1. `mode=cached` → Redis miss (key expired) → `{cached: false, data: null}`
+2. `mode=live` → Vercel Route Handler calls the Render backend, which cold-starts on the free tier (~30–60s spin-up)
+3. 15-second fetch timeout fires → live fetch throws
+4. Stale-fallback attempt: `redis.get(CACHE_KEY)` → key also expired → returns null
+5. Route returns 502 → dashboard page catches and shows the error banner
+
+Meanwhile the weather/range cache (24h TTL) was still alive → Highcharts data displayed fine.
+
+**Fix:** Increased `CACHE_TTL` in `frontend/src/app/api/ra/dashboard/route.ts` from `60 * 60 * 6` (6 hours) to `60 * 60 * 24` (24 hours), matching the weather/range TTL. With a 24-hour TTL the stale-fallback key survives overnight, so cold-start failures serve cached data rather than erroring.
+
+**Files modified:**
+- `frontend/src/app/api/ra/dashboard/route.ts` — `CACHE_TTL` changed from 6h to 24h
+- `docs/ARCHITECTURE.md` — Vercel Cache Route Handler table updated (TTL 6h → 24h)
+- `docs/PROGRESS_LOG.md` — this entry
+
+---
+
 ### T37 — Frontend — RA dashboard Start New Entry — 2026-02-27
 
 **Files modified:**
