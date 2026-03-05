@@ -85,6 +85,26 @@ async function verifySupabaseJWT(token: string): Promise<boolean> {
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const BACKEND_FETCH_TIMEOUT_MS = 15_000;
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = BACKEND_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Timed out calling ${url}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 function isIsoDate(value: string): boolean {
   return DATE_RE.test(value);
@@ -100,7 +120,7 @@ async function fetchLiveWeatherRange(
     "Content-Type": "application/json",
   };
 
-  const weatherRes = await fetch(
+  const weatherRes = await fetchWithTimeout(
     `${BACKEND_URL}/weather/daily?start=${dateFrom}&end=${dateTo}`,
     { headers, cache: "no-store" }
   );
@@ -191,6 +211,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       { headers: { "x-ww-cache": "refresh" } }
     );
   } catch (err) {
+    // If live fetch fails, best-effort stale fallback to existing cache.
+    if (redis) {
+      try {
+        const cached = await redis.get<WeatherRangeBundle>(cacheKey);
+        if (cached) {
+          return NextResponse.json<WeatherRangeRouteResponse>(
+            { cached: true, data: cached },
+            { headers: { "x-ww-cache": "stale-fallback" } }
+          );
+        }
+      } catch {
+        // Ignore stale fallback errors and return the live failure below.
+      }
+    }
+
     const message =
       err instanceof Error ? err.message : "Failed to fetch live weather range";
     return NextResponse.json(
@@ -199,4 +234,3 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     );
   }
 }
-

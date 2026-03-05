@@ -97,6 +97,26 @@ async function verifySupabaseJWT(token: string): Promise<boolean> {
 
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BACKEND_FETCH_TIMEOUT_MS = 15_000;
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs = BACKEND_FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Timed out calling ${url}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 async function fetchLiveBundle(token: string): Promise<DashboardBundle> {
   const today = new Intl.DateTimeFormat("en-CA", {
@@ -108,8 +128,8 @@ async function fetchLiveBundle(token: string): Promise<DashboardBundle> {
   };
 
   const [summaryRes, weatherRes] = await Promise.all([
-    fetch(`${BACKEND_URL}/dashboard/summary`, { headers }),
-    fetch(`${BACKEND_URL}/weather/daily?start=${today}&end=${today}`, {
+    fetchWithTimeout(`${BACKEND_URL}/dashboard/summary`, { headers }),
+    fetchWithTimeout(`${BACKEND_URL}/weather/daily?start=${today}&end=${today}`, {
       headers,
     }),
   ]);
@@ -200,6 +220,21 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       { headers: { "x-ww-cache": "refresh" } }
     );
   } catch (err) {
+    // If live fetch fails, best-effort stale fallback to existing cache.
+    if (redis) {
+      try {
+        const cached = await redis.get<DashboardBundle>(CACHE_KEY);
+        if (cached) {
+          return NextResponse.json<DashboardRouteResponse>(
+            { cached: true, data: cached },
+            { headers: { "x-ww-cache": "stale-fallback" } }
+          );
+        }
+      } catch {
+        // Ignore stale fallback errors and return the live failure below.
+      }
+    }
+
     const message =
       err instanceof Error ? err.message : "Failed to fetch live data";
     return NextResponse.json(
