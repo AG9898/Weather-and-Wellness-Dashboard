@@ -378,8 +378,12 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
     }
   }
 
-  // ── Chart ref (for imperative data/visibility updates with animation) ────
+  // ── Chart ref (for imperative data/visibility updates) ───────────────────
   const chartRef = useRef<HighchartsReact.RefObject>(null);
+  // Ref to the chart area div — used for the CSS clip-path draw-in animation
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+  // Track previous rangeItems reference to distinguish data changes from color re-syncs
+  const prevRangeItemsRef = useRef<WeatherDailyItem[]>([]);
 
   // ── Chart options (static config only — data is pushed imperatively) ──────
   const chartOptions = useMemo<Highcharts.Options>(() => {
@@ -474,7 +478,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
       plotOptions: {
         series: {
           connectNulls: false,
-          animation: { duration: 800 },
+          animation: false,
           states: { hover: { lineWidthPlus: 0 } },
         },
         areaspline: {
@@ -540,12 +544,17 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
     };
   }, [chartColors]);
 
-  // Push series data imperatively so Highcharts can animate the draw-in.
+  // Push series data imperatively. CSS clip-path on the chart area div creates
+  // the left-to-right draw-in effect on actual data changes.
   // chartColors is included so data is re-applied after a theme-triggered chart.update().
   useEffect(() => {
     if (!mounted) return;
     const chart = chartRef.current?.chart;
     if (!chart || chart.series.length < 3) return;
+
+    const dataChanged = rangeItems !== prevRangeItemsRef.current;
+    prevRangeItemsRef.current = rangeItems;
+
     const tempData: [number, number | null][] = rangeItems.map((item) => [
       dateToTs(item.date_local),
       item.current_temp_c,
@@ -558,9 +567,26 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
       dateToTs(item.date_local),
       item.sunshine_duration_hours,
     ]);
-    chart.series[0].setData(tempData, false, { duration: 800 });
-    chart.series[1].setData(precipData, false, { duration: 800 });
-    chart.series[2].setData(sunData, true, { duration: 800 });
+
+    const el = chartAreaRef.current;
+    const shouldAnimate = dataChanged && rangeItems.length > 0 && el !== null;
+
+    if (shouldAnimate && el) {
+      // Hide chart area from the right edge before updating data
+      el.style.transition = "none";
+      el.style.clipPath = "inset(0 100% 0 0)";
+      void el.offsetWidth; // force reflow so clip is applied before the redraw
+    }
+
+    chart.series[0].setData(tempData, false, false);
+    chart.series[1].setData(precipData, false, false);
+    chart.series[2].setData(sunData, true, false); // true = trigger chart redraw
+
+    if (shouldAnimate && el) {
+      // Animate the clip path back to fully visible — left-to-right draw-in
+      el.style.transition = "clip-path 800ms ease-out";
+      el.style.clipPath = "inset(0 0% 0 0)";
+    }
   }, [rangeItems, chartColors, mounted]);
 
   // Sync series visibility imperatively (no animation needed for show/hide).
@@ -815,7 +841,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
         )}
 
         {/* ── Highcharts line chart ─────────────────────────────────────── */}
-        <div className="h-72 w-full">
+        <div className="h-72 w-full" ref={chartAreaRef}>
           {mounted && (
             <HighchartsReact
               highcharts={Highcharts}
