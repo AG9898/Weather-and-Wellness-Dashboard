@@ -192,6 +192,15 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 - **Tooltip `this` typing:** Highcharts 12 types `formatter` as `(this: Point) => string`. For shared tooltip access, cast: `const ctx = this as unknown as { points?: Point[]; x?: number }`.
 - **Theme re-read pattern:** Use `MutationObserver` on `document.documentElement` with `attributeFilter: ["class"]` to detect theme class changes and call `setChartColors(readChartColors())` so charts re-theme without a page reload.
 
+**Critical: keep `chartOptions` as the single source of truth for series data and visibility.**
+
+`HighchartsReact` compares the `options` prop by reference (`===`). When the reference changes it calls `chart.update(newOptions, true, true)`, resetting every series to whatever is in `options.series[n].data`. This creates a dangerous race condition when data is managed imperatively:
+
+- **Never put `data: []` in `chartOptions` and push data via `series.setData()`** — any state update that causes `chartOptions` to recompute (e.g. `setChartColors(readChartColors())` after a theme change) will create a new options reference, trigger `chart.update` with empty arrays, and wipe all series data before `setData()` can restore it.
+- **Never use `series.setVisible()` as the primary visibility mechanism** — same race applies: a concurrent `chart.update` from a color re-sync will override it.
+- **Do** include computed `data` arrays and `visible` booleans directly in the `chartOptions` `useMemo`, with all relevant state (`rangeItems`, `showTemp`, etc.) as deps. React's declarative render is the authority; Highcharts follows it.
+- **Do** use imperative calls (`setData`, `setVisible`) only when you can guarantee no concurrent `chart.update` — which is rarely safe when color/theme state exists alongside data state.
+
 ## 13) Quick CSS Token Seed
 
 ```css
