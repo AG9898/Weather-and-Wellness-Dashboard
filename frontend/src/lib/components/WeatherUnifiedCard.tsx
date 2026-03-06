@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import CloudLoading from "@/lib/components/CloudLoading";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -597,26 +598,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
           >
             {updating ? (
               <>
-                <svg
-                  className="mr-1.5 h-3.5 w-3.5 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8H4z"
-                  />
-                </svg>
+                <CloudLoading size="sm" className="mr-1.5" />
                 Updating…
               </>
             ) : (
@@ -627,7 +609,10 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
 
         {/* ── Current-day weather summary ───────────────────────────────── */}
         {isLoading ? (
-          <p className="mb-5 text-sm text-muted-foreground">Loading…</p>
+          <div className="mb-5 flex items-center gap-2 text-muted-foreground">
+            <CloudLoading size="md" />
+            <span className="text-sm">Loading…</span>
+          </div>
         ) : (
           <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             {/* Temperature + forecast + condition + precip */}

@@ -45,7 +45,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T72",
       "title": "Frontend — Shared cloud loading component with animejs float animation",
-      "status": "todo",
+      "status": "done",
       "description": "Create a reusable `<CloudLoading />` component at `src/lib/components/CloudLoading.tsx` that replaces all existing inline spinner patterns. IMPORTANT: animejs is documented in docs/animejs.md but is not yet installed — run `npm install animejs` inside `frontend/` as part of this task. Inline the SVG from `reference/UI Reference/Animations/cloud-load-icon.svg` (stroke paths; change stroke color to `currentColor` for theming). On mount: (1) use `svg.createDrawable()` from animejs to animate the stroke being drawn in once; (2) then start a continuous `translateY` float loop: `[-5px → 5px]`, duration 1600ms, ease `inOut(2)`, loop+alternate. Clean up with `anim.pause()` on unmount. Respect `prefers-reduced-motion`. Accept a `size` prop (sm/md/lg). Apply to: `WeatherUnifiedCard` loading/updating states, `DashboardPage` summaryLoading state, and `new-session/page.tsx` submitting spinner.",
       "stack": ["frontend"],
       "depends_on": [],

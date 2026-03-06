@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 20 (T54–T73; T67 superseded) — Phase 4 ongoing              |
-| Remaining queue    | TBD — new tasks to be added to kanban.md                    |
+| Tasks completed    | 21 (T54–T73 + T72 animejs; T67 superseded) — Phase 4 ongoing |
+| Remaining queue    | T73–T76 in kanban.md                                         |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-05                                                   |
 
@@ -28,6 +28,21 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T72 (kanban) — Frontend — Shared cloud loading component with animejs (completed 2026-03-05)
+
+- Installed `animejs` (^4.x) in `frontend/` (`npm install animejs`).
+- Created `src/lib/components/CloudLoading.tsx` — reusable `<CloudLoading size="sm|md|lg" />` component.
+  - Inlines the cloud SVG from `reference/UI Reference/Animations/cloud-load-icon.svg` with `stroke="currentColor"` for theming.
+  - On mount: uses `svg.createDrawable()` from animejs to animate both stroke paths drawing in once (700ms, `out(2)`).
+  - After draw completes: starts a continuous `translateY [-5px → 5px]` float loop (1600ms, `inOut(2)`, `loop+alternate`).
+  - Respects `prefers-reduced-motion` — no animation when user prefers reduced motion.
+  - Cleans up both animations (`anim.pause()`) on unmount.
+- Applied to three locations:
+  - `WeatherUnifiedCard.tsx`: replaces the `animate-spin` SVG in the Update Weather button (`updating` state) and replaces the "Loading…" text in the `isLoading` state.
+  - `dashboard/page.tsx`: shows a `sm` CloudLoading indicator above the KPI grid when `summaryLoading` is true.
+  - `new-session/page.tsx`: replaces the `animate-spin` SVG in the Start Session submit button (`starting` state).
+- `tsc --noEmit` passes with no errors.
 
 ## T73 — Frontend — Login page glassmorphism refactor (completed 2026-03-05)
 

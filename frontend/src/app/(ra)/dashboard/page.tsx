@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import PageContainer from "@/lib/components/PageContainer";
 import WeatherUnifiedCard from "@/lib/components/WeatherUnifiedCard";
+import CloudLoading from "@/lib/components/CloudLoading";
 import { Button } from "@/components/ui/button";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -161,6 +162,14 @@ export default function DashboardPage() {
       {error && (
         <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
+        </div>
+      )}
+
+      {/* KPI loading indicator */}
+      {summaryLoading && (
+        <div className="mb-3 flex items-center gap-2 text-muted-foreground">
+          <CloudLoading size="sm" />
+          <span className="text-xs font-medium">Loading stats…</span>
         </div>
       )}
 
