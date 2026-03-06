@@ -116,9 +116,12 @@ export default function SurveyForm({
               key={item.number}
               className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4"
             >
-              <legend className="px-1 text-sm font-medium leading-snug text-foreground">
+              <legend className="sr-only">
                 {item.number}. {item.text}
               </legend>
+              <p className="text-sm font-medium leading-snug text-foreground">
+                {item.number}. {item.text}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {scale.map((opt) => {
                   const selected = responses[item.number] === opt.value;

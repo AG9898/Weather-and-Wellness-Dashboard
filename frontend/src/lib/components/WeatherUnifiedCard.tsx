@@ -378,22 +378,12 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
     }
   }
 
-  // ── Chart options ─────────────────────────────────────────────────────────
+  // ── Chart ref (for imperative data/visibility updates with animation) ────
+  const chartRef = useRef<HighchartsReact.RefObject>(null);
+
+  // ── Chart options (static config only — data is pushed imperatively) ──────
   const chartOptions = useMemo<Highcharts.Options>(() => {
     const { chart1, chart2, chart3, border, mutedFg } = chartColors;
-
-    const tempData: [number, number | null][] = rangeItems.map((item) => [
-      dateToTs(item.date_local),
-      item.current_temp_c,
-    ]);
-    const precipData: [number, number | null][] = rangeItems.map((item) => [
-      dateToTs(item.date_local),
-      item.current_precip_today_mm,
-    ]);
-    const sunlightData: [number, number | null][] = rangeItems.map((item) => [
-      dateToTs(item.date_local),
-      item.sunshine_duration_hours,
-    ]);
 
     return {
       chart: {
@@ -484,7 +474,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
       plotOptions: {
         series: {
           connectNulls: false,
-          animation: false,
+          animation: { duration: 800 },
           states: { hover: { lineWidthPlus: 0 } },
         },
         areaspline: {
@@ -519,8 +509,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
             ],
           },
           yAxis: 0,
-          data: tempData,
-          visible: showTemp,
+          data: [],
           zIndex: 3,
         },
         {
@@ -532,8 +521,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
           opacity: 0.65,
           dashStyle: "ShortDash",
           yAxis: 1,
-          data: precipData,
-          visible: showPrecip,
+          data: [],
           zIndex: 2,
         },
         {
@@ -545,13 +533,45 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
           opacity: 0.65,
           dashStyle: "ShortDot",
           yAxis: 2,
-          data: sunlightData,
-          visible: showSunlight,
+          data: [],
           zIndex: 1,
         },
       ],
     };
-  }, [chartColors, rangeItems, showTemp, showPrecip, showSunlight]);
+  }, [chartColors]);
+
+  // Push series data imperatively so Highcharts can animate the draw-in.
+  // chartColors is included so data is re-applied after a theme-triggered chart.update().
+  useEffect(() => {
+    if (!mounted) return;
+    const chart = chartRef.current?.chart;
+    if (!chart || chart.series.length < 3) return;
+    const tempData: [number, number | null][] = rangeItems.map((item) => [
+      dateToTs(item.date_local),
+      item.current_temp_c,
+    ]);
+    const precipData: [number, number | null][] = rangeItems.map((item) => [
+      dateToTs(item.date_local),
+      item.current_precip_today_mm,
+    ]);
+    const sunData: [number, number | null][] = rangeItems.map((item) => [
+      dateToTs(item.date_local),
+      item.sunshine_duration_hours,
+    ]);
+    chart.series[0].setData(tempData, false, { duration: 800 });
+    chart.series[1].setData(precipData, false, { duration: 800 });
+    chart.series[2].setData(sunData, true, { duration: 800 });
+  }, [rangeItems, chartColors, mounted]);
+
+  // Sync series visibility imperatively (no animation needed for show/hide).
+  useEffect(() => {
+    if (!mounted) return;
+    const chart = chartRef.current?.chart;
+    if (!chart || chart.series.length < 3) return;
+    chart.series[0].setVisible(showTemp, false);
+    chart.series[1].setVisible(showPrecip, false);
+    chart.series[2].setVisible(showSunlight, true);
+  }, [showTemp, showPrecip, showSunlight, mounted]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -800,6 +820,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
             <HighchartsReact
               highcharts={Highcharts}
               options={chartOptions}
+              ref={chartRef}
               containerProps={{ style: { width: "100%", height: "100%" } }}
             />
           )}

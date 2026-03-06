@@ -69,7 +69,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T73",
       "title": "Frontend — Fix survey form question/answer alignment",
-      "status": "todo",
+      "status": "done",
       "description": "In `src/lib/components/SurveyForm.tsx`, the `<legend>` element causes each survey question to render on the fieldset border rather than as block content above the answer options. Root cause: browsers position `<legend>` floating at the top of the fieldset border by default. Fix: replace the visible `<legend>` with a visually hidden `<legend className='sr-only'>` (preserves screen reader semantics for the fieldset radio group) and add a sibling `<p>` or `<div>` as the first visible child inside the fieldset to display the question number and text with the same styling. No changes to answer option rendering, response state, or submit logic.",
       "stack": ["frontend"],
       "read_docs": [
@@ -89,7 +89,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T74",
       "title": "Frontend — Highcharts graph draw-in animation on load and filter change",
-      "status": "todo",
+      "status": "done",
       "description": "Add a left-to-right draw-in animation to the weather trend chart in `src/lib/components/WeatherUnifiedCard.tsx`. Highcharts line series natively animate data rendering left-to-right when `setData()` is called with animation options enabled. Configure `plotOptions.series.animation = { duration: 800 }` on the chart options object. When a date range filter or metric toggle is applied, update each series via `chart.series[n].setData(newData, true, { duration: 800 })` rather than destroying and recreating the chart instance (avoid `key` prop resets that bypass animation). On initial chart load the same animation applies automatically. Total draw duration must be ≤1000ms. Ensure the chart ref (or Highcharts callback) is used to access series imperatively.",
       "stack": ["frontend"],
       "read_docs": [

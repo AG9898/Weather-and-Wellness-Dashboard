@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 21 (T54–T73 + T72 animejs; T67 superseded) — Phase 4 ongoing |
-| Remaining queue    | T73–T76 in kanban.md                                         |
+| Tasks completed    | 23 (T54–T74 + T72 animejs; T67 superseded) — Phase 4 ongoing |
+| Remaining queue    | T75–T76 in kanban.md                                         |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-05                                                   |
 
@@ -28,6 +28,25 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T74 — Frontend — Highcharts graph draw-in animation on load and filter change (completed 2026-03-05)
+
+- `WeatherUnifiedCard.tsx`: enabled left-to-right draw-in animation on the weather trend chart.
+- `plotOptions.series.animation = { duration: 800 }` — applies to initial chart load automatically.
+- Extracted data from `chartOptions` useMemo: series now start with `data: []`; the memo depends only on `chartColors` (prevents chart recreation on data change).
+- Added `useRef<HighchartsReact.RefObject>(null)` + `ref={chartRef}` on `<HighchartsReact>`.
+- New `useEffect([rangeItems, chartColors, mounted])`: calls `chart.series[n].setData(data, false/true, { duration: 800 })` imperatively — triggers animated redraw on every filter or metric change. `chartColors` included so data is re-applied after a theme-change `chart.update()`.
+- New `useEffect([showTemp, showPrecip, showSunlight, mounted])`: calls `chart.series[n].setVisible()` for metric toggle without animation.
+- `tsc --noEmit` passes with no errors.
+
+## T73 — Frontend — Fix survey form question/answer alignment (completed 2026-03-05)
+
+- Root cause: `<legend>` floats on the fieldset border by default in all browsers, causing question text to overlap the border rather than render as block content inside the container.
+- Fix in `src/lib/components/SurveyForm.tsx`:
+  - Changed `<legend>` to `<legend className="sr-only">` — preserves screen reader semantics for the radio group.
+  - Added a visible `<p className="text-sm font-medium leading-snug text-foreground">` as the first block child inside the fieldset to display the question number and text.
+- No changes to answer option rendering, response state, or submit logic.
+- Applies to all survey pages: ULS-8, CES-D 10, GAD-7, CogFunc 8a (all use `<SurveyForm />`).
 
 ## T72 (kanban) — Frontend — Shared cloud loading component with animejs (completed 2026-03-05)
 
