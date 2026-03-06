@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { animate } from "animejs";
 import {
   getDashboardBundle,
   type DashboardSummaryResponse,
@@ -11,6 +12,37 @@ import PageContainer from "@/lib/components/PageContainer";
 import WeatherUnifiedCard from "@/lib/components/WeatherUnifiedCard";
 import CloudLoading from "@/lib/components/CloudLoading";
 import { Button } from "@/components/ui/button";
+
+// ── Hooks ──────────────────────────────────────────────────────────────────────
+
+function useCountUp(target: number, duration: number): number {
+  const [count, setCount] = useState(0);
+  const currentRef = useRef(0);
+
+  useEffect(() => {
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) {
+      setCount(target);
+      currentRef.current = target;
+      return;
+    }
+
+    const obj = { value: currentRef.current };
+    const anim = animate(obj, {
+      value: target,
+      duration,
+      ease: "out(3)",
+      onUpdate: () => {
+        currentRef.current = obj.value;
+        setCount(Math.round(obj.value));
+      },
+    });
+
+    return () => { anim.pause(); };
+  }, [target, duration]);
+
+  return count;
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -22,6 +54,9 @@ interface KpiCardProps {
 }
 
 function KpiCard({ label, value, icon, accent = "bg-primary/15" }: KpiCardProps) {
+  const numericTarget = typeof value === "number" ? value : 0;
+  const displayCount = useCountUp(numericTarget, 800);
+
   return (
     <div
       className="relative overflow-hidden rounded-2xl border border-border/90 p-5 shadow-[0_20px_40px_-42px_rgb(0_19_40/0.95)]"
@@ -36,7 +71,9 @@ function KpiCard({ label, value, icon, accent = "bg-primary/15" }: KpiCardProps)
           {icon}
         </div>
         <div className="mt-4">
-          <p className="text-3xl font-bold tabular-nums text-foreground">{value}</p>
+          <p className="text-3xl font-bold tabular-nums text-foreground">
+            {typeof value === "number" ? displayCount : value}
+          </p>
           <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             {label}
           </p>

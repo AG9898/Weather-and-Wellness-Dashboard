@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 23 (T54–T74 + T72 animejs; T67 superseded) — Phase 4 ongoing |
-| Remaining queue    | T75–T76 in kanban.md                                         |
+| Tasks completed    | 24 (T54–T75 + T72 animejs; T67 superseded) — Phase 4 ongoing |
+| Remaining queue    | T76 in kanban.md                                             |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-05                                                   |
 
@@ -28,6 +28,16 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T75 — Frontend — KPI stat number counter animation with animejs (completed 2026-03-05)
+
+- `dashboard/page.tsx`: added `import { animate } from "animejs"`.
+- Added `useCountUp(target: number, duration: number): number` hook: animates a plain JS object `{ value: currentRef.current }` → `{ value: target }` via animejs `animate()`, reads `obj.value` in `onUpdate` to drive React state with `Math.round`. Duration 800ms, ease `out(3)`.
+- Starts from the previously displayed value (tracked via `currentRef`) so data-refresh re-animations go from old to new value rather than from 0.
+- `prefers-reduced-motion`: calls `setCount(target)` immediately with no animation.
+- Cleanup: `anim.pause()` returned from `useEffect`.
+- `KpiCard`: calls `useCountUp(numericTarget, 800)` unconditionally; displays `displayCount` when `value` is a number, raw string otherwise (e.g. "—" during loading).
+- No layout shift: `tabular-nums` already present on the value `<p>`.
 
 ## T74 — Frontend — Highcharts graph draw-in animation on load and filter change (completed 2026-03-05)
 

@@ -108,7 +108,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T75",
       "title": "Frontend — KPI stat number counter animation with animejs",
-      "status": "todo",
+      "status": "done",
       "description": "Add a count-up animation to the 5 KPI stat numbers on the dashboard (`src/app/(ra)/dashboard/page.tsx`). Create a `useCountUp(target: number, duration: number)` hook inside the file: use animejs `animate()` on a plain JS object `{ value: 0 }` targeting `{ value: target }`, read the interpolated value via `onUpdate` callback and push it to React state (Math.round). Duration: 800ms, ease: `out(3)`. Trigger re-animation when `target` changes (data refresh). Pause on unmount. Apply to the `<p className='text-3xl font-bold ...'>` value render in `KpiCard`. Requires animejs to be installed (see T72).",
       "stack": ["frontend"],
       "depends_on": ["T72"],
