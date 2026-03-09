@@ -279,6 +279,7 @@ The Import/Export page at `/import-export` is RA-only and contains two sections:
    - On file selection, the backend returns a preview (counts + row-level validation issues).
    - UI shows a confirmation panel including the number of participants/sessions that will be created/updated.
    - A single explicit "Confirm import" action performs the write.
+   - The reference workbook carries aggregate legacy outcome values only: `anxiety`, `loneliness`, `depression`, `self_report`, and `digit_span_score`. Import does not reconstruct raw survey item rows or Digit Span trials.
 2. **Export** — two download buttons:
    - Export XLSX: one workbook with a README sheet plus one sheet per DB table. Filename: `Weather and wellness - YYYY-MM-DD.xlsx`
    - Export CSV: a zip containing one CSV per DB table. Filename: `Weather and wellness - YYYY-MM-DD.zip`

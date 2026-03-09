@@ -135,6 +135,22 @@ Computed by `backend/app/scoring/digitspan.py` — not on the client.
 
 ---
 
+## Legacy Import Note
+
+The legacy reference workbook `reference/data_full_1-230.xlsx` does **not** use this same fixed
+14-trial protocol for its stored `digit_span_score`.
+
+- Legacy scoring tallies correct responses until the participant records two incorrect trials at
+  the same span length.
+- A wrong response at one span length does not stop scoring at the next span length; stopping
+  occurs only after the second wrong response for the same length.
+- Because the workbook stores only the aggregate legacy score, import cannot reconstruct native
+  `digitspan_trials` rows or a native-style `max_span`.
+- Current import implementation stores the legacy value as the imported run outcome in
+  `digitspan_runs.total_correct` and leaves `max_span` null.
+
+---
+
 ## Data Storage
 
 See docs/SCHEMA.md for full column definitions.

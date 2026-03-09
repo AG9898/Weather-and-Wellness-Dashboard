@@ -70,6 +70,20 @@ scoring direction).
 
 ---
 
+## Legacy Import Note
+
+The reference legacy workbook `reference/data_full_1-230.xlsx` stores the imported CogFunc /
+PROMIS aggregate in column `self_report`.
+
+- `self_report` is a derived participant-level mean after the legacy scoring conversions have
+  already been applied.
+- The current import implementation preserves this value in
+  `imported_session_measures.self_report`.
+- Imported legacy sessions do **not** currently create rows in `survey_cogfunc8a`; only native
+  participant submissions populate this table.
+
+---
+
 ## Validation Ranges
 
 | Field       | Min  | Max   |

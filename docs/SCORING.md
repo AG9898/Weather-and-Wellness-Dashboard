@@ -31,6 +31,23 @@ All lab forms use present-tense wording ("Right now...") and uniform scales:
 
 ---
 
+## Legacy XLSX Import Notes
+
+The reference legacy workbook `reference/data_full_1-230.xlsx` stores aggregate scores, not raw
+survey item responses.
+
+- `anxiety`, `loneliness`, `depression`, and `self_report` are participant-level derived means
+  after each instrument's reverse scoring / conversions have already been applied where needed.
+- `self_report` is the legacy imported aggregate for CogFunc / PROMIS Cognitive Function 8a.
+- Current import implementation preserves `self_report` in
+  `imported_session_measures.self_report`; it does not yet create imported
+  `survey_cogfunc8a` rows.
+- Legacy `digit_span_score` is not produced by the native fixed 14-trial web protocol. It is a
+  legacy score tallied until the participant records two incorrect trials at the same span
+  length.
+
+---
+
 ## Score Validation Ranges
 
 Use these ranges to validate computed values server-side before persisting:

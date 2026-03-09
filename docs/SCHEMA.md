@@ -199,6 +199,13 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | source_row_json    | JSONB       | NOT NULL          | Full raw row payload for audit/future remapping |
 | created_at         | TIMESTAMPTZ | DEFAULT NOW()     | |
 
+**Scoring semantics note:** In the reference workbook `reference/data_full_1-230.xlsx`, `anxiety`,
+`loneliness`, `depression`, and `self_report` are imported aggregate scores, not raw item
+responses. `self_report` is the legacy aggregate for CogFunc / PROMIS Cognitive Function 8a.
+The column name `digit_span_max_span` is retained for compatibility, but the stored
+`digit_span_score` value reflects the legacy stop-after-two-errors-at-the-same-span rule and is
+not a reconstructed native `max_span`.
+
 **Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
 - Measures map 1:1 from columns `precipitation`, `temperature`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
 - `source_row_json` stores the complete row (including demographic fields and the original `date`) to preserve auditability and enable future remapping without re-uploading the original file.
@@ -231,6 +238,13 @@ Applied by migration `20260301_000010`:
   - Legacy column mappings implemented (T55): `loneliness_mean` → `survey_uls8.legacy_mean_1_4`; `depression_mean` → `survey_cesd10.legacy_mean_1_4`; `anxiety_mean` → `survey_gad7.legacy_mean_1_4` (and `total_score`/`severity_band` if value is an exact integer 0–21).
 
 `imported_session_measures` remains the audit/source-of-truth mapping table and retains the full `source_row_json`.
+
+Legacy CogFunc / PROMIS aggregate `self_report` remains in `imported_session_measures.self_report`;
+current Phase 4 import does not create `survey_cogfunc8a` rows for imported sessions.
+
+The imported Digit Span value stored in `digitspan_runs.total_correct` is the legacy workbook
+score under the stop-after-two-errors-at-the-same-span rule and is not equivalent to the native
+fixed-14-trial `max_span`.
 
 **Re-import safety:** `_get_sessions_with_native_rows` only flags sessions with `data_source='native'` rows in the four remapped tables (SurveyCogFunc8a has no import path — any row is native). The `on_conflict_do_update WHERE data_source='imported'` clause provides an additional DB-level guard against overwriting native rows.
 
@@ -321,6 +335,9 @@ Applied by migration `20260301_000010`:
 ---
 
 ## Table: `survey_cogfunc8a`
+
+> Legacy import note: the current import path does not populate this table for legacy sessions.
+> The imported CogFunc / PROMIS aggregate remains in `imported_session_measures.self_report`.
 
 | Column           | Type          | Constraints   | Notes                           |
 |------------------|---------------|---------------|---------------------------------|

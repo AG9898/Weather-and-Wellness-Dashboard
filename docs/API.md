@@ -350,7 +350,7 @@
 ### POST /surveys/cesd10
 - **Auth:** None (active session validated)
 - **Status:** implemented (T10)
-- **Request body:** `{ "session_id": "uuid", "r1"–"r10": 0–3 each }`
+- **Request body:** `{ "session_id": "uuid", "r1"–"r10": 1–4 each }`
 - **Response:** `{ "response_id": "uuid", "total_score": integer }`
 
 ---
@@ -358,7 +358,7 @@
 ### POST /surveys/gad7
 - **Auth:** None (active session validated)
 - **Status:** implemented (T10)
-- **Request body:** `{ "session_id": "uuid", "r1"–"r7": 0–3 each }`
+- **Request body:** `{ "session_id": "uuid", "r1"–"r7": 1–4 each }`
 - **Response:** `{ "response_id": "uuid", "total_score": integer, "severity_band": "string" }`
 
 ---
@@ -507,18 +507,22 @@
       (e.g. `"Man "` → `"Man"`, `"Nonbinary person"` → `"Non-binary"`).
     - If `origin` / `commute_method` is an “Other” category and includes a free-text detail, store it in `origin_other_text` / `commute_method_other_text` (length-limited; avoid PII).
     - All numeric measures (`precipitation`, `temperature`, `anxiety`, `loneliness`, `depression`, `self_report`) parse as floats; blanks become nulls.
-      - Note: `anxiety`, `loneliness`, and `depression` are legacy aggregate values (often fractional), not raw item-level responses.
+      - Note: `anxiety`, `loneliness`, `depression`, and `self_report` are legacy aggregate scores, not raw item-level responses.
+      - `anxiety`, `loneliness`, and `depression` are derived participant-level means after instrument-specific reverse scoring / conversions have been applied where needed.
+      - `self_report` is the legacy imported aggregate for the remaining survey measure, CogFunc / PROMIS Cognitive Function 8a.
     - `digit_span_score` parses as integer; blank becomes null.
-      - Note: legacy `digit_span_score` ranges 0–14 and is treated as a Digit Span run outcome (total correct), not max span.
+      - Note: legacy `digit_span_score` is a legacy Digit Span score derived by tallying correct responses until the participant records two incorrect trials at the same span length.
+      - The import stores this legacy score in `digitspan_runs.total_correct` and leaves `max_span` null because trial-level reconstruction is not possible from the workbook alone.
   - Storage mapping (commit):
     - Participant demographics are stored on `participants` (nullable columns planned in T47).
     - Imported aggregates are stored in `imported_session_measures` (applied in T47) with a full `source_row_json` audit payload.
 
 **Phase 4 (T55, implemented):** commit also upserts “imported” rows into:
-- `digitspan_runs` — `data_source='imported'`, `total_correct` = legacy `digit_span_score` (0–14); `max_span` remains null; no trials reconstructed.
-- `survey_uls8` — `data_source='imported'`, `legacy_mean_1_4` = legacy `loneliness` mean; raw `r*` and computed columns remain null.
-- `survey_cesd10` — `data_source='imported'`, `legacy_mean_1_4` = legacy `depression` mean; raw `r*` and computed columns remain null.
-- `survey_gad7` — `data_source='imported'`, `legacy_mean_1_4` = legacy `anxiety` mean; if anxiety is an exact integer 0–21, `total_score` and `severity_band` are also set; otherwise only `legacy_mean_1_4` is stored.
+- `digitspan_runs` — `data_source='imported'`, `total_correct` = legacy `digit_span_score`; `max_span` remains null; no trials reconstructed.
+- `survey_uls8` — `data_source='imported'`, `legacy_mean_1_4` = legacy `loneliness` derived mean; raw `r*` and computed columns remain null.
+- `survey_cesd10` — `data_source='imported'`, `legacy_mean_1_4` = legacy `depression` derived mean; raw `r*` and computed columns remain null.
+- `survey_gad7` — `data_source='imported'`, `legacy_mean_1_4` = legacy `anxiety` derived mean; if anxiety is an exact integer 0–21, `total_score` and `severity_band` are also set; otherwise only `legacy_mean_1_4` is stored.
+- `survey_cogfunc8a` — no imported row is created yet. The legacy CogFunc / PROMIS aggregate remains in `imported_session_measures.self_report`.
 - Re-import is idempotent: updates imported rows, never overwrites native rows (`data_source='native'` rows are guarded in the upsert WHERE clause).
 
 ### POST /admin/import/commit
