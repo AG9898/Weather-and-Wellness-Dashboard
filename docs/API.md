@@ -159,10 +159,13 @@
   - `dataset` metadata (included sessions/days, native/imported counts, generation time)
   - `models[]` for outcome-level mixed-model summaries
   - `models[].effects[]` for model-card terms (coefficient, standard error, p-value, 95% CI, direction, significance)
+  - `visualizations.effect_plots[]` for separate linked analysis charts
+  - `visualizations.weather_annotations` for lightweight date-based weather-chart linking metadata
 - **Notes:**
   - This endpoint is intended to surface the mixed-effects analysis derived from `reference/Weather_MLM.R`.
   - Existing scoring logic and stored score semantics remain unchanged.
   - The dashboard should continue to use cached/stored analytics snapshots by default and support explicit live recompute for filtered/admin use.
+  - Planned effect plots are intentionally separate from the `/weather/daily` time-series chart; they are linked through shared filters/selection state rather than overlaid on the same axes.
 
 ---
 

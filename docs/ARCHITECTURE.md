@@ -76,9 +76,18 @@ The dashboard's statistical KPI layer will use a hybrid read path:
 
 1. Backend builds a canonical analysis dataset from transactional tables and imported aggregate values.
 2. Backend fits the planned mixed-effects models in Python.
-3. Backend writes a versioned snapshot payload plus run metadata to Postgres.
-4. Route Handlers/backend endpoints may cache the serialized snapshot in Redis.
-5. Dashboard reads snapshot data by default and may request `mode=live` for explicit recompute flows.
+3. Backend serializes both model-card results and separate effect-plot payloads.
+4. Backend writes a versioned snapshot payload plus run metadata to Postgres.
+5. Route Handlers/backend endpoints may cache the serialized snapshot in Redis.
+6. Dashboard reads snapshot data by default and may request `mode=live` for explicit recompute flows.
+
+### Frontend coordination rule
+
+- The weather chart and analytics plots should share date-range/filter state.
+- They should not share a single merged chart payload because they represent
+  different x-axes and different analytical meanings.
+- Any weather-chart linking added for analytics should be limited to date-based
+  annotations or labels derived from the analytics payload.
 
 ### Cache implications
 

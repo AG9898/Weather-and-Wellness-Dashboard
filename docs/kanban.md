@@ -407,7 +407,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T88",
       "title": "Frontend dashboard — add analytics model cards UI",
       "status": "todo",
-      "description": "Add the dashboard analytics section that renders model cards from the analytics payload. The implemented UI should clearly separate operational KPI cards from statistical model cards, display coefficient/direction/significance/convergence state, and show snapshot freshness or recompute status without blocking the existing weather and summary surfaces.",
+      "description": "Add the dashboard analytics section that renders model cards from the analytics payload. The implemented UI should clearly separate operational KPI cards from statistical model cards, display coefficient/direction/significance/convergence state, and show snapshot freshness or recompute status without blocking the existing weather and summary surfaces. This task covers the model-card layer only; the separate linked effect-plot surface is handled by follow-on tasks.",
       "stack": ["frontend"],
       "depends_on": ["T87"],
       "read_docs": [
@@ -444,6 +444,98 @@ Follow current JSON Schema when adding tasks.
         "Endpoint tests cover auth, invalid ranges, snapshot mode, live mode, and stale-snapshot fallback behavior",
         "Frontend tests cover analytics loading, ready, stale, recomputing, insufficient-data, and failed UI states",
         "At least one verification fixture maps back to the R-script formula and logical field naming"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T90",
+      "title": "Backend analytics — extend snapshot/API payload for effect plots and weather-link metadata",
+      "status": "todo",
+      "description": "Extend the analytics serialization layer so the backend returns data for a separate effect-plot component plus lightweight date-based weather-link metadata. The payload should support a selected term/outcome, chart-ready points/fit-line series, and optional weather annotations without attempting to merge residual/effect data into the weather time-series payload.",
+      "stack": ["backend"],
+      "depends_on": ["T86"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/API.md",
+        "reference/Weather_MLM.R"
+      ],
+      "acceptance_criteria": [
+        "Analytics payload includes chart-ready data for at least one selected effect plot per modeled term or a documented selected-term response path",
+        "Payload includes date-based weather-link metadata that can annotate the weather chart without changing its axes",
+        "Effect-plot serialization remains distinct from `/weather/daily` series data",
+        "Analytics snapshot persistence supports the added visualization payloads"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/ANALYTICS.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T91",
+      "title": "Frontend dashboard — shared weather and analytics filter state",
+      "status": "todo",
+      "description": "Refactor dashboard filter state so the weather chart and analytics surfaces are driven by the same selected date window and refresh state. The goal is to keep the weather time/context view and model/effect view synchronized while still fetching them through separate typed APIs and cache paths.",
+      "stack": ["frontend"],
+      "depends_on": ["T87", "T88"],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/ANALYTICS.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "Dashboard owns one shared date-range state used by both weather and analytics requests",
+        "Changing the filter updates the weather chart and analytics cards consistently",
+        "Live recompute/loading state is communicated without blocking the existing snapshot view",
+        "No bare fetch is introduced from React components"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T92",
+      "title": "Frontend dashboard — add separate analytics effect plot card with weather annotations",
+      "status": "todo",
+      "description": "Add a dedicated effect-plot card to the dashboard that responds to model-card selection and shares filters with the weather chart. Also add lightweight visual linkage on the weather chart, such as selected-term badges or date-based annotations, while keeping the weather chart itself a pure time-series surface.",
+      "stack": ["frontend"],
+      "depends_on": ["T90", "T91"],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/ANALYTICS.md",
+        "docs/styleguide.md"
+      ],
+      "acceptance_criteria": [
+        "Dashboard renders a separate effect-plot card instead of overlaying effect plots on the weather chart",
+        "Selecting a model card updates the effect plot content",
+        "Weather chart shows only time-compatible linking cues or annotations",
+        "The effect plot and weather chart remain visually and semantically distinct"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T93",
+      "title": "Verification — linked weather-analysis visualization tests",
+      "status": "todo",
+      "description": "Add focused coverage for the shared-filter and linked-visualization behavior between the weather chart, analytics model cards, and the separate effect-plot card. Validate that the UI preserves semantic separation between date-based weather plots and predictor-vs-effect plots while still keeping them synchronized.",
+      "stack": ["backend", "frontend"],
+      "depends_on": ["T90", "T92"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/DESIGN_SPEC.md",
+        "docs/API.md"
+      ],
+      "acceptance_criteria": [
+        "Tests verify shared date filters drive both weather and analytics requests",
+        "Tests verify selected model-card state drives the separate effect plot",
+        "Tests verify weather annotations remain date-based and do not introduce residual/effect series into the weather chart",
+        "Tests cover loading, stale snapshot, and recompute states across linked visualization surfaces"
       ],
       "updates_docs": [
         "docs/PROGRESS.md"

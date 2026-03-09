@@ -11,7 +11,7 @@
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
 | Tasks completed    | 24 (T54–T75 + T72 animejs; T67 superseded) — Phase 4 ongoing |
-| Remaining queue    | T76–T89 in kanban.md                                         |
+| Remaining queue    | T76–T93 in kanban.md                                         |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-09                                                   |
 
@@ -45,6 +45,18 @@ _No tasks in progress._
   - **T89** — add analytics parity and regression coverage
 - Existing scoring semantics remain unchanged; the new queue is additive and
   follows the analytics design documented on 2026-03-09.
+
+## Analytics visualization linkage tasks added (planned 2026-03-09)
+
+- Updated the planned analytics direction so effect plots are rendered in a
+  separate dashboard card rather than overlaid on the weather time-series chart.
+- The weather chart and analytics surfaces will share dashboard filter state and
+  may use lightweight date-based annotations to stay visually linked.
+- New tasks added to `docs/kanban.md`:
+  - **T90** — extend analytics payload for effect plots and weather-link metadata
+  - **T91** — unify weather and analytics filter state on the dashboard
+  - **T92** — add a separate analytics effect-plot card with weather annotations
+  - **T93** — verify linked weather-analysis visualization behavior end to end
 
 ## T75 — Frontend — KPI stat number counter animation with animejs (completed 2026-03-05)
 

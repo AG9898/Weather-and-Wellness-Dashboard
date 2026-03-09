@@ -183,6 +183,14 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
   and significance for the weather/cognition models.
 - Analytics cards should read from the latest stored snapshot by default and
   show recompute/loading state separately from the operational KPI row.
+- The future analytics section should also include a **separate effect plot
+  card** linked to the selected model card; do not overlay model residual/effect
+  plots directly on the weather time-series chart.
+- The weather chart and analytics section should share the same dashboard date
+  filter state so the time/context view and model/effect view stay synchronized.
+- If additional visual linking is needed, use date-based weather annotations or
+  selection badges rather than mixing time-series and residual plots on the same
+  axes.
 
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
@@ -201,6 +209,11 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - Explicit date-filter or admin-triggered recompute may request live analytics,
   but the UI should continue to show the prior snapshot until the recompute
   completes.
+- Shared dashboard filter state should drive both:
+  - weather range fetches
+  - analytics snapshot/live fetches
+- The analytics payload may also provide weather-linking annotations for the
+  weather chart, but the effect plot itself should render in its own card.
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 

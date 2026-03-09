@@ -86,6 +86,9 @@ It then produces partial-residual plots for selected predictors.
   filters/admin use.
 - **Explainable KPIs.** Dashboard analytics should surface model cards with
   coefficients, confidence intervals, p-values, and convergence/warning state.
+- **Keep chart semantics separate.** Weather time-series charts and
+  model-effect plots should be linked by shared filters and interaction state,
+  not overlaid into one ambiguous chart.
 
 ---
 
@@ -233,6 +236,58 @@ Analytics responses should also include:
 
 ---
 
+## Visualization Contract
+
+The reference R script's plots are not time-series weather charts. They are
+closer to adjusted effect plots using model residual-derived y-values against a
+selected predictor on the x-axis.
+
+Because of that, the dashboard should not draw those plots directly on top of
+the existing weather-by-date Highcharts chart.
+
+### Required UX structure
+
+- Keep the existing weather chart as the **time/context view**.
+- Add a separate analytics visualization surface as the **effect view**.
+- Link the two through shared date filters and selected analytics state.
+
+### Planned linked surfaces
+
+1. **Weather chart**
+   - remains a date-based view of temperature, precipitation, and sunlight
+   - continues to use the dashboard weather range filters
+2. **Model cards**
+   - summarize term-level effects from the fitted models
+   - selecting a card or term should update the analysis plot
+3. **Effect plot card**
+   - renders a separate chart for the selected outcome/predictor term
+   - can show scatter data, fitted line, and confidence band if supported by the
+     serialized payload
+
+### Shared state
+
+These surfaces should share:
+
+- date range
+- snapshot/live analytics state
+- selected outcome model
+- selected effect term
+
+### Weather-to-analysis visual linking
+
+To preserve the usefulness of the weather chart without mixing incompatible
+axes, the dashboard may add lightweight weather-chart annotations that still
+live in time space, for example:
+
+- analysis window highlights
+- badges or labels showing which predictor is currently selected in the effect plot
+- subtle markers for dates included/excluded in the active analysis window
+
+Do not place partial residual points or predictor-vs-residual regression lines
+on the date-based weather chart.
+
+---
+
 ## Snapshot And Recompute Strategy
 
 The dashboard should use a hybrid analytics flow:
@@ -296,9 +351,46 @@ Planned high-level response shape:
         }
       ]
     }
-  ]
+  ],
+  "visualizations": {
+    "default_selected_term": "temperature_z",
+    "effect_plots": [
+      {
+        "outcome": "digit_span | self_report",
+        "term": "temperature_z",
+        "x_label": "Temperature (z)",
+        "y_label": "Adjusted outcome",
+        "points": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "date_local": "YYYY-MM-DD"
+          }
+        ],
+        "fitted_line": [
+          {
+            "x": 0.0,
+            "y": 0.0
+          }
+        ]
+      }
+    ],
+    "weather_annotations": {
+      "selected_term": "temperature_z",
+      "date_from": "YYYY-MM-DD",
+      "date_to": "YYYY-MM-DD"
+    }
+  }
 }
 ```
+
+### Notes on visualization payloads
+
+- The effect plot payload is intended for a separate analysis chart component,
+  not for overlay on the weather time-series chart.
+- `weather_annotations` should remain date-based metadata only.
+- Exact plot serialization may evolve, but the separation between weather
+  time-series data and model-effect plot data is part of the planned contract.
 
 ---
 
@@ -319,5 +411,5 @@ Planned high-level response shape:
   authoritative v1 parity target, not every plotting line.
 - If future analysis requires exact parity with `lme4`, reassess the Python-only
   implementation choice before changing backend contracts.
-- Partial-residual or diagnostic plots are out of scope for the first dashboard
-  KPI release.
+- Partial-residual or other effect plots are planned as a separate linked
+  analysis surface after the initial model-card KPI layer is in place.
