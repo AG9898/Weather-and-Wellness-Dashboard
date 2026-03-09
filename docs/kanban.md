@@ -12,7 +12,7 @@ Follow current JSON Schema when adding tasks.
   "project": "Weather & Wellness + Misokinesia Research Web App",
   "phase": 4,
   "phase_status": "in_progress",
-  "goal": "Demo launch final prep and beyond: completed initial wave (T54–T70). Phase 4 is ongoing — remaining work now includes UI polish plus legacy scoring/import alignment.",
+  "goal": "Demo launch final prep and beyond: completed initial wave (T54–T70). Phase 4 is ongoing — remaining work now includes UI polish, legacy scoring/import alignment, and the planned dashboard analytics pipeline derived from the reference R analysis.",
   "stack_overview": {
     "frontend": "Next.js (Vercel) + TypeScript + Tailwind",
     "backend": "FastAPI (Python, Render)",
@@ -240,6 +240,210 @@ Follow current JSON Schema when adding tasks.
         "Backfill tests verify existing `imported_session_measures.self_report` rows populate `survey_cogfunc8a`",
         "Export tests verify `survey_cogfunc8a` includes `data_source` and `legacy_mean_1_5`",
         "Digit Span import tests verify imported rows still land in `digitspan_runs.total_correct` with `max_span = null`"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T81",
+      "title": "Backend analytics — add Python dependencies and response schema scaffolding",
+      "status": "todo",
+      "description": "Add the Python packages needed for DB-driven statistical analysis (`pandas`, `numpy`, `statsmodels`, and `scipy` if required by the implementation), then scaffold the analytics-side Pydantic response models and version/config constants without changing any existing survey scoring logic. This task is only the infrastructure layer for the planned analytics pipeline documented in `docs/ANALYTICS.md`.",
+      "stack": ["backend"],
+      "depends_on": [],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/API.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "`backend/requirements.txt` includes the approved analytics dependencies",
+        "Analytics response/schema classes exist for dataset metadata, model summaries, and effect cards",
+        "A backend analytics version constant or equivalent is defined for snapshot/result versioning",
+        "No existing survey scoring modules or participant submission endpoints are changed"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T82",
+      "title": "DB — add durable analytics run and snapshot tables",
+      "status": "todo",
+      "description": "Create Alembic migrations and SQLAlchemy models for durable analytics storage in Postgres. Add an append-only run/audit table and a snapshot table keyed by date range + model version so analytics results are not stored in Redis alone. Persist recompute status, warning metadata, generation timestamps, and the serialized analytics payload.",
+      "stack": ["backend", "database"],
+      "depends_on": ["T81"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/SCHEMA.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "Alembic migration applies cleanly up/down",
+        "ORM models exist for analytics run metadata and durable snapshot payload storage",
+        "Snapshot rows can distinguish date-range-specific results and analytics/model version",
+        "Schema/docs clearly state that Redis is only a cache layer for analytics reads"
+      ],
+      "updates_docs": [
+        "docs/SCHEMA.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T83",
+      "title": "Backend analytics — build canonical analysis dataset service",
+      "status": "todo",
+      "description": "Implement a backend service that constructs the canonical analysis dataset from sessions, study days, weather, digit span, survey tables, participants, and imported aggregate fallbacks. This service must apply the source-precedence rules documented in `docs/ANALYTICS.md`, derive `date_bin` in-memory, and return both included rows and exclusion metadata.",
+      "stack": ["backend"],
+      "depends_on": ["T81"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/SCHEMA.md",
+        "docs/SCORING.md"
+      ],
+      "acceptance_criteria": [
+        "Service returns one canonical logical dataset for a requested local-date range",
+        "Native scored values are preferred over imported fallback values per the documented precedence rules",
+        "Imported `self_report` is sourced from `imported_session_measures.self_report` when no native CogFunc row exists",
+        "Rows missing required predictors/outcomes are excluded with structured exclusion counts/reasons",
+        "No derived analysis fields are persisted to transactional tables"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T84",
+      "title": "Backend analytics — implement z-scoring and mixed-model fitting service",
+      "status": "todo",
+      "description": "Implement the Python-side statistics engine that standardizes the active dataset window and fits the two planned mixed-effects models from `docs/ANALYTICS.md`. Serialize model-level metadata and effect-card outputs suitable for the dashboard, including coefficient, standard error, p-value, confidence interval, direction, and convergence warnings.",
+      "stack": ["backend"],
+      "depends_on": ["T83"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "reference/Weather_MLM.R"
+      ],
+      "acceptance_criteria": [
+        "Both planned outcome models are fit from the canonical dataset in Python",
+        "Z-scoring is computed within the requested analysis window only",
+        "Serialized results include model metadata, per-term effect cards, and warning/convergence state",
+        "Undersized or zero-variance datasets return typed analytics status/warnings rather than an unhandled error"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T85",
+      "title": "Backend analytics — add snapshot persistence and recompute orchestration",
+      "status": "todo",
+      "description": "Implement the service layer that reads the latest analytics snapshot, triggers a fresh recompute when requested, writes successful results back to durable snapshot storage, and preserves the prior snapshot while recompute is in progress or fails. This task owns the backend state machine for `ready`, `stale`, `recomputing`, `insufficient_data`, and `failed` analytics states.",
+      "stack": ["backend"],
+      "depends_on": ["T82", "T84"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "Backend can return the latest successful snapshot for a requested range without recomputing",
+        "Live recompute writes a new snapshot only after successful model fitting",
+        "Prior snapshot remains readable while recompute is running or if recompute fails",
+        "Run metadata captures generated_at, status, warnings, and model version"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T86",
+      "title": "Backend API — implement GET /dashboard/analytics",
+      "status": "todo",
+      "description": "Add the RA-protected analytics endpoint and wire it to the dataset, model, and snapshot services. Support `date_from`, `date_to`, and `mode=snapshot|live`, interpret bounds in `America/Vancouver`, and return the typed analytics response contract defined in the docs.",
+      "stack": ["backend"],
+      "depends_on": ["T85"],
+      "read_docs": [
+        "docs/API.md",
+        "docs/ANALYTICS.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "`GET /dashboard/analytics` exists and requires LabMember auth",
+        "Date range bounds are validated and interpreted in the study timezone",
+        "`mode=snapshot` returns the latest durable snapshot for the requested range",
+        "`mode=live` triggers recompute behavior and returns the typed analytics status payload",
+        "Endpoint does not change existing `/dashboard/summary` or `/dashboard/participants-per-day` contracts"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T87",
+      "title": "Frontend analytics — add typed API wrappers and same-origin route handler",
+      "status": "todo",
+      "description": "Add typed frontend API wrappers for the analytics endpoint and a same-origin Route Handler for dashboard analytics reads. Keep analytics caching separate from the current operational dashboard and weather cache keys, and preserve auth validation plus stale-snapshot fallback behavior.",
+      "stack": ["frontend"],
+      "depends_on": ["T86"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/ARCHITECTURE.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Frontend reads analytics through typed wrappers in `src/lib/api/` with no bare fetch in components",
+        "A same-origin Route Handler proxies analytics requests with JWT validation",
+        "Analytics cache keys are distinct from `ww:ra:dashboard:v1` and `ww:ra:weather:range:v1:*`",
+        "Snapshot responses can be served quickly while live recompute requests do not block the UI indefinitely"
+      ],
+      "updates_docs": [
+        "docs/ARCHITECTURE.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T88",
+      "title": "Frontend dashboard — add analytics model cards UI",
+      "status": "todo",
+      "description": "Add the dashboard analytics section that renders model cards from the analytics payload. The implemented UI should clearly separate operational KPI cards from statistical model cards, display coefficient/direction/significance/convergence state, and show snapshot freshness or recompute status without blocking the existing weather and summary surfaces.",
+      "stack": ["frontend"],
+      "depends_on": ["T87"],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/ANALYTICS.md",
+        "docs/styleguide.md"
+      ],
+      "acceptance_criteria": [
+        "Dashboard renders a separate analytics section in addition to the existing operational KPI row",
+        "Each model card shows outcome, term, coefficient, confidence interval, significance, and direction",
+        "UI handles `recomputing`, `stale`, `insufficient_data`, and `failed` analytics states gracefully",
+        "Operational dashboard summary cards and WeatherUnifiedCard behavior remain unchanged"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T89",
+      "title": "Verification — analytics dataset, model, endpoint, and dashboard parity tests",
+      "status": "todo",
+      "description": "Add focused automated coverage for the new analytics pipeline end to end. Cover dataset assembly precedence, exclusion rules, model serialization, snapshot/live endpoint behavior, and the dashboard analytics UI states. Include at least one parity-oriented fixture derived from the reference R workflow to catch regressions in term naming and included-row logic.",
+      "stack": ["backend", "frontend"],
+      "depends_on": ["T86", "T88"],
+      "read_docs": [
+        "docs/ANALYTICS.md",
+        "docs/API.md",
+        "reference/Weather_MLM.R"
+      ],
+      "acceptance_criteria": [
+        "Backend tests cover native/imported source precedence and exclusion metadata in the canonical analysis dataset",
+        "Model tests verify expected terms and serialized effect fields for both outcomes",
+        "Endpoint tests cover auth, invalid ranges, snapshot mode, live mode, and stale-snapshot fallback behavior",
+        "Frontend tests cover analytics loading, ready, stale, recomputing, insufficient-data, and failed UI states",
+        "At least one verification fixture maps back to the R-script formula and logical field naming"
       ],
       "updates_docs": [
         "docs/PROGRESS.md"

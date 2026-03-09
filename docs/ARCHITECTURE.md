@@ -14,6 +14,7 @@
   - Hosted URL: `https://weather-and-wellness-dashboard.onrender.com`
 - **Database (Supabase)**: Managed Postgres. Lab reads data via Supabase Studio.
 - **Admin data ops (planned, Phase 3)**: RA-only Import/Export endpoints on Render support legacy imports and controlled CSV/XLSX exports.
+- **Planned analytics layer**: backend-generated statistical snapshots derived from DB data will power model-based dashboard KPIs. See `docs/ANALYTICS.md`.
 
 ---
 
@@ -33,6 +34,10 @@
 **Bundle type:** `{ summary: DashboardSummaryResponse, weather: WeatherDailyResponse, cached_at: string }` — no PII, no secrets.
 
 **Cache key:** `ww:ra:dashboard:v1` — versioned prefix allows safe invalidation on schema changes.
+
+> Planned extension: the base dashboard bundle may later include statistical
+> analytics snapshot metadata, but the operational summary/weather contract above
+> remains the current implemented bundle.
 
 ## Vercel Weather Range Cache Route Handler
 
@@ -55,6 +60,42 @@
   - `/dashboard/participants-per-day?start=<date_from>&end=<date_to>`
 - **Bundle type:** `{ summary, weather, participants_per_day, cached_at }` wrapped in `{ cached: false, data }`.
 - **Purpose:** Provides a single typed payload for date-range dashboard KPIs + weather context + graph-ready participant counts.
+
+## Planned Analytics Snapshot Architecture
+
+Canonical analysis spec: `docs/ANALYTICS.md`
+
+The dashboard's statistical KPI layer will use a hybrid read path:
+
+- **Durable source of truth:** Postgres-backed analytics snapshot storage
+- **Optional cache layer:** Upstash Redis for snapshot read acceleration only
+- **Live recompute path:** explicit filtered/admin requests may trigger backend recompute from current DB rows
+- **Serving rule:** while recompute is running, continue serving the most recent successful snapshot
+
+### Planned lifecycle
+
+1. Backend builds a canonical analysis dataset from transactional tables and imported aggregate values.
+2. Backend fits the planned mixed-effects models in Python.
+3. Backend writes a versioned snapshot payload plus run metadata to Postgres.
+4. Route Handlers/backend endpoints may cache the serialized snapshot in Redis.
+5. Dashboard reads snapshot data by default and may request `mode=live` for explicit recompute flows.
+
+### Cache implications
+
+- Analytics cache keys must be separate from:
+  - `ww:ra:dashboard:v1`
+  - `ww:ra:weather:range:v1:<date_from>:<date_to>`
+- Redis should never be the only analytics store because:
+  - snapshots need auditability
+  - recompute state needs durability
+  - cache eviction must not erase the latest successful analysis result
+
+### Failure behavior
+
+- If live analytics recompute fails or lacks sufficient data, return a typed
+  analytics status and preserve the prior successful snapshot.
+- Route Handlers should not block the dashboard indefinitely waiting for model
+  fitting to finish.
 
 ---
 
@@ -133,3 +174,4 @@ Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 - Participants are anonymous: do not collect or store names or other direct identifiers.
 - Day-level semantics (study days, weather day linking, dashboard filtering) use the study timezone `America/Vancouver`.
 - Schema details live in `docs/SCHEMA.md`.
+- Planned analytics dataset rules live in `docs/ANALYTICS.md`.

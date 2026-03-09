@@ -11,7 +11,7 @@
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
 | Tasks completed    | 24 (T54–T75 + T72 animejs; T67 superseded) — Phase 4 ongoing |
-| Remaining queue    | T76–T80 in kanban.md                                         |
+| Remaining queue    | T76–T89 in kanban.md                                         |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-09                                                   |
 
@@ -28,6 +28,23 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## Analytics implementation tasks added (planned 2026-03-09)
+
+- Added a new scoped implementation sequence to `docs/kanban.md` for the
+  planned dashboard analytics pipeline documented in `docs/ANALYTICS.md`.
+- New tasks:
+  - **T81** — add backend analytics dependencies and schema scaffolding
+  - **T82** — add durable analytics run/snapshot tables
+  - **T83** — build canonical analysis dataset service
+  - **T84** — implement z-scoring and mixed-model fitting
+  - **T85** — add snapshot persistence and recompute orchestration
+  - **T86** — implement `GET /dashboard/analytics`
+  - **T87** — add frontend analytics API wrappers and Route Handler
+  - **T88** — add dashboard analytics model cards UI
+  - **T89** — add analytics parity and regression coverage
+- Existing scoring semantics remain unchanged; the new queue is additive and
+  follows the analytics design documented on 2026-03-09.
 
 ## T75 — Frontend — KPI stat number counter animation with animejs (completed 2026-03-05)
 

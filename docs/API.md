@@ -34,6 +34,7 @@
 | GET    | /dashboard/summary | RA | implemented | T20 |
 | GET    | /dashboard/summary/range | RA | implemented | T58 |
 | GET    | /dashboard/participants-per-day | RA | implemented | T58 |
+| GET    | /dashboard/analytics | RA | planned | — |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
@@ -59,6 +60,11 @@
 ---
 
 ## Dashboard
+
+> Operational dashboard counts remain implemented as documented below. Planned
+> statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
+> in `docs/ANALYTICS.md` and will be additive rather than replacing these
+> endpoints.
 
 ### GET /dashboard/summary
 - **Auth:** RA required
@@ -132,6 +138,31 @@
 - **Notes:**
   - Aggregation is by `study_days.date_local` (America/Vancouver).
   - Intended for dashboard graphing and filtered analytics UI; this does not expose participant identifiers.
+
+---
+
+### GET /dashboard/analytics
+- **Auth:** RA required
+- **Status:** planned
+- **Canonical spec:** `docs/ANALYTICS.md`
+- **Purpose:** Return model-based dashboard KPIs computed from the backend DB rather than hard-coded statistical outputs.
+- **Planned query parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `date_from` | date `YYYY-MM-DD` | Inclusive local start date (`America/Vancouver`) |
+| `date_to` | date `YYYY-MM-DD` | Inclusive local end date (`America/Vancouver`) |
+| `mode` | string | `snapshot` (default) or `live` |
+
+- **Planned response sections:**
+  - `status` for snapshot/recompute state
+  - `dataset` metadata (included sessions/days, native/imported counts, generation time)
+  - `models[]` for outcome-level mixed-model summaries
+  - `models[].effects[]` for model-card terms (coefficient, standard error, p-value, 95% CI, direction, significance)
+- **Notes:**
+  - This endpoint is intended to surface the mixed-effects analysis derived from `reference/Weather_MLM.R`.
+  - Existing scoring logic and stored score semantics remain unchanged.
+  - The dashboard should continue to use cached/stored analytics snapshots by default and support explicit live recompute for filtered/admin use.
 
 ---
 

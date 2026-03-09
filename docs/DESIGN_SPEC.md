@@ -75,6 +75,10 @@ All scoring is server-side. See per-instrument docs for full formulas.
 - **GAD-7:** raw 1-4, convert to 0-3 (`raw - 1`), sum → total 0-21 + severity band
 - **CogFunc 8a:** raw 1-5, reverse all (`6 - raw`) for computed scores, sum (8-40) + mean (1.0-5.0)
 
+> Planned dashboard analytics derived from `reference/Weather_MLM.R` must reuse
+> these stored scores and must not introduce alternate scoring formulas. See
+> `docs/ANALYTICS.md`.
+
 ---
 
 # Design System — Phase 2 (T19+) + Phase 4 Theme Toggle (implemented)
@@ -171,6 +175,15 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 
 The “Recent Sessions” panel has been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
 
+**Planned analytics addition:**
+- The operational KPI row above remains valid and implemented.
+- A future dashboard analytics section will add **model cards** derived from the
+  mixed-effects analysis specified in `docs/ANALYTICS.md`.
+- Those cards will summarize effect direction, coefficient, confidence interval,
+  and significance for the weather/cognition models.
+- Analytics cards should read from the latest stored snapshot by default and
+  show recompute/loading state separately from the operational KPI row.
+
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
 - The supervised workflow treats participant↔session as 1:1 (a new participant is created for each new session); the DB does not enforce this constraint.
@@ -180,6 +193,14 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather data (`WeatherDailyResponse`).
 - `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
 - Route handlers enforce backend fetch timeouts (15s) and use stale-cache fallback when `mode=live` fails, so dashboard loading does not hang indefinitely on Render outages.
+
+**Planned analytics loading:**
+- Statistical dashboard content should use a separate analytics payload and cache
+  key from the operational dashboard bundle.
+- Default render path should use the most recent successful analytics snapshot.
+- Explicit date-filter or admin-triggered recompute may request live analytics,
+  but the UI should continue to show the prior snapshot until the recompute
+  completes.
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 

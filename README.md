@@ -35,6 +35,7 @@ Core rules:
 - **Backwards Digit Span task** (client timing; server scoring)
 - **Validated surveys**: ULS-8, CES-D 10, GAD-7, CogFunc 8a (scored server-side)
 - **RA dashboard** for study progress + weather context
+- **Planned statistical analytics layer** for model-based weather/cognition KPIs derived from backend DB values
 - **RA-only Import/Export** for controlled legacy imports and admin exports (CSV/XLSX)
 - **Weather ingestion** (scheduled via GitHub Actions) with day-level semantics in `America/Vancouver`
 
@@ -131,6 +132,7 @@ BACKEND_PORT=8001 FRONTEND_PORT=3001 HOST=127.0.0.1 ./scripts/dev.sh
 
 - Architecture and deployment: `docs/ARCHITECTURE.md`
 - Backend API contracts: `docs/API.md`
+- Planned dashboard analytics spec: `docs/ANALYTICS.md`
 - Schema + migrations: `docs/SCHEMA.md`
 - Scoring rules: `docs/SCORING.md` and per-instrument docs in `docs/`
 - UI style guide: `docs/styleguide.md`

@@ -15,6 +15,10 @@
 - **Lab read access:** Supabase Studio (no read API endpoints in Phase 1)
 - **FKs:** Enforced at DB level, not just application level
 
+> Planned statistical analysis rules derived from `reference/Weather_MLM.R` are
+> documented in `docs/ANALYTICS.md`. That analytics dataset is currently a
+> logical query-layer construct, not an existing transactional table.
+
 ---
 
 ## Entity Relationships
@@ -165,6 +169,11 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 
 **Sessions relationship note (Phase 3):** The DB schema allows multiple sessions per participant, but the supervised experiment workflow targets a 1:1 participant↔session relationship. Import validation enforces “0 or 1 sessions per participant” to avoid ambiguity.
 
+**Analytics note (planned):** `participants.daylight_exposure_minutes` remains a
+participant/session-start exposure field. It is not currently the same thing as
+the R script's derived `daylight_hours` predictor and should not silently
+replace day-level weather-derived sunlight duration in analytics queries.
+
 ---
 
 ## Table: `sessions`
@@ -245,6 +254,11 @@ current Phase 4 import does not create `survey_cogfunc8a` rows for imported sess
 The imported Digit Span value stored in `digitspan_runs.total_correct` is the legacy workbook
 score under the stop-after-two-errors-at-the-same-span rule and is not equivalent to the native
 fixed-14-trial `max_span`.
+
+**Analytics note (planned):** the statistical query layer should treat
+`imported_session_measures.self_report` as the imported fallback source for the
+logical self-report cognition outcome until an explicit imported CogFunc mapping
+is added.
 
 **Re-import safety:** `_get_sessions_with_native_rows` only flags sessions with `data_source='native'` rows in the four remapped tables (SurveyCogFunc8a has no import path — any row is native). The `on_conflict_do_update WHERE data_source='imported'` clause provides an additional DB-level guard against overwriting native rows.
 
