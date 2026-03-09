@@ -12,7 +12,7 @@ Follow current JSON Schema when adding tasks.
   "project": "Weather & Wellness + Misokinesia Research Web App",
   "phase": 4,
   "phase_status": "in_progress",
-  "goal": "Demo launch final prep and beyond: completed initial wave (T54–T70). Phase 4 is ongoing — new tasks will be added here as requirements are defined.",
+  "goal": "Demo launch final prep and beyond: completed initial wave (T54–T70). Phase 4 is ongoing — remaining work now includes UI polish plus legacy scoring/import alignment.",
   "stack_overview": {
     "frontend": "Next.js (Vercel) + TypeScript + Tailwind",
     "backend": "FastAPI (Python, Render)",
@@ -144,6 +144,102 @@ Follow current JSON Schema when adding tasks.
         "Firefox shows a thin styled scrollbar with UBC blue color (no animation required)",
         "Works correctly in both light and dark theme modes",
         "No scrollbar styling interferes with overflow-hidden or dialog components"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T77",
+      "title": "DB — extend survey_cogfunc8a for imported legacy rows",
+      "status": "todo",
+      "description": "Add Phase 4-style import support to `survey_cogfunc8a` via Alembic and model updates. Make raw item columns and computed columns nullable for imported rows, add `data_source VARCHAR(16) NOT NULL DEFAULT 'native'`, add `legacy_mean_1_5 NUMERIC NULLABLE`, and add `UNIQUE(session_id)` so imported legacy CogFunc rows can be upserted per session without fabricating raw items.",
+      "stack": ["backend", "database"],
+      "depends_on": [],
+      "read_docs": [
+        "docs/SCHEMA.md",
+        "docs/API.md",
+        "docs/COGFUNC8A.md"
+      ],
+      "acceptance_criteria": [
+        "Alembic migration applies cleanly up/down",
+        "`backend/app/models/surveys.py` reflects nullable imported-row behavior for `survey_cogfunc8a`",
+        "`survey_cogfunc8a` can represent both native rows and imported rows without overloading native computed fields",
+        "No changes to participant-facing survey submission endpoints"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T78",
+      "title": "Backend — import commit + Phase 4 backfill for legacy CogFunc and digit span semantics cleanup",
+      "status": "todo",
+      "description": "Update `import_service.py` and `phase4_backfill.py` so legacy `self_report` upserts imported `survey_cogfunc8a` rows with `data_source='imported'` and `legacy_mean_1_5`. Also clean up internal naming/comments for legacy Digit Span so the code no longer implies the imported value is a true `max_span`, while keeping storage in `digitspan_runs.total_correct`.",
+      "stack": ["backend"],
+      "depends_on": ["T77"],
+      "read_docs": [
+        "docs/SCHEMA.md",
+        "docs/SCORING.md",
+        "docs/DIGITSPAN.md"
+      ],
+      "acceptance_criteria": [
+        "`POST /admin/import/commit` creates or updates imported `survey_cogfunc8a` rows from `self_report`",
+        "Existing imported sessions can be remapped by the backfill script into `survey_cogfunc8a`",
+        "Native `survey_cogfunc8a` rows are never overwritten",
+        "`_get_sessions_with_native_rows` treats `survey_cogfunc8a` the same way as the other imported survey tables after the schema change",
+        "Legacy Digit Span behavior is described and implemented as a legacy imported score while storage remains in `digitspan_runs.total_correct`"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T79",
+      "title": "Backend — export/API parity for imported CogFunc rows",
+      "status": "todo",
+      "description": "Update export surfaces and API references so imported CogFunc rows are visible and schema-faithful. Extend `export_service.py` table specs for `survey_cogfunc8a` to include the new imported-row columns and remove any docs that still claim imported CogFunc rows are absent once the code path is live.",
+      "stack": ["backend"],
+      "depends_on": ["T78"],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/COGFUNC8A.md"
+      ],
+      "acceptance_criteria": [
+        "`GET /admin/export.xlsx` and `GET /admin/export.zip` include the new `survey_cogfunc8a` imported-row columns",
+        "Export ordering and README descriptions remain consistent with the other imported survey tables",
+        "API docs and schema docs reflect the live export shape and no longer carry a stale imported-CogFunc limitation",
+        "No changes to participant-facing endpoint contracts"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T80",
+      "title": "Verification — legacy import regression tests for CogFunc and digit span",
+      "status": "todo",
+      "description": "Add or extend automated coverage for the new import path and export shape, including backfill safety. Focus on legacy `self_report` remap, native-row overwrite protection, export columns, and legacy Digit Span semantics under the current storage approach.",
+      "stack": ["backend"],
+      "depends_on": ["T78", "T79"],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/SCORING.md"
+      ],
+      "acceptance_criteria": [
+        "Import preview/commit tests cover rows with `self_report` and verify imported `survey_cogfunc8a` creation/update",
+        "Tests verify native `survey_cogfunc8a` rows block overwrite on re-import",
+        "Backfill tests verify existing `imported_session_measures.self_report` rows populate `survey_cogfunc8a`",
+        "Export tests verify `survey_cogfunc8a` includes `data_source` and `legacy_mean_1_5`",
+        "Digit Span import tests verify imported rows still land in `digitspan_runs.total_correct` with `max_span = null`"
       ],
       "updates_docs": [
         "docs/PROGRESS.md"

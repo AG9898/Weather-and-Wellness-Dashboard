@@ -11,9 +11,9 @@
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
 | Tasks completed    | 24 (T54–T75 + T72 animejs; T67 superseded) — Phase 4 ongoing |
-| Remaining queue    | T76 in kanban.md                                             |
+| Remaining queue    | T76–T80 in kanban.md                                         |
 | Tasks in progress  | 0                                                            |
-| Last updated       | 2026-03-05                                                   |
+| Last updated       | 2026-03-09                                                   |
 
 ---
 
