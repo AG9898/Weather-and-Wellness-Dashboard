@@ -41,6 +41,7 @@
 | GET    | /sessions | RA | implemented | T21 |
 | POST   | /sessions | RA | implemented | T08 |
 | POST   | /sessions/start | RA | implemented | T36, T51a |
+| DELETE | /sessions/last-native | RA | planned | — |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
@@ -208,6 +209,7 @@
 ## Sessions
 
 - **Audit note:** T08 endpoints were reopened on 2026-02-20 due to incomplete/invalid implementation.
+- **Planned admin safety feature:** a narrow RA-only undo endpoint will allow removal of the most recently created native session only.
 
 ### GET /sessions
 - **Auth:** RA required
@@ -275,6 +277,41 @@
 - **Auth:** None (unauthenticated — participant page polls this)
 - **Status:** implemented (T08)
 - **Response:** SessionResponse with current `status` field.
+
+---
+
+### DELETE /sessions/last-native
+- **Auth:** RA required
+- **Status:** planned
+- **Purpose:** Undo the most recently created native session for supervised-lab correction/testing cleanup.
+- **Planned request body:**
+  ```json
+  {
+    "confirm": true,
+    "reason": "string"
+  }
+  ```
+- **Planned response:**
+  ```json
+  {
+    "deleted_session_id": "uuid",
+    "deleted_participant_uuid": "uuid",
+    "deleted_participant_number": "integer",
+    "session_status_at_delete": "created | active | complete",
+    "participant_deleted": "boolean"
+  }
+  ```
+- **Rules:**
+  - Deletes only the most recently created **native** session in the database.
+  - Imported legacy sessions are never eligible.
+  - If a newer session exists, older sessions cannot be deleted through this endpoint.
+  - Deletes related survey rows, digit span rows, and the session row transactionally.
+  - Deletes the participant row only if that participant has no other sessions.
+  - Never deletes or mutates `weather_daily` / `weather_ingest_runs`.
+  - Always writes an append-only admin audit row with who deleted the session and why.
+- **Notes:**
+  - This is intentionally narrower than a generic delete-session API.
+  - This endpoint is meant for supervised correction / pipeline testing cleanup, not historical data management.
 
 ---
 

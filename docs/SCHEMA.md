@@ -19,6 +19,10 @@
 > documented in `docs/ANALYTICS.md`. That analytics dataset is currently a
 > logical query-layer construct, not an existing transactional table.
 
+> Planned admin correction tooling includes an append-only audit table for
+> RA-triggered undo of the most recent native session. This is intended as a
+> narrow operational safety feature, not a soft-delete layer across all tables.
+
 ---
 
 ## Entity Relationships
@@ -36,6 +40,10 @@ sessions (1) ──────────────────── (0..1)
 study_days (1) ────────────────── (many) weather_daily
 weather_ingest_runs (1) ───────── (many) weather_daily
 ```
+
+`admin_session_undo_log` is planned as an append-only audit table that stores
+deleted session and participant identifiers by value for the RA-only undo
+feature.
 
 ---
 
@@ -186,6 +194,33 @@ replace day-level weather-derived sunlight duration in analytics queries.
 | created_at       | TIMESTAMPTZ | DEFAULT NOW() |                                         |
 | completed_at     | TIMESTAMPTZ | NULLABLE      | Set when status transitions to "complete" |
 | study_day_id     | UUID        | FK, NULLABLE  | Added T29. Set when session becomes complete; links to `study_days.study_day_id` |
+
+---
+
+**Undo-last-session note (planned):** the RA-only undo flow will hard-delete a
+session's dependent survey/digit span rows and then the `sessions` row itself.
+This is intentionally limited to the most recently created native session and is
+audit-logged instead of introducing soft-delete columns.
+
+## Planned Table: `admin_session_undo_log`
+
+Append-only audit table for the RA-only **Undo Last Session** feature.
+
+| Column                     | Type        | Constraints   | Notes |
+|---------------------------|-------------|---------------|-------|
+| undo_id                   | UUID        | PK            | Generated server-side |
+| deleted_session_id        | UUID        | NOT NULL      | Stores the deleted session identifier by value |
+| deleted_participant_uuid  | UUID        | NOT NULL      | Stores the deleted participant UUID by value |
+| deleted_participant_number| INT         | NOT NULL      | Human-facing participant number at deletion time |
+| session_status_at_delete  | VARCHAR     | NOT NULL      | `created` / `active` / `complete` |
+| deleted_by_lab_member_id  | UUID        | NOT NULL      | RA auth subject who triggered the undo |
+| reason                    | VARCHAR     | NULLABLE      | Short operator-entered reason |
+| deleted_at                | TIMESTAMPTZ | DEFAULT NOW() | Audit timestamp |
+
+**Behavior notes:**
+- This table is append-only.
+- It records hard-delete actions; it does not preserve recoverable row payloads.
+- Weather-domain tables are unaffected by undo-last-session operations.
 
 ---
 

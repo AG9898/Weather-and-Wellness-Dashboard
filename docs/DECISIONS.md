@@ -247,6 +247,34 @@ while keeping sessions linkable even if weather ingestion is missing for a day.
 
 ---
 
+### RESOLVED-13 — RA Undo Last Session Uses Hard Delete + Audit Log
+
+**Resolved:** 2026-03-09
+
+**Decision:** Add an RA-only **Undo Last Session** capability that can remove only
+the most recently created **native** session, with a confirmation step and an
+append-only audit record. This feature uses transactional hard deletion of the
+session-domain rows plus optional participant deletion when that participant has
+no other sessions. It does **not** use soft-delete semantics.
+
+**Why:** The operational need is narrowly scoped: remove accidental supervised
+test runs or obvious bad entries without introducing broad edit/delete tooling.
+Soft delete would require every dashboard query, export, import conflict check,
+and analytics dataset query to learn a new "deleted" filter, creating a large
+correctness surface for little benefit.
+
+**Constraints chosen:**
+- RA-only
+- latest native session only
+- not available for imported legacy sessions
+- weather tables are never touched
+- deletion is transactional and audit-logged
+
+**Affects:** docs/API.md, docs/SCHEMA.md, docs/DESIGN_SPEC.md,
+docs/ARCHITECTURE.md, docs/kanban.md.
+
+---
+
 <!-- Template for new decisions:
 
 ### OPEN-XX — [Decision Name]

@@ -191,10 +191,24 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - If additional visual linking is needed, use date-based weather annotations or
   selection badges rather than mixing time-series and residual plots on the same
   axes.
+- A future RA-only **Undo Last Session** action may appear in the dashboard hero
+  or adjacent admin controls. It must target only the most recently created
+  native session, require explicit confirmation, and never expose a general
+  session-management delete UI.
 
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
 - The supervised workflow treats participant↔session as 1:1 (a new participant is created for each new session); the DB does not enforce this constraint.
+
+**Planned undo-last-session flow:**
+- RA triggers **Undo Last Session** from the dashboard.
+- UI first shows the current last native session candidate with:
+  - participant number
+  - session status
+  - created time
+- Confirmation is required before delete.
+- On success, the dashboard refreshes operational KPIs and any cached analytics state.
+- This flow is intended for accidental test runs / obvious supervised-entry mistakes, not arbitrary historical record deletion.
 
 **Data loading (T41–T43, implemented):**
 - Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then (optionally) refresh from the live Render backend and update the UI when fresh data arrives. The dashboard avoids triggering a live refresh on every visit when cached data is still recent (prevents waking the Render backend unnecessarily).

@@ -15,6 +15,7 @@
 - **Database (Supabase)**: Managed Postgres. Lab reads data via Supabase Studio.
 - **Admin data ops (planned, Phase 3)**: RA-only Import/Export endpoints on Render support legacy imports and controlled CSV/XLSX exports.
 - **Planned analytics layer**: backend-generated statistical snapshots derived from DB data will power model-based dashboard KPIs. See `docs/ANALYTICS.md`.
+- **Planned session safety tool**: a narrow RA-only undo action for the latest native session, implemented as transactional hard delete plus audit log rather than soft delete.
 
 ---
 
@@ -184,3 +185,4 @@ Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 - Day-level semantics (study days, weather day linking, dashboard filtering) use the study timezone `America/Vancouver`.
 - Schema details live in `docs/SCHEMA.md`.
 - Planned analytics dataset rules live in `docs/ANALYTICS.md`.
+- Planned undo-last-session behavior should remove only session-domain rows and must not mutate weather-domain rows.

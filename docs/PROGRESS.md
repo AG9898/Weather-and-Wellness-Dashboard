@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 24 (T54–T75 + T72 animejs; T67 superseded) — Phase 4 ongoing |
-| Remaining queue    | T76–T93 in kanban.md                                         |
+| Tasks completed    | 24 — Phase 4 ongoing                                         |
+| Remaining queue    | T76–T99 in kanban.md                                         |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-09                                                   |
 
@@ -34,17 +34,27 @@ _No tasks in progress._
 - Added a new scoped implementation sequence to `docs/kanban.md` for the
   planned dashboard analytics pipeline documented in `docs/ANALYTICS.md`.
 - New tasks:
-  - **T81** — add backend analytics dependencies and schema scaffolding
-  - **T82** — add durable analytics run/snapshot tables
-  - **T83** — build canonical analysis dataset service
-  - **T84** — implement z-scoring and mixed-model fitting
-  - **T85** — add snapshot persistence and recompute orchestration
-  - **T86** — implement `GET /dashboard/analytics`
-  - **T87** — add frontend analytics API wrappers and Route Handler
-  - **T88** — add dashboard analytics model cards UI
-  - **T89** — add analytics parity and regression coverage
+  - **T83** — add backend analytics dependencies and schema scaffolding
+  - **T84** — add durable analytics run/snapshot tables
+  - **T85** — build canonical analysis dataset service
+  - **T86** — implement z-scoring and mixed-model fitting
+  - **T87** — add snapshot persistence and recompute orchestration
+  - **T88** — implement `GET /dashboard/analytics`
+  - **T89** — add frontend analytics API wrappers and Route Handler
+  - **T90** — add dashboard analytics model cards UI
+  - **T91** — add analytics parity and regression coverage
 - Existing scoring semantics remain unchanged; the new queue is additive and
   follows the analytics design documented on 2026-03-09.
+
+## Selective wipe + fresh re-import tasks added (planned 2026-03-09)
+
+- Added a post-import-verification cleanup path for restoring the reference XLSX
+  data without deleting existing weather history.
+- New tasks added to `docs/kanban.md` immediately after T80:
+  - **T81** — add a participant-domain wipe script that preserves weather tables
+  - **T82** — after T80, run the selective wipe and perform a brand new import of `reference/data_full_1-230.xlsx`
+- This sequence is intentionally placed before the analytics implementation
+  tasks so the restored participant dataset is in a clean post-T80 state.
 
 ## Analytics visualization linkage tasks added (planned 2026-03-09)
 
@@ -53,10 +63,22 @@ _No tasks in progress._
 - The weather chart and analytics surfaces will share dashboard filter state and
   may use lightweight date-based annotations to stay visually linked.
 - New tasks added to `docs/kanban.md`:
-  - **T90** — extend analytics payload for effect plots and weather-link metadata
-  - **T91** — unify weather and analytics filter state on the dashboard
-  - **T92** — add a separate analytics effect-plot card with weather annotations
-  - **T93** — verify linked weather-analysis visualization behavior end to end
+  - **T92** — extend analytics payload for effect plots and weather-link metadata
+  - **T93** — unify weather and analytics filter state on the dashboard
+  - **T94** — add a separate analytics effect-plot card with weather annotations
+  - **T95** — verify linked weather-analysis visualization behavior end to end
+
+## Undo-last-session tasks added (planned 2026-03-09)
+
+- Added a narrow RA-only correction path for undoing the most recently created
+  native session via hard delete plus append-only audit log.
+- This decision explicitly avoids broad soft-delete semantics and does not touch
+  weather-domain rows.
+- New tasks added to `docs/kanban.md`:
+  - **T96** — add audit table and backend delete service
+  - **T97** — implement `DELETE /sessions/last-native`
+  - **T98** — add the dashboard undo control
+  - **T99** — verify undo safeguards and regressions
 
 ## T75 — Frontend — KPI stat number counter animation with animejs (completed 2026-03-05)
 

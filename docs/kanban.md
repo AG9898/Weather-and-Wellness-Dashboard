@@ -247,6 +247,53 @@ Follow current JSON Schema when adding tasks.
     },
     {
       "id": "T81",
+      "title": "Backend ops — add participant-domain wipe script that preserves weather tables",
+      "status": "todo",
+      "description": "Add a second wipe utility for resetting participant/session outcome data without deleting weather history. The new script should clear participants, sessions, imported_session_measures, survey tables, and digit span tables while preserving `weather_daily` and `weather_ingest_runs`. It must also handle `study_days` safely so weather-linked days remain valid. This is intended for post-test-data cleanup before a fresh legacy re-import.",
+      "stack": ["backend", "database"],
+      "depends_on": [],
+      "read_docs": [
+        "docs/devSteps.md",
+        "docs/API.md",
+        "docs/SCHEMA.md"
+      ],
+      "acceptance_criteria": [
+        "A new wipe script exists for participant/session/survey/digitspan data only",
+        "Running the wipe preserves `weather_daily` and `weather_ingest_runs` rows",
+        "The wipe handles `study_days` without breaking existing weather foreign-key relationships",
+        "The selective wipe is documented separately from the full destructive wipe"
+      ],
+      "updates_docs": [
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T82",
+      "title": "Ops — post-T80 selective clear and fresh reference XLSX re-import",
+      "status": "todo",
+      "description": "After T80 is complete, use the new selective wipe to clear participant/session outcome data while preserving weather history, then perform a brand new preview-first import of `reference/data_full_1-230.xlsx`. This task is the clean repopulation step for the demo/analysis dataset after the CogFunc import path and legacy import verification are in place.",
+      "stack": ["backend", "database"],
+      "depends_on": ["T80", "T81"],
+      "read_docs": [
+        "docs/devSteps.md",
+        "docs/API.md",
+        "docs/SCHEMA.md"
+      ],
+      "acceptance_criteria": [
+        "Selective wipe is run after T80 and clears participant/session/survey/digitspan/imported-measure data",
+        "Existing weather rows remain intact after the clear",
+        "`POST /admin/import/preview` succeeds on `reference/data_full_1-230.xlsx` with no blocking validation errors",
+        "`POST /admin/import/commit` or the RA Import/Export UI completes a fresh import successfully",
+        "Database is restored from the reference XLSX in the post-T80 shape rather than relying on incremental overwrite of prior test data"
+      ],
+      "updates_docs": [
+        "docs/devSteps.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T83",
       "title": "Backend analytics — add Python dependencies and response schema scaffolding",
       "status": "todo",
       "description": "Add the Python packages needed for DB-driven statistical analysis (`pandas`, `numpy`, `statsmodels`, and `scipy` if required by the implementation), then scaffold the analytics-side Pydantic response models and version/config constants without changing any existing survey scoring logic. This task is only the infrastructure layer for the planned analytics pipeline documented in `docs/ANALYTICS.md`.",
@@ -269,12 +316,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T82",
+      "id": "T84",
       "title": "DB — add durable analytics run and snapshot tables",
       "status": "todo",
       "description": "Create Alembic migrations and SQLAlchemy models for durable analytics storage in Postgres. Add an append-only run/audit table and a snapshot table keyed by date range + model version so analytics results are not stored in Redis alone. Persist recompute status, warning metadata, generation timestamps, and the serialized analytics payload.",
       "stack": ["backend", "database"],
-      "depends_on": ["T81"],
+      "depends_on": ["T83"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "docs/SCHEMA.md",
@@ -292,12 +339,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T83",
+      "id": "T85",
       "title": "Backend analytics — build canonical analysis dataset service",
       "status": "todo",
       "description": "Implement a backend service that constructs the canonical analysis dataset from sessions, study days, weather, digit span, survey tables, participants, and imported aggregate fallbacks. This service must apply the source-precedence rules documented in `docs/ANALYTICS.md`, derive `date_bin` in-memory, and return both included rows and exclusion metadata.",
       "stack": ["backend"],
-      "depends_on": ["T81"],
+      "depends_on": ["T83"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "docs/SCHEMA.md",
@@ -315,12 +362,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T84",
+      "id": "T86",
       "title": "Backend analytics — implement z-scoring and mixed-model fitting service",
       "status": "todo",
       "description": "Implement the Python-side statistics engine that standardizes the active dataset window and fits the two planned mixed-effects models from `docs/ANALYTICS.md`. Serialize model-level metadata and effect-card outputs suitable for the dashboard, including coefficient, standard error, p-value, confidence interval, direction, and convergence warnings.",
       "stack": ["backend"],
-      "depends_on": ["T83"],
+      "depends_on": ["T85"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "reference/Weather_MLM.R"
@@ -336,12 +383,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T85",
+      "id": "T87",
       "title": "Backend analytics — add snapshot persistence and recompute orchestration",
       "status": "todo",
       "description": "Implement the service layer that reads the latest analytics snapshot, triggers a fresh recompute when requested, writes successful results back to durable snapshot storage, and preserves the prior snapshot while recompute is in progress or fails. This task owns the backend state machine for `ready`, `stale`, `recomputing`, `insufficient_data`, and `failed` analytics states.",
       "stack": ["backend"],
-      "depends_on": ["T82", "T84"],
+      "depends_on": ["T84", "T86"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "docs/ARCHITECTURE.md"
@@ -357,12 +404,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T86",
+      "id": "T88",
       "title": "Backend API — implement GET /dashboard/analytics",
       "status": "todo",
       "description": "Add the RA-protected analytics endpoint and wire it to the dataset, model, and snapshot services. Support `date_from`, `date_to`, and `mode=snapshot|live`, interpret bounds in `America/Vancouver`, and return the typed analytics response contract defined in the docs.",
       "stack": ["backend"],
-      "depends_on": ["T85"],
+      "depends_on": ["T87"],
       "read_docs": [
         "docs/API.md",
         "docs/ANALYTICS.md",
@@ -381,12 +428,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T87",
+      "id": "T89",
       "title": "Frontend analytics — add typed API wrappers and same-origin route handler",
       "status": "todo",
       "description": "Add typed frontend API wrappers for the analytics endpoint and a same-origin Route Handler for dashboard analytics reads. Keep analytics caching separate from the current operational dashboard and weather cache keys, and preserve auth validation plus stale-snapshot fallback behavior.",
       "stack": ["frontend"],
-      "depends_on": ["T86"],
+      "depends_on": ["T88"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "docs/ARCHITECTURE.md",
@@ -404,12 +451,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T88",
+      "id": "T90",
       "title": "Frontend dashboard — add analytics model cards UI",
       "status": "todo",
       "description": "Add the dashboard analytics section that renders model cards from the analytics payload. The implemented UI should clearly separate operational KPI cards from statistical model cards, display coefficient/direction/significance/convergence state, and show snapshot freshness or recompute status without blocking the existing weather and summary surfaces. This task covers the model-card layer only; the separate linked effect-plot surface is handled by follow-on tasks.",
       "stack": ["frontend"],
-      "depends_on": ["T87"],
+      "depends_on": ["T89"],
       "read_docs": [
         "docs/DESIGN_SPEC.md",
         "docs/ANALYTICS.md",
@@ -427,12 +474,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T89",
+      "id": "T91",
       "title": "Verification — analytics dataset, model, endpoint, and dashboard parity tests",
       "status": "todo",
       "description": "Add focused automated coverage for the new analytics pipeline end to end. Cover dataset assembly precedence, exclusion rules, model serialization, snapshot/live endpoint behavior, and the dashboard analytics UI states. Include at least one parity-oriented fixture derived from the reference R workflow to catch regressions in term naming and included-row logic.",
       "stack": ["backend", "frontend"],
-      "depends_on": ["T86", "T88"],
+      "depends_on": ["T88", "T90"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "docs/API.md",
@@ -450,12 +497,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T90",
+      "id": "T92",
       "title": "Backend analytics — extend snapshot/API payload for effect plots and weather-link metadata",
       "status": "todo",
       "description": "Extend the analytics serialization layer so the backend returns data for a separate effect-plot component plus lightweight date-based weather-link metadata. The payload should support a selected term/outcome, chart-ready points/fit-line series, and optional weather annotations without attempting to merge residual/effect data into the weather time-series payload.",
       "stack": ["backend"],
-      "depends_on": ["T86"],
+      "depends_on": ["T88"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "docs/API.md",
@@ -474,12 +521,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T91",
+      "id": "T93",
       "title": "Frontend dashboard — shared weather and analytics filter state",
       "status": "todo",
       "description": "Refactor dashboard filter state so the weather chart and analytics surfaces are driven by the same selected date window and refresh state. The goal is to keep the weather time/context view and model/effect view synchronized while still fetching them through separate typed APIs and cache paths.",
       "stack": ["frontend"],
-      "depends_on": ["T87", "T88"],
+      "depends_on": ["T89", "T90"],
       "read_docs": [
         "docs/DESIGN_SPEC.md",
         "docs/ANALYTICS.md",
@@ -497,12 +544,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T92",
+      "id": "T94",
       "title": "Frontend dashboard — add separate analytics effect plot card with weather annotations",
       "status": "todo",
       "description": "Add a dedicated effect-plot card to the dashboard that responds to model-card selection and shares filters with the weather chart. Also add lightweight visual linkage on the weather chart, such as selected-term badges or date-based annotations, while keeping the weather chart itself a pure time-series surface.",
       "stack": ["frontend"],
-      "depends_on": ["T90", "T91"],
+      "depends_on": ["T92", "T93"],
       "read_docs": [
         "docs/DESIGN_SPEC.md",
         "docs/ANALYTICS.md",
@@ -520,12 +567,12 @@ Follow current JSON Schema when adding tasks.
       ]
     },
     {
-      "id": "T93",
+      "id": "T95",
       "title": "Verification — linked weather-analysis visualization tests",
       "status": "todo",
       "description": "Add focused coverage for the shared-filter and linked-visualization behavior between the weather chart, analytics model cards, and the separate effect-plot card. Validate that the UI preserves semantic separation between date-based weather plots and predictor-vs-effect plots while still keeping them synchronized.",
       "stack": ["backend", "frontend"],
-      "depends_on": ["T90", "T92"],
+      "depends_on": ["T92", "T94"],
       "read_docs": [
         "docs/ANALYTICS.md",
         "docs/DESIGN_SPEC.md",
@@ -536,6 +583,101 @@ Follow current JSON Schema when adding tasks.
         "Tests verify selected model-card state drives the separate effect plot",
         "Tests verify weather annotations remain date-based and do not introduce residual/effect series into the weather chart",
         "Tests cover loading, stale snapshot, and recompute states across linked visualization surfaces"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T96",
+      "title": "DB + backend — add undo-last-session audit table and delete service",
+      "status": "todo",
+      "description": "Implement the backend foundation for an RA-only Undo Last Session feature. Add the append-only `admin_session_undo_log` table, then create a transactional delete service that removes the most recently created native session's survey/digitspan/session rows and conditionally removes the participant row when no other sessions remain. Weather tables must remain untouched.",
+      "stack": ["backend", "database"],
+      "depends_on": [],
+      "read_docs": [
+        "docs/SCHEMA.md",
+        "docs/API.md",
+        "docs/DECISIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Alembic migration adds `admin_session_undo_log` cleanly up/down",
+        "Backend service identifies only the latest native session as undo-eligible",
+        "Delete operation is transactional across survey, digitspan, session, and optional participant rows",
+        "Undo writes an audit row with deleter, session info, participant number, and reason",
+        "Weather-domain rows are never deleted or modified"
+      ],
+      "updates_docs": [
+        "docs/SCHEMA.md",
+        "docs/API.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T97",
+      "title": "Backend API — implement DELETE /sessions/last-native",
+      "status": "todo",
+      "description": "Add the RA-protected endpoint for Undo Last Session. The endpoint should validate confirmation input, reject imported sessions, reject cases where no eligible native session exists, call the transactional delete service, and return a compact summary of what was removed.",
+      "stack": ["backend"],
+      "depends_on": ["T96"],
+      "read_docs": [
+        "docs/API.md",
+        "docs/DECISIONS.md"
+      ],
+      "acceptance_criteria": [
+        "`DELETE /sessions/last-native` exists and requires LabMember auth",
+        "Endpoint only targets the most recently created native session",
+        "Endpoint returns a typed delete summary including participant number and session status at deletion time",
+        "Imported sessions are not eligible for deletion through this endpoint",
+        "Failure cases return safe, descriptive errors without partial deletion"
+      ],
+      "updates_docs": [
+        "docs/API.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T98",
+      "title": "Frontend dashboard — add RA Undo Last Session control",
+      "status": "todo",
+      "description": "Add a narrow RA-only Undo Last Session control to the dashboard. Show the current last native session candidate, require explicit confirmation before deletion, submit through typed API wrappers, and refresh the dashboard state after success. Do not introduce a general session-management delete UI.",
+      "stack": ["frontend"],
+      "depends_on": ["T97"],
+      "read_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/API.md",
+        "docs/styleguide.md"
+      ],
+      "acceptance_criteria": [
+        "Dashboard exposes an Undo Last Session action only in an RA/admin context",
+        "UI shows participant number, session status, and created time before confirmation",
+        "Deletion requires explicit confirmation and a reason field if implemented",
+        "On success the dashboard refreshes affected KPI/analytics state",
+        "UI does not expose arbitrary session deletion or editing"
+      ],
+      "updates_docs": [
+        "docs/DESIGN_SPEC.md",
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T99",
+      "title": "Verification — undo-last-session safeguards and regression coverage",
+      "status": "todo",
+      "description": "Add automated coverage for the undo-last-session feature. Verify latest-native-session selection, audit logging, participant conditional deletion, rejection of imported sessions, and no-impact guarantees for weather data and unrelated sessions.",
+      "stack": ["backend", "frontend"],
+      "depends_on": ["T97", "T98"],
+      "read_docs": [
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/DECISIONS.md"
+      ],
+      "acceptance_criteria": [
+        "Backend tests verify only the latest native session is undoable",
+        "Tests verify participant row is deleted only when no other sessions remain",
+        "Tests verify imported sessions are rejected",
+        "Tests verify audit rows are written for successful undo operations",
+        "Tests verify weather tables remain unchanged after undo"
       ],
       "updates_docs": [
         "docs/PROGRESS.md"
