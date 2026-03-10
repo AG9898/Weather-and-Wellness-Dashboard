@@ -279,23 +279,29 @@ Applied by migration `20260301_000010`:
     - `survey_gad7.legacy_total_score` SMALLINT NULLABLE — integer 0–21 when legacy anxiety maps exactly; null otherwise
   - `digitspan_runs.max_span` is now nullable; `total_correct` stays NOT NULL
   - Digit span import maps legacy `digit_span_score` (0–14) to `digitspan_runs.total_correct`; `max_span` remains null.
-  - Legacy column mappings implemented (T55): `loneliness_mean` → `survey_uls8.legacy_mean_1_4`; `depression_mean` → `survey_cesd10.legacy_mean_1_4`; `anxiety_mean` → `survey_gad7.legacy_mean_1_4` (and `total_score`/`severity_band` if value is an exact integer 0–21).
+  - Legacy column mappings implemented:
+    - T55: `loneliness_mean` → `survey_uls8.legacy_mean_1_4`; `depression_mean` → `survey_cesd10.legacy_mean_1_4`; `anxiety_mean` → `survey_gad7.legacy_mean_1_4` (and `total_score`/`severity_band` if value is an exact integer 0–21)
+    - T78: `self_report` → `survey_cogfunc8a.legacy_mean_1_5`
 
 `imported_session_measures` remains the audit/source-of-truth mapping table and retains the full `source_row_json`.
 
-Legacy CogFunc / PROMIS aggregate `self_report` remains in `imported_session_measures.self_report`;
-current Phase 4 import does not create `survey_cogfunc8a` rows for imported sessions.
+Legacy CogFunc / PROMIS aggregate `self_report` remains in `imported_session_measures.self_report`
+for audit/source preservation and is now also remapped into
+`survey_cogfunc8a.legacy_mean_1_5` with `data_source='imported'`.
 
 The imported Digit Span value stored in `digitspan_runs.total_correct` is the legacy workbook
 score under the stop-after-two-errors-at-the-same-span rule and is not equivalent to the native
 fixed-14-trial `max_span`.
 
-**Analytics note (planned):** the statistical query layer should treat
-`imported_session_measures.self_report` as the imported fallback source for the
-logical self-report cognition outcome until an explicit imported CogFunc mapping
-is added.
+**Analytics note (planned):** `survey_cogfunc8a` is now the canonical imported
+CogFunc outcome table; `imported_session_measures.self_report` remains the raw
+audit/source copy of the original workbook value.
 
-**Re-import safety:** `_get_sessions_with_native_rows` only flags sessions with `data_source='native'` rows in the four remapped tables (SurveyCogFunc8a has no import path — any row is native). The `on_conflict_do_update WHERE data_source='imported'` clause provides an additional DB-level guard against overwriting native rows.
+**Re-import safety:** `_get_sessions_with_native_rows` now filters by
+`data_source='native'` across all five imported-capable outcome tables:
+`digitspan_runs`, `survey_uls8`, `survey_cesd10`, `survey_gad7`, and
+`survey_cogfunc8a`. The `ON CONFLICT ... DO UPDATE WHERE data_source='imported'`
+clause provides an additional DB-level guard against overwriting native rows.
 
 ---
 
@@ -385,18 +391,31 @@ is added.
 
 ## Table: `survey_cogfunc8a`
 
-> Legacy import note: the current import path does not populate this table for legacy sessions.
-> The imported CogFunc / PROMIS aggregate remains in `imported_session_measures.self_report`.
+> Phase 4 additions (T77, applied 2026-03-10): `data_source`,
+> `legacy_mean_1_5`; raw and computed columns made nullable; UNIQUE on
+> `session_id`.
+>
+> Phase 4 remap note (T78, implemented 2026-03-10): admin import commit and the
+> Phase 4 backfill script now upsert imported CogFunc rows using
+> `legacy_mean_1_5` plus `data_source='imported'`. `imported_session_measures.self_report`
+> remains the audit/source copy of the original workbook value.
+>
+> Export note (T79, implemented 2026-03-10): admin XLSX/ZIP exports now include
+> `legacy_mean_1_5` and `data_source` on the canonical `survey_cogfunc8a`
+> sheet/CSV so imported cognition rows are visible without relying on the audit
+> table alone.
 
-| Column           | Type          | Constraints   | Notes                           |
-|------------------|---------------|---------------|---------------------------------|
-| response_id      | UUID          | PK            |                                 |
-| session_id       | UUID          | FK, NOT NULL  | → sessions.session_id           |
-| participant_uuid | UUID          | FK, NOT NULL  | → participants.participant_uuid |
-| r1–r8            | SMALLINT      | NOT NULL      | Raw responses, 1–5              |
-| total_sum        | SMALLINT      | NOT NULL      |                                 |
-| mean_score       | NUMERIC(5,4)  | NOT NULL      |                                 |
-| created_at       | TIMESTAMPTZ   | DEFAULT NOW() |                                 |
+| Column           | Type          | Constraints           | Notes                                                         |
+|------------------|---------------|-----------------------|---------------------------------------------------------------|
+| response_id      | UUID          | PK                    |                                                               |
+| session_id       | UUID          | FK, NOT NULL, UNIQUE  | → sessions.session_id; at most 1 row per session              |
+| participant_uuid | UUID          | FK, NOT NULL          | → participants.participant_uuid                               |
+| r1–r8            | SMALLINT      | NULLABLE              | Raw responses, 1–5; null for imported rows                    |
+| total_sum        | SMALLINT      | NULLABLE              | PROMIS reversed-total for native rows; null for imported rows |
+| mean_score       | NUMERIC(5,4)  | NULLABLE              | PROMIS reversed mean for native rows; null for imported rows  |
+| legacy_mean_1_5  | NUMERIC       | NULLABLE              | Legacy `self_report` aggregate on the 1–5 scale               |
+| data_source      | VARCHAR(16)   | NOT NULL              | `native` (default) or `imported`                              |
+| created_at       | TIMESTAMPTZ   | DEFAULT NOW()         |                                                               |
 
 ---
 
@@ -417,8 +436,9 @@ is added.
 | 2026-02-28 | T47a | Fix study_days.tz_name server_default and existing rows from America/Edmonton to America/Vancouver |
 | 2026-03-01 | T54 | Add data_source, legacy columns, nullable relaxation, and UNIQUE session_id constraints to digitspan_runs, survey_uls8, survey_cesd10, survey_gad7 |
 | 2026-03-03 | T64 | Add `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily` (Open-Meteo historical backfill) |
+| 2026-03-10 | T77 | Extend `survey_cogfunc8a` with imported-row schema support (`data_source`, `legacy_mean_1_5`, nullable raw/computed columns, UNIQUE session_id) |
 
-As of 2026-03-03, migration `20260303_000001` (T64) applied and verified. DB is at `head`.
+As of 2026-03-10, migration `20260310_000001` (T77) is the current head revision.
 
 ---
 

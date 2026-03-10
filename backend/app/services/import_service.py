@@ -14,8 +14,9 @@ Upsert rules (commit):
 - Imported sessions: status="complete", study_day_id from date_local, timestamps at 12:00 local→UTC
 - imported_session_measures upserted (keyed by session_id) — full audit trail
 - Phase 4: also upserts into canonical outcome tables (digitspan_runs, survey_uls8,
-  survey_cesd10, survey_gad7) with data_source='imported'. Native rows are never
-  overwritten — the upsert WHERE clause guards against this at the DB level.
+  survey_cesd10, survey_gad7, survey_cogfunc8a) with data_source='imported'.
+  Native rows are never overwritten — the upsert WHERE clause guards against
+  this at the DB level.
 - All writes are transactional; any error rolls back everything.
 """
 from __future__ import annotations
@@ -122,7 +123,7 @@ class ParsedRow:
     anxiety_mean: float | None
     loneliness_mean: float | None
     depression_mean: float | None
-    digit_span_max_span: int | None
+    digit_span_legacy_score: int | None
     self_report: float | None
     source_row_json: dict[str, Any]
 
@@ -496,7 +497,7 @@ def _parse_rows_from_raw(raw_rows: list[list[Any]], file_type: str) -> ParseResu
         anxiety_mean = _parse_float(_get(raw_row, _C_ANXIETY))
         loneliness_mean = _parse_float(_get(raw_row, _C_LONELINESS))
         depression_mean = _parse_float(_get(raw_row, _C_DEPRESSION))
-        digit_span_max_span = _parse_int(_get(raw_row, _C_DIGIT_SPAN_SCORE))
+        digit_span_legacy_score = _parse_int(_get(raw_row, _C_DIGIT_SPAN_SCORE))
         self_report = _parse_float(_get(raw_row, _C_SELF_REPORT))
 
         # ── source_row_json (full audit payload) ───────────────────────────
@@ -522,7 +523,7 @@ def _parse_rows_from_raw(raw_rows: list[list[Any]], file_type: str) -> ParseResu
             anxiety_mean=anxiety_mean,
             loneliness_mean=loneliness_mean,
             depression_mean=depression_mean,
-            digit_span_max_span=digit_span_max_span,
+            digit_span_legacy_score=digit_span_legacy_score,
             self_report=self_report,
             source_row_json=source_row_json,
         ))
@@ -575,16 +576,21 @@ async def _get_sessions_with_native_rows(
 ) -> set[uuid.UUID]:
     """Return the subset of session_ids that have any *native* survey or digit span rows.
 
-    Tables that carry data_source (Phase 4): only rows with data_source='native' count.
-    SurveyCogFunc8a has no data_source — any row in it is native (no import path).
+    Phase 4 imported-capable tables carry data_source, so only rows with
+    data_source='native' count as overwrite blockers.
     """
     if not session_ids:
         return set()
 
     found: set[uuid.UUID] = set()
 
-    # Phase 4: these tables have data_source; only 'native' rows block re-import
-    for model in (DigitSpanRun, SurveyULS8, SurveyCESD10, SurveyGAD7):
+    for model in (
+        DigitSpanRun,
+        SurveyULS8,
+        SurveyCESD10,
+        SurveyGAD7,
+        SurveyCogFunc8a,
+    ):
         result = await db.execute(
             select(model.session_id)
             .where(
@@ -594,14 +600,6 @@ async def _get_sessions_with_native_rows(
             .distinct()
         )
         found.update(result.scalars().all())
-
-    # SurveyCogFunc8a has no data_source — any row is native
-    result = await db.execute(
-        select(SurveyCogFunc8a.session_id)
-        .where(SurveyCogFunc8a.session_id.in_(session_ids))
-        .distinct()
-    )
-    found.update(result.scalars().all())
 
     return found
 
@@ -933,7 +931,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
                 anxiety_mean=row.anxiety_mean,
                 loneliness_mean=row.loneliness_mean,
                 depression_mean=row.depression_mean,
-                digit_span_max_span=row.digit_span_max_span,
+                digit_span_max_span=row.digit_span_legacy_score,
                 self_report=row.self_report,
                 source_row_json=row.source_row_json,
             )
@@ -946,7 +944,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
                     "anxiety_mean": row.anxiety_mean,
                     "loneliness_mean": row.loneliness_mean,
                     "depression_mean": row.depression_mean,
-                    "digit_span_max_span": row.digit_span_max_span,
+                    "digit_span_max_span": row.digit_span_legacy_score,
                     "self_report": row.self_report,
                     "source_row_json": row.source_row_json,
                 },
@@ -955,22 +953,23 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
         await db.execute(m_stmt)
 
         # ── Phase 4: upsert canonical outcome tables ──────────────────────
-        # digit_span_score maps to digitspan_runs.total_correct (max_span unknown)
-        if row.digit_span_max_span is not None:
+        # The imported workbook stores a legacy digit span score, not a native max_span.
+        # Keep storing it in total_correct for compatibility; imported max_span stays null.
+        if row.digit_span_legacy_score is not None:
             ds_stmt = (
                 pg_insert(DigitSpanRun)
                 .values(
                     run_id=uuid.uuid4(),
                     session_id=session_id,
                     participant_uuid=p_uuid,
-                    total_correct=row.digit_span_max_span,
+                    total_correct=row.digit_span_legacy_score,
                     max_span=None,
                     data_source="imported",
                 )
                 .on_conflict_do_update(
                     index_elements=["session_id"],
                     set_={
-                        "total_correct": row.digit_span_max_span,
+                        "total_correct": row.digit_span_legacy_score,
                         "max_span": None,
                         "data_source": "imported",
                     },
@@ -1060,6 +1059,28 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
                 )
             )
             await db.execute(gad7_stmt)
+
+        # self_report → survey_cogfunc8a.legacy_mean_1_5
+        if row.self_report is not None:
+            cogfunc_stmt = (
+                pg_insert(SurveyCogFunc8a)
+                .values(
+                    response_id=uuid.uuid4(),
+                    session_id=session_id,
+                    participant_uuid=p_uuid,
+                    legacy_mean_1_5=row.self_report,
+                    data_source="imported",
+                )
+                .on_conflict_do_update(
+                    index_elements=["session_id"],
+                    set_={
+                        "legacy_mean_1_5": row.self_report,
+                        "data_source": "imported",
+                    },
+                    where=SurveyCogFunc8a.data_source == "imported",
+                )
+            )
+            await db.execute(cogfunc_stmt)
 
     await db.commit()
 

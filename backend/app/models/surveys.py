@@ -145,6 +145,9 @@ class SurveyGAD7(Base):
 
 class SurveyCogFunc8a(Base):
     __tablename__ = "survey_cogfunc8a"
+    __table_args__ = (
+        UniqueConstraint("session_id", name="uq_survey_cogfunc8a_session_id"),
+    )
 
     response_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -156,17 +159,27 @@ class SurveyCogFunc8a(Base):
         UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
     )
 
-    r1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r4: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    r8: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Raw responses — nullable for imported rows (no raw item data available)
+    r1: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r2: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r3: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r4: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r5: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r6: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r7: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    r8: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
 
-    total_sum: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    mean_score: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
+    # Computed scores — nullable for imported rows where only a legacy mean exists
+    total_sum: Mapped[Optional[int]] = mapped_column(SmallInteger, nullable=True)
+    mean_score: Mapped[Optional[float]] = mapped_column(Numeric(5, 4), nullable=True)
+
+    # Legacy aggregate value from imported data (PROMIS Cognitive Function mean on 1–5 scale)
+    legacy_mean_1_5: Mapped[Optional[float]] = mapped_column(Numeric(), nullable=True)
+
+    # 'native' = submitted via live app; 'imported' = loaded from legacy data
+    data_source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="native"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

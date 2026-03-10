@@ -40,8 +40,9 @@ survey item responses.
   after each instrument's reverse scoring / conversions have already been applied where needed.
 - `self_report` is the legacy imported aggregate for CogFunc / PROMIS Cognitive Function 8a.
 - Current import implementation preserves `self_report` in
-  `imported_session_measures.self_report`; it does not yet create imported
-  `survey_cogfunc8a` rows.
+  `imported_session_measures.self_report` for audit/source fidelity and also
+  remaps it into `survey_cogfunc8a.legacy_mean_1_5` with
+  `data_source='imported'`.
 - Legacy `digit_span_score` is not produced by the native fixed 14-trial web protocol. It is a
   legacy score tallied until the participant records two incorrect trials at the same span
   length.

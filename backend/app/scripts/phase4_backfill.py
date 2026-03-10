@@ -3,8 +3,9 @@ canonical survey and digit span tables, and backfill missing weather_daily rows.
 
 What this script does:
 1. For every row in imported_session_measures it upserts the corresponding rows
-   into digitspan_runs / survey_uls8 / survey_cesd10 / survey_gad7 using the
-   Phase 4 schema (data_source='imported', legacy-value columns populated).
+   into digitspan_runs / survey_uls8 / survey_cesd10 / survey_gad7 /
+   survey_cogfunc8a using the Phase 4 schema (data_source='imported',
+   legacy-value columns populated).
 2. If a session's study_day_id is missing (sessions imported before Phase 3
    study-day support was wired), derives it from completed_at in America/Vancouver
    and sets it.
@@ -41,7 +42,7 @@ from app.db import get_session_factory
 from app.models.digitspan import DigitSpanRun
 from app.models.imported_session_measures import ImportedSessionMeasures
 from app.models.sessions import Session as SessionModel
-from app.models.surveys import SurveyCESD10, SurveyGAD7, SurveyULS8
+from app.models.surveys import SurveyCESD10, SurveyCogFunc8a, SurveyGAD7, SurveyULS8
 from app.models.weather import StudyDay
 from app.services.weather_backfill_service import run_legacy_weather_backfill
 
@@ -69,7 +70,7 @@ class BackfillCounts:
     study_day_fixed: int = 0
     ds_created: int = 0
     ds_updated: int = 0
-    ds_skipped: int = 0   # no digit_span_max_span value
+    ds_skipped: int = 0   # no legacy digit span score value
     uls8_created: int = 0
     uls8_updated: int = 0
     uls8_skipped: int = 0
@@ -79,6 +80,9 @@ class BackfillCounts:
     gad7_created: int = 0
     gad7_updated: int = 0
     gad7_skipped: int = 0
+    cogfunc_created: int = 0
+    cogfunc_updated: int = 0
+    cogfunc_skipped: int = 0
     weather_inserted: int = 0
     weather_updated: int = 0   # open-meteo rows overwritten with import temp/precip
     weather_skipped: int = 0
@@ -117,10 +121,11 @@ async def run_backfill(dry_run: bool = False) -> BackfillCounts:
             select(
                 ImportedSessionMeasures.session_id,
                 ImportedSessionMeasures.participant_uuid,
-                ImportedSessionMeasures.digit_span_max_span,
+                ImportedSessionMeasures.digit_span_max_span.label("legacy_digit_span_score"),
                 ImportedSessionMeasures.loneliness_mean,
                 ImportedSessionMeasures.depression_mean,
                 ImportedSessionMeasures.anxiety_mean,
+                ImportedSessionMeasures.self_report,
                 SessionModel.completed_at,
                 SessionModel.study_day_id,
             ).join(
@@ -153,6 +158,7 @@ async def run_backfill(dry_run: bool = False) -> BackfillCounts:
         existing_uls8 = await _existing_imported(SurveyULS8)
         existing_cesd10 = await _existing_imported(SurveyCESD10)
         existing_gad7 = await _existing_imported(SurveyGAD7)
+        existing_cogfunc = await _existing_imported(SurveyCogFunc8a)
 
         # 3. Process each session
         for row in rows:
@@ -172,10 +178,10 @@ async def run_backfill(dry_run: bool = False) -> BackfillCounts:
                     )
 
             # ── digitspan_runs ──────────────────────────────────────────────
-            if row.digit_span_max_span is None:
+            if row.legacy_digit_span_score is None:
                 counts.ds_skipped += 1
             else:
-                total_correct = row.digit_span_max_span
+                total_correct = row.legacy_digit_span_score
                 if sid in existing_ds:
                     counts.ds_updated += 1
                 else:
@@ -301,6 +307,34 @@ async def run_backfill(dry_run: bool = False) -> BackfillCounts:
                         )
                     )
 
+            # ── survey_cogfunc8a (self_report → legacy_mean_1_5) ──────────
+            if row.self_report is None:
+                counts.cogfunc_skipped += 1
+            else:
+                if sid in existing_cogfunc:
+                    counts.cogfunc_updated += 1
+                else:
+                    counts.cogfunc_created += 1
+                if not dry_run:
+                    await db.execute(
+                        pg_insert(SurveyCogFunc8a)
+                        .values(
+                            response_id=uuid.uuid4(),
+                            session_id=sid,
+                            participant_uuid=p_uuid,
+                            legacy_mean_1_5=row.self_report,
+                            data_source="imported",
+                        )
+                        .on_conflict_do_update(
+                            index_elements=["session_id"],
+                            set_={
+                                "legacy_mean_1_5": row.self_report,
+                                "data_source": "imported",
+                            },
+                            where=SurveyCogFunc8a.data_source == "imported",
+                        )
+                    )
+
         if not dry_run:
             await db.commit()
             log.info("Canonical table upserts committed.")
@@ -335,6 +369,10 @@ def _print_summary(counts: BackfillCounts, dry_run: bool) -> None:
     log.info(
         "  survey_gad7     — created: %d, updated: %d, skipped (null): %d",
         counts.gad7_created, counts.gad7_updated, counts.gad7_skipped,
+    )
+    log.info(
+        "  survey_cogfunc8a — created: %d, updated: %d, skipped (null): %d",
+        counts.cogfunc_created, counts.cogfunc_updated, counts.cogfunc_skipped,
     )
     if not dry_run:
         log.info(

@@ -109,12 +109,17 @@ _TABLE_SPECS: list[_TableSpec] = [
     ),
     _TableSpec(
         name="survey_cogfunc8a",
-        description="CogFunc 8a cognitive function survey responses. Join keys: session_id, participant_uuid.",
+        description=(
+            "CogFunc 8a cognitive function survey rows "
+            "(native responses or imported legacy aggregates). "
+            "Join keys: session_id, participant_uuid."
+        ),
         model=SurveyCogFunc8a,
         columns=[
             "response_id", "session_id", "participant_uuid",
             "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8",
-            "total_sum", "mean_score", "created_at",
+            "total_sum", "mean_score", "legacy_mean_1_5",
+            "data_source", "created_at",
         ],
         order_by=["created_at"],
     ),

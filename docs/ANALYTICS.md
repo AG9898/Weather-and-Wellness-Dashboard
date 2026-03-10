@@ -111,7 +111,7 @@ range. This dataset is not yet a persisted database table.
 | `anxiety` | Anxiety predictor | `survey_gad7.total_score` when native canonical total exists | `survey_gad7.legacy_total_score` else `survey_gad7.legacy_mean_1_4` |
 | `depression` | Depression predictor | `survey_cesd10.total_score` when native canonical total exists | `survey_cesd10.legacy_mean_1_4` |
 | `loneliness` | Loneliness predictor | `survey_uls8.computed_mean` | `survey_uls8.legacy_mean_1_4` |
-| `self_report` | Self-reported cognition outcome | `survey_cogfunc8a.mean_score` | `imported_session_measures.self_report` |
+| `self_report` | Self-reported cognition outcome | `survey_cogfunc8a.mean_score` | `survey_cogfunc8a.legacy_mean_1_5` |
 | `digit_span_score` | Digit span outcome | `digitspan_runs.total_correct` | imported `digitspan_runs.total_correct` |
 
 ### Notes on source precedence
@@ -120,8 +120,9 @@ range. This dataset is not yet a persisted database table.
 - Use imported aggregate values only when no native canonical value exists for
   the same session.
 - Do not fabricate raw survey item rows for imported data.
-- `self_report` currently requires a mixed-source rule because imported sessions
-  do not create `survey_cogfunc8a` rows.
+- `self_report` still uses a mixed-source rule, but imported sessions now supply
+  canonical `survey_cogfunc8a` rows with `data_source='imported'` and
+  `legacy_mean_1_5` rather than relying only on `imported_session_measures`.
 
 ### Inclusion rules
 

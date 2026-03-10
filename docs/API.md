@@ -589,11 +589,11 @@
     - Imported aggregates are stored in `imported_session_measures` (applied in T47) with a full `source_row_json` audit payload.
 
 **Phase 4 (T55, implemented):** commit also upserts “imported” rows into:
-- `digitspan_runs` — `data_source='imported'`, `total_correct` = legacy `digit_span_score`; `max_span` remains null; no trials reconstructed.
+- `digitspan_runs` — `data_source='imported'`, `total_correct` = legacy `digit_span_score`; `max_span` remains null; no trials reconstructed. This imported value is a legacy workbook score, not a native fixed-protocol `max_span`.
 - `survey_uls8` — `data_source='imported'`, `legacy_mean_1_4` = legacy `loneliness` derived mean; raw `r*` and computed columns remain null.
 - `survey_cesd10` — `data_source='imported'`, `legacy_mean_1_4` = legacy `depression` derived mean; raw `r*` and computed columns remain null.
 - `survey_gad7` — `data_source='imported'`, `legacy_mean_1_4` = legacy `anxiety` derived mean; if anxiety is an exact integer 0–21, `total_score` and `severity_band` are also set; otherwise only `legacy_mean_1_4` is stored.
-- `survey_cogfunc8a` — no imported row is created yet. The legacy CogFunc / PROMIS aggregate remains in `imported_session_measures.self_report`.
+- `survey_cogfunc8a` — `data_source='imported'`, `legacy_mean_1_5` = legacy `self_report` aggregate; raw `r*` and PROMIS computed columns remain null.
 - Re-import is idempotent: updates imported rows, never overwrites native rows (`data_source='native'` rows are guarded in the upsert WHERE clause).
 
 ### POST /admin/import/commit
@@ -626,7 +626,7 @@
 
 ### GET /admin/export.xlsx
 - **Auth:** RA required
-- **Status:** implemented (T49)
+- **Status:** implemented (T49, updated T79)
 - **Response:** XLSX workbook download — README sheet + one sheet per DB table
 - **Headers:**
   - `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
@@ -635,6 +635,8 @@
   - Sheet order: README, participants, sessions, survey_uls8, survey_cesd10, survey_gad7, survey_cogfunc8a, digitspan_runs, digitspan_trials, study_days, weather_ingest_runs, weather_daily, imported_session_measures.
   - The README sheet describes all tables, join keys, and value conventions.
   - All join keys (`participant_uuid`, `session_id`, `study_day_id`, `run_id`, `source_run_id`) are present on every relevant sheet.
+  - `survey_cogfunc8a` exports the live imported-row columns in schema order: `legacy_mean_1_5` and `data_source` appear after `mean_score` and before `created_at`.
+  - Imported CogFunc rows therefore appear directly on the `survey_cogfunc8a` sheet with null raw/PROMIS columns plus `legacy_mean_1_5`; `imported_session_measures.self_report` remains the audit/source copy of the workbook value.
   - UUIDs and timestamps are ISO strings. JSONB columns are JSON strings.
   - Date in filename is today in the study timezone (`America/Vancouver`).
 
@@ -698,7 +700,7 @@
 
 ### GET /admin/export.zip
 - **Auth:** RA required
-- **Status:** implemented (T49)
+- **Status:** implemented (T49, updated T79)
 - **Response:** ZIP download containing one CSV per DB table
 - **Headers:**
   - `Content-Type: application/zip`
@@ -706,6 +708,7 @@
 - **Notes:**
   - ZIP contains 12 CSVs: `participants.csv`, `sessions.csv`, `survey_uls8.csv`, `survey_cesd10.csv`, `survey_gad7.csv`, `survey_cogfunc8a.csv`, `digitspan_runs.csv`, `digitspan_trials.csv`, `study_days.csv`, `weather_ingest_runs.csv`, `weather_daily.csv`, `imported_session_measures.csv`.
   - Each CSV has a header row and is schema-faithful with all join keys.
+  - `survey_cogfunc8a.csv` includes `legacy_mean_1_5` and `data_source`, so imported legacy cognition rows are visible on the canonical survey export surface instead of only in `imported_session_measures`.
   - All values follow the same conversion rules as the XLSX export.
 
 ---

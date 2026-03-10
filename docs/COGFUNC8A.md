@@ -79,8 +79,11 @@ PROMIS aggregate in column `self_report`.
   already been applied.
 - The current import implementation preserves this value in
   `imported_session_measures.self_report`.
-- Imported legacy sessions do **not** currently create rows in `survey_cogfunc8a`; only native
-  participant submissions populate this table.
+- Imported legacy sessions also create `survey_cogfunc8a` rows with
+  `data_source='imported'` and `legacy_mean_1_5 = self_report`.
+- Raw `r1`–`r8` items and PROMIS computed fields (`total_sum`, `mean_score`)
+  remain null for imported rows because the workbook does not provide item-level
+  responses.
 
 ---
 
@@ -100,5 +103,7 @@ See docs/SCHEMA.md for full column definitions.
 
 **Table:** `survey_cogfunc8a`
 
-**Columns:** `response_id`, `session_id`, `participant_uuid`, `r1`–`r8` (SMALLINT 1–5),
-`total_sum` (SMALLINT 8–40), `mean_score` (NUMERIC 5,4), `created_at`
+**Columns:** `response_id`, `session_id`, `participant_uuid`, `r1`–`r8` (SMALLINT 1–5, nullable
+for imported rows), `total_sum` (SMALLINT, nullable for imported rows), `mean_score`
+(NUMERIC 5,4, nullable for imported rows), `legacy_mean_1_5` (NUMERIC, nullable),
+`data_source` (`native` or `imported`), `created_at`

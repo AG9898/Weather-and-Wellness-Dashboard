@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 25 — Phase 4 ongoing                                         |
-| Remaining queue    | T77–T102 in kanban.md                                        |
+| Tasks completed    | 30 — Phase 4 ongoing                                         |
+| Remaining queue    | T82–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-10                                                   |
 
@@ -90,6 +90,63 @@ _No tasks in progress._
   - **T97** — implement `DELETE /sessions/last-native`
   - **T98** — add the dashboard undo control
   - **T99** — verify undo safeguards and regressions
+
+## T81 — Backend ops — add participant-domain wipe script that preserves weather tables (completed 2026-03-10)
+
+- Added `backend/app/scripts/clear_participant_domain_data.py` as a dedicated selective wipe utility for resetting participant/session outcome data without deleting weather history.
+- The selective wipe truncates only participant-domain tables: `participants`, `sessions`, `imported_session_measures`, all survey tables, and digit span tables.
+- `weather_daily` and `weather_ingest_runs` are preserved by design, and the script removes only orphaned `study_days` rows after the wipe so weather-linked day foreign keys remain valid.
+- Added regression coverage in `backend/tests/test_clear_participant_domain_data.py` for:
+  - dry-run safety (no DB session opened)
+  - apply-path SQL behavior that excludes weather tables and performs orphaned `study_days` cleanup
+- Updated `docs/devSteps.md` to document the selective wipe separately from the full destructive wipe runbook.
+- Verification:
+  - `env PYTHONPATH=. .venv/bin/pytest -q tests/test_clear_participant_domain_data.py` → `2 passed in 0.25s`
+  - `env PYTHONPATH=. .venv/bin/python -m app.scripts.clear_participant_domain_data --dry-run` logs the selective `TRUNCATE`, orphan `study_days` cleanup SQL, and preserved weather tables without opening the database for writes.
+
+## T80 — Verification — legacy import regression tests for CogFunc and digit span (completed 2026-03-10)
+
+- Extended `backend/tests/test_legacy_import_cogfunc.py` so the import service regression suite now covers:
+  - preview counts for legacy `self_report` rows on both create and update paths
+  - rejection of re-import when the candidate session already has a native `survey_cogfunc8a` row
+  - imported Digit Span semantics during commit (`digitspan_runs.total_correct = legacy score`, imported `max_span = null`)
+- Existing backfill coverage continues to verify that `imported_session_measures.self_report` is remapped into canonical `survey_cogfunc8a` rows.
+- Existing export coverage in `backend/tests/test_export_service_cogfunc.py` remains the parity check for `legacy_mean_1_5` and `data_source` on both XLSX and ZIP outputs.
+- Verification: `env PYTHONPATH=. .venv/bin/pytest -q tests/test_legacy_import_cogfunc.py tests/test_export_service_cogfunc.py` → `8 passed, 1 warning in 0.87s`.
+
+## T79 — Backend — export/API parity for imported CogFunc rows (completed 2026-03-10)
+
+- `backend/app/services/export_service.py` now exports `survey_cogfunc8a` in the live schema order with `legacy_mean_1_5` and `data_source` included before `created_at`.
+- The export README description for `survey_cogfunc8a` now explicitly covers mixed native/imported rows so imported legacy cognition aggregates are discoverable from the canonical survey export surface.
+- Added regression coverage in `backend/tests/test_export_service_cogfunc.py` for:
+  - XLSX header/value parity on the `survey_cogfunc8a` sheet
+  - ZIP CSV header/value parity for imported CogFunc rows
+- Updated docs so API/schema/analytics references no longer imply imported CogFunc rows are absent from `survey_cogfunc8a`.
+- Verification: `env PYTHONPATH=. .venv/bin/pytest -q tests/test_legacy_import_cogfunc.py tests/test_export_service_cogfunc.py` → `5 passed in 0.98s`.
+
+## T78 — Backend — import commit + Phase 4 backfill for legacy CogFunc and digit span semantics cleanup (completed 2026-03-10)
+
+- `backend/app/services/import_service.py` now remaps legacy `self_report` into `survey_cogfunc8a` on import commit using `legacy_mean_1_5` plus `data_source='imported'`.
+- `_get_sessions_with_native_rows` now treats `survey_cogfunc8a` the same way as the other imported-capable outcome tables by checking only `data_source='native'` rows as overwrite blockers.
+- `backend/app/scripts/phase4_backfill.py` now remaps existing `imported_session_measures.self_report` values into `survey_cogfunc8a` and reports created/updated/skipped counts for that table in the run summary.
+- Internal Digit Span naming/comments were cleaned up so the imported workbook value is referred to as a legacy score rather than a native-style `max_span`, while storage still lands in `digitspan_runs.total_correct` and imported `max_span` remains null.
+- Added regression coverage in `backend/tests/test_legacy_import_cogfunc.py` for:
+  - native-row detection on `survey_cogfunc8a`
+  - import commit upserting imported CogFunc rows
+  - Phase 4 backfill upserting imported CogFunc rows
+- Verification: `env PYTHONPATH=. .venv/bin/pytest -q` → `31 passed in 0.47s`.
+
+## T77 — DB — extend survey_cogfunc8a for imported legacy rows (completed 2026-03-10)
+
+- Added Alembic revision `20260310_000001` after the current head to bring `survey_cogfunc8a` in line with the other Phase 4 imported-capable outcome tables.
+- Migration changes:
+  - adds `data_source VARCHAR(16) NOT NULL DEFAULT 'native'`
+  - adds `legacy_mean_1_5 NUMERIC NULLABLE`
+  - makes `r1`–`r8`, `total_sum`, and `mean_score` nullable
+  - adds `UNIQUE(session_id)` as `uq_survey_cogfunc8a_session_id`
+- Updated `backend/app/models/surveys.py` so `SurveyCogFunc8a` now reflects the imported-row shape with `Optional` raw/computed fields plus `legacy_mean_1_5` and `data_source`.
+- Participant-facing survey submission routes were left unchanged; native CogFunc submissions still send all 8 raw answers and receive the same response contract.
+- Documentation updated in T77 to distinguish schema readiness from import-path readiness; T78 completes the runtime remap.
 
 ## T76 — Frontend — Custom rain-style scrollbar (CSS-only) (completed 2026-03-10)
 

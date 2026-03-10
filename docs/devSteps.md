@@ -147,13 +147,59 @@ Verification checklist:
 
 ---
 
-## Demo Runbook — Wipe Study Data + Restore from Reference Import
+## Demo Runbook — Selective Participant Wipe + Restore from Reference Import
 
-This runbook is for resetting a demo database by deleting all study-domain rows while leaving the schema intact.
+This runbook is for resetting participant/session outcome data before a fresh
+legacy re-import while preserving weather history.
 
-### Wipe (IRREVERSIBLE)
+### Selective wipe (preserves weather history, IRREVERSIBLE)
 
-The wipe deletes rows from these tables (CASCADE): `participants`, `sessions`, `study_days`, `imported_session_measures`, all survey tables, digit span tables, and weather tables.
+The selective wipe deletes rows from these tables only: `participants`,
+`sessions`, `imported_session_measures`, all survey tables, and digit span
+tables.
+
+It preserves:
+- `weather_daily`
+- `weather_ingest_runs`
+- any `study_days` rows still referenced by `weather_daily`
+
+After the participant-domain rows are cleared, the script removes only orphaned
+`study_days` rows that are no longer linked to weather history.
+
+Script:
+
+```bash
+cd backend
+python -m app.scripts.clear_participant_domain_data --dry-run
+python -m app.scripts.clear_participant_domain_data --apply
+```
+
+Verification after the selective wipe:
+- participant/session/survey/digit-span/imported-measure tables report `0` rows
+- `weather_daily` and `weather_ingest_runs` retain their prior row counts
+- `study_days` still contains every weather-linked day and may also shrink if
+  session-only orphan days were removed
+
+### Restore (from the legacy reference XLSX/CSV)
+
+1) Re-import via the RA Import/Export page (or `POST /admin/import/commit`) using the unchanged reference file.
+
+2) Restore derived weather rows only if needed for imported days that do not
+already have weather history:
+
+- Call `POST /admin/backfill/legacy-weather` (idempotent).
+
+Notes:
+- Import commit repopulates: `participants`, `sessions`, `study_days`, `imported_session_measures`, and imported rows in `digitspan_runs` + `survey_uls8` + `survey_cesd10` + `survey_gad7`.
+- This selective wipe is the preferred reset path before a fresh Phase 4 legacy re-import because it keeps existing weather history intact.
+
+## Demo Runbook — Full Study-Domain Wipe + Restore
+
+This runbook is for fully resetting a demo database by deleting all study-domain rows while leaving the schema intact.
+
+### Full wipe (IRREVERSIBLE)
+
+The full wipe deletes rows from these tables (CASCADE): `participants`, `sessions`, `study_days`, `imported_session_measures`, all survey tables, digit span tables, and weather tables.
 
 Script (mirrors Alembic wipe migration `20260228_000009_clear_all_test_data.py`):
 

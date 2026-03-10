@@ -152,7 +152,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T77",
       "title": "DB — extend survey_cogfunc8a for imported legacy rows",
-      "status": "todo",
+      "status": "done",
       "description": "Add Phase 4-style import support to `survey_cogfunc8a` via Alembic and model updates. Make raw item columns and computed columns nullable for imported rows, add `data_source VARCHAR(16) NOT NULL DEFAULT 'native'`, add `legacy_mean_1_5 NUMERIC NULLABLE`, and add `UNIQUE(session_id)` so imported legacy CogFunc rows can be upserted per session without fabricating raw items.",
       "stack": ["backend", "database"],
       "depends_on": [],
@@ -176,7 +176,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T78",
       "title": "Backend — import commit + Phase 4 backfill for legacy CogFunc and digit span semantics cleanup",
-      "status": "todo",
+      "status": "done",
       "description": "Update `import_service.py` and `phase4_backfill.py` so legacy `self_report` upserts imported `survey_cogfunc8a` rows with `data_source='imported'` and `legacy_mean_1_5`. Also clean up internal naming/comments for legacy Digit Span so the code no longer implies the imported value is a true `max_span`, while keeping storage in `digitspan_runs.total_correct`.",
       "stack": ["backend"],
       "depends_on": ["T77"],
@@ -201,7 +201,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T79",
       "title": "Backend — export/API parity for imported CogFunc rows",
-      "status": "todo",
+      "status": "done",
       "description": "Update export surfaces and API references so imported CogFunc rows are visible and schema-faithful. Extend `export_service.py` table specs for `survey_cogfunc8a` to include the new imported-row columns and remove any docs that still claim imported CogFunc rows are absent once the code path is live.",
       "stack": ["backend"],
       "depends_on": ["T78"],
@@ -225,7 +225,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T80",
       "title": "Verification — legacy import regression tests for CogFunc and digit span",
-      "status": "todo",
+      "status": "done",
       "description": "Add or extend automated coverage for the new import path and export shape, including backfill safety. Focus on legacy `self_report` remap, native-row overwrite protection, export columns, and legacy Digit Span semantics under the current storage approach.",
       "stack": ["backend"],
       "depends_on": ["T78", "T79"],
@@ -248,7 +248,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T81",
       "title": "Backend ops — add participant-domain wipe script that preserves weather tables",
-      "status": "todo",
+      "status": "done",
       "description": "Add a second wipe utility for resetting participant/session outcome data without deleting weather history. The new script should clear participants, sessions, imported_session_measures, survey tables, and digit span tables while preserving `weather_daily` and `weather_ingest_runs`. It must also handle `study_days` safely so weather-linked days remain valid. This is intended for post-test-data cleanup before a fresh legacy re-import.",
       "stack": ["backend", "database"],
       "depends_on": [],
