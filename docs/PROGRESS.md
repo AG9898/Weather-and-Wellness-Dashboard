@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 24 — Phase 4 ongoing                                         |
-| Remaining queue    | T76–T102 in kanban.md                                        |
+| Tasks completed    | 25 — Phase 4 ongoing                                         |
+| Remaining queue    | T77–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-10                                                   |
 
@@ -90,6 +90,21 @@ _No tasks in progress._
   - **T97** — implement `DELETE /sessions/last-native`
   - **T98** — add the dashboard undo control
   - **T99** — verify undo safeguards and regressions
+
+## T76 — Frontend — Custom rain-style scrollbar (CSS-only) (completed 2026-03-10)
+
+- `frontend/src/app/globals.css`: added dedicated scrollbar theme variables in both `:root` and `.dark` so the scrollbar stays on the existing UBC token system across light and dark themes.
+- Firefox fallback is global via `scrollbar-width: thin` and `scrollbar-color: var(--scrollbar-firefox-thumb) transparent`.
+- WebKit scrollbar styling now sets:
+  - `::-webkit-scrollbar` to `6px`
+  - transparent track/corner surfaces
+  - a blue gradient thumb with asymmetric rounded radii for a droplet-like silhouette
+- The rain effect is implemented with three independently animated droplet channels inside the thumb using CSS `@property` values plus staggered `scrollbar-fall-*` keyframes/delays.
+- Added a gloss/specular highlight layer and hover glow to keep the lighter streak visible on both light and dark backgrounds.
+- `prefers-reduced-motion` disables the thumb animation while keeping the styled scrollbar.
+- Verification:
+  - `npx next build --webpack` passes.
+  - `npm run lint` still reports a pre-existing `react-hooks/set-state-in-effect` error in `frontend/src/app/(ra)/dashboard/page.tsx:25`; the scrollbar task did not introduce a new lint failure.
 
 ## T75 — Frontend — KPI stat number counter animation with animejs (completed 2026-03-05)
 

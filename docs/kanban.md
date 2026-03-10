@@ -130,7 +130,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T76",
       "title": "Frontend — Custom rain-style scrollbar (CSS-only)",
-      "status": "todo",
+      "status": "done",
       "description": "Restyle the browser scrollbar throughout the app using CSS pseudo-elements in `src/app/globals.css`. Target `::-webkit-scrollbar` (width: 6px), `::-webkit-scrollbar-track` (transparent), and `::-webkit-scrollbar-thumb`. The thumb should use a UBC blue gradient (`--ubc-blue-700` → `--ubc-blue-500`) with a teardrop shape approximated via `border-radius` and/or `background` gradient with a narrow specular highlight streak (slightly lighter UBC blue offset to top-left corner). Animate multiple staggered droplet motifs within the thumb using CSS `@keyframes fall` with staggered `animation-delay` values to create a continuous falling rain visual. Design must work in both light and dark themes (use CSS variables). Firefox fallback: `scrollbar-width: thin` + `scrollbar-color` using UBC blue. Note: animated droplet effects are Webkit-only (Chrome, Edge, Safari) — Firefox shows a styled solid thumb.",
       "stack": ["frontend"],
       "read_docs": [
