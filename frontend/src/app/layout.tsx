@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   title: "Weather & Wellness",
   description: "Weather & Wellness + Misokinesia Research Web App",
   icons: {
-    icon: [{ url: "/icon.png", type: "image/png" }],
-    shortcut: ["/icon.png"],
-    apple: [{ url: "/icon.png", type: "image/png" }],
+    icon: [{ url: "/ww-mark.png", type: "image/png" }],
+    shortcut: ["/ww-mark.png"],
+    apple: [{ url: "/ww-mark.png", type: "image/png" }],
   },
 };
 

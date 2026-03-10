@@ -419,7 +419,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
         padding: 10,
         shadow: false,
         style: { color: mutedFg, fontSize: "12px", lineHeight: "1.6" },
-        formatter: function (this: Highcharts.Point): string {
+        formatter: function (): string {
           const ctx = this as unknown as { points?: Highcharts.Point[]; x?: number };
           const points = ctx.points ?? [];
           if (points.length === 0) return "";
@@ -461,7 +461,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
           gridLineDashStyle: "Dash" as const,
           labels: {
             style: { color: mutedFg, fontSize: "11px" },
-            formatter: function (this: { value: number | string }): string {
+            formatter: function (): string {
               return `${this.value}°`;
             },
           },

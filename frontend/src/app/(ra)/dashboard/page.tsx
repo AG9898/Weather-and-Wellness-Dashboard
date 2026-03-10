@@ -18,11 +18,12 @@ import { Button } from "@/components/ui/button";
 function useCountUp(target: number, duration: number): number {
   const [count, setCount] = useState(0);
   const currentRef = useRef(0);
+  const prefersReduced =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) {
-      setCount(target);
       currentRef.current = target;
       return;
     }
@@ -39,9 +40,9 @@ function useCountUp(target: number, duration: number): number {
     });
 
     return () => { anim.pause(); };
-  }, [target, duration]);
+  }, [target, duration, prefersReduced]);
 
-  return count;
+  return prefersReduced ? target : count;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────

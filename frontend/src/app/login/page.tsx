@@ -1,285 +1,160 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { animate, stagger } from "animejs";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabase";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import LoginBackgroundPaths from "@/lib/components/LoginBackgroundPaths";
+import LoginDialogForm from "@/lib/components/LoginDialogForm";
+
+const TITLE_WORDS = ["UBC", "PSYCHOLOGY"];
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const titleLetters = useMemo(
+    () =>
+      TITLE_WORDS.map((word) =>
+        word.split("").map((letter, index) => ({
+          id: `${word}-${index}`,
+          letter,
+        }))
+      ),
+    []
+  );
 
   useEffect(() => {
-    let mounted = true;
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) return;
 
-    const recoverStaleSession = async () => {
-      const { error: sessionError } = await supabase.auth.getSession();
-      if (!mounted || !sessionError) return;
-      if (sessionError.message.toLowerCase().includes("refresh token")) {
-        await supabase.auth.signOut({ scope: "local" });
-      }
-    };
+    const heroEl = heroRef.current;
+    if (!heroEl) return;
 
-    recoverStaleSession();
+    const eyebrow = heroEl.querySelector<HTMLElement>("[data-hero-eyebrow]");
+    const letters = Array.from(heroEl.querySelectorAll<HTMLElement>("[data-title-letter]"));
+    const copy = heroEl.querySelector<HTMLElement>("[data-hero-copy]");
+    const cta = heroEl.querySelector<HTMLElement>("[data-hero-cta]");
+
+    const animations: Array<{ pause: () => void }> = [];
+
+    if (eyebrow) {
+      animations.push(
+        animate(eyebrow, {
+          opacity: [0, 1],
+          translateY: [18, 0],
+          duration: 700,
+          ease: "out(2)",
+        })
+      );
+    }
+
+    if (letters.length) {
+      animations.push(
+        animate(letters, {
+          opacity: [0, 1],
+          translateY: [110, 0],
+          rotateX: [55, 0],
+          duration: 1100,
+          delay: stagger(34, { start: 220 }),
+          ease: "out(3)",
+        })
+      );
+    }
+
+    if (copy) {
+      animations.push(
+        animate(copy, {
+          opacity: [0, 1],
+          translateY: [20, 0],
+          duration: 800,
+          delay: 820,
+          ease: "out(2)",
+        })
+      );
+    }
+
+    if (cta) {
+      animations.push(
+        animate(cta, {
+          opacity: [0, 1],
+          translateY: [18, 0],
+          scale: [0.96, 1],
+          duration: 850,
+          delay: 980,
+          ease: "out(2)",
+        })
+      );
+    }
 
     return () => {
-      mounted = false;
+      animations.forEach((animation) => animation.pause());
     };
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
-
-    router.replace("/dashboard");
-  };
-
   return (
-    <div
-      className="relative flex min-h-screen w-full items-center justify-center overflow-hidden px-4"
-      style={{
-        background: "linear-gradient(135deg, #001328 0%, #001f5e 50%, #002d80 100%)",
-      }}
-    >
-      {/* Blob 1 — upper right */}
-      <svg
-        className="login-blob absolute pointer-events-none"
-        style={{
-          top: "4%",
-          right: "7%",
-          width: 300,
-          height: 280,
-          opacity: 0.22,
-          filter: "blur(3px)",
-          animation: "blob-drift-1 22s ease-in-out infinite alternate",
-        }}
-        viewBox="0 0 300 280"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0052f5" />
-            <stop offset="60%" stopColor="#00a2fa" />
-            <stop offset="100%" stopColor="#33e0fc" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M155,15 C225,0 292,55 286,140 C280,218 212,278 135,270 C58,262 8,198 14,118 C20,38 85,30 155,15Z"
-          fill="url(#lg1)"
-        />
-      </svg>
+    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#001328_0%,#001a41_34%,#002455_68%,#001328_100%)] text-white">
+      <LoginBackgroundPaths />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(92,229,252,0.14),transparent_24%),radial-gradient(circle_at_50%_72%,rgba(0,82,245,0.20),transparent_34%)]" />
 
-      {/* Blob 2 — lower left */}
-      <svg
-        className="login-blob absolute pointer-events-none"
-        style={{
-          bottom: "7%",
-          left: "4%",
-          width: 370,
-          height: 330,
-          opacity: 0.17,
-          filter: "blur(5px)",
-          animation: "blob-drift-2 19s ease-in-out infinite alternate",
-        }}
-        viewBox="0 0 370 330"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="lg2" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#0052f5" />
-            <stop offset="55%" stopColor="#33e0fc" />
-            <stop offset="100%" stopColor="#5ce5fc" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M185,22 C268,5 352,78 346,178 C340,262 268,322 168,314 C68,306 10,238 16,146 C22,54 102,39 185,22Z"
-          fill="url(#lg2)"
-        />
-      </svg>
-
-      {/* Blob 3 — middle left */}
-      <svg
-        className="login-blob absolute pointer-events-none"
-        style={{
-          top: "38%",
-          left: "6%",
-          width: 245,
-          height: 265,
-          opacity: 0.28,
-          filter: "blur(2px)",
-          animation: "blob-drift-3 24s ease-in-out infinite alternate",
-        }}
-        viewBox="0 0 245 265"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="lg3" x1="100%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#00a2fa" />
-            <stop offset="100%" stopColor="#5ce5fc" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M122,18 C182,5 240,60 235,134 C230,206 175,260 104,252 C33,244 3,186 12,112 C21,38 62,31 122,18Z"
-          fill="url(#lg3)"
-        />
-      </svg>
-
-      {/* Blob 4 — upper center-left */}
-      <svg
-        className="login-blob absolute pointer-events-none"
-        style={{
-          top: "7%",
-          left: "28%",
-          width: 205,
-          height: 190,
-          opacity: 0.20,
-          filter: "blur(3px)",
-          animation: "blob-drift-4 20s ease-in-out infinite alternate",
-        }}
-        viewBox="0 0 205 190"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="lg4" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0052f5" />
-            <stop offset="100%" stopColor="#00a2fa" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M102,13 C155,1 202,45 196,104 C190,161 146,188 88,181 C30,174 2,132 8,76 C14,20 49,25 102,13Z"
-          fill="url(#lg4)"
-        />
-      </svg>
-
-      {/* Blob 5 — lower right */}
-      <svg
-        className="login-blob absolute pointer-events-none"
-        style={{
-          bottom: "10%",
-          right: "5%",
-          width: 285,
-          height: 255,
-          opacity: 0.25,
-          filter: "blur(3px)",
-          animation: "blob-drift-5 26s ease-in-out infinite alternate",
-        }}
-        viewBox="0 0 285 255"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient id="lg5" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#00a2fa" />
-            <stop offset="100%" stopColor="#5ce5fc" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M142,18 C212,5 280,64 274,142 C268,218 204,252 126,245 C48,238 7,176 14,100 C21,24 72,31 142,18Z"
-          fill="url(#lg5)"
-        />
-      </svg>
-
-      {/* Glassmorphism card */}
-      <div
-        className="relative z-10 w-full max-w-sm rounded-2xl p-8 space-y-6"
-        style={{
-          background: "rgba(0, 28, 76, 0.38)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          border: "1px solid rgba(255, 255, 255, 0.13)",
-        }}
-      >
-        {/* Header */}
-        <div className="space-y-1 text-center">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-8">
+        <div ref={heroRef} className="mx-auto flex w-full max-w-6xl flex-col items-center text-center">
           <p
-            className="text-xs font-semibold tracking-widest uppercase"
-            style={{ color: "rgba(147, 210, 252, 0.85)" }}
+            data-hero-eyebrow
+            className="mb-6 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-[11px] font-semibold tracking-[0.34em] text-[#9efaf2]/88 uppercase backdrop-blur-md"
           >
-            W&amp;W Research
+            Weather &amp; Wellness Research Portal
           </p>
-          <h1 className="text-2xl font-bold text-white">RA Login</h1>
-        </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="email"
-              className="block text-sm font-medium"
-              style={{ color: "rgba(200, 228, 255, 0.85)" }}
-            >
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded-lg bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-blue-400/50"
-              placeholder="you@example.com"
-            />
-          </div>
+          <h1 className="max-w-5xl text-5xl font-bold tracking-[-0.08em] sm:text-7xl md:text-8xl lg:text-[8.6rem]">
+            {titleLetters.map((word, wordIndex) => (
+              <span
+                key={TITLE_WORDS[wordIndex]}
+                className="mr-3 inline-block sm:mr-5 md:mr-6"
+              >
+                {word.map(({ id, letter }) => (
+                  <span
+                    key={id}
+                    data-title-letter
+                    className="inline-block bg-gradient-to-b from-white via-[#dff6ff] to-[#79dbff] bg-clip-text pr-[0.02em] text-transparent [text-shadow:0_0_28px_rgba(92,229,252,0.16)]"
+                  >
+                    {letter}
+                  </span>
+                ))}
+              </span>
+            ))}
+          </h1>
 
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="password"
-              className="block text-sm font-medium"
-              style={{ color: "rgba(200, 228, 255, 0.85)" }}
-            >
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded-lg bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-blue-400/50"
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm" style={{ color: "#fca5a5" }}>
-              {error}
-            </p>
-          )}
-
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl font-semibold text-white"
-            style={{
-              background: "linear-gradient(135deg, #0052f5, #00a2fa)",
-            }}
+          <p
+            data-hero-copy
+            className="mt-8 max-w-2xl text-sm leading-7 text-[#d3e2ff]/76 sm:text-base"
           >
-            {loading ? "Logging in…" : "Log in"}
-          </Button>
-        </form>
+            Lab member access for the Weather &amp; Wellness dashboard, participant sessions, and protected admin workflows.
+          </p>
+
+          <div
+            data-hero-cta
+            className="mt-10 inline-block rounded-[1.4rem] border border-white/12 bg-gradient-to-b from-white/14 to-white/4 p-[1px] shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl"
+          >
+            <Button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="h-14 rounded-[1.3rem] border border-white/10 bg-[#061a38]/88 px-8 text-base font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-300 hover:-translate-y-0.5 hover:bg-[#0a2245]"
+            >
+              <span className="opacity-94">Lab Member Login</span>
+              <span className="ml-3 text-[#79dbff]">{"->"}</span>
+            </Button>
+          </div>
+        </div>
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          className="max-w-[calc(100%-2rem)] border-white/12 bg-[linear-gradient(180deg,rgba(6,26,56,0.94),rgba(2,12,32,0.88))] p-0 text-white shadow-[0_30px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl sm:max-w-md"
+        >
+          <LoginDialogForm />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
