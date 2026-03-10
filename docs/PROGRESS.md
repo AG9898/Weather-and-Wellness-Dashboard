@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 31 — Phase 4 ongoing                                         |
-| Remaining queue    | T83–T102 in kanban.md                                        |
+| Tasks completed    | 33 — Phase 4 ongoing                                         |
+| Remaining queue    | T85–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-10                                                   |
 
@@ -28,6 +28,40 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T83 — Backend analytics: dependencies and response schema scaffolding (completed 2026-03-10)
+
+- Added backend analytics dependencies to `backend/requirements.txt`: `numpy`, `pandas`, `scipy`, `statsmodels`
+- Added shared analytics constants in `backend/app/analytics/constants.py` for response versioning, model versioning, default mode, random-effect grouping field, and the planned mixed-model formulas from `docs/ANALYTICS.md`
+- Added `backend/app/schemas/analytics.py` with typed Pydantic scaffolding for:
+  - dataset metadata and exclusion summaries
+  - snapshot freshness/version metadata
+  - model summaries and effect cards
+  - planned effect-plot and weather-annotation payloads
+  - top-level `DashboardAnalyticsResponse`
+- Added focused schema regression coverage in `backend/tests/test_analytics_schema.py`
+- No existing survey scoring modules or participant submission endpoints were changed
+
+---
+
+## T84 — DB: durable analytics run and snapshot tables (completed 2026-03-10)
+
+- Added `backend/app/models/analytics.py` with SQLAlchemy models for:
+  - `analytics_runs` (append-only recompute audit log)
+  - `analytics_snapshots` (durable per-range analytics payload storage)
+- Added Alembic migration `backend/alembic/versions/20260310_000002_add_analytics_storage.py`
+  creating both tables, versioned-range uniqueness, date-range check
+  constraints, and supporting indexes
+- Added `import app.models` in `backend/alembic/env.py` so model metadata is
+  populated for future Alembic autogenerate work
+- Added focused model metadata tests in `backend/tests/test_analytics_storage_models.py`
+- Updated `docs/SCHEMA.md` to document the two analytics tables and to state
+  explicitly that Redis is only a cache layer for analytics reads
+- Verification in this workspace used offline Alembic SQL generation plus
+  focused tests because no `DATABASE_URL` or local PostgreSQL CLI tools are
+  available here
+
+---
 
 ## Analytics implementation tasks added (planned 2026-03-09)
 

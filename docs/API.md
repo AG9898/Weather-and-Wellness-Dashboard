@@ -157,6 +157,7 @@
 
 - **Planned response sections:**
   - `status` for snapshot/recompute state
+  - `response_version` and `snapshot` freshness/version metadata
   - `dataset` metadata (included sessions/days, native/imported counts, generation time)
   - `models[]` for outcome-level mixed-model summaries
   - `models[].effects[]` for model-card terms (coefficient, standard error, p-value, 95% CI, direction, significance)
@@ -167,6 +168,8 @@
   - Existing scoring logic and stored score semantics remain unchanged.
   - The dashboard should continue to use cached/stored analytics snapshots by default and support explicit live recompute for filtered/admin use.
   - Planned effect plots are intentionally separate from the `/weather/daily` time-series chart; they are linked through shared filters/selection state rather than overlaid on the same axes.
+  - Backend response scaffolding now exists in `backend/app/schemas/analytics.py` (`DashboardAnalyticsResponse`, `AnalyticsDatasetMetadataResponse`, `AnalyticsModelSummaryResponse`, `AnalyticsEffectCardResponse`).
+  - Shared analytics version/config constants now live in `backend/app/analytics/constants.py` with `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v1"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v1"`.
 
 ---
 

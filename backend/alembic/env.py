@@ -10,6 +10,7 @@ from alembic import context
 
 # Import Base from app.db so Alembic can discover models' metadata when added
 from app.db import Base, get_database_url, _as_asyncpg_url  # type: ignore
+import app.models  # noqa: F401
 
 # This is the Alembic Config object, which provides access to the values
 # within the .ini file in use.

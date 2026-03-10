@@ -101,6 +101,11 @@ async def unhandled_exception_handler(
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
+@app.get("/")
+def root() -> dict:
+    return {"status": "ok", "service": "Weather & Wellness Backend"}
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}

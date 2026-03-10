@@ -295,7 +295,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T83",
       "title": "Backend analytics — add Python dependencies and response schema scaffolding",
-      "status": "todo",
+      "status": "done",
       "description": "Add the Python packages needed for DB-driven statistical analysis (`pandas`, `numpy`, `statsmodels`, and `scipy` if required by the implementation), then scaffold the analytics-side Pydantic response models and version/config constants without changing any existing survey scoring logic. This task is only the infrastructure layer for the planned analytics pipeline documented in `docs/ANALYTICS.md`.",
       "stack": ["backend"],
       "depends_on": [],
@@ -318,7 +318,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T84",
       "title": "DB — add durable analytics run and snapshot tables",
-      "status": "todo",
+      "status": "done",
       "description": "Create Alembic migrations and SQLAlchemy models for durable analytics storage in Postgres. Add an append-only run/audit table and a snapshot table keyed by date range + model version so analytics results are not stored in Redis alone. Persist recompute status, warning metadata, generation timestamps, and the serialized analytics payload.",
       "stack": ["backend", "database"],
       "depends_on": ["T83"],

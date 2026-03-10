@@ -39,11 +39,16 @@ sessions (1) ──────────────────── (1) su
 sessions (1) ──────────────────── (0..1) imported_session_measures
 study_days (1) ────────────────── (many) weather_daily
 weather_ingest_runs (1) ───────── (many) weather_daily
+analytics_runs (1) ────────────── (many) analytics_snapshots
 ```
 
 `admin_session_undo_log` is planned as an append-only audit table that stores
 deleted session and participant identifiers by value for the RA-only undo
 feature.
+
+`analytics_runs` and `analytics_snapshots` store the durable backend analytics
+state. Redis remains an optional read cache only and is not the source of truth
+for analytics payloads.
 
 ---
 
@@ -419,6 +424,75 @@ clause provides an additional DB-level guard against overwriting native rows.
 
 ---
 
+## Table: `analytics_runs`
+
+> Added by migration `20260310_000002` (T84). Append-only audit table for
+> analytics recompute attempts. This is the durable status/warning log for
+> analytics orchestration; it is not replaced by Redis caching.
+
+| Column                  | Type         | Constraints   | Notes |
+|-------------------------|--------------|---------------|-------|
+| run_id                  | UUID         | PK            | Generated server-side |
+| date_from               | DATE         | NOT NULL      | Inclusive local range start (`America/Vancouver`) |
+| date_to                 | DATE         | NOT NULL      | Inclusive local range end (`America/Vancouver`) |
+| model_version           | VARCHAR(64)  | NOT NULL      | Analytics/model version string (for example `weather-mlm-v1`) |
+| response_version        | VARCHAR(64)  | NOT NULL      | Serialized payload contract version |
+| status                  | VARCHAR(32)  | NOT NULL      | Planned values include `ready`, `stale`, `recomputing`, `insufficient_data`, `failed` |
+| triggered_by_lab_member_id | UUID      | NULLABLE      | Supabase auth subject for an RA-triggered recompute; null for system-triggered runs |
+| warnings_json           | JSONB        | NOT NULL      | Structured warning metadata; defaults to `[]` |
+| error_json              | JSONB        | NULLABLE      | Structured failure/debug metadata when a run does not complete cleanly |
+| result_payload_json     | JSONB        | NULLABLE      | Serialized analytics response produced by this run, when available |
+| generated_at            | TIMESTAMPTZ  | NULLABLE      | Timestamp from the analytics result payload when generation succeeds |
+| started_at              | TIMESTAMPTZ  | DEFAULT NOW() | Run start time |
+| finished_at             | TIMESTAMPTZ  | NULLABLE      | Run completion time |
+| created_at              | TIMESTAMPTZ  | DEFAULT NOW() | Audit row creation time |
+
+Constraints/indexes:
+- CHECK `date_from <= date_to`
+- Index (`date_from`, `date_to`, `model_version`, `created_at`)
+- Index (`status`, `started_at`)
+
+Behavior notes:
+- This table is append-only; each recompute attempt creates a new row.
+- It allows the app to track recompute state durably even while the last good
+  snapshot remains unchanged and Redis entries expire.
+
+---
+
+## Table: `analytics_snapshots`
+
+> Added by migration `20260310_000002` (T84). Durable per-range analytics
+> payload storage. This table is the canonical persisted source for dashboard
+> analytics reads; Redis may cache reads from it but must not replace it.
+
+| Column           | Type         | Constraints                    | Notes |
+|------------------|--------------|--------------------------------|-------|
+| snapshot_id      | UUID         | PK                             | Generated server-side |
+| date_from        | DATE         | NOT NULL                       | Inclusive local range start (`America/Vancouver`) |
+| date_to          | DATE         | NOT NULL                       | Inclusive local range end (`America/Vancouver`) |
+| model_version    | VARCHAR(64)  | NOT NULL                       | Analytics/model version string |
+| response_version | VARCHAR(64)  | NOT NULL                       | Serialized payload contract version |
+| status           | VARCHAR(32)  | NOT NULL                       | Durable snapshot status associated with `payload_json` |
+| warnings_json    | JSONB        | NOT NULL                       | Structured warning metadata; defaults to `[]` |
+| payload_json     | JSONB        | NOT NULL                       | Full serialized analytics payload served to the dashboard |
+| source_run_id    | UUID         | FK, NULLABLE                   | → `analytics_runs.run_id`; points to the run that produced this snapshot |
+| generated_at     | TIMESTAMPTZ  | NOT NULL                       | Generation timestamp embedded in the snapshot/result metadata |
+| created_at       | TIMESTAMPTZ  | DEFAULT NOW()                  | Row creation time |
+| updated_at       | TIMESTAMPTZ  | DEFAULT NOW()                  | Updated when the snapshot row is replaced/upserted for the same versioned range |
+
+Constraints/indexes:
+- UNIQUE (`date_from`, `date_to`, `model_version`, `response_version`)
+- CHECK `date_from <= date_to`
+- Index (`date_from`, `date_to`, `model_version`, `generated_at`)
+
+Behavior notes:
+- Snapshot storage is keyed by local date range plus analytics version so
+  different filter windows and future model revisions can coexist safely.
+- The service layer should only replace a snapshot row after a successful
+  recompute; failed/recomputing attempts are represented in `analytics_runs`.
+
+---
+
 ## Migration History
 
 > Append one row per migration task. Never delete rows. Format:
@@ -437,8 +511,9 @@ clause provides an additional DB-level guard against overwriting native rows.
 | 2026-03-01 | T54 | Add data_source, legacy columns, nullable relaxation, and UNIQUE session_id constraints to digitspan_runs, survey_uls8, survey_cesd10, survey_gad7 |
 | 2026-03-03 | T64 | Add `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily` (Open-Meteo historical backfill) |
 | 2026-03-10 | T77 | Extend `survey_cogfunc8a` with imported-row schema support (`data_source`, `legacy_mean_1_5`, nullable raw/computed columns, UNIQUE session_id) |
+| 2026-03-10 | T84 | Add durable `analytics_runs` and `analytics_snapshots` tables for per-range analytics audit/state and snapshot payload storage |
 
-As of 2026-03-10, migration `20260310_000001` (T77) is the current head revision.
+As of 2026-03-10, migration `20260310_000002` (T84) is the current head revision.
 
 ---
 
