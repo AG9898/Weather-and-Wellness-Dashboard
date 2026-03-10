@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 30 — Phase 4 ongoing                                         |
-| Remaining queue    | T82–T102 in kanban.md                                        |
+| Tasks completed    | 31 — Phase 4 ongoing                                         |
+| Remaining queue    | T83–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-10                                                   |
 
@@ -103,6 +103,49 @@ _No tasks in progress._
 - Verification:
   - `env PYTHONPATH=. .venv/bin/pytest -q tests/test_clear_participant_domain_data.py` → `2 passed in 0.25s`
   - `env PYTHONPATH=. .venv/bin/python -m app.scripts.clear_participant_domain_data --dry-run` logs the selective `TRUNCATE`, orphan `study_days` cleanup SQL, and preserved weather tables without opening the database for writes.
+
+## T82 — Ops — post-T80 selective clear and fresh reference XLSX re-import (completed 2026-03-10)
+
+- Applied the pending Alembic migration `20260310_000001` to the configured
+  database so `survey_cogfunc8a` matched the live import path before the wipe
+  and re-import.
+- Ran the selective participant-domain wipe after verifying the migration:
+  participant/session/outcome tables were cleared to `0` rows while
+  `study_days=433`, `weather_daily=433`, and `weather_ingest_runs=435` were
+  preserved; `0` orphaned `study_days` rows were deleted because every
+  remaining day was already weather-linked.
+- Ran a preview-first import of `reference/data_full_1-230.xlsx` against the
+  wiped database. Preview returned:
+  - `rows_total=207`
+  - `participants_create=207`
+  - `sessions_create=207`
+  - `errors=[]`
+  - `warnings=[]`
+- Committed the reference XLSX import successfully. Post-import live counts:
+  - `participants=207`
+  - `sessions=207`
+  - `imported_session_measures=207`
+  - `digitspan_runs=199` (all imported)
+  - `survey_uls8=205` (all imported)
+  - `survey_cesd10=206` (all imported)
+  - `survey_gad7=205` (all imported)
+  - `survey_cogfunc8a=206` (all imported)
+  - `digitspan_trials=0`
+- Ran the legacy weather backfill after the import. Because all `109` workbook
+  dates already had `open-meteo-v1` rows, the backfill performed `0` inserts,
+  `109` updates, and `0` skips, converting those dates to
+  `parser_version='legacy-import-v1'` while preserving existing
+  `sunshine_duration_hours` values from Open-Meteo.
+- Fixed the stale admin backfill response contract during this task so the
+  admin router/schema now matches the service result fields:
+  `days_inserted`, `days_updated`, `days_skipped`.
+- Verification:
+  - `env PYTHONPATH=. .venv/bin/pytest tests/test_legacy_import_cogfunc.py tests/test_clear_participant_domain_data.py` → `8 passed, 1 warning in 0.92s`
+  - Live DB verification after restore:
+    `participants=207`, `sessions=207`, `imported_session_measures=207`,
+    `weather_daily=433`, `weather_ingest_runs=544`
+  - All `109` reference import dates now resolve to `weather_daily` rows whose
+    `source_run_id` points to `legacy-import-v1` audit runs.
 
 ## T80 — Verification — legacy import regression tests for CogFunc and digit span (completed 2026-03-10)
 

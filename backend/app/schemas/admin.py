@@ -29,8 +29,9 @@ class ImportCommitResponse(BaseModel):
 
 
 class LegacyWeatherBackfillResponse(BaseModel):
-    days_backfilled: int
-    days_skipped: int  # dates that already had a weather_daily row
+    days_inserted: int
+    days_updated: int
+    days_skipped: int
 
 
 __all__ = [

@@ -685,16 +685,20 @@
 - **Response:**
   ```json
   {
-    "days_backfilled": "integer",
+    "days_inserted": "integer",
+    "days_updated": "integer",
     "days_skipped": "integer"
   }
   ```
 - **Notes:**
-  - For each study day that has imported session data (via `imported_session_measures`) but no existing `weather_daily` row for station 3510, inserts a partial row with only `current_temp_c` and `current_precip_today_mm` (means across all imported sessions for that day). All other weather fields remain null.
-  - Writes one `weather_ingest_runs` audit row per backfilled day with `parser_version="legacy-import-v1"` and `requested_via="legacy_backfill"`.
-  - `days_skipped` counts dates that already had a `weather_daily` row — those are never touched.
+  - For each study day that has imported session data (via `imported_session_measures`), applies the documented precedence rules:
+    - no existing `weather_daily` row for station 3510 → insert a partial row with only `current_temp_c` and `current_precip_today_mm` populated (mean across imported sessions for that day)
+    - existing `open-meteo-v1` row → overwrite `current_temp_c` and `current_precip_today_mm` with import values while preserving humidity, sunshine, and forecast fields
+    - existing `legacy-import-v1` row → no-op
+    - existing `ubc-eos-v1` row → no-op
+  - Writes one `weather_ingest_runs` audit row per inserted or updated day with `parser_version="legacy-import-v1"` and `requested_via="legacy_backfill"`.
   - Idempotent: safe to call multiple times.
-- **Verified:** 2026-03-01 — backfilled 109 days from reference XLSX data; second call returned `days_backfilled=0, days_skipped=109`.
+- **Verified:** 2026-03-01 — backfilled 109 days from reference XLSX data. Current overwrite semantics are defined in `backend/app/services/weather_backfill_service.py`.
 
 ---
 

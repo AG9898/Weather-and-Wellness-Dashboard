@@ -271,7 +271,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T82",
       "title": "Ops — post-T80 selective clear and fresh reference XLSX re-import",
-      "status": "todo",
+      "status": "done",
       "description": "After T80 is complete, use the new selective wipe to clear participant/session outcome data while preserving weather history, then perform a brand new preview-first import of `reference/data_full_1-230.xlsx`. This task is the clean repopulation step for the demo/analysis dataset after the CogFunc import path and legacy import verification are in place.",
       "stack": ["backend", "database"],
       "depends_on": ["T80", "T81"],

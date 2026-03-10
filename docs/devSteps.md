@@ -182,16 +182,28 @@ Verification after the selective wipe:
 
 ### Restore (from the legacy reference XLSX/CSV)
 
-1) Re-import via the RA Import/Export page (or `POST /admin/import/commit`) using the unchanged reference file.
+1) Run a preview-first import using the unchanged reference file, then commit
+only if preview returns no blocking validation errors.
 
-2) Restore derived weather rows only if needed for imported days that do not
-already have weather history:
+- Use the RA Import/Export page or `POST /admin/import/preview` first.
+- Then proceed to `POST /admin/import/commit`.
 
-- Call `POST /admin/backfill/legacy-weather` (idempotent).
+2) Run `POST /admin/backfill/legacy-weather` after the import.
+
+- This is still required even when the imported dates already have
+  `weather_daily` rows from Open-Meteo.
+- The legacy weather backfill overwrites `current_temp_c` and
+  `current_precip_today_mm` on existing `open-meteo-v1` rows with the workbook
+  values, while preserving humidity, sunshine, and forecast fields.
+- Dates already sourced from `legacy-import-v1` are a no-op; `ubc-eos-v1` rows
+  remain untouched.
 
 Notes:
-- Import commit repopulates: `participants`, `sessions`, `study_days`, `imported_session_measures`, and imported rows in `digitspan_runs` + `survey_uls8` + `survey_cesd10` + `survey_gad7`.
-- This selective wipe is the preferred reset path before a fresh Phase 4 legacy re-import because it keeps existing weather history intact.
+- Import commit repopulates: `participants`, `sessions`, `study_days`,
+  `imported_session_measures`, and imported rows in `digitspan_runs` +
+  `survey_uls8` + `survey_cesd10` + `survey_gad7` + `survey_cogfunc8a`.
+- This selective wipe is the preferred reset path before a fresh Phase 4 legacy
+  re-import because it keeps existing weather history intact.
 
 ## Demo Runbook — Full Study-Domain Wipe + Restore
 

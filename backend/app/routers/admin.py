@@ -107,17 +107,21 @@ async def backfill_legacy_weather(
 ) -> LegacyWeatherBackfillResponse:
     """Backfill weather_daily from imported session temperature/precipitation data.
 
-    For each study day that has imported session measures but no existing
-    weather_daily row (station 3510), inserts a partial row with only
-    current_temp_c and current_precip_today_mm populated (mean of all
-    imported sessions for that day). All other weather fields remain null.
+    For each study day that has imported session measures, apply the weather
+    precedence rules for station 3510:
+    - no existing row: insert a partial row with temp + precip only
+    - existing open-meteo row: overwrite temp + precip with import values
+      while preserving humidity/sunshine fields
+    - existing legacy-import row: no-op
+    - existing UBC EOS row: no-op
 
-    Safe to call multiple times — existing weather_daily rows are never
-    overwritten.
+    Safe to call multiple times — rows already sourced from the legacy import
+    are left unchanged on subsequent runs.
     """
     result = await run_legacy_weather_backfill(db)
     return LegacyWeatherBackfillResponse(
-        days_backfilled=result.days_backfilled,
+        days_inserted=result.days_inserted,
+        days_updated=result.days_updated,
         days_skipped=result.days_skipped,
     )
 
