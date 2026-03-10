@@ -11,9 +11,9 @@
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
 | Tasks completed    | 24 — Phase 4 ongoing                                         |
-| Remaining queue    | T76–T99 in kanban.md                                         |
+| Remaining queue    | T76–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
-| Last updated       | 2026-03-09                                                   |
+| Last updated       | 2026-03-10                                                   |
 
 ---
 
@@ -38,6 +38,17 @@ _No tasks in progress._
   - **T84** — add durable analytics run/snapshot tables
   - **T85** — build canonical analysis dataset service
   - **T86** — implement z-scoring and mixed-model fitting
+
+## Auth hardening tasks added (planned 2026-03-10)
+
+- Added an auth-hardening decision to `docs/DECISIONS.md` covering invite-only
+  RA access plus `app_metadata`-based role and lab scoping.
+- New tasks:
+  - **T100** — FastAPI role and lab claim enforcement for admin/lab-scoped
+    access
+  - **T101** — Supabase admin invite utility with role and `lab_name`
+    assignment
+  - **T102** — frontend role and `lab_name` UI gating with unauthorized page
   - **T87** — add snapshot persistence and recompute orchestration
   - **T88** — implement `GET /dashboard/analytics`
   - **T89** — add frontend analytics API wrappers and Route Handler

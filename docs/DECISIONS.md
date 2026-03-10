@@ -275,6 +275,54 @@ docs/ARCHITECTURE.md, docs/kanban.md.
 
 ---
 
+### RESOLVED-15 — Invite-Only Auth + Role/Lab Scoping via Supabase `app_metadata`
+
+**Resolved:** 2026-03-07
+
+**Decision:** Auth hardening will be implemented entirely within the existing
+Supabase Auth stack using three mechanisms:
+
+1. **Invite-only access:** Public sign-ups are disabled in the Supabase Auth
+dashboard (`Authentication > Providers > Email > Disable "Allow new users to
+sign up"`). Only users explicitly invited by an admin can authenticate.
+
+2. **Role-based permissions via `app_metadata`:** Each RA user is assigned a
+role stored in Supabase's `app_metadata` field (admin-only writable; cannot be
+modified by users). Role is embedded in the JWT and validated by FastAPI:
+   - `admin`: Full access to dashboard, Import/Export, and admin endpoints.
+   - `ra`: Dashboard access only; Import/Export and admin endpoints return 403.
+
+3. **Lab scoping via `app_metadata`:** Each RA user is assigned a `lab_name`
+value stored alongside role in `app_metadata`. One RA belongs to exactly one
+lab. Lab name gates page-level access: certain pages are visible only to users
+whose `lab_name` matches. Admins bypass all lab restrictions. The system is
+designed to support about five labs; specific lab names are set at invite time.
+
+**Implementation pattern:**
+- `app_metadata` is set only via the Supabase admin API (service role key),
+never exposed to the frontend.
+- FastAPI `LabMember` gains `role: str` and `lab_name: str`, extracted from JWT
+claims.
+- New FastAPI dependency `get_current_admin` enforces `role == 'admin'`; it
+replaces `get_current_lab_member` on admin-only routes.
+- A `backend/scripts/invite_user.py` CLI script handles user invitations with
+role and `lab_name` assignment.
+- Frontend reads `app_metadata` from the Supabase session to gate UI links and
+page access.
+
+**Why not alternatives:**
+- Auth0/Clerk: overkill for a small internal lab tool and adds cost.
+- Google OAuth domain restriction: viable only if the lab standardizes on
+Google Workspace and adds OAuth complexity.
+- Custom users/roles table: redundant because Supabase Auth already manages
+secure user metadata.
+
+**Affects:** `backend/app/auth.py`, `backend/app/routers/admin.py`,
+`backend/scripts/invite_user.py`, `frontend/src/lib/components/RANavBar.tsx`,
+`frontend/src/app/(ra)/layout.tsx`, `docs/kanban.md`.
+
+---
+
 <!-- Template for new decisions:
 
 ### OPEN-XX — [Decision Name]

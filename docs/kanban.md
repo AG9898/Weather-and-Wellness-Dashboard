@@ -682,6 +682,77 @@ Follow current JSON Schema when adding tasks.
       "updates_docs": [
         "docs/PROGRESS.md"
       ]
+    },
+    {
+      "id": "T100",
+      "title": "Backend — Auth hardening: role + lab_name claims in FastAPI",
+      "status": "todo",
+      "description": "Extend `backend/app/auth.py` to extract `role` and `lab_name` from the `app_metadata` JWT claim (set admin-side only in Supabase). Add both fields to the `LabMember` Pydantic model. Add a `get_current_admin` FastAPI dependency that calls `get_current_lab_member` and raises HTTP 403 if `role != 'admin'`. Add a `get_current_ra_for_lab(lab_name: str)` factory for lab-scoped access checks (raises 403 if the user's `lab_name` does not match and the user is not admin). Swap `Depends(get_current_lab_member)` to `Depends(get_current_admin)` on admin-only routes in `backend/app/routers/admin.py` (import preview, import commit, export xlsx, export zip, backfill). All existing RA routes that do not require admin remain on `get_current_lab_member`. Default `role` to `'ra'` if missing from `app_metadata` and default `lab_name` to `''` if missing. See RESOLVED-15 in docs/DECISIONS.md.",
+      "stack": ["backend"],
+      "depends_on": [],
+      "read_docs": [
+        "docs/DECISIONS.md",
+        "docs/API.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "`LabMember` model has `role: str` and `lab_name: str` fields",
+        "`get_current_admin` returns LabMember when role='admin' and raises 403 otherwise",
+        "All admin-only routes in `admin.py` use `Depends(get_current_admin)`",
+        "An RA-role JWT hitting an admin route returns HTTP 403, not 401",
+        "An admin-role JWT hitting an admin route succeeds",
+        "Missing `app_metadata` in JWT defaults to role='ra' and lab_name='' without a 500"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md",
+        "docs/API.md"
+      ]
+    },
+    {
+      "id": "T101",
+      "title": "Backend — Admin invite utility script with role + lab_name assignment",
+      "status": "todo",
+      "description": "Create `backend/scripts/invite_user.py`, a CLI script for admins to invite new users and assign their role and `lab_name`. The script uses the Supabase Python client with the service role key, never the anon key, to: (1) call `supabase.auth.admin.invite_user_by_email(email)` to send an invite link, (2) retrieve the created user's ID, and (3) call `supabase.auth.admin.update_user_by_id(user_id, { 'app_metadata': { 'role': role, 'lab_name': lab_name } })` to set role and `lab_name`. Accept `--email`, `--role` (choices: admin, ra), and `--lab-name` via argparse. Print the user ID on success. Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` env vars. Add `SUPABASE_SERVICE_ROLE_KEY` to `backend/.env.example` with a warning that it must never be exposed publicly. See RESOLVED-15 in docs/DECISIONS.md.",
+      "stack": ["backend"],
+      "depends_on": ["T100"],
+      "read_docs": [
+        "docs/DECISIONS.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_criteria": [
+        "`backend/scripts/invite_user.py` exists and accepts `--email`, `--role`, and `--lab-name`",
+        "Running the script sends an invite email visible in Supabase Studio Auth > Users",
+        "The invited user has correct `app_metadata.role` and `app_metadata.lab_name` in Supabase Studio",
+        "`SUPABASE_SERVICE_ROLE_KEY` is added to `backend/.env.example` with a warning comment",
+        "Script fails clearly when env vars are missing or Supabase returns an error",
+        "Script rejects use of the anon key as a substitute for the service role key"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
+    },
+    {
+      "id": "T102",
+      "title": "Frontend — Role + lab_name UI gating via session context",
+      "status": "todo",
+      "description": "Gate frontend pages and nav items based on the authenticated user's `role` and `lab_name` from Supabase session `app_metadata`. In `frontend/src/app/(ra)/layout.tsx`, after session check, extract `role` and `lab_name` from `session.user.app_metadata` and pass them via React context created at `src/lib/contexts/RAUserContext.tsx`. In `frontend/src/lib/components/RANavBar.tsx`, consume the context and render the Import-Export nav link only when `role === 'admin'`. For future lab-scoped pages, `lab_name` becomes the gating mechanism for page access or redirects. Add a `403 / Unauthorized` page at `src/app/(ra)/unauthorized/page.tsx` for RA users who access content outside their lab scope. Admin users bypass all lab checks. See RESOLVED-15 in docs/DECISIONS.md.",
+      "stack": ["frontend"],
+      "depends_on": ["T100"],
+      "read_docs": [
+        "docs/DECISIONS.md",
+        "docs/styleguide.md"
+      ],
+      "acceptance_criteria": [
+        "`RAUserContext` exists and provides `role` and `lab_name` to RA layout children",
+        "Import-Export nav link is visible only when `role === 'admin'` and hidden for `role === 'ra'`",
+        "Navigating directly to `/import-export` as an RA user redirects to `/unauthorized` and backend returns 403",
+        "`/unauthorized` renders a clear message and a link back to `/dashboard`",
+        "Admin users see the Import-Export link and can access the page",
+        "Context values update correctly after sign-out and sign-in as a different user"
+      ],
+      "updates_docs": [
+        "docs/PROGRESS.md"
+      ]
     }
   ]
 }
