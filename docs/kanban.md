@@ -341,7 +341,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T85",
       "title": "Backend analytics — build canonical analysis dataset service",
-      "status": "todo",
+      "status": "done",
       "description": "Implement a backend service that constructs the canonical analysis dataset from sessions, study days, weather, digit span, survey tables, participants, and imported aggregate fallbacks. This service must apply the source-precedence rules documented in `docs/ANALYTICS.md`, derive `date_bin` in-memory, and return both included rows and exclusion metadata.",
       "stack": ["backend"],
       "depends_on": ["T83"],
@@ -364,7 +364,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T86",
       "title": "Backend analytics — implement z-scoring and mixed-model fitting service",
-      "status": "todo",
+      "status": "done",
       "description": "Implement the Python-side statistics engine that standardizes the active dataset window and fits the two planned mixed-effects models from `docs/ANALYTICS.md`. Serialize model-level metadata and effect-card outputs suitable for the dashboard, including coefficient, standard error, p-value, confidence interval, direction, and convergence warnings.",
       "stack": ["backend"],
       "depends_on": ["T85"],

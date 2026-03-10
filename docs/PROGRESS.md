@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 33 — Phase 4 ongoing                                         |
-| Remaining queue    | T85–T102 in kanban.md                                        |
+| Tasks completed    | 35 — Phase 4 ongoing                                         |
+| Remaining queue    | T87–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-10                                                   |
 
@@ -28,6 +28,67 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## Analytics modeling parity refinement (2026-03-10)
+
+- Compared the T86 Python mixed-model implementation directly against the
+  modeling section of `reference/Weather_MLM.R`, ignoring the legacy cleaning
+  path.
+- Result of the review:
+  - retained model-specific complete-case z-scoring because it is more
+    statistically coherent when `digit_span` and `self_report` have different
+    missingness
+  - changed the Python mixed-model fit to use REML for final dashboard
+    estimation, aligning the production implementation with the reference
+    analysis intent
+  - documented the chosen production rule set in `docs/ANALYTICS.md`
+- Added focused regression coverage in `backend/tests/test_analytics_modeling.py`
+  to lock in:
+  - per-outcome complete-case standardization behavior
+  - REML usage in the mixed-model fit path
+
+## T86 — Backend analytics — implement z-scoring and mixed-model fitting service (completed 2026-03-10)
+
+- Added `backend/app/analytics/modeling.py` with a reusable mixed-model fitting service that:
+  - builds outcome-specific modeling frames from the canonical dataset produced by T85
+  - computes z-scores inside the requested analysis window for the active model rows only
+  - fits the planned `digit_span` and `self_report` mixed models in Python with `statsmodels`
+  - serializes dataset metadata, model summaries, effect cards, and typed warning/status output for follow-on snapshot/API work
+- Added optimizer fallback and warning capture so convergence issues are surfaced as structured model warnings instead of disappearing into logs.
+- Added insufficient-data guards for:
+  - empty windows
+  - fewer than 2 distinct `date_bin` groups
+  - zero-variance predictors or outcomes
+  - rank-deficient fixed-effects design matrices
+- Exported the modeling service from `backend/app/analytics/__init__.py` for reuse by T87 and later analytics endpoint work.
+- Added `backend/tests/test_analytics_modeling.py` covering:
+  - successful fitting of both planned outcomes
+  - zero-variance predictor handling with `insufficient_data` status
+  - partial-fit behavior where one outcome is skipped but the other still returns a ready model summary
+- Verification:
+  - `env PYTHONPATH=. .venv/bin/pytest -q tests/test_analytics_modeling.py tests/test_analytics_dataset.py tests/test_analytics_schema.py tests/test_analytics_storage_models.py` → `11 passed in 2.64s`
+  - `env PYTHONPATH=. .venv/bin/pytest -q` → `51 passed, 1 warning in 3.39s`
+
+## T85 — Backend analytics — build canonical analysis dataset service (completed 2026-03-10)
+
+- Added `backend/app/analytics/dataset.py` with a canonical dataset builder that:
+  - queries complete sessions for a requested local-date window
+  - applies native-first source precedence across weather, survey, digit span, and imported fallback fields
+  - derives `date_bin` in memory from the included `date_local` values
+  - returns both included rows and structured exclusion metadata
+- The dataset builder now supports imported fallback recovery paths needed for analytics readiness, including:
+  - imported weather values from `imported_session_measures` when native weather fields are absent
+  - imported survey aggregate fallbacks when native canonical survey scores are unavailable
+  - imported `self_report` fallback from `imported_session_measures.self_report` when no native CogFunc score exists
+- Added `backend/tests/test_analytics_dataset.py` covering:
+  - native-over-imported precedence
+  - in-memory `date_bin` assignment
+  - imported `self_report` fallback behavior
+  - structured exclusion reasons and invalid range rejection
+- Exported the dataset service from `backend/app/analytics/__init__.py` for reuse by follow-on analytics tasks.
+- Verification:
+  - `env PYTHONPATH=. .venv/bin/pytest -q tests/test_analytics_dataset.py tests/test_analytics_schema.py tests/test_analytics_storage_models.py` → `8 passed in 0.59s`
+  - `env PYTHONPATH=. .venv/bin/pytest -q` → `48 passed, 1 warning in 1.33s`
 
 ## T83 — Backend analytics: dependencies and response schema scaffolding (completed 2026-03-10)
 

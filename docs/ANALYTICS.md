@@ -142,6 +142,11 @@ metadata.
 
 - Standardize continuous predictors and outcomes within the active analysis
   window using z-scores: `(value - mean) / sd`.
+- Standardization is **model-sample-specific**:
+  - build the complete-case estimation sample for the outcome being fit
+  - then compute z-scores from that sample only
+  - do not standardize predictors on rows that will later be dropped for a
+    missing outcome
 - `date_bin` is derived after date filtering by ordering unique
   `study_days.date_local` values ascending and assigning `1..N`.
 - Do not persist z-scored columns or `date_bin` in the transactional schema.
@@ -183,6 +188,11 @@ self_report_z ~
 
 - Fit with Python in the backend, not by shelling out to R.
 - Preferred v1 library: `statsmodels` mixed linear model support.
+- Use the same fixed/random-effects structure as the reference R analysis but
+  treat the Python implementation as the normative production path.
+- For the final dashboard model estimates, fit with **REML**. Reserve ML
+  (`REML = FALSE`) for future fixed-effect model-comparison work if that is
+  explicitly added later.
 - Small numeric differences versus `lme4` are acceptable if:
   - formulas match
   - included rows match
@@ -410,6 +420,12 @@ Planned high-level response shape:
 - The R script includes some inconsistent plotting code that references objects
   not defined in the final mixed-model section. Treat the formulas above as the
   authoritative v1 parity target, not every plotting line.
+- Direct comparison against the reference R script showed two important
+  interpretation choices:
+  - model-specific complete-case z-scoring is statistically cleaner than
+    standardizing predictors across rows later dropped for one outcome
+  - REML is the preferred estimation mode for the final mixed-effects models as
+    presented on the dashboard
 - If future analysis requires exact parity with `lme4`, reassess the Python-only
   implementation choice before changing backend contracts.
 - Partial-residual or other effect plots are planned as a separate linked
