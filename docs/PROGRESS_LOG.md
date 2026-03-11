@@ -154,6 +154,30 @@ Meanwhile the weather/range cache (24h TTL) was still alive → Highcharts data 
 
 ---
 
+### Bug fix — Weather chart cold-cache startup failures hardened — 2026-03-10
+
+**Symptom:** On the deployed dashboard, the weather summary loaded but the Highcharts trend area sometimes stayed at "Loading chart data…" and then switched to "Range data temporarily unavailable."
+
+**Root cause:** The chart path was using a cached-first weather-range request. When the Redis key for the default `study_start -> today` range was missing, the component fell through to `mode=live`. That live request could still be slow on a cold backend and the first response was larger than necessary because it included `forecast_periods` for every day, even though the chart only renders day-level temperature, precipitation, and sunlight values. A single 502/timeout on that first live request left the chart in an error state until a manual retry or later reload.
+
+**Fix:**
+1. Added `include_forecast_periods=false` support to `GET /weather/daily` so chart-oriented range reads can request a lean payload.
+2. Updated `GET /api/ra/weather/range?mode=live` to call the lean backend form, reducing payload size and cold-cache fill time.
+3. Updated `WeatherUnifiedCard` to:
+   - show fetch-phase messaging (`Checking cached chart data…`, `Fetching live chart data from backend…`, `Retrying live chart data from backend…`),
+   - retry one transient live failure before surfacing the error,
+   - warm the default `study_start -> today` weather-range cache after a successful manual ingest.
+
+**Files modified:**
+- `backend/app/routers/weather.py` — added `include_forecast_periods` query support and lean range serialization path
+- `frontend/src/app/api/ra/weather/range/route.ts` — live proxy now requests lean weather range payload
+- `frontend/src/lib/components/WeatherUnifiedCard.tsx` — cache/live loading messages, one retry on transient live failure, background cache warm after ingest
+- `docs/ARCHITECTURE.md` — weather-range route behavior updated
+- `docs/DESIGN_SPEC.md` — WeatherUnifiedCard fetch/loading behavior updated
+- `docs/PROGRESS.md` — implementation summary added
+
+---
+
 ### T37 — Frontend — RA dashboard Start New Entry — 2026-02-27
 
 **Files modified:**

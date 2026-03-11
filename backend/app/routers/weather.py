@@ -253,6 +253,10 @@ async def get_weather_daily(
     start: date_type = Query(..., description="Start date inclusive (YYYY-MM-DD, America/Vancouver)"),
     end: date_type = Query(..., description="End date inclusive (YYYY-MM-DD, America/Vancouver)"),
     station_id: int = Query(default=3510, description="Station ID"),
+    include_forecast_periods: bool = Query(
+        default=True,
+        description="When false, returns an empty forecast_periods array for each day to reduce payload size",
+    ),
     _: LabMember = Depends(get_current_lab_member),
     db: AsyncSession = Depends(get_session),
 ) -> WeatherDailyResponse:
@@ -262,16 +266,58 @@ async def get_weather_daily(
             detail="start must not be after end",
         )
 
-    rows_result = await db.execute(
-        select(WeatherDaily)
-        .where(
-            WeatherDaily.station_id == station_id,
-            WeatherDaily.date_local >= start,
-            WeatherDaily.date_local <= end,
+    if include_forecast_periods:
+        rows_result = await db.execute(
+            select(WeatherDaily)
+            .where(
+                WeatherDaily.station_id == station_id,
+                WeatherDaily.date_local >= start,
+                WeatherDaily.date_local <= end,
+            )
+            .order_by(WeatherDaily.date_local.asc())
         )
-        .order_by(WeatherDaily.date_local.asc())
-    )
-    rows = rows_result.scalars().all()
+        rows = rows_result.scalars().all()
+        items = [WeatherDailyItem.model_validate(row) for row in rows]
+    else:
+        rows_result = await db.execute(
+            select(
+                WeatherDaily.station_id,
+                WeatherDaily.study_day_id,
+                WeatherDaily.date_local,
+                WeatherDaily.source_run_id,
+                WeatherDaily.updated_at,
+                WeatherDaily.current_temp_c,
+                WeatherDaily.current_precip_today_mm,
+                WeatherDaily.forecast_high_c,
+                WeatherDaily.forecast_low_c,
+                WeatherDaily.forecast_condition_text,
+                WeatherDaily.sunshine_duration_hours,
+            )
+            .where(
+                WeatherDaily.station_id == station_id,
+                WeatherDaily.date_local >= start,
+                WeatherDaily.date_local <= end,
+            )
+            .order_by(WeatherDaily.date_local.asc())
+        )
+        rows = rows_result.mappings().all()
+        items = [
+            WeatherDailyItem(
+                station_id=row["station_id"],
+                study_day_id=row["study_day_id"],
+                date_local=row["date_local"],
+                source_run_id=row["source_run_id"],
+                updated_at=row["updated_at"],
+                current_temp_c=row["current_temp_c"],
+                current_precip_today_mm=row["current_precip_today_mm"],
+                forecast_high_c=row["forecast_high_c"],
+                forecast_low_c=row["forecast_low_c"],
+                forecast_condition_text=row["forecast_condition_text"],
+                forecast_periods=[],
+                sunshine_duration_hours=row["sunshine_duration_hours"],
+            )
+            for row in rows
+        ]
 
     latest_result = await db.execute(
         select(WeatherIngestRun)
@@ -282,7 +328,7 @@ async def get_weather_daily(
     latest_run = latest_result.scalar_one_or_none()
 
     return WeatherDailyResponse(
-        items=[WeatherDailyItem.model_validate(row) for row in rows],
+        items=items,
         latest_run=(
             LatestRunInfo(
                 run_id=latest_run.run_id,

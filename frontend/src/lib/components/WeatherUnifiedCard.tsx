@@ -104,6 +104,24 @@ function getCssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableRangeError(err: unknown): boolean {
+  if (err instanceof ApiError) return err.status >= 500;
+  if (err instanceof Error) {
+    const message = err.message.toLowerCase();
+    return (
+      message.includes("timed out") ||
+      message.includes("timeout") ||
+      message.includes("network") ||
+      message.includes("fetch")
+    );
+  }
+  return false;
+}
+
 /** Convert a 6-digit CSS hex color (#rrggbb) to rgba() with the given alpha (0–1). */
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace("#", "");
@@ -237,6 +255,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
   // ── Range fetch state ────────────────────────────────────────────────────
   const [rangeItems, setRangeItems] = useState<WeatherDailyItem[]>([]);
   const [rangeLoading, setRangeLoading] = useState(false);
+  const [rangeLoadingMessage, setRangeLoadingMessage] = useState<string | null>(null);
   const [rangeError, setRangeError] = useState<string | null>(null);
   const rangeSeqRef = useRef(0);
 
@@ -274,23 +293,43 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
     options?: { forceLive?: boolean }
   ) => {
     setRangeError(null);
+    setRangeLoadingMessage(null);
     const seq = rangeSeqRef.current + 1;
     rangeSeqRef.current = seq;
     let loadingTimer: ReturnType<typeof setTimeout> | null = null;
-    const setLoadingIfStillCurrent = () => {
-      if (rangeSeqRef.current === seq) setRangeLoading(true);
+    const setLoadingIfStillCurrent = (message: string) => {
+      if (rangeSeqRef.current !== seq) return;
+      setRangeLoading(true);
+      setRangeLoadingMessage(message);
     };
-    loadingTimer = setTimeout(setLoadingIfStillCurrent, 250);
+
+    const fetchLiveWithRetry = async () => {
+      try {
+        return await getWeatherRangeBundle("live", dateFrom, dateTo);
+      } catch (err) {
+        if (!isRetryableRangeError(err) || rangeSeqRef.current !== seq) {
+          throw err;
+        }
+        setLoadingIfStillCurrent("Retrying live chart data from backend…");
+        await sleep(1200);
+        if (rangeSeqRef.current !== seq) throw err;
+        return getWeatherRangeBundle("live", dateFrom, dateTo);
+      }
+    };
 
     try {
       if (options?.forceLive) {
-        setLoadingIfStillCurrent();
-        const live = await getWeatherRangeBundle("live", dateFrom, dateTo);
+        setLoadingIfStillCurrent("Fetching live chart data from backend…");
+        const live = await fetchLiveWithRetry();
         if (rangeSeqRef.current !== seq) return;
         if (!live.data) throw new Error("No weather data returned");
         setRangeItems(live.data.weather.items);
         return;
       }
+
+      loadingTimer = setTimeout(() => {
+        setLoadingIfStillCurrent("Checking cached chart data…");
+      }, 150);
 
       const cached = await getWeatherRangeBundle("cached", dateFrom, dateTo);
       if (rangeSeqRef.current !== seq) return;
@@ -299,8 +338,8 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
         return;
       }
 
-      setLoadingIfStillCurrent();
-      const live = await getWeatherRangeBundle("live", dateFrom, dateTo);
+      setLoadingIfStillCurrent("Fetching live chart data from backend…");
+      const live = await fetchLiveWithRetry();
       if (rangeSeqRef.current !== seq) return;
       if (!live.data) throw new Error("No weather data returned");
       setRangeItems(live.data.weather.items);
@@ -309,7 +348,10 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
       setRangeError(getRangeErrorMessage(err));
     } finally {
       if (loadingTimer) clearTimeout(loadingTimer);
-      if (rangeSeqRef.current === seq) setRangeLoading(false);
+      if (rangeSeqRef.current === seq) {
+        setRangeLoading(false);
+        setRangeLoadingMessage(null);
+      }
     }
   }, []);
 
@@ -370,6 +412,10 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
           ? "Update complete with partial data."
           : "Update ran but no data could be parsed.";
       setUpdateResult({ kind: "success", message: label });
+      const studyToday = getStudyToday();
+      if (customFrom !== STUDY_START || customTo !== studyToday) {
+        void getWeatherRangeBundle("live", STUDY_START, studyToday).catch(() => undefined);
+      }
       void fetchRange(customFrom, customTo, { forceLive: true });
     } catch (err) {
       setUpdateResult({ kind: "error", message: getIngestErrorMessage(err) });
@@ -803,7 +849,9 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
         {(rangeLoading || rangeError) && (
           <div className="mb-3 text-xs">
             {rangeLoading && (
-              <span className="text-muted-foreground">Loading chart data…</span>
+              <span className="text-muted-foreground">
+                {rangeLoadingMessage ?? "Loading chart data…"}
+              </span>
             )}
             {!rangeLoading && rangeError && (
               <span className="text-destructive">{rangeError}</span>

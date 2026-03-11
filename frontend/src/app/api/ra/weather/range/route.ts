@@ -121,7 +121,7 @@ async function fetchLiveWeatherRange(
   };
 
   const weatherRes = await fetchWithTimeout(
-    `${BACKEND_URL}/weather/daily?start=${dateFrom}&end=${dateTo}`,
+    `${BACKEND_URL}/weather/daily?start=${dateFrom}&end=${dateTo}&include_forecast_periods=false`,
     { headers, cache: "no-store" }
   );
   if (!weatherRes.ok) {

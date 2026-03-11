@@ -254,6 +254,9 @@ The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx
 - Shared tooltip (`tooltip.shared: true`) shows date + all three series values.
 - Legend: disabled (custom toggle UI used instead).
 - Range data is fetched internally via `getWeatherRangeBundle('cached'|'live', dateFrom, dateTo)` (same-origin `/api/ra/weather/range`) — cached-first with live fallback; no bare fetch.
+- Inline loading copy distinguishes cache lookup from live backend fetch (`"Checking cached chart data…"` vs `"Fetching live chart data from backend…"`).
+- On transient live fetch failures (for example a 5xx or timeout during a cold start), the chart retries the live weather-range request once before surfacing an error.
+- After a successful manual weather ingest, the component refreshes the active range and also warms the default `study_start → today` weather-range cache in the background so the next dashboard visit is more likely to render from cache.
 
 **Chart color assignments:**
 

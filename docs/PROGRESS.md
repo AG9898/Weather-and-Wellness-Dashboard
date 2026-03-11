@@ -366,6 +366,17 @@ _No tasks in progress._
   - `docs/devSteps.md` (smoke-test/troubleshooting with `x-ww-cache: refresh|stale-fallback|error`)
   - `docs/DESIGN_SPEC.md` (fail-fast loading behavior note)
 
+## T75 — Weather chart cold-start hardening (completed 2026-03-10)
+
+- Diagnosed deployed Highcharts failures as a weather-range fetch problem, not a chart-rendering problem: the default `study_start -> today` chart request could hit a cold cache, fall through to `mode=live`, and time out before the first cache fill completed.
+- Backend `GET /weather/daily` now supports `include_forecast_periods=false` so the weather trend path can request a lean range payload without per-day forecast blocks.
+- `GET /api/ra/weather/range?mode=live` now proxies that lean backend payload, reducing response size for the dashboard chart.
+- `WeatherUnifiedCard` range fetching now:
+  - shows phase-specific loading copy for cache lookup vs live backend fetch,
+  - retries one transient live failure before showing an error,
+  - warms the default `study_start -> today` weather-range cache in the background after a successful manual weather ingest.
+- Docs updated: `docs/ARCHITECTURE.md`, `docs/DESIGN_SPEC.md`, `docs/PROGRESS_LOG.md`.
+
 ## T71 — Frontend perf: cache hardening + weather range caching (completed 2026-03-05)
 
 - `/api/ra/dashboard` cache behaviour hardened:

@@ -47,7 +47,9 @@
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:weather:range:v1:<date_from>:<date_to>`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+
+**Payload shaping:** the weather trend chart path requests a lean day-level payload (empty `forecast_periods`) because the chart only needs date, temperature, precipitation, and sunlight-hours values. This keeps first-load range fetches smaller and reduces cold-cache timeout risk on Vercel.
 
 ## Vercel Range Bundle Route Handler (Phase 4)
 
