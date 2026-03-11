@@ -171,26 +171,47 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 
 1. **Hero action zone** — card with blue glow accent, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, ubc-blue-700/600 gradient) that navigates to `/new-session`.
 2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). KPI values are sourced from the base dashboard bundle and are always all-time totals / last-7-day counts (not range-filtered).
-3. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
+3. **Analytics snapshot section** — separate statistical surface between the KPI row and the weather card. It reads the dashboard analytics payload via the same-origin analytics Route Handler, defaults to the study window (`2025-03-03` → today, `America/Vancouver`), and does not block operational KPI or weather rendering.
+4. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
 
 The “Recent Sessions” panel has been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
 
-**Planned analytics addition:**
-- The operational KPI row above remains valid and implemented.
-- A future dashboard analytics section will add **model cards** derived from the
-  mixed-effects analysis specified in `docs/ANALYTICS.md`.
-- Those cards will summarize effect direction, coefficient, confidence interval,
-  and significance for the weather/cognition models.
-- Analytics cards should read from the latest stored snapshot by default and
-  show recompute/loading state separately from the operational KPI row.
-- The future analytics section should also include a **separate effect plot
-  card** linked to the selected model card; do not overlay model residual/effect
-  plots directly on the weather time-series chart.
-- The weather chart and analytics section should share the same dashboard date
-  filter state so the time/context view and model/effect view stay synchronized.
-- If additional visual linking is needed, use date-based weather annotations or
-  selection badges rather than mixing time-series and residual plots on the same
-  axes.
+**Analytics model cards (implemented in T90):**
+- The operational KPI row remains unchanged and loads independently from analytics.
+- The analytics section reads the latest stored snapshot by default through
+  `/api/ra/dashboard/analytics?mode=snapshot`. If no snapshot exists yet for the
+  default study window, the UI falls back to a live analytics read so the RA
+  still gets a typed analytics state instead of a blank section.
+- The section header shows the active study window, the latest snapshot/live
+  freshness metadata, and a manual **Refresh Analytics** action that requests a
+  live recompute without blocking the rest of the dashboard.
+- Model results are rendered as per-term cards grouped by outcome. Each card
+  shows:
+  - outcome
+  - term / predictor label
+  - coefficient
+  - 95% confidence interval
+  - p-value + significance flag
+  - direction (`positive` / `negative` / `neutral`)
+  - model convergence state
+  - sample/day counts and any backend warnings
+- The section also surfaces dataset metadata for the active snapshot:
+  included sessions, included days, native/imported row counts, excluded row
+  count, and structured exclusion reasons when present.
+- Analytics states handled in UI:
+  - `ready` — show cards and freshness metadata
+  - `stale` — keep prior snapshot visible with a warning banner
+  - `recomputing` — keep prior snapshot visible with an in-progress banner
+  - `insufficient_data` — show an empty-state message instead of cards
+  - `failed` — show an error-state message while operational surfaces remain usable
+
+**Still pending for later analytics tasks:**
+- A separate **effect plot card** linked to the selected model card; do not
+  overlay model residual/effect plots directly on the weather time-series chart.
+- Shared date-range state between weather and analytics so the time/context view
+  and model/effect view stay synchronized.
+- Optional weather annotations or selection badges for light visual linking
+  without mixing time-series and residual axes.
 - A future RA-only **Undo Last Session** action may appear in the dashboard hero
   or adjacent admin controls. It must target only the most recently created
   native session, require explicit confirmation, and never expose a general
@@ -216,13 +237,17 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
 - Route handlers enforce backend fetch timeouts (15s) and use stale-cache fallback when `mode=live` fails, so dashboard loading does not hang indefinitely on Render outages.
 
-**Planned analytics loading:**
-- Statistical dashboard content should use a separate analytics payload and cache
-  key from the operational dashboard bundle.
-- Default render path should use the most recent successful analytics snapshot.
-- Explicit date-filter or admin-triggered recompute may request live analytics,
-  but the UI should continue to show the prior snapshot until the recompute
-  completes.
+**Analytics loading (implemented through T90):**
+- Statistical dashboard content uses a separate analytics payload and cache key
+  from the operational dashboard bundle.
+- Default render path uses the most recent successful analytics snapshot.
+- When snapshot mode returns `404` for the default study window, the dashboard
+  performs a live analytics request so first-run states such as
+  `insufficient_data` or `failed` are still visible in the UI.
+- Manual analytics refresh requests use live mode, but the UI keeps the prior
+  snapshot visible whenever the backend returns `stale` or `recomputing`.
+
+**Still pending in analytics loading:**
 - Shared dashboard filter state should drive both:
   - weather range fetches
   - analytics snapshot/live fetches

@@ -189,6 +189,113 @@ export interface DashboardParticipantsPerDayResponse {
   items: DashboardParticipantsPerDayItem[];
 }
 
+export type AnalyticsDirection = "positive" | "negative" | "neutral";
+export type AnalyticsOutcome = "digit_span" | "self_report";
+export type AnalyticsReadMode = "snapshot" | "live";
+export type AnalyticsStatus =
+  | "ready"
+  | "stale"
+  | "recomputing"
+  | "insufficient_data"
+  | "failed";
+
+export interface AnalyticsExclusionReasonResponse {
+  reason: string;
+  count: number;
+}
+
+export interface AnalyticsDatasetMetadataResponse {
+  date_from: string;
+  date_to: string;
+  included_sessions: number;
+  included_days: number;
+  native_rows: number;
+  imported_rows: number;
+  excluded_rows: number;
+  exclusion_reasons: AnalyticsExclusionReasonResponse[];
+  generated_at: string;
+}
+
+export interface AnalyticsSnapshotMetadataResponse {
+  mode: AnalyticsReadMode;
+  response_version: string;
+  model_version: string;
+  generated_at: string;
+  is_stale: boolean;
+  recompute_started_at: string | null;
+  recompute_finished_at: string | null;
+}
+
+export interface AnalyticsEffectCardResponse {
+  term: string;
+  predictor: string;
+  is_interaction: boolean;
+  coefficient: number;
+  standard_error: number;
+  statistic: number;
+  p_value: number;
+  ci_95_low: number;
+  ci_95_high: number;
+  direction: AnalyticsDirection;
+  significant: boolean;
+}
+
+export interface AnalyticsModelSummaryResponse {
+  outcome: AnalyticsOutcome;
+  formula: string;
+  grouping_field: string;
+  sample_size: number;
+  day_count: number;
+  converged: boolean;
+  warnings: string[];
+  model_version: string;
+  generated_at: string;
+  effects: AnalyticsEffectCardResponse[];
+}
+
+export interface AnalyticsEffectPlotPointResponse {
+  x: number;
+  y: number;
+  date_local: string;
+}
+
+export interface AnalyticsFittedLinePointResponse {
+  x: number;
+  y: number;
+}
+
+export interface AnalyticsEffectPlotResponse {
+  outcome: AnalyticsOutcome;
+  term: string;
+  x_label: string;
+  y_label: string;
+  points: AnalyticsEffectPlotPointResponse[];
+  fitted_line: AnalyticsFittedLinePointResponse[];
+}
+
+export interface AnalyticsWeatherAnnotationsResponse {
+  selected_term: string | null;
+  date_from: string;
+  date_to: string;
+  included_dates: string[];
+  excluded_dates: string[];
+}
+
+export interface AnalyticsVisualizationsResponse {
+  default_selected_term: string | null;
+  effect_plots: AnalyticsEffectPlotResponse[];
+  weather_annotations: AnalyticsWeatherAnnotationsResponse | null;
+}
+
+export interface DashboardAnalyticsResponse {
+  status: AnalyticsStatus;
+  response_version: string;
+  snapshot: AnalyticsSnapshotMetadataResponse;
+  dataset: AnalyticsDatasetMetadataResponse;
+  models: AnalyticsModelSummaryResponse[];
+  visualizations: AnalyticsVisualizationsResponse | null;
+}
+
 export interface SessionListItemResponse {
   session_id: string;
   participant_uuid: string;
@@ -309,11 +416,31 @@ export interface WeatherRangeRouteResponse {
   data: WeatherRangeBundle | null;
 }
 
+/**
+ * Bundle returned by GET /api/ra/dashboard/analytics.
+ * Snapshot reads may come from Redis; live reads always proxy same-origin to the backend.
+ */
+export interface DashboardAnalyticsBundle {
+  analytics: DashboardAnalyticsResponse;
+  cached_at: string; // ISO 8601
+}
+
+/** Response envelope from GET /api/ra/dashboard/analytics. */
+export interface DashboardAnalyticsRouteResponse {
+  cached: boolean;
+  data: DashboardAnalyticsBundle | null;
+}
+
 /** One-click supervised flow: create anonymous participant + active session. */
 export async function startSession(
   payload: StartSessionCreate
 ): Promise<StartSessionResponse> {
   return apiPost<StartSessionResponse>("/sessions/start", payload, { auth: true });
+}
+
+async function buildSameOriginAuthHeaders(): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /**
@@ -327,14 +454,9 @@ export async function startSession(
 export async function getDashboardBundle(
   mode: "cached" | "live"
 ): Promise<DashboardRouteResponse> {
-  const token = await getAuthToken();
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
   const res = await fetch(`/api/ra/dashboard?mode=${mode}`, {
     method: "GET",
-    headers,
+    headers: await buildSameOriginAuthHeaders(),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -351,19 +473,13 @@ export async function getDashboardRangeBundle(
   dateFrom: string,
   dateTo: string
 ): Promise<DashboardRangeRouteResponse> {
-  const token = await getAuthToken();
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
   const params = new URLSearchParams({
     date_from: dateFrom,
     date_to: dateTo,
   });
   const res = await fetch(`/api/ra/dashboard/range?${params.toString()}`, {
     method: "GET",
-    headers,
+    headers: await buildSameOriginAuthHeaders(),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -382,12 +498,6 @@ export async function getWeatherRangeBundle(
   dateFrom: string,
   dateTo: string
 ): Promise<WeatherRangeRouteResponse> {
-  const token = await getAuthToken();
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
   const params = new URLSearchParams({
     mode,
     date_from: dateFrom,
@@ -395,13 +505,39 @@ export async function getWeatherRangeBundle(
   });
   const res = await fetch(`/api/ra/weather/range?${params.toString()}`, {
     method: "GET",
-    headers,
+    headers: await buildSameOriginAuthHeaders(),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
   return res.json() as Promise<WeatherRangeRouteResponse>;
+}
+
+/**
+ * Fetch analytics from the same-origin Route Handler.
+ * mode=snapshot → returns the cached durable snapshot when available.
+ * mode=live     → triggers a backend recompute attempt with fast timeout + snapshot fallback.
+ */
+export async function getDashboardAnalyticsBundle(
+  mode: AnalyticsReadMode,
+  dateFrom: string,
+  dateTo: string
+): Promise<DashboardAnalyticsRouteResponse> {
+  const params = new URLSearchParams({
+    mode,
+    date_from: dateFrom,
+    date_to: dateTo,
+  });
+  const res = await fetch(`/api/ra/dashboard/analytics?${params.toString()}`, {
+    method: "GET",
+    headers: await buildSameOriginAuthHeaders(),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<DashboardAnalyticsRouteResponse>;
 }
 
 /** Trigger manual weather ingestion via LabMember JWT (RA-only). */

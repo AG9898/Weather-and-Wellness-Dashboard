@@ -430,7 +430,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T89",
       "title": "Frontend analytics — add typed API wrappers and same-origin route handler",
-      "status": "todo",
+      "status": "done",
       "description": "Add typed frontend API wrappers for the analytics endpoint and a same-origin Route Handler for dashboard analytics reads. Keep analytics caching separate from the current operational dashboard and weather cache keys, and preserve auth validation plus stale-snapshot fallback behavior.",
       "stack": ["frontend"],
       "depends_on": ["T88"],
@@ -453,7 +453,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T90",
       "title": "Frontend dashboard — add analytics model cards UI",
-      "status": "todo",
+      "status": "done",
       "description": "Add the dashboard analytics section that renders model cards from the analytics payload. The implemented UI should clearly separate operational KPI cards from statistical model cards, display coefficient/direction/significance/convergence state, and show snapshot freshness or recompute status without blocking the existing weather and summary surfaces. This task covers the model-card layer only; the separate linked effect-plot surface is handled by follow-on tasks.",
       "stack": ["frontend"],
       "depends_on": ["T89"],

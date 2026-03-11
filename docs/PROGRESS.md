@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 37 — Phase 4 ongoing                                         |
-| Remaining queue    | T89–T102 in kanban.md                                        |
+| Tasks completed    | 39 — Phase 4 ongoing                                         |
+| Remaining queue    | T91–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-11                                                   |
 
@@ -28,6 +28,62 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T90 — Frontend dashboard — add analytics model cards UI (completed 2026-03-11)
+
+- Added `frontend/src/lib/components/DashboardAnalyticsSection.tsx` and mounted
+  it on the RA dashboard between the operational KPI row and
+  `WeatherUnifiedCard`.
+- The new analytics section now:
+  - reads `getDashboardAnalyticsBundle()` through the typed frontend API layer
+  - defaults to `mode=snapshot` for the study window (`2025-03-03` → today)
+  - falls back to `mode=live` when no durable snapshot exists yet so the UI can
+    still surface typed `recomputing`, `insufficient_data`, or `failed` states
+  - exposes a manual `Refresh Analytics` action for live recompute requests
+- Added model/effect cards grouped by outcome with:
+  - outcome label and term/predictor labeling
+  - coefficient, 95% confidence interval, p-value, significance, and direction
+  - convergence state, sample/day counts, and warning display
+- Added dataset metadata and freshness/status panels so the dashboard shows:
+  - snapshot generation time and whether the current response is `snapshot` or `live`
+  - `ready`, `stale`, `recomputing`, `insufficient_data`, and `failed`
+    analytics states without blocking the existing KPI row or weather card
+  - included sessions/days plus native/imported/excluded row counts and
+    exclusion-reason badges when present
+- Updated `docs/DESIGN_SPEC.md` so the dashboard spec now reflects the shipped
+  analytics model-card layer and clearly separates the still-pending effect plot
+  and shared-filter work.
+- Verification:
+  - `npm run lint` (frontend) -> passed
+  - `npm run build` (frontend) -> passed
+    Note: the build needed to run outside the sandbox because Turbopack's CSS
+    worker process could not bind a port inside the sandboxed environment.
+
+## T89 — Frontend analytics — add typed API wrappers and same-origin route handler (completed 2026-03-11)
+
+- Added typed analytics response contracts and a same-origin wrapper in
+  `frontend/src/lib/api/index.ts`:
+  - full `DashboardAnalyticsResponse` TypeScript interfaces mirroring the
+    backend schema from T88
+  - `getDashboardAnalyticsBundle(mode, dateFrom, dateTo)` for all frontend
+    analytics reads
+  - a shared auth-header helper so dashboard, range, weather-range, and
+    analytics Route Handler calls use the same JWT forwarding pattern
+- Added `frontend/src/app/api/ra/dashboard/analytics/route.ts` as the RA-only
+  analytics read proxy on Vercel. The handler now:
+  - validates the Supabase JWT before touching Redis or calling Render
+  - uses a dedicated analytics snapshot cache key namespace:
+    `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`
+  - serves `mode=snapshot` from Redis on hit and otherwise proxies backend
+    snapshot mode, caching only snapshot-safe responses
+  - serves `mode=live` with a 15s backend timeout and falls back to the latest
+    snapshot from Redis or backend snapshot mode when the recompute path fails
+    or stalls
+- Updated `docs/ARCHITECTURE.md` to document the new analytics Route Handler,
+  its separate cache keyspace, and the live-to-snapshot fallback behavior.
+- Verification:
+  - `npm run lint` (frontend) -> passed
+  - `npm run build` (frontend) -> passed
 
 ## T88 — Backend API — implement GET /dashboard/analytics (completed 2026-03-11)
 

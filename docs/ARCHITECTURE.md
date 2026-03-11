@@ -64,16 +64,30 @@
 - **Bundle type:** `{ summary, weather, participants_per_day, cached_at }` wrapped in `{ cached: false, data }`.
 - **Purpose:** Provides a single typed payload for date-range dashboard KPIs + weather context + graph-ready participant counts.
 
+## Vercel Analytics Route Handler (Phase 4)
+
+`GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD` is the same-origin Next.js Route Handler for statistical dashboard analytics reads.
+
+| Mode | Behaviour |
+|---|---|
+| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 15s timeout, then caches the response (TTL 6 hours). |
+| `live` | Calls `/dashboard/analytics?...&mode=live` on Render with a 15s timeout and `cache: "no-store"`. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
+
+- **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before reading Redis or calling the backend. No auth bypass via cache.
+- **Bundle type:** `{ analytics: DashboardAnalyticsResponse, cached_at }` wrapped in `{ cached, data }`.
+- **Cache boundary:** Analytics reads use a dedicated Redis namespace and do not reuse the operational dashboard or weather cache keys.
+- **Live-path rule:** The handler does not write live-mode responses into Redis; Redis stores only snapshot-safe analytics reads so cached payloads stay semantically aligned with durable snapshots.
+
 ## Planned Analytics Snapshot Architecture
 
 Canonical analysis spec: `docs/ANALYTICS.md`
 
-The dashboard's statistical KPI layer will use a hybrid read path:
+The dashboard's statistical KPI layer now uses a hybrid read path for frontend reads, while the dashboard UI surfaces remain in progress:
 
 - **Durable source of truth:** Postgres-backed analytics snapshot storage
-- **Optional cache layer:** Upstash Redis for snapshot read acceleration only
-- **Live recompute path:** explicit filtered/admin requests may trigger backend recompute from current DB rows
-- **Serving rule:** while recompute is running, continue serving the most recent successful snapshot
+- **Optional cache layer:** Upstash Redis for snapshot read acceleration only, via the same-origin analytics Route Handler
+- **Live recompute path:** explicit filtered/admin requests may trigger backend recompute from current DB rows through `GET /api/ra/dashboard/analytics?mode=live`
+- **Serving rule:** while recompute is running, or if the live path fails, continue serving the most recent successful snapshot when available
 
 ### Planned lifecycle
 
@@ -81,8 +95,8 @@ The dashboard's statistical KPI layer will use a hybrid read path:
 2. Backend fits the planned mixed-effects models in Python.
 3. Backend serializes both model-card results and separate effect-plot payloads.
 4. Backend writes a versioned snapshot payload plus run metadata to Postgres.
-5. Route Handlers/backend endpoints may cache the serialized snapshot in Redis.
-6. Dashboard reads snapshot data by default and may request `mode=live` for explicit recompute flows.
+5. The analytics Route Handler may cache the serialized snapshot in Redis under a dedicated analytics keyspace.
+6. Dashboard reads snapshot data by default and may request `mode=live` for explicit recompute flows without waiting indefinitely on model fitting.
 
 ### Frontend coordination rule
 
