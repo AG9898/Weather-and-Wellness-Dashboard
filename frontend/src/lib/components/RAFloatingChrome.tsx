@@ -32,6 +32,9 @@ const DOCK_BASE_ACTIVE_SCALE = 1;
 const DOCK_HOVER_BOOST = 0.22;
 const DOCK_ACTIVE_LIFT = 0;
 const DOCK_HOVER_LIFT = 10;
+const DOCK_HIDE_DELTA = 18;
+const DOCK_TOP_LOCK_Y = 48;
+const DOCK_IDLE_RETURN_MS = 980;
 const springEase = spring({
   stiffness: 220,
   damping: 18,
@@ -77,12 +80,19 @@ export default function RAFloatingChrome() {
   const prefersReducedMotion = usePrefersReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
+  const [dockHidden, setDockHidden] = useState(false);
+  const [dockFocused, setDockFocused] = useState(false);
   const dockRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
   const dockAnimations = useRef<Record<string, ReturnType<typeof animate> | null>>({});
   const hintAnimations = useRef<Record<string, ReturnType<typeof animate> | null>>({});
+  const dockShellRef = useRef<HTMLDivElement | null>(null);
+  const dockVisibilityAnimationRef = useRef<ReturnType<typeof animate> | null>(null);
   const menuContentRef = useRef<HTMLDivElement | null>(null);
   const menuAnimationRef = useRef<ReturnType<typeof animate> | null>(null);
   const hasAnimatedMenuRef = useRef(false);
+  const lastScrollYRef = useRef(0);
+  const idleTimerRef = useRef<number | null>(null);
+  const dockFocusedRef = useRef(false);
 
   const resolvedItems = useMemo(
     () =>
@@ -92,6 +102,10 @@ export default function RAFloatingChrome() {
       })),
     [pathname]
   );
+
+  useEffect(() => {
+    dockFocusedRef.current = dockFocused;
+  }, [dockFocused]);
 
   useEffect(() => {
     const currentAnimations = dockAnimations.current;
@@ -154,6 +168,86 @@ export default function RAFloatingChrome() {
       menuAnimationRef.current?.pause();
     };
   }, [menuOpen, prefersReducedMotion]);
+
+  useEffect(() => {
+    const dock = dockShellRef.current;
+    if (!dock) return;
+
+    dockVisibilityAnimationRef.current?.pause();
+
+    if (prefersReducedMotion) {
+      dock.style.opacity = dockHidden ? "0" : "1";
+      dock.style.transform = dockHidden
+        ? "translateY(calc(100% + 1.5rem)) scale(0.96)"
+        : "translateY(0px) scale(1)";
+      return;
+    }
+
+    dockVisibilityAnimationRef.current = animate(dock, {
+      opacity: dockHidden ? [1, 0] : [0, 1],
+      translateY: dockHidden ? [0, 96] : [96, 0],
+      scale: dockHidden ? [1, 0.96] : [0.96, 1],
+      duration: dockHidden ? 180 : 360,
+      ease: dockHidden ? "out(2)" : "inOut(2)",
+    });
+
+    return () => {
+      dockVisibilityAnimationRef.current?.pause();
+    };
+  }, [dockHidden, prefersReducedMotion]);
+
+  useEffect(() => {
+    lastScrollYRef.current = window.scrollY;
+
+    const clearIdleTimer = () => {
+      if (idleTimerRef.current !== null) {
+        window.clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+    };
+
+    const scheduleReturn = () => {
+      clearIdleTimer();
+      idleTimerRef.current = window.setTimeout(() => {
+        idleTimerRef.current = null;
+        if (!menuOpen && !dockFocusedRef.current) {
+          setDockHidden(false);
+        }
+      }, DOCK_IDLE_RETURN_MS);
+    };
+
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollYRef.current;
+      lastScrollYRef.current = currentY;
+
+      if (currentY <= DOCK_TOP_LOCK_Y) {
+        clearIdleTimer();
+        setDockHidden(false);
+        return;
+      }
+
+      if (menuOpen || dockFocusedRef.current) {
+        clearIdleTimer();
+        setDockHidden(false);
+        return;
+      }
+
+      if (delta > DOCK_HIDE_DELTA) {
+        clearIdleTimer();
+        setDockHidden(true);
+        return;
+      }
+
+      scheduleReturn();
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      clearIdleTimer();
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [menuOpen]);
 
   function animateHint(href: string, visible: boolean) {
     const target = document.querySelector<HTMLElement>(`[data-dock-hint="${href}"]`);
@@ -242,7 +336,15 @@ export default function RAFloatingChrome() {
         style={{ top: "max(env(safe-area-inset-top), 1rem)" }}
       >
         <div className="pointer-events-auto">
-          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <Popover
+            open={menuOpen}
+            onOpenChange={(open) => {
+              setMenuOpen(open);
+              if (open) {
+                setDockHidden(false);
+              }
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -308,12 +410,28 @@ export default function RAFloatingChrome() {
       </div>
 
       <div
+        ref={dockShellRef}
         className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
       >
         <nav
           aria-label="RA navigation"
-          className="pointer-events-auto rounded-[1.7rem] border border-border/80 bg-card/80 px-1.5 py-1.5 shadow-[0_24px_60px_-34px_rgb(0_19_40/0.82)] backdrop-blur-3xl dark:bg-card/68"
+          aria-hidden={dockHidden && !dockFocused ? "true" : undefined}
+          className={cn(
+            "rounded-[1.7rem] border border-border/80 bg-card/80 px-1.5 py-1.5 shadow-[0_24px_60px_-34px_rgb(0_19_40/0.82)] backdrop-blur-3xl dark:bg-card/68",
+            dockHidden && !dockFocused ? "pointer-events-none" : "pointer-events-auto"
+          )}
+          onFocusCapture={() => {
+            setDockFocused(true);
+            setDockHidden(false);
+          }}
+          onBlurCapture={() => {
+            window.requestAnimationFrame(() => {
+              const dock = dockShellRef.current;
+              const activeElement = document.activeElement;
+              setDockFocused(Boolean(dock && activeElement instanceof Node && dock.contains(activeElement)));
+            });
+          }}
           onPointerLeave={() => {
             resetHints();
             updateDock(null);

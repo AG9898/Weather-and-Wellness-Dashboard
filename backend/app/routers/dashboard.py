@@ -8,17 +8,20 @@ from sqlalchemy import func, case, select, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import LabMember, get_current_lab_member
+from app.analytics.constants import ANALYTICS_DEFAULT_MODE
 from app.config import STUDY_TIMEZONE
 from app.db import get_session
 from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
 from app.models.weather import StudyDay
+from app.schemas.analytics import AnalyticsReadMode, DashboardAnalyticsResponse
 from app.schemas.dashboard import (
     DashboardSummaryResponse,
     DashboardSummaryRangeResponse,
     ParticipantsPerDayItem,
     ParticipantsPerDayResponse,
 )
+from app.services import get_dashboard_analytics
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -30,6 +33,50 @@ def _local_date_to_utc_range(d_from: date_type, d_to: date_type) -> tuple[dateti
     # Exclusive end: start of the day after d_to in local time
     end_utc = (datetime(d_to.year, d_to.month, d_to.day, 0, 0, 0, tzinfo=tz) + timedelta(days=1)).astimezone(timezone.utc)
     return start_utc, end_utc
+
+
+@router.get(
+    "/analytics",
+    response_model=DashboardAnalyticsResponse,
+)
+async def get_dashboard_analytics_route(
+    date_from: date_type = Query(
+        ...,
+        description="Inclusive start date (YYYY-MM-DD, America/Vancouver)",
+    ),
+    date_to: date_type = Query(
+        ...,
+        description="Inclusive end date (YYYY-MM-DD, America/Vancouver)",
+    ),
+    mode: AnalyticsReadMode = Query(
+        ANALYTICS_DEFAULT_MODE,
+        description="Analytics read mode: snapshot (default) or live.",
+    ),
+    lab_member: LabMember = Depends(get_current_lab_member),
+    db: AsyncSession = Depends(get_session),
+) -> DashboardAnalyticsResponse:
+    """Return dashboard analytics snapshot data or trigger a live recompute."""
+
+    if date_from > date_to:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="date_from must not be after date_to",
+        )
+
+    analytics_response = await get_dashboard_analytics(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        mode=mode,
+        triggered_by_lab_member_id=lab_member.id,
+    )
+    if analytics_response is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No analytics snapshot exists for the requested range",
+        )
+
+    return analytics_response
 
 
 @router.get(
@@ -112,7 +159,7 @@ async def get_dashboard_summary_range(
     """
     if date_from > date_to:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="date_from must not be after date_to",
         )
 
@@ -183,7 +230,7 @@ async def get_participants_per_day(
     """
     if start > end:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="start must not be after end",
         )
 

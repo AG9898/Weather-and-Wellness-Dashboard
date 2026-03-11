@@ -385,7 +385,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T87",
       "title": "Backend analytics — add snapshot persistence and recompute orchestration",
-      "status": "todo",
+      "status": "done",
       "description": "Implement the service layer that reads the latest analytics snapshot, triggers a fresh recompute when requested, writes successful results back to durable snapshot storage, and preserves the prior snapshot while recompute is in progress or fails. This task owns the backend state machine for `ready`, `stale`, `recomputing`, `insufficient_data`, and `failed` analytics states.",
       "stack": ["backend"],
       "depends_on": ["T84", "T86"],
@@ -406,7 +406,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T88",
       "title": "Backend API — implement GET /dashboard/analytics",
-      "status": "todo",
+      "status": "done",
       "description": "Add the RA-protected analytics endpoint and wire it to the dataset, model, and snapshot services. Support `date_from`, `date_to`, and `mode=snapshot|live`, interpret bounds in `America/Vancouver`, and return the typed analytics response contract defined in the docs.",
       "stack": ["backend"],
       "depends_on": ["T87"],

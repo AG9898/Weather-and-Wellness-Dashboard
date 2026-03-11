@@ -9,7 +9,9 @@
 
 ## Status
 
-- **Implementation status:** planned
+- **Implementation status:** partially implemented
+- **Implemented through:** T83-T88 (response schema, durable storage, canonical dataset builder, mixed-model fitting, snapshot orchestration, backend API endpoint)
+- **Still pending:** frontend Route Handler/UI integration, richer visualization payloads, and end-to-end analytics/dashboard verification tasks
 - **Source reference:** `reference/Weather_MLM.R`
 - **Scope:** analysis dataset construction, mixed-effects model definitions, KPI
   serialization, snapshot/cache behavior

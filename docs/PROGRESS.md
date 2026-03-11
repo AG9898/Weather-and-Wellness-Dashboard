@@ -10,10 +10,10 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 35 — Phase 4 ongoing                                         |
-| Remaining queue    | T87–T102 in kanban.md                                        |
+| Tasks completed    | 37 — Phase 4 ongoing                                         |
+| Remaining queue    | T89–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
-| Last updated       | 2026-03-10                                                   |
+| Last updated       | 2026-03-11                                                   |
 
 ---
 
@@ -28,6 +28,61 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T88 — Backend API — implement GET /dashboard/analytics (completed 2026-03-11)
+
+- Added `GET /dashboard/analytics` to `backend/app/routers/dashboard.py` as an
+  RA-protected endpoint backed by the analytics orchestration service from T87.
+- The endpoint now:
+  - accepts `date_from`, `date_to`, and `mode=snapshot|live`
+  - validates inclusive study-local date bounds and returns `422` when
+    `date_from > date_to`
+  - returns `404` for `mode=snapshot` when no durable snapshot exists for the
+    requested range
+  - forwards the authenticated LabMember UUID into the live recompute path so
+    `analytics_runs.triggered_by_lab_member_id` stays populated
+- Kept the rest of the dashboard router contracts intact and normalized its
+  range-validation responses to the non-deprecated
+  `HTTP_422_UNPROCESSABLE_CONTENT` constant for consistency.
+- Added `backend/tests/test_dashboard_analytics_router.py` covering:
+  - route registration and LabMember auth dependency presence
+  - invalid date-range rejection without invoking the service layer
+  - snapshot-mode success and missing-snapshot behavior
+  - live-mode wiring to the recompute service
+- Updated `docs/API.md` with the implemented endpoint contract and refreshed
+  `docs/ANALYTICS.md` status so the analytics backend is no longer documented as
+  entirely planned.
+- Verification:
+  - `env PYTHONPATH=. .venv/bin/pytest -q tests/test_dashboard_analytics_router.py tests/test_analytics_service.py tests/test_analytics_modeling.py tests/test_analytics_dataset.py tests/test_analytics_schema.py tests/test_analytics_storage_models.py` → `23 passed in 2.73s`
+  - `env PYTHONPATH=. .venv/bin/pytest -q` → `63 passed, 1 warning in 3.30s`
+
+## T87 — Backend analytics — add snapshot persistence and recompute orchestration (completed 2026-03-11)
+
+- Added `backend/app/services/analytics_service.py` as the analytics
+  orchestration layer for:
+  - exact-range durable snapshot reads without recomputing
+  - explicit live recompute runs with append-only `analytics_runs` audit rows
+  - snapshot-preserving fallback when a recompute is already in progress or a
+    new recompute ends in `failed` or `insufficient_data`
+- Successful live recomputes now:
+  - persist run metadata including `status`, `generated_at`, `warnings_json`,
+    `result_payload_json`, and `triggered_by_lab_member_id`
+  - upsert the versioned `analytics_snapshots` row only after a `ready`
+    modeling result
+  - normalize stored snapshot payloads to durable snapshot mode while returning
+    live-mode metadata to the recompute caller
+- Added `backend/tests/test_analytics_service.py` covering:
+  - snapshot-mode reads without recompute
+  - successful recompute persistence ordering and run metadata capture
+  - `recomputing` state when a live request arrives during an active run
+  - stale-snapshot fallback when recompute raises an error
+  - `insufficient_data` live responses without snapshot writes when no prior
+    snapshot exists
+- Exported the new service from `backend/app/services/__init__.py` for the
+  follow-on analytics endpoint task.
+- Verification:
+  - `env PYTHONPATH=. .venv/bin/pytest -q tests/test_analytics_service.py tests/test_analytics_modeling.py tests/test_analytics_dataset.py tests/test_analytics_schema.py tests/test_analytics_storage_models.py` → `18 passed in 2.49s`
+  - `env PYTHONPATH=. .venv/bin/pytest -q` → `58 passed, 1 warning in 3.79s`
 
 ## Analytics modeling parity refinement (2026-03-10)
 

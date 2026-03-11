@@ -34,7 +34,7 @@
 | GET    | /dashboard/summary | RA | implemented | T20 |
 | GET    | /dashboard/summary/range | RA | implemented | T58 |
 | GET    | /dashboard/participants-per-day | RA | implemented | T58 |
-| GET    | /dashboard/analytics | RA | planned | — |
+| GET    | /dashboard/analytics | RA | implemented | T88 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
@@ -144,10 +144,10 @@
 
 ### GET /dashboard/analytics
 - **Auth:** RA required
-- **Status:** planned
+- **Status:** implemented (T88)
 - **Canonical spec:** `docs/ANALYTICS.md`
 - **Purpose:** Return model-based dashboard KPIs computed from the backend DB rather than hard-coded statistical outputs.
-- **Planned query parameters:**
+- **Query parameters:**
 
 | Parameter | Type | Description |
 |---|---|---|
@@ -155,7 +155,70 @@
 | `date_to` | date `YYYY-MM-DD` | Inclusive local end date (`America/Vancouver`) |
 | `mode` | string | `snapshot` (default) or `live` |
 
-- **Planned response sections:**
+- **Response:** `DashboardAnalyticsResponse`
+
+```json
+{
+  "status": "ready | stale | recomputing | insufficient_data | failed",
+  "response_version": "dashboard-analytics-v1",
+  "snapshot": {
+    "mode": "snapshot | live",
+    "response_version": "dashboard-analytics-v1",
+    "model_version": "weather-mlm-v1",
+    "generated_at": "datetime",
+    "is_stale": "boolean",
+    "recompute_started_at": "datetime | null",
+    "recompute_finished_at": "datetime | null"
+  },
+  "dataset": {
+    "date_from": "YYYY-MM-DD",
+    "date_to": "YYYY-MM-DD",
+    "included_sessions": "integer",
+    "included_days": "integer",
+    "native_rows": "integer",
+    "imported_rows": "integer",
+    "excluded_rows": "integer",
+    "exclusion_reasons": [
+      {
+        "reason": "string",
+        "count": "integer"
+      }
+    ],
+    "generated_at": "datetime"
+  },
+  "models": [
+    {
+      "outcome": "digit_span | self_report",
+      "formula": "string",
+      "grouping_field": "date_bin",
+      "sample_size": "integer",
+      "day_count": "integer",
+      "converged": "boolean",
+      "warnings": ["string"],
+      "model_version": "weather-mlm-v1",
+      "generated_at": "datetime",
+      "effects": [
+        {
+          "term": "string",
+          "predictor": "string",
+          "is_interaction": "boolean",
+          "coefficient": "number",
+          "standard_error": "number",
+          "statistic": "number",
+          "p_value": "number",
+          "ci_95_low": "number",
+          "ci_95_high": "number",
+          "direction": "positive | negative | neutral",
+          "significant": "boolean"
+        }
+      ]
+    }
+  ],
+  "visualizations": "object | null"
+}
+```
+
+- **Response sections:**
   - `status` for snapshot/recompute state
   - `response_version` and `snapshot` freshness/version metadata
   - `dataset` metadata (included sessions/days, native/imported counts, generation time)
@@ -164,12 +227,14 @@
   - `visualizations.effect_plots[]` for separate linked analysis charts
   - `visualizations.weather_annotations` for lightweight date-based weather-chart linking metadata
 - **Notes:**
-  - This endpoint is intended to surface the mixed-effects analysis derived from `reference/Weather_MLM.R`.
+  - This endpoint surfaces the mixed-effects analysis derived from `reference/Weather_MLM.R` using the backend dataset/modeling/snapshot pipeline implemented in T83–T88.
+  - Date bounds are validated as inclusive study-local days in `America/Vancouver`; `date_from > date_to` returns `422`.
+  - `mode=snapshot` reads the durable Postgres snapshot for the exact requested range and returns `404` when no snapshot exists yet.
+  - `mode=live` triggers the recompute orchestration service and returns the typed analytics payload for `ready`, `stale`, `recomputing`, `insufficient_data`, or `failed`.
+  - Live recompute calls are tagged with the authenticated LabMember UUID in `analytics_runs.triggered_by_lab_member_id`.
   - Existing scoring logic and stored score semantics remain unchanged.
-  - The dashboard should continue to use cached/stored analytics snapshots by default and support explicit live recompute for filtered/admin use.
-  - Planned effect plots are intentionally separate from the `/weather/daily` time-series chart; they are linked through shared filters/selection state rather than overlaid on the same axes.
-  - Backend response scaffolding now exists in `backend/app/schemas/analytics.py` (`DashboardAnalyticsResponse`, `AnalyticsDatasetMetadataResponse`, `AnalyticsModelSummaryResponse`, `AnalyticsEffectCardResponse`).
-  - Shared analytics version/config constants now live in `backend/app/analytics/constants.py` with `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v1"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v1"`.
+  - Effect plots and weather-link annotations remain part of the response contract, but richer visualization payloads are still completed by follow-on tasks; current backend responses may return `visualizations: null`.
+  - Shared analytics version/config constants live in `backend/app/analytics/constants.py` with `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v1"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v1"`.
 
 ---
 
