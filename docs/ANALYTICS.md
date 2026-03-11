@@ -10,8 +10,8 @@
 ## Status
 
 - **Implementation status:** partially implemented
-- **Implemented through:** T83-T88 (response schema, durable storage, canonical dataset builder, mixed-model fitting, snapshot orchestration, backend API endpoint)
-- **Still pending:** frontend Route Handler/UI integration, richer visualization payloads, and end-to-end analytics/dashboard verification tasks
+- **Implemented through:** T83-T92 (response schema, durable storage, canonical dataset builder, mixed-model fitting, snapshot orchestration, backend API endpoint, effect-plot and weather-annotation serialization)
+- **Still pending:** frontend Route Handler/UI integration (shared filter state, effect plot card, weather chart annotations) and end-to-end analytics/dashboard verification tasks
 - **Source reference:** `reference/Weather_MLM.R`
 - **Scope:** analysis dataset construction, mixed-effects model definitions, KPI
   serialization, snapshot/cache behavior
@@ -417,6 +417,16 @@ Planned high-level response shape:
 
 ---
 
+## Effect Plot Implementation Notes (T92)
+
+Effect plots are computed in `backend/app/analytics/modeling.py` as partial-residual plots:
+
+- **Approach:** For each non-interaction main effect term `t` with coefficient `β_t`, the partial residual is `residual + β_t * x_t` where `residual` is the statsmodels model residual.
+- **Terms covered:** `temperature_z`, `precipitation_z`, `daylight_z`, `depression_z`, `loneliness_z`, `anxiety_z` (non-interaction terms only).
+- **Fitted line:** 50 evenly spaced points spanning the predictor range; `y = β_t * x`.
+- **Point annotation:** each scatter point carries `date_local` to support optional linkage to the weather chart timeline.
+- **Interaction terms** (`precipitation_z:depression_z`, `daylight_z:depression_z`, `precipitation_z:loneliness_z`) are excluded from v1 effect plots; they require choosing fixed levels for the moderator variable and are reserved for a future enhancement.
+
 ## Open Implementation Notes
 
 - The R script includes some inconsistent plotting code that references objects
@@ -430,5 +440,3 @@ Planned high-level response shape:
     presented on the dashboard
 - If future analysis requires exact parity with `lme4`, reassess the Python-only
   implementation choice before changing backend contracts.
-- Partial-residual or other effect plots are planned as a separate linked
-  analysis surface after the initial model-card KPI layer is in place.

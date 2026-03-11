@@ -48,6 +48,15 @@
 - Scoring functions are pure (no DB calls, no side effects) — testable in isolation
 - Unit tests are required for each scoring function (all correct, all wrong, mixed)
 
+### Testing
+- Test files live in `backend/tests/` and follow the naming pattern `test_<domain>_<layer>.py`
+- Run with `PYTHONPATH=. .venv/bin/pytest tests/` — the `PYTHONPATH` prefix is required
+- Use fake objects (`SimpleNamespace`, inline `_FakeAsyncSession`) for DB isolation; do not hit a live database in unit tests
+- Scoring tests are pure input/output only — no mocks needed
+- Service/router tests mock imported collaborators via `unittest.mock.patch`
+- Analytics changes must not break `test_analytics_parity.py` — parity failures are blocking
+- Full conventions and file inventory: `docs/TESTING.md`
+
 ### Auth
 - `Depends(get_current_lab_member)` on all RA-only endpoints
 - Participant-facing endpoints (submit digit span, submit survey): validate `session_id` exists and `status == "active"` before accepting data — return 400 or 409 otherwise
@@ -103,6 +112,14 @@
 - UI visuals (tokens, typography, spacing, component feel) must follow `docs/styleguide.md`
 - For shadcn component installation/usage patterns, follow `docs/shadcn.md`
 - Reference UIs are for direction only; do not clone non-required components verbatim
+
+### Testing
+- Test files live in `frontend/src/` co-located with the module under test: `<module>.test.ts`
+- Runner: `vitest` — run with `npm test` from `frontend/`
+- Only pure utility functions (not React components) are tested in the current suite — extract logic into a standalone `.ts` module before testing it
+- Do not import `fetch`, `window`, or DOM APIs in test files — the current vitest environment is `node`; update `vitest.config.ts` if jsdom is needed for future component tests
+- Use `@/lib/...` path aliases in test imports (the `@` alias is configured in `vitest.config.ts`)
+- Full conventions, file inventory, and fixture patterns: `docs/TESTING.md`
 
 ### Digit span timing
 - Use **`setTimeout` chains** driven by a state machine — never `setInterval`

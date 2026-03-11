@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 import warnings
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import date, datetime, timezone
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -20,9 +20,14 @@ from app.analytics.dataset import AnalyticsDatasetBuildResult, AnalyticsDatasetR
 from app.schemas.analytics import (
     AnalyticsDatasetMetadataResponse,
     AnalyticsEffectCardResponse,
+    AnalyticsEffectPlotPointResponse,
+    AnalyticsEffectPlotResponse,
     AnalyticsExclusionReasonResponse,
+    AnalyticsFittedLinePointResponse,
     AnalyticsModelSummaryResponse,
     AnalyticsStatus,
+    AnalyticsVisualizationsResponse,
+    AnalyticsWeatherAnnotationsResponse,
 )
 
 AnalyticsOutcomeName = Literal["digit_span", "self_report"]
@@ -69,6 +74,32 @@ _EFFECT_TERM_ORDER: tuple[str, ...] = (
     "anxiety_z",
 )
 
+# Non-interaction main effect terms used for effect plot generation.
+_MAIN_EFFECT_TERMS: tuple[str, ...] = (
+    "temperature_z",
+    "precipitation_z",
+    "daylight_z",
+    "depression_z",
+    "loneliness_z",
+    "anxiety_z",
+)
+
+_PREDICTOR_X_LABELS: dict[str, str] = {
+    "temperature_z": "Temperature (z)",
+    "precipitation_z": "Precipitation (z)",
+    "daylight_z": "Daylight hours (z)",
+    "depression_z": "Depression (z)",
+    "loneliness_z": "Loneliness (z)",
+    "anxiety_z": "Anxiety (z)",
+}
+
+_OUTCOME_Y_LABELS: dict[str, str] = {
+    "digit_span": "Digit span (adjusted, z)",
+    "self_report": "Self-reported cognition (adjusted, z)",
+}
+
+_EFFECT_PLOT_LINE_POINTS = 50
+
 _FIT_METHODS: tuple[str, ...] = ("lbfgs", "powell")
 _SIGNIFICANCE_P_VALUE = 0.05
 
@@ -82,13 +113,16 @@ class AnalyticsModelingResult:
     dataset: AnalyticsDatasetMetadataResponse
     models: tuple[AnalyticsModelSummaryResponse, ...]
     warnings: tuple[str, ...] = ()
+    visualizations: AnalyticsVisualizationsResponse | None = None
 
 
-@dataclass(frozen=True)
+@dataclass
 class _OutcomeModelResult:
     summary: AnalyticsModelSummaryResponse | None
     warnings: tuple[str, ...] = ()
     failed: bool = False
+    z_scored_frame: pd.DataFrame | None = None
+    fit_result: Any | None = None
 
 
 def build_analytics_dataset_metadata(
@@ -134,6 +168,7 @@ def fit_analytics_models(
     model_results: list[AnalyticsModelSummaryResponse] = []
     warnings_out: list[str] = []
     had_failure = False
+    successful_models: list[tuple[AnalyticsOutcomeName, pd.DataFrame, Any]] = []
 
     for outcome in ("digit_span", "self_report"):
         model_result = _fit_outcome_model(
@@ -144,6 +179,8 @@ def fit_analytics_models(
         warnings_out.extend(model_result.warnings)
         if model_result.summary is not None:
             model_results.append(model_result.summary)
+            if model_result.z_scored_frame is not None and model_result.fit_result is not None:
+                successful_models.append((outcome, model_result.z_scored_frame, model_result.fit_result))
         had_failure = had_failure or model_result.failed
 
     if had_failure:
@@ -153,12 +190,18 @@ def fit_analytics_models(
     else:
         status = "insufficient_data"
 
+    visualizations = _build_visualizations(
+        successful_models=successful_models,
+        dataset_result=dataset_result,
+    )
+
     return AnalyticsModelingResult(
         status=status,
         generated_at=fit_generated_at,
         dataset=dataset_metadata,
         models=tuple(model_results),
         warnings=tuple(_dedupe_messages(warnings_out)),
+        visualizations=visualizations,
     )
 
 
@@ -218,7 +261,12 @@ def _fit_outcome_model(
             failed=True,
         )
 
-    return _OutcomeModelResult(summary=summary, warnings=())
+    return _OutcomeModelResult(
+        summary=summary,
+        warnings=(),
+        z_scored_frame=z_scored_frame,
+        fit_result=fit_result,
+    )
 
 
 def _build_outcome_frame(
@@ -228,6 +276,7 @@ def _build_outcome_frame(
     source_field = _OUTCOME_SOURCE_FIELDS[outcome]
     frame_rows = [
         {
+            "date_local": row.date_local,
             "date_bin": row.date_bin,
             "temperature": row.temperature,
             "precipitation": row.precipitation,
@@ -371,6 +420,101 @@ def _finite_value(value: float, *, outcome: AnalyticsOutcomeName, term: str) -> 
     if not math.isfinite(value):
         raise ValueError(f"{outcome} model produced a non-finite estimate for {term}.")
     return value
+
+
+def _build_effect_plot(
+    outcome: AnalyticsOutcomeName,
+    term: str,
+    z_frame: pd.DataFrame,
+    fit_result: Any,
+) -> AnalyticsEffectPlotResponse:
+    """Build a partial-residual effect plot for a single non-interaction term.
+
+    The y-axis is the partial residual: model residual plus the term's contribution
+    (coef * predictor_z).  This matches the adjusted effect plot approach from the
+    reference R script.
+    """
+    coef = float(getattr(fit_result, "fe_params")[term])
+    term_values = z_frame[term].to_numpy(dtype=float)
+    residuals = np.asarray(getattr(fit_result, "resid"), dtype=float)
+
+    partial_y = residuals + coef * term_values
+    date_locals: list[date] = z_frame["date_local"].tolist()
+
+    points = [
+        AnalyticsEffectPlotPointResponse(
+            x=round(float(term_values[i]), 6),
+            y=round(float(partial_y[i]), 6),
+            date_local=date_locals[i],
+        )
+        for i in range(len(z_frame))
+    ]
+
+    x_min = float(term_values.min())
+    x_max = float(term_values.max())
+    if x_min == x_max:
+        x_line = np.array([x_min])
+    else:
+        x_line = np.linspace(x_min, x_max, _EFFECT_PLOT_LINE_POINTS)
+    fitted_line = [
+        AnalyticsFittedLinePointResponse(x=round(float(x), 6), y=round(float(coef * x), 6))
+        for x in x_line
+    ]
+
+    return AnalyticsEffectPlotResponse(
+        outcome=outcome,
+        term=term,
+        x_label=_PREDICTOR_X_LABELS.get(term, term),
+        y_label=_OUTCOME_Y_LABELS[outcome],
+        points=points,
+        fitted_line=fitted_line,
+    )
+
+
+def _build_visualizations(
+    *,
+    successful_models: list[tuple[AnalyticsOutcomeName, pd.DataFrame, Any]],
+    dataset_result: AnalyticsDatasetBuildResult,
+) -> AnalyticsVisualizationsResponse | None:
+    """Build effect-plot and weather-annotation payloads from all successfully fitted models."""
+
+    if not successful_models:
+        return None
+
+    effect_plots: list[AnalyticsEffectPlotResponse] = []
+    default_selected_term: str | None = None
+
+    for outcome, z_frame, fit_result in successful_models:
+        fixed_effect_names = set(getattr(fit_result, "fe_params").index)
+        for term in _MAIN_EFFECT_TERMS:
+            if term in fixed_effect_names and term in z_frame.columns:
+                plot = _build_effect_plot(outcome, term, z_frame, fit_result)
+                effect_plots.append(plot)
+                if default_selected_term is None:
+                    default_selected_term = term
+
+    if not effect_plots:
+        return None
+
+    included_dates = sorted({row.date_local for row in dataset_result.rows})
+    excluded_dates = sorted(
+        {row.date_local for row in dataset_result.excluded_rows if row.date_local is not None}
+        - set(included_dates)
+    )
+
+    weather_annotations = AnalyticsWeatherAnnotationsResponse(
+        selected_term=default_selected_term,
+        date_from=dataset_result.date_from,
+        date_to=dataset_result.date_to,
+        included_dates=included_dates,
+        excluded_dates=excluded_dates,
+    )
+
+    return AnalyticsVisualizationsResponse(
+        default_selected_term=default_selected_term,
+        effect_plots=effect_plots,
+        weather_annotations=weather_annotations,
+    )
 
 
 def _dedupe_messages(messages: list[str]) -> list[str]:

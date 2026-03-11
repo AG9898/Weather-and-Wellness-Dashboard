@@ -283,6 +283,7 @@ def _response_from_modeling_result(
         ),
         dataset=modeling_result.dataset,
         models=list(modeling_result.models),
+        visualizations=modeling_result.visualizations,
     )
 
 

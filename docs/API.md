@@ -233,7 +233,10 @@
   - `mode=live` triggers the recompute orchestration service and returns the typed analytics payload for `ready`, `stale`, `recomputing`, `insufficient_data`, or `failed`.
   - Live recompute calls are tagged with the authenticated LabMember UUID in `analytics_runs.triggered_by_lab_member_id`.
   - Existing scoring logic and stored score semantics remain unchanged.
-  - Effect plots and weather-link annotations remain part of the response contract, but richer visualization payloads are still completed by follow-on tasks; current backend responses may return `visualizations: null`.
+  - **T92 (implemented):** `visualizations` is now populated on `ready` responses. `visualizations.effect_plots[]` contains partial-residual plots for all non-interaction main effect terms (temperature, precipitation, daylight, depression, loneliness, anxiety) for each fitted outcome. `visualizations.weather_annotations` is always date-range metadata only and must not be used to draw predictor-vs-residual lines on the weather chart.
+  - `visualizations.default_selected_term` is the first main effect term present in the fitted models (typically `temperature_z`).
+  - Effect plot `points[]` carry `x` (predictor z-score), `y` (partial residual = model residual + term contribution), and `date_local` for optional annotation linkage. `fitted_line[]` carries `x`/`y` points spanning the predictor range at `coef * x`.
+  - Snapshot persistence stores the full visualization payload including effect plots and weather annotations.
   - Shared analytics version/config constants live in `backend/app/analytics/constants.py` with `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v1"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v1"`.
 
 ---

@@ -176,6 +176,7 @@ def test_mixed_model_fit_uses_reml_for_final_estimation() -> None:
         converged = True
 
         def __init__(self) -> None:
+            import numpy as np
             import pandas as pd
 
             index = [
@@ -199,6 +200,8 @@ def test_mixed_model_fit_uses_reml_for_final_estimation() -> None:
                 {0: [-0.2] * len(index), 1: [0.2] * len(index)},
                 index=index,
             )
+            # Provide a dummy residuals array; length set at fit time.
+            self.resid = np.zeros(24)
 
         def conf_int(self, alpha: float = 0.05):  # noqa: ANN001
             return self._conf_int

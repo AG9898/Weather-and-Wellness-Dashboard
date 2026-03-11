@@ -144,6 +144,24 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 
 ---
 
+## Testing Infrastructure
+
+| Stack | Tool | Location | Run Command |
+|---|---|---|---|
+| Backend | pytest 9.x | `backend/tests/` | `cd backend && PYTHONPATH=. .venv/bin/pytest tests/ -v` |
+| Frontend | vitest 4.x | `frontend/src/**/*.test.ts` | `cd frontend && npm test` |
+
+The backend test suite covers scoring modules, service logic, snapshot orchestration, router
+endpoints, and an R-script parity fixture (`test_analytics_parity.py`) that guards against
+formula or field-name drift in the analytics pipeline.
+
+The frontend test suite covers pure analytics UI utility functions: status-to-panel mapping,
+error message resolution, and display formatting helpers.
+
+Full inventory, conventions, and guidance for adding new tests: **`docs/TESTING.md`**
+
+---
+
 ## Migrations
 
 - **Alembic only** for schema changes.

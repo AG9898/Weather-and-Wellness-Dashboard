@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 39 — Phase 4 ongoing                                         |
-| Remaining queue    | T91–T102 in kanban.md                                        |
+| Tasks completed    | 41 — Phase 4 ongoing                                         |
+| Remaining queue    | T93–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-11                                                   |
 
@@ -28,6 +28,39 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T92 — Backend analytics — extend snapshot/API payload for effect plots and weather-link metadata (completed 2026-03-11)
+
+- Extended `backend/app/analytics/modeling.py`:
+  - `_build_outcome_frame` now carries `date_local` through the DataFrame for effect-plot annotation.
+  - Added `_build_effect_plot` — computes partial-residual scatter points and fitted line for a single non-interaction main effect term.
+  - Added `_build_visualizations` — builds `AnalyticsVisualizationsResponse` with effect plots for all non-interaction main effect terms (`temperature_z`, `precipitation_z`, `daylight_z`, `depression_z`, `loneliness_z`, `anxiety_z`) for each fitted outcome, plus date-based `AnalyticsWeatherAnnotationsResponse` (included/excluded dates, selected term, date range).
+  - `_OutcomeModelResult` now carries `z_scored_frame` and `fit_result` to support post-fit visualization.
+  - `AnalyticsModelingResult` now includes `visualizations: AnalyticsVisualizationsResponse | None`.
+- Extended `backend/app/services/analytics_service.py`: `_response_from_modeling_result` now passes `visualizations` into `DashboardAnalyticsResponse`. Snapshot persistence stores the full visualization payload.
+- Effect plots use partial-residual approach: `y = model_residual + β_term * x_term`. Interaction terms (`precipitation_z:depression_z`, `daylight_z:depression_z`, `precipitation_z:loneliness_z`) are intentionally excluded from v1 plots; they require fixed moderator levels and are deferred.
+- Effect-plot data is semantically distinct from `/weather/daily` time-series data: x-axis is a z-scored predictor, not a date.
+- `weather_annotations` carries only date-range metadata (`included_dates`, `excluded_dates`, `selected_term`, `date_from`, `date_to`) — no predictor values.
+- Added 6 new parity tests in `backend/tests/test_analytics_parity.py` verifying visualization population, outcome coverage, structural separation from weather data, weather annotation correctness, default term, and fitted-line linearity.
+- Updated `_FakeResult` mock in `test_analytics_modeling.py` to add `resid` attribute.
+
+## T91 — Verification — analytics dataset, model, endpoint, and dashboard parity tests (completed 2026-03-11)
+
+- Added `backend/tests/test_analytics_parity.py` (11 tests): R-script parity fixture covering
+  formula structure, field naming convention (`temperature`, `precipitation`, `daylight_hours`,
+  `anxiety`, `depression`, `loneliness`, `self_report`, `digit_span_score`), z-score column naming
+  (`temperature_z`, `precipitation_z`, `daylight_z`, etc.), and a full end-to-end model fit that
+  verifies all R `lmer()` summary terms appear in the Python serialized output.
+- Installed `vitest` (v4) in the frontend; added `npm test` script and `vitest.config.ts`.
+- Extracted pure analytics utility functions from `DashboardAnalyticsSection.tsx` into
+  `frontend/src/lib/analytics/ui-utils.ts` (`getStatusPanel`, `getAnalyticsErrorMessage`,
+  `formatTermLabel`, `formatOutcomeLabel`, `formatSigned`, `formatPValue`,
+  `compareEffectsByStrength`, `timeAgo`, `formatTermPart`). Component now imports from there.
+- Added `frontend/src/lib/analytics/ui-utils.test.ts` (33 tests): covers all five analytics
+  status states (`ready`, `stale`, `recomputing`, `insufficient_data`, `failed`), all error
+  message branches (401, 404, 5xx, other API errors, non-ApiError fallback), term/outcome
+  formatting, and effect ordering logic.
+- All 72 backend tests and 33 frontend tests pass.
 
 ## T90 — Frontend dashboard — add analytics model cards UI (completed 2026-03-11)
 

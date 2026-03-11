@@ -476,7 +476,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T91",
       "title": "Verification — analytics dataset, model, endpoint, and dashboard parity tests",
-      "status": "todo",
+      "status": "done",
       "description": "Add focused automated coverage for the new analytics pipeline end to end. Cover dataset assembly precedence, exclusion rules, model serialization, snapshot/live endpoint behavior, and the dashboard analytics UI states. Include at least one parity-oriented fixture derived from the reference R workflow to catch regressions in term naming and included-row logic.",
       "stack": ["backend", "frontend"],
       "depends_on": ["T88", "T90"],
@@ -499,7 +499,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T92",
       "title": "Backend analytics — extend snapshot/API payload for effect plots and weather-link metadata",
-      "status": "todo",
+      "status": "done",
       "description": "Extend the analytics serialization layer so the backend returns data for a separate effect-plot component plus lightweight date-based weather-link metadata. The payload should support a selected term/outcome, chart-ready points/fit-line series, and optional weather annotations without attempting to merge residual/effect data into the weather time-series payload.",
       "stack": ["backend"],
       "depends_on": ["T88"],
