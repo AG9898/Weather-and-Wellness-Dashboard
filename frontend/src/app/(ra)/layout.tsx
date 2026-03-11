@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import RANavBar from "@/lib/components/RANavBar";
+import RAFloatingChrome, {
+  shouldShowRAFloatingChrome,
+} from "@/lib/components/RAFloatingChrome";
 
 /**
  * Auth guard layout for RA-only pages.
@@ -15,8 +17,10 @@ export default function RALayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
+  const showFloatingChrome = shouldShowRAFloatingChrome(pathname);
 
   useEffect(() => {
     let mounted = true;
@@ -61,8 +65,8 @@ export default function RALayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <RANavBar />
-      <main>{children}</main>
+      <main className={showFloatingChrome ? "pb-32 sm:pb-36" : undefined}>{children}</main>
+      {showFloatingChrome ? <RAFloatingChrome /> : null}
     </div>
   );
 }

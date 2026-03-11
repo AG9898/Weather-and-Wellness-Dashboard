@@ -2,9 +2,18 @@
 
 import { MoonStar, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/components/ThemeProvider";
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+  variant?: "button" | "menu";
+  className?: string;
+}
+
+export default function ThemeToggle({
+  variant = "button",
+  className,
+}: ThemeToggleProps) {
   const { resolvedTheme, cyclePreference } = useTheme();
 
   const isDark = resolvedTheme === "dark";
@@ -12,12 +21,34 @@ export default function ThemeToggle() {
   const label = isDark ? "Dark" : "Light";
   const nextLabel = isDark ? "light" : "dark";
 
+  if (variant === "menu") {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        className={cn(
+          "h-11 w-full justify-between rounded-2xl px-3 text-sm hover:bg-accent/70",
+          className
+        )}
+        onClick={cyclePreference}
+        title={`Theme: ${label}. Click to switch to ${nextLabel}.`}
+        aria-label={`Theme ${label}. Toggle to ${nextLabel}.`}
+      >
+        <span className="inline-flex items-center gap-2">
+          <Icon className="size-4" />
+          Theme
+        </span>
+        <span className="text-xs text-muted-foreground">{label}</span>
+      </Button>
+    );
+  }
+
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
-      className="h-8 rounded-full px-2 text-xs"
+      className={cn("h-8 rounded-full px-2 text-xs", className)}
       onClick={cyclePreference}
       title={`Theme: ${label}. Click to switch to ${nextLabel}.`}
       aria-label={`Theme ${label}. Toggle to ${nextLabel}.`}
