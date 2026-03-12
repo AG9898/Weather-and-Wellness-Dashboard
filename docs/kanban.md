@@ -591,7 +591,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T96",
       "title": "DB + backend — add undo-last-session audit table and delete service",
-      "status": "todo",
+      "status": "done",
       "description": "Implement the backend foundation for an RA-only Undo Last Session feature. Add the append-only `admin_session_undo_log` table, then create a transactional delete service that removes the most recently created native session's survey/digitspan/session rows and conditionally removes the participant row when no other sessions remain. Weather tables must remain untouched.",
       "stack": ["backend", "database"],
       "depends_on": [],
@@ -616,7 +616,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T97",
       "title": "Backend API — implement DELETE /sessions/last-native",
-      "status": "todo",
+      "status": "done",
       "description": "Add the RA-protected endpoint for Undo Last Session. The endpoint should validate confirmation input, reject imported sessions, reject cases where no eligible native session exists, call the transactional delete service, and return a compact summary of what was removed.",
       "stack": ["backend"],
       "depends_on": ["T96"],
@@ -639,7 +639,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T98",
       "title": "Frontend dashboard — add RA Undo Last Session control",
-      "status": "todo",
+      "status": "done",
       "description": "Add a narrow RA-only Undo Last Session control to the dashboard. Show the current last native session candidate, require explicit confirmation before deletion, submit through typed API wrappers, and refresh the dashboard state after success. Do not introduce a general session-management delete UI.",
       "stack": ["frontend"],
       "depends_on": ["T97"],
@@ -663,7 +663,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T99",
       "title": "Verification — undo-last-session safeguards and regression coverage",
-      "status": "todo",
+      "status": "done",
       "description": "Add automated coverage for the undo-last-session feature. Verify latest-native-session selection, audit logging, participant conditional deletion, rejection of imported sessions, and no-impact guarantees for weather data and unrelated sessions.",
       "stack": ["backend", "frontend"],
       "depends_on": ["T97", "T98"],

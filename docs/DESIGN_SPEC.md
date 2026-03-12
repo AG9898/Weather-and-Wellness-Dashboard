@@ -216,23 +216,24 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - When an analytics snapshot is loaded, the weather chart shows a small "Analysis: [Term]" badge above the chart controls.
 - A subtle low-opacity plot band highlights the analysis window on the weather chart x-axis.
 - No predictor values, residuals, or model series are placed on the weather time-series chart.
-- A future RA-only **Undo Last Session** action may appear in the dashboard hero
-  or adjacent admin controls. It must target only the most recently created
-  native session, require explicit confirmation, and never expose a general
+- An RA-only **Undo Last Session** control is implemented in the dashboard hero
+  card (T98). It appears as a ghost button directly below the Start New Entry
+  button, requires explicit confirmation + reason in a Dialog, and targets only
+  the most recently created native session. It never exposes a general
   session-management delete UI.
 
 **Start New Entry flow (Phase 3 — implemented T51a + T51b + T52 revised):**
 - Clicking “Start New Entry” navigates to `/new-session` (see `/new-session` spec below). The demographics form and consent step are no longer on the dashboard.
 - The supervised workflow treats participant↔session as 1:1 (a new participant is created for each new session); the DB does not enforce this constraint.
 
-**Planned undo-last-session flow:**
-- RA triggers **Undo Last Session** from the dashboard.
-- UI first shows the current last native session candidate with:
+**Undo-last-session flow (implemented T98):**
+- RA triggers **Undo Last Session** from the ghost button below Start New Entry in the hero card.
+- UI fetches the last native session candidate and opens a Dialog showing:
   - participant number
-  - session status
+  - session status badge
   - created time
-- Confirmation is required before delete.
-- On success, the dashboard refreshes operational KPIs and any cached analytics state.
+- Explicit confirmation + a non-empty reason field are required before delete.
+- On success, the analytics section remounts (re-fetches snapshot) and the dashboard bundle is refreshed live.
 - This flow is intended for accidental test runs / obvious supervised-entry mistakes, not arbitrary historical record deletion.
 
 **Data loading (T41–T43, implemented):**

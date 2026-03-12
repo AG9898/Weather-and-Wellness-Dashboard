@@ -794,7 +794,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
     # 1. Fail fast on parse errors
     if result.errors:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=[
                 {"row": e.row, "field": e.field, "message": e.message}
                 for e in result.errors
@@ -803,7 +803,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
 
     if not result.rows:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="No valid data rows found in file.",
         )
 
@@ -811,7 +811,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
     validation = await _validate_with_db(result, db)
     if validation.errors:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=[
                 {"row": e.row, "field": e.field, "message": e.message}
                 for e in validation.errors

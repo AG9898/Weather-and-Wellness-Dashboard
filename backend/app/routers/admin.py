@@ -46,13 +46,13 @@ _ALLOWED_EXTENSIONS = frozenset({".csv", ".xlsx"})
 def _require_valid_extension(filename: str | None) -> None:
     if not filename:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Uploaded file must have a .csv or .xlsx extension.",
         )
     lower = filename.lower()
     if not any(lower.endswith(ext) for ext in _ALLOWED_EXTENSIONS):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Unsupported file type. Expected .csv or .xlsx (got: {filename!r}).",
         )
 

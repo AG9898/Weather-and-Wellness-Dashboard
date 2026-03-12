@@ -10,6 +10,7 @@ from .surveys import (
 from .weather import StudyDay, WeatherIngestRun, WeatherDaily
 from .imported_session_measures import ImportedSessionMeasures
 from .analytics import AnalyticsRun, AnalyticsSnapshot
+from .undo import AdminSessionUndoLog
 
 __all__ = [
     "Participant",
@@ -26,4 +27,5 @@ __all__ = [
     "ImportedSessionMeasures",
     "AnalyticsRun",
     "AnalyticsSnapshot",
+    "AdminSessionUndoLog",
 ]

@@ -119,8 +119,36 @@ class StartSessionResponse(BaseModel):
     start_path: str
 
 
+class UndoLastSessionRequest(BaseModel):
+    """Request body for DELETE /sessions/last-native."""
+
+    confirm: bool
+    reason: str | None = None
+
+
+class UndoLastSessionResponse(BaseModel):
+    """Typed delete summary returned by DELETE /sessions/last-native."""
+
+    deleted_session_id: UUID
+    deleted_participant_uuid: UUID
+    deleted_participant_number: int
+    session_status_at_delete: AllowedStatus
+    participant_deleted: bool
+
+
+class LastNativeSessionInfo(BaseModel):
+    """Candidate session metadata returned by GET /sessions/last-native."""
+
+    session_id: UUID
+    participant_uuid: UUID
+    participant_number: int
+    status: AllowedStatus
+    created_at: datetime
+
+
 __all__ = [
     "AllowedStatus",
+    "LastNativeSessionInfo",
     "SessionCreate",
     "SessionListItemResponse",
     "SessionListResponse",
@@ -128,4 +156,6 @@ __all__ = [
     "SessionStatusUpdate",
     "StartSessionCreate",
     "StartSessionResponse",
+    "UndoLastSessionRequest",
+    "UndoLastSessionResponse",
 ]

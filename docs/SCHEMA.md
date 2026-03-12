@@ -42,9 +42,9 @@ weather_ingest_runs (1) ───────── (many) weather_daily
 analytics_runs (1) ────────────── (many) analytics_snapshots
 ```
 
-`admin_session_undo_log` is planned as an append-only audit table that stores
-deleted session and participant identifiers by value for the RA-only undo
-feature.
+`admin_session_undo_log` is an append-only audit table that stores deleted
+session and participant identifiers by value for the RA-only undo feature
+(applied by migration `20260311_000001`, T96).
 
 `analytics_runs` and `analytics_snapshots` store the durable backend analytics
 state. Redis remains an optional read cache only and is not the source of truth
@@ -202,14 +202,14 @@ replace day-level weather-derived sunlight duration in analytics queries.
 
 ---
 
-**Undo-last-session note (planned):** the RA-only undo flow will hard-delete a
+**Undo-last-session note (T96, implemented):** the RA-only undo flow hard-deletes a
 session's dependent survey/digit span rows and then the `sessions` row itself.
 This is intentionally limited to the most recently created native session and is
-audit-logged instead of introducing soft-delete columns.
+audit-logged in `admin_session_undo_log` instead of introducing soft-delete columns.
 
-## Planned Table: `admin_session_undo_log`
+## Table: `admin_session_undo_log`
 
-Append-only audit table for the RA-only **Undo Last Session** feature.
+> Added by migration `20260311_000001` (T96). Append-only audit table for the RA-only **Undo Last Session** feature.
 
 | Column                     | Type        | Constraints   | Notes |
 |---------------------------|-------------|---------------|-------|
@@ -226,6 +226,7 @@ Append-only audit table for the RA-only **Undo Last Session** feature.
 - This table is append-only.
 - It records hard-delete actions; it does not preserve recoverable row payloads.
 - Weather-domain tables are unaffected by undo-last-session operations.
+- No FKs to the deleted rows (identifiers stored by value so audit rows survive hard deletion).
 
 ---
 
@@ -512,8 +513,9 @@ Behavior notes:
 | 2026-03-03 | T64 | Add `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily` (Open-Meteo historical backfill) |
 | 2026-03-10 | T77 | Extend `survey_cogfunc8a` with imported-row schema support (`data_source`, `legacy_mean_1_5`, nullable raw/computed columns, UNIQUE session_id) |
 | 2026-03-10 | T84 | Add durable `analytics_runs` and `analytics_snapshots` tables for per-range analytics audit/state and snapshot payload storage |
+| 2026-03-11 | T96 | Add append-only `admin_session_undo_log` table for RA-triggered undo-last-session audit |
 
-As of 2026-03-10, migration `20260310_000002` (T84) is the current head revision.
+As of 2026-03-11, migration `20260311_000001` (T96) is the current head revision.
 
 ---
 

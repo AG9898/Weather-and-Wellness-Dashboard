@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 44 — Phase 4 ongoing                                         |
-| Remaining queue    | T96–T102 in kanban.md                                        |
+| Tasks completed    | 48 — Phase 4 ongoing                                         |
+| Remaining queue    | T100–T102 in kanban.md                                       |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-11                                                   |
 
@@ -28,6 +28,51 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T99 — Verification — undo-last-session safeguards and regression coverage (completed 2026-03-11)
+
+- Added `backend/tests/test_undo_last_session.py` with 13 unit tests across 3 classes.
+- `GetLastNativeSessionTests`: verifies `None` return when no rows, and correct `SessionCandidateInfo` field mapping when a row exists.
+- `DeleteLastNativeSessionTests`: verifies 404 on no native candidate (covers imported-session rejection), FK-safe deletion of all dependent tables (`digitspan_trials`, `digitspan_runs`, all survey tables, `sessions`), conditional participant deletion (deleted when count=0, preserved when count>0), audit row written to `admin_session_undo_log` with correct fields, and that weather tables (`weather_daily`, `weather_ingest_runs`, `study_days`) never appear in any executed SQL.
+- `UndoRouterTests`: verifies route registration (DELETE method, `get_current_lab_member` dependency, correct response model), `confirm=False` → 422 guard, service result mapped to `UndoLastSessionResponse`, and 404 from service propagates.
+- All 13 tests pass. Uses `IsolatedAsyncioTestCase` + `_FakeAsyncSession` + `AsyncMock`/`patch` pattern consistent with existing test suite; no real DB required.
+
+## T98 — Frontend dashboard — add RA Undo Last Session control (completed 2026-03-11)
+
+- Added `getLastNativeSession()` and `deleteLastNativeSession(reason)` typed API wrappers to `src/lib/api/index.ts`.
+- Added `apiDelete<T>()` generic helper for DELETE requests with optional JSON body.
+- Added `LastNativeSessionResponse` and `DeleteLastNativeSessionResponse` interfaces.
+- Created `src/lib/components/UndoLastSessionControl.tsx`:
+  - Ghost button with RotateCcw icon placed below the Start New Entry button in the hero card.
+  - Clicking fetches `GET /sessions/last-native`; 404 shows an inline "No native sessions" message.
+  - On preview success, opens a shadcn Dialog showing participant number, status badge, and created timestamp.
+  - Dialog requires a non-empty reason field before confirming.
+  - Confirm calls `DELETE /sessions/last-native` and shows inline success/error feedback.
+- Dashboard page (`/dashboard`) wires `onSuccess` to: increment `analyticsRefreshKey` (remounts `DashboardAnalyticsSection`) and triggers a live bundle refresh to update weather state.
+- Control is placed inside the hero card's action column, right under the Start New Entry button — always visible in RA context (all RA users are lab members).
+
+## T97 — Backend API — implement DELETE /sessions/last-native (completed 2026-03-11)
+
+- Added `GET /sessions/last-native` (preview): returns `LastNativeSessionInfo` (session_id, participant_uuid, participant_number, status, created_at) for the most recently created native session. Returns 404 when none exists.
+- Added `DELETE /sessions/last-native`: requires `confirm: true`; returns 422 if omitted/false. Calls `delete_last_native_session()` from the undo service and returns `UndoLastSessionResponse` (typed delete summary). 404 when no eligible native session exists.
+- Added `UndoLastSessionRequest`, `UndoLastSessionResponse`, and `LastNativeSessionInfo` Pydantic schemas to `schemas/sessions.py`.
+- Both endpoints require `get_current_lab_member` auth. Role-gating (`admin` only) can be added later via a `get_current_admin` dependency once `app_metadata` roles are configured in Supabase (not yet set up).
+- Imported sessions are never returned/deleted; the service excludes sessions with `imported_session_measures` rows.
+- Updated `docs/API.md`: marked `DELETE /sessions/last-native` as implemented (T97); added `GET /sessions/last-native` entry.
+
+## T96 — DB + backend — add undo-last-session audit table and delete service (completed 2026-03-11)
+
+- Added `backend/app/models/undo.py`: `AdminSessionUndoLog` SQLAlchemy model.
+  - Append-only; stores deleted session/participant identifiers by value (no FK to deleted rows).
+  - Columns: `undo_id`, `deleted_session_id`, `deleted_participant_uuid`, `deleted_participant_number`, `session_status_at_delete`, `deleted_by_lab_member_id`, `reason`, `deleted_at`.
+- Added Alembic migration `20260311_000001` — creates `admin_session_undo_log` table cleanly (up/down).
+- Added `backend/app/services/undo_service.py`:
+  - `get_last_native_session(db)` — queries for the most recently created session that has no `imported_session_measures` row (native sessions only); returns `SessionCandidateInfo` or `None`.
+  - `delete_last_native_session(db, deleter_id, reason)` — transactionally deletes in FK-safe order: `digitspan_trials` → `digitspan_runs` → survey tables (uls8, cesd10, gad7, cogfunc8a) → `imported_session_measures` (defensive) → `sessions`; then optionally deletes `participants` when no other sessions remain; writes audit row; commits in a single transaction. Returns `UndoDeleteResult`.
+  - Raises `HTTP 404` when no eligible native session exists.
+  - Weather-domain tables (`weather_daily`, `weather_ingest_runs`, `study_days`) are never touched.
+- Updated `models/__init__.py` to export `AdminSessionUndoLog`.
+- Updated `docs/SCHEMA.md`: moved `admin_session_undo_log` from "Planned" to applied; added migration history entry; updated sessions and ER notes.
 
 ## T95 — Verification — linked weather-analysis visualization tests (completed 2026-03-11)
 

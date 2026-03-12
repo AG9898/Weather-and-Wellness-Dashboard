@@ -41,7 +41,8 @@
 | GET    | /sessions | RA | implemented | T21 |
 | POST   | /sessions | RA | implemented | T08 |
 | POST   | /sessions/start | RA | implemented | T36, T51a |
-| DELETE | /sessions/last-native | RA | planned | — |
+| GET    | /sessions/last-native | RA | implemented | T97 |
+| DELETE | /sessions/last-native | RA | implemented | T97 |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
@@ -280,7 +281,7 @@
 ## Sessions
 
 - **Audit note:** T08 endpoints were reopened on 2026-02-20 due to incomplete/invalid implementation.
-- **Planned admin safety feature:** a narrow RA-only undo endpoint will allow removal of the most recently created native session only.
+- **Admin safety feature (T97, implemented):** `GET /sessions/last-native` previews the undo candidate; `DELETE /sessions/last-native` removes the most recently created native session only.
 
 ### GET /sessions
 - **Auth:** RA required
@@ -351,18 +352,36 @@
 
 ---
 
+### GET /sessions/last-native
+- **Auth:** RA required
+- **Status:** implemented (T97)
+- **Purpose:** Return metadata for the most recently created native session (undo candidate preview).
+- **Response:**
+  ```json
+  {
+    "session_id": "uuid",
+    "participant_uuid": "uuid",
+    "participant_number": "integer",
+    "status": "created | active | complete",
+    "created_at": "datetime"
+  }
+  ```
+- **Notes:** Returns 404 when no eligible native session exists. Imported legacy sessions are never returned.
+
+---
+
 ### DELETE /sessions/last-native
 - **Auth:** RA required
-- **Status:** planned
+- **Status:** implemented (T97)
 - **Purpose:** Undo the most recently created native session for supervised-lab correction/testing cleanup.
-- **Planned request body:**
+- **Request body:**
   ```json
   {
     "confirm": true,
     "reason": "string"
   }
   ```
-- **Planned response:**
+- **Response:**
   ```json
   {
     "deleted_session_id": "uuid",

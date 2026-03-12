@@ -18,6 +18,7 @@ from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
 from app.schemas.sessions import (
     AllowedStatus,
+    LastNativeSessionInfo,
     SessionCreate,
     SessionListItemResponse,
     SessionListResponse,
@@ -25,7 +26,10 @@ from app.schemas.sessions import (
     SessionStatusUpdate,
     StartSessionCreate,
     StartSessionResponse,
+    UndoLastSessionRequest,
+    UndoLastSessionResponse,
 )
+from app.services.undo_service import delete_last_native_session, get_last_native_session
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 _optional_bearer = HTTPBearer(auto_error=False)
@@ -65,14 +69,14 @@ async def list_sessions(
     # Validate status filter
     if status_filter is not None and status_filter not in _VALID_STATUSES:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Invalid status value '{status_filter}'. Must be one of: created, active, complete",
         )
 
     # Validate date range
     if date_from is not None and date_to is not None and date_from > date_to:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="date_from must not be later than date_to",
         )
 
@@ -214,6 +218,73 @@ async def start_session(
         created_at=session_obj.created_at,
         completed_at=session_obj.completed_at,
         start_path=f"/session/{session_obj.session_id}/uls8",
+    )
+
+
+@router.get(
+    "/last-native",
+    response_model=LastNativeSessionInfo,
+    dependencies=[Depends(get_current_lab_member)],
+)
+async def get_last_native_session_info(
+    db: AsyncSession = Depends(get_session),
+) -> LastNativeSessionInfo:
+    """Return metadata for the most recently created native session (undo candidate).
+
+    Returns 404 when no eligible native session exists.
+    Imported legacy sessions are never returned.
+    """
+    candidate = await get_last_native_session(db)
+    if candidate is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No eligible native session found.",
+        )
+    return LastNativeSessionInfo(
+        session_id=candidate.session_id,
+        participant_uuid=candidate.participant_uuid,
+        participant_number=candidate.participant_number,
+        status=candidate.status,
+        created_at=candidate.created_at,
+    )
+
+
+@router.delete(
+    "/last-native",
+    response_model=UndoLastSessionResponse,
+    dependencies=[Depends(get_current_lab_member)],
+)
+async def delete_last_native(
+    payload: UndoLastSessionRequest,
+    lab_member=Depends(get_current_lab_member),
+    db: AsyncSession = Depends(get_session),
+) -> UndoLastSessionResponse:
+    """Undo the most recently created native session (RA-only).
+
+    Requires explicit confirmation (`confirm: true`). Deletes survey rows,
+    digit span rows, and the session itself transactionally. Conditionally
+    removes the participant when no other sessions remain. Writes an
+    append-only audit row. Never touches weather-domain tables.
+    Imported sessions are not eligible.
+    """
+    if not payload.confirm:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="confirm must be true to proceed with deletion.",
+        )
+
+    result = await delete_last_native_session(
+        db=db,
+        deleter_id=lab_member.id,
+        reason=payload.reason,
+    )
+
+    return UndoLastSessionResponse(
+        deleted_session_id=result.deleted_session_id,
+        deleted_participant_uuid=result.deleted_participant_uuid,
+        deleted_participant_number=result.deleted_participant_number,
+        session_status_at_delete=result.session_status_at_delete,
+        participant_deleted=result.participant_deleted,
     )
 
 

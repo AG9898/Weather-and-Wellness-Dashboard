@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import DashboardAnalyticsSection, { type AnalyticsAnnotation } from "@/lib/components/DashboardAnalyticsSection";
 import PageContainer from "@/lib/components/PageContainer";
+import UndoLastSessionControl from "@/lib/components/UndoLastSessionControl";
 import WeatherUnifiedCard from "@/lib/components/WeatherUnifiedCard";
 import { Button } from "@/components/ui/button";
 
@@ -36,6 +37,9 @@ export default function DashboardPage() {
 
   // Analytics annotation passed to the weather card for visual linking
   const [analyticsAnnotation, setAnalyticsAnnotation] = useState<AnalyticsAnnotation | null>(null);
+
+  // Increment to force analytics section to re-fetch after a destructive operation.
+  const [analyticsRefreshKey, setAnalyticsRefreshKey] = useState(0);
 
   function handleDateRangeChange(from: string, to: string): void {
     setSharedDateFrom(from);
@@ -120,7 +124,7 @@ export default function DashboardPage() {
               Present the consent form, collect participant details, and open a supervised session.
             </p>
           </div>
-          <div className="shrink-0">
+          <div className="flex shrink-0 flex-col items-end gap-2">
             <Button
               size="lg"
               className="rounded-xl px-6 font-semibold text-primary-foreground"
@@ -129,6 +133,15 @@ export default function DashboardPage() {
             >
               Start New Entry
             </Button>
+            <UndoLastSessionControl
+              onSuccess={() => {
+                setAnalyticsRefreshKey((k) => k + 1);
+                // Also refresh the live dashboard bundle in the background.
+                void getDashboardBundle("live").then((live) => {
+                  if (live.data) setWeatherData(live.data.weather);
+                }).catch(() => undefined);
+              }}
+            />
           </div>
         </div>
       </div>
@@ -150,6 +163,7 @@ export default function DashboardPage() {
 
       <div className="mb-6">
         <DashboardAnalyticsSection
+          key={analyticsRefreshKey}
           dateFrom={sharedDateFrom}
           dateTo={sharedDateTo}
           onAnnotationsChange={setAnalyticsAnnotation}

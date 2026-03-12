@@ -67,6 +67,24 @@ export async function apiPost<T>(
   return res.json() as Promise<T>;
 }
 
+/** Generic typed DELETE request (with optional JSON body). */
+export async function apiDelete<T>(
+  path: string,
+  data?: unknown,
+  options?: { auth?: boolean }
+): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: await buildHeaders(options?.auth ?? false),
+    body: data !== undefined ? JSON.stringify(data) : undefined,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<T>;
+}
+
 /** Generic typed PATCH request. */
 export async function apiPatch<T>(
   path: string,
@@ -619,6 +637,40 @@ export async function importCommit(
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
   return res.json() as Promise<ImportCommitResponse>;
+}
+
+// ── Undo Last Session types + wrappers ──
+
+export interface LastNativeSessionResponse {
+  session_id: string;
+  participant_uuid: string;
+  participant_number: number;
+  status: "created" | "active" | "complete";
+  created_at: string;
+}
+
+export interface DeleteLastNativeSessionResponse {
+  deleted_session_id: string;
+  deleted_participant_uuid: string;
+  deleted_participant_number: number;
+  session_status_at_delete: "created" | "active" | "complete";
+  participant_deleted: boolean;
+}
+
+/** Preview the most recently created native session (undo candidate). Returns 404 when none exists. */
+export async function getLastNativeSession(): Promise<LastNativeSessionResponse> {
+  return apiGet<LastNativeSessionResponse>("/sessions/last-native", { auth: true });
+}
+
+/** Delete the most recently created native session with an explicit confirmation + reason. */
+export async function deleteLastNativeSession(
+  reason: string
+): Promise<DeleteLastNativeSessionResponse> {
+  return apiDelete<DeleteLastNativeSessionResponse>(
+    "/sessions/last-native",
+    { confirm: true, reason },
+    { auth: true }
+  );
 }
 
 /** Parse the filename from a Content-Disposition header, or fall back to the given default. */

@@ -262,7 +262,7 @@ async def get_weather_daily(
 ) -> WeatherDailyResponse:
     if start > end:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="start must not be after end",
         )
 
@@ -373,12 +373,12 @@ async def backfill_historical_weather(
 
     if start_date > end_date:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="start_date must not be after end_date",
         )
     if (end_date - start_date).days > _MAX_HISTORICAL_DATE_RANGE_DAYS:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Date range exceeds maximum of {_MAX_HISTORICAL_DATE_RANGE_DAYS} days",
         )
 
