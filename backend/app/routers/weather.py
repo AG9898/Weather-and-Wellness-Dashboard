@@ -189,7 +189,7 @@ async def ingest_weather(
             )
             .on_conflict_do_update(
                 index_elements=["date_local"],
-                set_={"tz_name": "America/Edmonton"},
+                set_={"tz_name": STUDY_TIMEZONE},
             )
             .returning(StudyDay.study_day_id)
         )
