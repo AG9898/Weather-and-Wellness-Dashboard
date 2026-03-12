@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
 import {
+  buildAnalyticsWarningDisplayItems,
   compareEffectsByStrength,
   formatOutcomeLabel,
   formatPValue,
@@ -269,5 +270,54 @@ describe("compareEffectsByStrength", () => {
       { p_value: 0.03, statistic: -3.0 },
     );
     expect(result).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildAnalyticsWarningDisplayItems - model warning translation
+// ---------------------------------------------------------------------------
+
+describe("buildAnalyticsWarningDisplayItems", () => {
+  it("consolidates optimizer fallback warnings into one plain-English item", () => {
+    const warnings = [
+      "self_report model optimizer lbfgs failed: Singular matrix",
+      "The MLE may be on the boundary of the parameter space.",
+      "self_report model converged after retrying with optimizer powell.",
+    ];
+
+    const items = buildAnalyticsWarningDisplayItems(warnings);
+
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toContain("fallback fitting method");
+    expect(items[0].plainEnglish).toContain("backup fitting method");
+    expect(items[0].plainEnglish).toContain("interpreted a bit more cautiously");
+    expect(items[0].rawWarnings).toEqual(warnings);
+  });
+
+  it("returns a generic explanation for unknown warnings", () => {
+    const items = buildAnalyticsWarningDisplayItems([
+      "digit_span model did not converge.",
+    ]);
+
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toBe("Technical model warning");
+    expect(items[0].plainEnglish).toContain("technical warning");
+    expect(items[0].rawWarnings).toEqual(["digit_span model did not converge."]);
+  });
+
+  it("keeps unmatched warnings after consolidating optimizer fallback details", () => {
+    const items = buildAnalyticsWarningDisplayItems([
+      "self_report model optimizer lbfgs failed: Singular matrix",
+      "The MLE may be on the boundary of the parameter space.",
+      "self_report model converged after retrying with optimizer powell.",
+      "The Hessian matrix at the estimated parameter values is not positive definite.",
+    ]);
+
+    expect(items).toHaveLength(2);
+    expect(items[0].rawWarnings).toHaveLength(3);
+    expect(items[1].title).toBe("Technical model warning");
+    expect(items[1].rawWarnings).toEqual([
+      "The Hessian matrix at the estimated parameter values is not positive definite.",
+    ]);
   });
 });

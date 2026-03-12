@@ -123,3 +123,59 @@ export function compareEffectsByStrength(
   }
   return Math.abs(right.statistic) - Math.abs(left.statistic);
 }
+
+// ---------------------------------------------------------------------------
+// Model warning display helpers
+// ---------------------------------------------------------------------------
+
+export interface AnalyticsWarningDisplayItem {
+  title: string;
+  plainEnglish: string;
+  rawWarnings: string[];
+}
+
+const OPTIMIZER_FAIL_RE = /model optimizer\s+(\w+)\s+failed:/iu;
+const OPTIMIZER_RETRY_RE = /model converged after retrying with optimizer\s+(\w+)\.?/iu;
+const BOUNDARY_RE = /boundary of the parameter space/iu;
+const SINGULAR_RE = /singular/iu;
+
+export function buildAnalyticsWarningDisplayItems(warnings: string[]): AnalyticsWarningDisplayItem[] {
+  const remaining = [...warnings];
+  const items: AnalyticsWarningDisplayItem[] = [];
+
+  const optimizerFailure = remaining.find((warning) => OPTIMIZER_FAIL_RE.test(warning));
+  const optimizerRetry = remaining.find((warning) => OPTIMIZER_RETRY_RE.test(warning));
+
+  if (optimizerFailure && optimizerRetry) {
+    const optimizerWarnings = remaining.filter(
+      (warning) =>
+        warning === optimizerFailure ||
+        warning === optimizerRetry ||
+        BOUNDARY_RE.test(warning) ||
+        SINGULAR_RE.test(warning)
+    );
+
+    items.push({
+      title: "Model needed a fallback fitting method",
+      plainEnglish:
+        "This model was harder than usual to fit for the selected date range. The default fitting method ran into a numerical problem, usually because one part of the model is very close to zero or the data leaves too little separation between parameters. A backup fitting method was able to finish, so the result is still available, but it should be interpreted a bit more cautiously than a clean first-pass fit.",
+      rawWarnings: optimizerWarnings,
+    });
+
+    for (const warning of optimizerWarnings) {
+      const index = remaining.indexOf(warning);
+      if (index >= 0) {
+        remaining.splice(index, 1);
+      }
+    }
+  }
+
+  return items.concat(
+    remaining.map((warning) => ({
+      title: "Technical model warning",
+      plainEnglish:
+        "The analytics model returned a technical warning while fitting this result. The estimate is still shown, but it may be less stable than usual.",
+      rawWarnings: [warning],
+    }))
+  );
+}

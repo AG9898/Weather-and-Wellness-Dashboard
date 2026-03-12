@@ -10,6 +10,7 @@ import {
   type DashboardAnalyticsResponse,
 } from "@/lib/api";
 import {
+  buildAnalyticsWarningDisplayItems,
   compareEffectsByStrength,
   formatOutcomeLabel,
   formatPValue,
@@ -174,12 +175,6 @@ function EffectCard({
         <span>days = {model.day_count}</span>
         <span>model {model.model_version}</span>
       </div>
-
-      {model.warnings.length > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-          {model.warnings.join(" ")}
-        </div>
-      )}
     </article>
   );
 }
@@ -327,6 +322,9 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
     effectOptions.find((option) => option.key === selectedEffectKey) ?? significantEffects[0] ?? effectOptions[0] ?? null;
   const significantHighlights = Array.from({ length: 3 }, (_, index) => significantEffects[index] ?? null);
   const hasEffectCards = effectOptions.length > 0;
+  const selectedModelWarnings = useMemo(() => {
+    return selectedEffect ? buildAnalyticsWarningDisplayItems(selectedEffect.model.warnings) : [];
+  }, [selectedEffect]);
 
   // Find the effect plot for the currently selected effect term
   const selectedEffectPlot = useMemo(() => {
@@ -573,6 +571,42 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
                 ? "No term-level effects were returned for this snapshot."
                 : "Model cards will appear here once a valid analytics snapshot is available."}
             </div>
+          )}
+
+          {selectedModelWarnings.length > 0 && (
+            <details className="rounded-2xl border border-amber-500/25 bg-amber-500/8 px-4 py-4 text-sm text-amber-950/90 dark:text-amber-100">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold marker:hidden">
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  Model warnings ({selectedModelWarnings.length})
+                </span>
+                <span className="text-xs font-medium uppercase tracking-[0.18em] text-amber-800/80 dark:text-amber-200/80">
+                  Expand
+                </span>
+              </summary>
+
+              <div className="mt-4 space-y-4 border-t border-amber-500/20 pt-4">
+                {selectedModelWarnings.map((warning, index) => (
+                  <div
+                    key={`${warning.title}-${index}`}
+                    className="rounded-xl border border-amber-500/15 bg-background/55 px-4 py-3"
+                  >
+                    <p className="text-sm font-semibold text-foreground">{warning.title}</p>
+                    <p className="mt-2 leading-relaxed text-muted-foreground">{warning.plainEnglish}</p>
+                    <div className="mt-3 rounded-lg border border-border/60 bg-background/70 px-3 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Technical details
+                      </p>
+                      <ul className="mt-2 space-y-2 text-xs leading-relaxed text-muted-foreground">
+                        {warning.rawWarnings.map((rawWarning) => (
+                          <li key={rawWarning}>{rawWarning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
         </div>
       )}
