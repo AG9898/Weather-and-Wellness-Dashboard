@@ -523,7 +523,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T93",
       "title": "Frontend dashboard — shared weather and analytics filter state",
-      "status": "todo",
+      "status": "done",
       "description": "Refactor dashboard filter state so the weather chart and analytics surfaces are driven by the same selected date window and refresh state. The goal is to keep the weather time/context view and model/effect view synchronized while still fetching them through separate typed APIs and cache paths.",
       "stack": ["frontend"],
       "depends_on": ["T89", "T90"],
@@ -546,7 +546,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T94",
       "title": "Frontend dashboard — add separate analytics effect plot card with weather annotations",
-      "status": "todo",
+      "status": "done",
       "description": "Add a dedicated effect-plot card to the dashboard that responds to model-card selection and shares filters with the weather chart. Also add lightweight visual linkage on the weather chart, such as selected-term badges or date-based annotations, while keeping the weather chart itself a pure time-series surface.",
       "stack": ["frontend"],
       "depends_on": ["T92", "T93"],
@@ -569,7 +569,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T95",
       "title": "Verification — linked weather-analysis visualization tests",
-      "status": "todo",
+      "status": "done",
       "description": "Add focused coverage for the shared-filter and linked-visualization behavior between the weather chart, analytics model cards, and the separate effect-plot card. Validate that the UI preserves semantic separation between date-based weather plots and predictor-vs-effect plots while still keeping them synchronized.",
       "stack": ["backend", "frontend"],
       "depends_on": ["T92", "T94"],

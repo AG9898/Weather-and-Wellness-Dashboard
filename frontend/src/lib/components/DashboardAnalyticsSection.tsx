@@ -23,10 +23,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import AnalyticsEffectPlotCard from "@/lib/components/AnalyticsEffectPlotCard";
 import CloudLoading from "@/lib/components/CloudLoading";
 
-const STUDY_START = "2025-03-03";
-const STUDY_TIMEZONE = "America/Vancouver";
+export interface AnalyticsAnnotation {
+  selectedTermLabel: string | null;
+  dateFrom: string;
+  dateTo: string;
+}
 
 type LoadingMode = "snapshot" | "live" | null;
 
@@ -38,10 +42,6 @@ interface FlattenedEffectOption {
   selectionLabel: string;
   effect: AnalyticsEffectCardResponse;
   model: AnalyticsModelSummaryResponse;
-}
-
-function getStudyToday(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: STUDY_TIMEZONE }).format(new Date());
 }
 
 function formatDateTime(iso: string): string {
@@ -184,8 +184,13 @@ function EffectCard({
   );
 }
 
-export default function DashboardAnalyticsSection() {
-  const [dateTo] = useState(getStudyToday);
+interface DashboardAnalyticsSectionProps {
+  dateFrom: string;
+  dateTo: string;
+  onAnnotationsChange?: (annotation: AnalyticsAnnotation | null) => void;
+}
+
+export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotationsChange }: DashboardAnalyticsSectionProps) {
   const [analytics, setAnalytics] = useState<DashboardAnalyticsResponse | null>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [loadingMode, setLoadingMode] = useState<LoadingMode>("snapshot");
@@ -205,7 +210,7 @@ export default function DashboardAnalyticsSection() {
       setError(null);
 
       try {
-        const response = await getDashboardAnalyticsBundle(mode, STUDY_START, dateTo);
+        const response = await getDashboardAnalyticsBundle(mode, dateFrom, dateTo);
         if (cancelled || !response.data) {
           return false;
         }
@@ -251,7 +256,7 @@ export default function DashboardAnalyticsSection() {
     return () => {
       cancelled = true;
     };
-  }, [dateTo]);
+  }, [dateFrom, dateTo]);
 
   async function handleRefresh(): Promise<void> {
     setLoadingMode("live");
@@ -259,7 +264,7 @@ export default function DashboardAnalyticsSection() {
     setError(null);
 
     try {
-      const response = await getDashboardAnalyticsBundle("live", STUDY_START, dateTo);
+      const response = await getDashboardAnalyticsBundle("live", dateFrom, dateTo);
       if (!response.data) {
         setError("Analytics refresh returned no data.");
         return;
@@ -323,6 +328,31 @@ export default function DashboardAnalyticsSection() {
   const significantHighlights = Array.from({ length: 3 }, (_, index) => significantEffects[index] ?? null);
   const hasEffectCards = effectOptions.length > 0;
 
+  // Find the effect plot for the currently selected effect term
+  const selectedEffectPlot = useMemo(() => {
+    if (!analytics?.visualizations?.effect_plots || !selectedEffect) return null;
+    return (
+      analytics.visualizations.effect_plots.find(
+        (plot) => plot.outcome === selectedEffect.outcome && plot.term === selectedEffect.effect.term
+      ) ?? null
+    );
+  }, [analytics?.visualizations?.effect_plots, selectedEffect]);
+
+  // Notify parent when the analytics window or selected term changes
+  useEffect(() => {
+    if (!onAnnotationsChange) return;
+    if (!analytics?.visualizations?.weather_annotations) {
+      onAnnotationsChange(null);
+      return;
+    }
+    const { date_from, date_to } = analytics.visualizations.weather_annotations;
+    onAnnotationsChange({
+      selectedTermLabel: selectedEffect ? formatTermLabel(selectedEffect.effect.term) : null,
+      dateFrom: date_from,
+      dateTo: date_to,
+    });
+  }, [analytics?.visualizations?.weather_annotations, selectedEffect, onAnnotationsChange]);
+
   return (
     <section
       className="relative overflow-hidden rounded-3xl border border-border/90 px-6 py-6 shadow-[0_28px_60px_-46px_rgb(0_19_40/0.95)]"
@@ -343,7 +373,7 @@ export default function DashboardAnalyticsSection() {
               Statistical Models
             </Badge>
             <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-              {STUDY_START} to {dateTo}
+              {dateFrom} to {dateTo}
             </Badge>
           </div>
           <div>
@@ -533,6 +563,7 @@ export default function DashboardAnalyticsSection() {
                   </div>
 
                   <EffectCard option={selectedEffect} />
+                  <AnalyticsEffectPlotCard effectPlot={selectedEffectPlot} />
                 </div>
               )}
             </div>

@@ -11,6 +11,7 @@ import {
   type WeatherDailyResponse,
   type WeatherLatestRun,
 } from "@/lib/api";
+import type { AnalyticsAnnotation } from "@/lib/components/DashboardAnalyticsSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -215,11 +216,22 @@ interface WeatherUnifiedCardProps {
    * null = bundle not yet loaded.
    */
   weather: WeatherDailyResponse | null;
+  /**
+   * Called whenever the active chart date range changes (preset applied or custom Applied).
+   * Not called on the initial mount fetch — dashboard should initialize to the same defaults.
+   */
+  onDateRangeChange?: (dateFrom: string, dateTo: string) => void;
+  /**
+   * Analytics annotation from the active analytics snapshot.
+   * Adds a subtle plot band on the chart for the analysis window and shows
+   * a badge for the currently selected predictor term.
+   */
+  analyticsAnnotation?: AnalyticsAnnotation | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps) {
+export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyticsAnnotation }: WeatherUnifiedCardProps) {
   // ── Mount guard (Highcharts needs window) ────────────────────────────────
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -383,6 +395,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
     setCustomFrom(from);
     setCustomTo(to);
     void fetchRange(from, to);
+    onDateRangeChange?.(from, to);
   }
 
   function handleApplyCustom(): void {
@@ -392,6 +405,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
       return;
     }
     void fetchRange(customFrom, customTo);
+    onDateRangeChange?.(customFrom, customTo);
   }
 
   // ── Ingest handler ────────────────────────────────────────────────────────
@@ -430,6 +444,20 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
   // ── Chart options (declarative — data and visibility included) ────────────
   const chartOptions = useMemo<Highcharts.Options>(() => {
     const { chart1, chart2, chart3, border, mutedFg } = chartColors;
+
+    // Build a subtle plot band for the analytics analysis window when available
+    const analyticsPlotBand: Highcharts.XAxisPlotBandsOptions[] = analyticsAnnotation
+      ? [
+          {
+            from: dateToTs(analyticsAnnotation.dateFrom),
+            to: dateToTs(analyticsAnnotation.dateTo) + 86_400_000, // include the end date
+            color: "rgba(0,82,245,0.05)",
+            borderColor: "rgba(0,82,245,0.15)",
+            borderWidth: 1,
+            zIndex: 0,
+          },
+        ]
+      : [];
 
     const tempData: [number, number | null][] = rangeItems.map((item) => [
       dateToTs(item.date_local),
@@ -498,6 +526,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
           style: { color: mutedFg, fontSize: "11px" },
           y: 18,
         },
+        plotBands: analyticsPlotBand,
       },
       yAxis: [
         {
@@ -600,7 +629,7 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
         },
       ],
     };
-  }, [chartColors, rangeItems, showTemp, showPrecip, showSunlight]);
+  }, [chartColors, rangeItems, showTemp, showPrecip, showSunlight, analyticsAnnotation]);
 
   // CSS clip-path draw-in animation: fires whenever data or visibility changes.
   // HighchartsReact re-renders declaratively from chartOptions; the clip effect
@@ -749,6 +778,22 @@ export default function WeatherUnifiedCard({ weather }: WeatherUnifiedCardProps)
 
         {/* ── Divider ───────────────────────────────────────────────────── */}
         <div className="mb-4 border-t border-border/60" />
+
+        {/* ── Analytics link badge ──────────────────────────────────────── */}
+        {analyticsAnnotation?.selectedTermLabel && (
+          <div className="mb-3 flex items-center gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              style={{ borderColor: "rgba(0,82,245,0.25)", background: "rgba(0,82,245,0.06)" }}
+            >
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: "var(--ubc-blue-700)" }}
+              />
+              Analysis: {analyticsAnnotation.selectedTermLabel}
+            </span>
+          </div>
+        )}
 
         {/* ── Graph controls row ────────────────────────────────────────── */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

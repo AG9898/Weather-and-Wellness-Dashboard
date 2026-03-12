@@ -10,8 +10,8 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 41 — Phase 4 ongoing                                         |
-| Remaining queue    | T93–T102 in kanban.md                                        |
+| Tasks completed    | 44 — Phase 4 ongoing                                         |
+| Remaining queue    | T96–T102 in kanban.md                                        |
 | Tasks in progress  | 0                                                            |
 | Last updated       | 2026-03-11                                                   |
 
@@ -28,6 +28,47 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T95 — Verification — linked weather-analysis visualization tests (completed 2026-03-11)
+
+- Added `frontend/src/lib/analytics/linked-visualization.test.ts` (28 tests):
+  - **Shared date filter contract**: verifies that both analytics and weather-range URL builders encode `date_from`/`date_to` identically from the same shared state.
+  - **Effect plot resolution**: tests that `resolveEffectPlot(plots, outcome, term)` returns the correct plot for exact matches, different outcomes/terms, missing interaction terms (returns null), and empty lists.
+  - **Weather annotation contract**: confirms `AnalyticsWeatherAnnotationsResponse` contains only `{selected_term, date_from, date_to, included_dates, excluded_dates}` — no `points`, `fitted_line`, or other effect-series fields. Also verifies `included_dates` and `excluded_dates` are disjoint.
+  - **AnalyticsVisualizationsResponse separation**: confirms `effect_plots` and `weather_annotations` are structurally distinct fields, never nested inside each other, and that effect plots have no date-range fields.
+  - **State coverage**: tests `ready`, `stale`, `recomputing`, `insufficient_data`, and `failed` response shapes; verifies `is_stale`/`recompute_started_at` flags for stale and recomputing states; confirms all statuses produce non-empty status panel strings.
+- Added `backend/tests/test_analytics_visualization_contract.py` (26 tests):
+  - **Effect plot separation**: verifies effect plot schema fields are exactly `{outcome, term, x_label, y_label, points, fitted_line}` (no weather time-series fields); points are `(x, y, date_local)` predictor/residual pairs; fitted line has no timestamps; plots are indexed by `(outcome, term)` pairs (no duplicates).
+  - **Weather annotation contract**: verifies `AnalyticsWeatherAnnotationsResponse` schema is exactly `{selected_term, date_from, date_to, included_dates, excluded_dates}`; no effect/residual fields; date range matches dataset window; `included_dates` is a subset of the window; included and excluded dates are disjoint; `included_dates` reflects dataset rows.
+  - **Date window linkage**: confirms effect plot `points[*].date_local` are within the dataset's requested date window.
+  - **Status states**: `ready` for successful fits, `insufficient_data` for empty dataset or zero-variance predictors, `failed` for model failures; `ready` includes non-null visualizations; `insufficient_data` has null visualizations and non-empty warnings.
+  - **DashboardAnalyticsResponse schema**: all five status values construct valid responses; `stale` sets `is_stale=True`; `recomputing` sets `recompute_started_at`.
+- All 61 frontend tests pass (`28 new + 33 existing`); all 26 new backend tests pass.
+
+## T94 — Frontend dashboard — add separate analytics effect plot card with weather annotations (completed 2026-03-11)
+
+- Created `frontend/src/lib/components/AnalyticsEffectPlotCard.tsx`:
+  - Renders a separate Highcharts scatter + spline chart for the selected model term.
+  - Scatter series = partial-residual points (`x`: z-scored predictor, `y`: partial residual). Each point carries `date_local` in the `name` field for tooltip display.
+  - Spline series = fitted line from the analytics payload.
+  - x/y axis labels sourced from `AnalyticsEffectPlotResponse.x_label` / `y_label`.
+  - When no effect plot exists for the selected term (e.g. interaction terms excluded from v1), renders an informative empty-state message.
+  - Adapts to light/dark theme via CSS variable reads + MutationObserver (same pattern as `WeatherUnifiedCard`).
+- Modified `DashboardAnalyticsSection.tsx`:
+  - Added `AnalyticsAnnotation` interface (exported) with `selectedTermLabel`, `dateFrom`, `dateTo`.
+  - Added `onAnnotationsChange` callback prop — called when analytics loads or the selected term changes, used to link weather chart annotation state.
+  - Added `selectedEffectPlot` memo that finds the matching `AnalyticsEffectPlotResponse` for the selected outcome+term.
+  - `AnalyticsEffectPlotCard` rendered directly below `EffectCard` in the selected-term section.
+- Modified `WeatherUnifiedCard.tsx`:
+  - Added `analyticsAnnotation?: AnalyticsAnnotation | null` prop.
+  - Renders a small badge ("Analysis: [Term]") above the chart controls when a term is selected — keeps the weather chart semantically a date/time surface while providing visual linkage.
+  - Adds a subtle plot band (low-opacity blue region) on the x-axis covering the analytics date window (`analyticsAnnotation.dateFrom` → `dateTo`).
+  - `analyticsAnnotation` added to `chartOptions` useMemo deps.
+- Modified `frontend/src/app/(ra)/dashboard/page.tsx`:
+  - Added `analyticsAnnotation` state (`AnalyticsAnnotation | null`).
+  - Passes `onAnnotationsChange={setAnalyticsAnnotation}` to `DashboardAnalyticsSection`.
+  - Passes `analyticsAnnotation` to `WeatherUnifiedCard`.
+- Verification: `npx tsc --noEmit` → clean; `npm run build` → clean.
 
 ## T92 — Backend analytics — extend snapshot/API payload for effect plots and weather-link metadata (completed 2026-03-11)
 
@@ -1092,5 +1133,18 @@ All acceptance criteria met by work done during T41:
 - `tsc --noEmit` passes clean. `next build` succeeds; route listed as `ƒ /api/ra/dashboard`.
 
 **Packages added:** `@upstash/redis`, `jose`
+
+---
+
+## T93 — Frontend dashboard — shared weather and analytics filter state (completed 2026-03-11)
+
+**Acceptance criteria met:**
+- Dashboard page (`/dashboard/page.tsx`) owns one shared `sharedDateFrom` / `sharedDateTo` state initialized to `STUDY_START` ("2025-03-03") → today (America/Vancouver).
+- `WeatherUnifiedCard` accepts an optional `onDateRangeChange?: (dateFrom: string, dateTo: string) => void` callback prop. Called in `applyPreset()` for non-custom presets and in `handleApplyCustom()` after validation. Not called on initial mount fetch so both components start in sync with the same defaults.
+- `DashboardAnalyticsSection` redesigned to accept `dateFrom: string` / `dateTo: string` as props instead of hardcoded `STUDY_START` / internal today state. `useEffect` now depends on both `[dateFrom, dateTo]` and re-fetches whenever either changes.
+- Changing the weather filter calls the callback → updates dashboard shared state → analytics section receives new props → re-fetches, keeping the prior analytics visible while loading (in-progress indicator shown in section header).
+- Analytics section date-range badge (`{dateFrom} to {dateTo}`) dynamically reflects the current shared range.
+- No bare fetch introduced; all API calls remain through typed wrappers in `src/lib/api`.
+- `tsc --noEmit` clean.
 
 ---

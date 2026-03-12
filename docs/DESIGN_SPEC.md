@@ -205,13 +205,17 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
   - `insufficient_data` — show an empty-state message instead of cards
   - `failed` — show an error-state message while operational surfaces remain usable
 
-**Still pending for later analytics tasks:**
-- A separate **effect plot card** linked to the selected model card; do not
-  overlay model residual/effect plots directly on the weather time-series chart.
-- Shared date-range state between weather and analytics so the time/context view
-  and model/effect view stay synchronized.
-- Optional weather annotations or selection badges for light visual linking
-  without mixing time-series and residual axes.
+**Effect plot card (implemented T94):**
+- A separate `AnalyticsEffectPlotCard` is rendered directly below `EffectCard` in the analytics section.
+- The card shows a Highcharts scatter (partial residuals) + fitted spline for the selected outcome/term.
+- Interaction terms are excluded from v1 plots (an empty-state message is shown instead).
+- The effect plot remains semantically distinct from the weather chart: its x-axis is a z-scored predictor value, not a date.
+
+**Weather–analytics visual linking (implemented T94):**
+- `WeatherUnifiedCard` accepts an `analyticsAnnotation` prop from the dashboard page.
+- When an analytics snapshot is loaded, the weather chart shows a small "Analysis: [Term]" badge above the chart controls.
+- A subtle low-opacity plot band highlights the analysis window on the weather chart x-axis.
+- No predictor values, residuals, or model series are placed on the weather time-series chart.
 - A future RA-only **Undo Last Session** action may appear in the dashboard hero
   or adjacent admin controls. It must target only the most recently created
   native session, require explicit confirmation, and never expose a general
@@ -247,12 +251,15 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - Manual analytics refresh requests use live mode, but the UI keeps the prior
   snapshot visible whenever the backend returns `stale` or `recomputing`.
 
-**Still pending in analytics loading:**
-- Shared dashboard filter state should drive both:
-  - weather range fetches
-  - analytics snapshot/live fetches
-- The analytics payload may also provide weather-linking annotations for the
-  weather chart, but the effect plot itself should render in its own card.
+**Shared filter state (implemented T93):**
+- The dashboard page (`/dashboard`) owns one `sharedDateFrom` / `sharedDateTo` state initialized to `STUDY_START → today` (America/Vancouver).
+- `WeatherUnifiedCard` accepts an `onDateRangeChange` callback; it is called whenever the user applies a preset or custom range (not on initial mount).
+- `DashboardAnalyticsSection` receives `dateFrom` / `dateTo` as props and re-fetches analytics whenever those change, keeping the prior analytics visible while loading.
+- The analytics section date-range badge reflects the current shared range.
+
+**Analytics loading now includes weather-linking (T94):**
+- The analytics payload's `weather_annotations` drives the badge and plot band on the weather chart.
+- The effect plot renders in its own card (`AnalyticsEffectPlotCard`) and is not overlaid on the weather chart.
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 

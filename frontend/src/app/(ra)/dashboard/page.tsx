@@ -6,10 +6,19 @@ import {
   getDashboardBundle,
   type WeatherDailyResponse,
 } from "@/lib/api";
-import DashboardAnalyticsSection from "@/lib/components/DashboardAnalyticsSection";
+import DashboardAnalyticsSection, { type AnalyticsAnnotation } from "@/lib/components/DashboardAnalyticsSection";
 import PageContainer from "@/lib/components/PageContainer";
 import WeatherUnifiedCard from "@/lib/components/WeatherUnifiedCard";
 import { Button } from "@/components/ui/button";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const STUDY_START = "2025-03-03";
+const STUDY_TIMEZONE = "America/Vancouver";
+
+function getStudyToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: STUDY_TIMEZONE }).format(new Date());
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -19,6 +28,19 @@ export default function DashboardPage() {
   const [weatherData, setWeatherData] = useState<WeatherDailyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const hasCachedRef = useRef(false);
+
+  // Shared filter state: drives both WeatherUnifiedCard range requests and analytics fetches.
+  // Initialized to the same defaults as WeatherUnifiedCard so both start in sync.
+  const [sharedDateFrom, setSharedDateFrom] = useState(STUDY_START);
+  const [sharedDateTo, setSharedDateTo] = useState(getStudyToday);
+
+  // Analytics annotation passed to the weather card for visual linking
+  const [analyticsAnnotation, setAnalyticsAnnotation] = useState<AnalyticsAnnotation | null>(null);
+
+  function handleDateRangeChange(from: string, to: string): void {
+    setSharedDateFrom(from);
+    setSharedDateTo(to);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -119,11 +141,19 @@ export default function DashboardPage() {
       )}
 
       <div className="mb-8">
-        <WeatherUnifiedCard weather={weatherData} />
+        <WeatherUnifiedCard
+          weather={weatherData}
+          onDateRangeChange={handleDateRangeChange}
+          analyticsAnnotation={analyticsAnnotation}
+        />
       </div>
 
       <div className="mb-6">
-        <DashboardAnalyticsSection />
+        <DashboardAnalyticsSection
+          dateFrom={sharedDateFrom}
+          dateTo={sharedDateTo}
+          onAnnotationsChange={setAnalyticsAnnotation}
+        />
       </div>
     </PageContainer>
   );
