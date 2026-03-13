@@ -55,6 +55,11 @@ describe("dashboard analytics loader", () => {
         },
         cached_at: "2026-03-12T00:00:00Z",
       },
+      refresh: {
+        requested: false,
+        state: "idle",
+        detail: "Serving the latest stored analytics snapshot for this study window.",
+      },
     });
 
     const result = await loadInitialDashboardAnalytics(
@@ -98,6 +103,12 @@ describe("dashboard analytics loader", () => {
           visualizations: null,
         },
         cached_at: "2026-03-12T00:00:00Z",
+      },
+      refresh: {
+        requested: true,
+        state: "recomputing",
+        detail:
+          "Background recompute requested. Showing the last successful snapshot until the backend finishes.",
       },
     });
 

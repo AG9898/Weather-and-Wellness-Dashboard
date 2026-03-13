@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -23,6 +24,14 @@ from app.schemas.analytics import (
     AnalyticsStatus,
     DashboardAnalyticsResponse,
 )
+
+
+@dataclass(frozen=True)
+class AnalyticsRefreshRequestResult:
+    """Result of requesting a background analytics refresh."""
+
+    response: DashboardAnalyticsResponse
+    run_id: uuid.UUID | None
 
 
 async def get_dashboard_analytics(
@@ -47,6 +56,108 @@ async def get_dashboard_analytics(
         db,
         date_from=date_from,
         date_to=date_to,
+    )
+
+
+async def request_dashboard_analytics_refresh(
+    db: AsyncSession,
+    *,
+    date_from: date,
+    date_to: date,
+    triggered_by_lab_member_id: uuid.UUID | None = None,
+) -> AnalyticsRefreshRequestResult:
+    """Start a background recompute when needed and return the current snapshot state."""
+
+    if date_from > date_to:
+        raise ValueError("date_from must not be after date_to")
+
+    existing_snapshot = await _get_latest_snapshot(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    latest_run = await _get_latest_run(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    if _is_recomputing_run(latest_run):
+        if existing_snapshot is not None:
+            return AnalyticsRefreshRequestResult(
+                response=_response_from_snapshot(
+                    existing_snapshot,
+                    mode="live",
+                    latest_run=latest_run,
+                ),
+                run_id=None,
+            )
+        return AnalyticsRefreshRequestResult(
+            response=_response_without_snapshot(
+                status="recomputing",
+                date_from=date_from,
+                date_to=date_to,
+                mode="live",
+                generated_at=latest_run.started_at or datetime.now(timezone.utc),
+                recompute_started_at=latest_run.started_at,
+                recompute_finished_at=latest_run.finished_at,
+            ),
+            run_id=None,
+        )
+
+    run = await _create_recompute_run(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        triggered_by_lab_member_id=triggered_by_lab_member_id,
+    )
+    if existing_snapshot is not None:
+        return AnalyticsRefreshRequestResult(
+            response=_response_from_snapshot(
+                existing_snapshot,
+                mode="live",
+                latest_run=run,
+            ),
+            run_id=run.run_id,
+        )
+
+    return AnalyticsRefreshRequestResult(
+        response=_response_without_snapshot(
+            status="recomputing",
+            date_from=date_from,
+            date_to=date_to,
+            mode="live",
+            generated_at=run.started_at or datetime.now(timezone.utc),
+            recompute_started_at=run.started_at,
+            recompute_finished_at=run.finished_at,
+        ),
+        run_id=run.run_id,
+    )
+
+
+async def complete_dashboard_analytics_refresh(
+    db: AsyncSession,
+    *,
+    run_id: uuid.UUID,
+) -> DashboardAnalyticsResponse | None:
+    """Finish a previously requested background analytics recompute."""
+
+    run = await _get_run_by_id(db, run_id=run_id)
+    if run is None:
+        return None
+    if run.finished_at is not None or run.status != "recomputing":
+        return run.result_payload_json and DashboardAnalyticsResponse.model_validate(
+            run.result_payload_json
+        )
+
+    existing_snapshot = await _get_latest_snapshot(
+        db,
+        date_from=run.date_from,
+        date_to=run.date_to,
+    )
+    return await _finish_recompute_run(
+        db,
+        run=run,
+        existing_snapshot=existing_snapshot,
     )
 
 
@@ -120,6 +231,26 @@ async def recompute_dashboard_analytics(
             recompute_finished_at=latest_run.finished_at,
         )
 
+    run = await _create_recompute_run(
+        db,
+        date_from=date_from,
+        date_to=date_to,
+        triggered_by_lab_member_id=triggered_by_lab_member_id,
+    )
+    return await _finish_recompute_run(
+        db,
+        run=run,
+        existing_snapshot=existing_snapshot,
+    )
+
+
+async def _create_recompute_run(
+    db: AsyncSession,
+    *,
+    date_from: date,
+    date_to: date,
+    triggered_by_lab_member_id: uuid.UUID | None,
+) -> AnalyticsRun:
     started_at = datetime.now(timezone.utc)
     run = AnalyticsRun(
         run_id=uuid.uuid4(),
@@ -134,12 +265,20 @@ async def recompute_dashboard_analytics(
     )
     db.add(run)
     await db.commit()
+    return run
 
+
+async def _finish_recompute_run(
+    db: AsyncSession,
+    *,
+    run: AnalyticsRun,
+    existing_snapshot: AnalyticsSnapshot | None,
+) -> DashboardAnalyticsResponse:
     try:
         dataset_result = await build_canonical_analysis_dataset(
             db,
-            date_from=date_from,
-            date_to=date_to,
+            date_from=run.date_from,
+            date_to=run.date_to,
         )
         modeling_result = fit_analytics_models(dataset_result)
     except Exception as exc:
@@ -161,8 +300,8 @@ async def recompute_dashboard_analytics(
 
         return _response_without_snapshot(
             status="failed",
-            date_from=date_from,
-            date_to=date_to,
+            date_from=run.date_from,
+            date_to=run.date_to,
             mode="live",
             generated_at=finished_at,
             recompute_started_at=run.started_at,
@@ -191,8 +330,8 @@ async def recompute_dashboard_analytics(
         if snapshot is None:
             snapshot = AnalyticsSnapshot(
                 snapshot_id=uuid.uuid4(),
-                date_from=date_from,
-                date_to=date_to,
+                date_from=run.date_from,
+                date_to=run.date_to,
                 model_version=ANALYTICS_MODEL_VERSION,
                 response_version=ANALYTICS_RESPONSE_VERSION,
                 status="ready",
@@ -238,6 +377,19 @@ async def _get_latest_snapshot(
             AnalyticsSnapshot.response_version == ANALYTICS_RESPONSE_VERSION,
         )
         .order_by(AnalyticsSnapshot.generated_at.desc(), AnalyticsSnapshot.updated_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _get_run_by_id(
+    db: AsyncSession,
+    *,
+    run_id: uuid.UUID,
+) -> AnalyticsRun | None:
+    result = await db.execute(
+        select(AnalyticsRun)
+        .where(AnalyticsRun.run_id == run_id)
         .limit(1)
     )
     return result.scalar_one_or_none()
@@ -384,7 +536,10 @@ def _is_recomputing_run(run: AnalyticsRun | None) -> bool:
 
 
 __all__ = [
+    "AnalyticsRefreshRequestResult",
+    "complete_dashboard_analytics_refresh",
     "get_dashboard_analytics",
+    "request_dashboard_analytics_refresh",
     "read_dashboard_analytics_snapshot",
     "recompute_dashboard_analytics",
 ]

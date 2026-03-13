@@ -172,7 +172,7 @@
   - This endpoint surfaces the mixed-effects analysis derived from `reference/Weather_MLM.R` using the backend dataset/modeling/snapshot pipeline implemented in T83–T88.
   - Date bounds are validated as inclusive study-local days in `America/Vancouver`; `date_from > date_to` returns `422`.
   - `mode=snapshot` reads the durable Postgres snapshot for the exact requested range and returns `404` when no snapshot exists yet. The shipped dashboard treats that `404` as a snapshot-miss empty state and does not auto-trigger `mode=live`.
-  - `mode=live` triggers the recompute orchestration service and returns the typed analytics payload for `ready`, `stale`, `recomputing`, `insufficient_data`, or `failed`.
+  - `mode=live` now requests a background recompute and returns immediately with the current typed analytics payload for the range. When a prior snapshot exists, the payload will typically be `status="recomputing"` with the last successful snapshot kept visible until the background run finishes.
   - The shipped dashboard uses `mode=live` only for explicit RA actions such as manual analytics refresh.
   - Live recompute calls are tagged with the authenticated LabMember UUID in `analytics_runs.triggered_by_lab_member_id`.
   - Existing scoring logic and stored score semantics remain unchanged.

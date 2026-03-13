@@ -84,7 +84,7 @@ All active RA cache keys use fixed expiry on write only:
 |---|---|---|---|
 | `ww:ra:dashboard:v1` | 24 hours | `fixed-expiry-on-write` | Explicit `mode=live` request; the dashboard page currently issues that live refresh only when its cached bundle is older than about 10 minutes or when a supervised action explicitly refreshes it |
 | `ww:ra:weather:range:v1:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Explicit `mode=live` request for the selected date window |
-| `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Explicit snapshot write path (`mode=snapshot` miss or snapshot fallback after live failure) |
+| `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Snapshot read refreshes, explicit background refresh requests, or snapshot fallback after live failure |
 
 Repeated cache reads do not renew TTL. A key survives only until the last successful write plus its configured TTL.
 
@@ -139,14 +139,14 @@ Standardized same-origin diagnostics:
 
 | Mode | Behaviour |
 |---|---|
-| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 15s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
-| `live` | Calls `/dashboard/analytics?...&mode=live` on Render with a 15s timeout and `cache: "no-store"`. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
+| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. If the cached bundle is marked `status="recomputing"`, the handler revalidates against the backend snapshot endpoint before serving it so the UI can pick up the newly finished snapshot promptly. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 15s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
+| `live` | Calls `/dashboard/analytics?...&mode=live` on Render with a 15s timeout and `cache: "no-store"`. The backend treats this as a background refresh request and returns immediately with the current snapshot state for the range, which the handler writes back into Redis so the dashboard can keep serving the in-progress snapshot state consistently. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
 
 - **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before reading Redis or calling the backend. No auth bypass via cache.
-- **Bundle type:** `{ analytics: DashboardAnalyticsResponse, cached_at }` wrapped in `{ cached, data }`.
+- **Bundle type:** `{ analytics: DashboardAnalyticsResponse, cached_at }` wrapped in `{ cached, data, refresh }`, where `refresh` explains whether the response is an idle snapshot read or a background refresh request.
 - **Cache boundary:** Analytics reads use a dedicated Redis namespace and do not reuse the operational dashboard or weather cache keys.
-- **Live-path rule:** The handler does not write live-mode responses into Redis; Redis stores only snapshot-safe analytics reads so cached payloads stay semantically aligned with durable snapshots.
-- **Snapshot renewal rule:** Snapshot reads do not renew TTL; the 6-hour clock resets only after a successful snapshot write path.
+- **Live-path rule:** Live refresh requests now write the returned snapshot state into Redis so the dashboard can show `recomputing` status immediately while the backend finishes the durable refresh in the background.
+- **Snapshot renewal rule:** Snapshot reads do not renew TTL; the 24-hour clock resets only after a successful snapshot write path.
 - **Shared helper path:** auth, timeout fetches, Redis access, cache-header shaping, and date validation use the shared `frontend/src/lib/server/route-handler-*.ts` modules.
 
 ## Analytics Snapshot Architecture
@@ -157,7 +157,7 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 
 - **Durable source of truth:** Postgres-backed analytics snapshot storage
 - **Optional cache layer:** Upstash Redis for snapshot read acceleration only, via the same-origin analytics Route Handler
-- **Live recompute path:** explicit filtered/admin requests may trigger backend recompute from current DB rows through `GET /api/ra/dashboard/analytics?mode=live`
+- **Live recompute path:** explicit filtered/admin requests may trigger backend recompute from current DB rows through `GET /api/ra/dashboard/analytics?mode=live`, which now starts the run in the background and immediately returns the current snapshot state
 - **Serving rule:** while recompute is running, or if the live path fails, continue serving the most recent successful snapshot when available
 
 ### Current lifecycle
@@ -167,7 +167,7 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 3. Backend serializes both model-card results and separate effect-plot payloads.
 4. Backend writes a versioned snapshot payload plus run metadata to Postgres.
 5. The analytics Route Handler may cache the serialized snapshot in Redis under a dedicated analytics keyspace.
-6. Dashboard reads snapshot data by default, treats snapshot misses as a non-blocking empty state, and may request `mode=live` only for explicit recompute flows without waiting indefinitely on model fitting.
+6. Dashboard reads snapshot data by default, treats snapshot misses as a non-blocking empty state, and may request `mode=live` only for explicit recompute flows. The current snapshot remains visible while the backend recompute runs in the background.
 
 ### Frontend coordination rule
 

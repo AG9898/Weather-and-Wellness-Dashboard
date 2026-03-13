@@ -42,7 +42,7 @@ JWT verification in Route Handlers requires one of:
 
 - `GET /api/ra/dashboard?mode=cached|live` caches the default dashboard weather bundle for today.
 - `GET /api/ra/weather/range?mode=cached|live&date_from=...&date_to=...` caches weather-only range data for the trend chart.
-- `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=...&date_to=...` caches snapshot-safe analytics bundles only; live recompute responses bypass Redis.
+- `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=...&date_to=...` keeps analytics snapshot bundles in a dedicated Redis keyspace; explicit live requests now record the current snapshot state there as the background recompute runs.
 
 Current TTL policy:
 
@@ -62,7 +62,7 @@ Repeated cache reads do not renew TTL. A new TTL starts only after a successful 
    - (if a cache miss occurred) `/api/ra/weather/range?...&mode=live` → `x-ww-cache: refresh|disabled|stale-fallback|error`
    - `/api/ra/dashboard/analytics?...&mode=snapshot` → `x-ww-cache: hit|miss|disabled|refresh|error`
    - default dashboard load should not emit `/api/ra/dashboard/analytics?...&mode=live`
-   - manual analytics refresh (`mode=live`) → `x-ww-cache: bypass|stale-fallback|snapshot-fallback|error`
+   - manual analytics refresh (`mode=live`) → `x-ww-cache: refresh|disabled|stale-fallback|snapshot-fallback|error`
    - all three handlers should also emit:
      - `x-ww-cache-ttl` with the route TTL in seconds
      - `x-ww-cache-renewal: fixed-expiry-on-write`

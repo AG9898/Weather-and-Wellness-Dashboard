@@ -16,9 +16,11 @@ from app.schemas.analytics import (
     DashboardAnalyticsResponse,
 )
 from app.services.analytics_service import (
+    complete_dashboard_analytics_refresh,
     get_dashboard_analytics,
     read_dashboard_analytics_snapshot,
     recompute_dashboard_analytics,
+    request_dashboard_analytics_refresh,
 )
 
 
@@ -276,6 +278,54 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert db.added == []
         assert db.commit_count == 0
         build_dataset_mock.assert_not_awaited()
+
+    async def test_refresh_request_starts_background_run_and_returns_recomputing_snapshot(self) -> None:
+        db = _FakeAsyncSession()
+        source_run_id = uuid.uuid4()
+        snapshot = _build_snapshot(
+            source_run_id=source_run_id,
+            generated_at=datetime(2026, 3, 10, 19, 0, tzinfo=timezone.utc),
+        )
+
+        with (
+            patch(
+                "app.services.analytics_service._get_latest_snapshot",
+                new=AsyncMock(return_value=snapshot),
+            ),
+            patch(
+                "app.services.analytics_service._get_latest_run",
+                new=AsyncMock(return_value=None),
+            ),
+        ):
+            result = await request_dashboard_analytics_refresh(
+                db,
+                date_from=date(2026, 3, 1),
+                date_to=date(2026, 3, 8),
+                triggered_by_lab_member_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            )
+
+        runs = [item for item in db.added if isinstance(item, AnalyticsRun)]
+
+        assert result.run_id is not None
+        assert result.response.status == "recomputing"
+        assert result.response.snapshot.is_stale is True
+        assert result.response.snapshot.mode == "live"
+        assert len(runs) == 1
+        assert runs[0].run_id == result.run_id
+        assert runs[0].status == "recomputing"
+        assert db.commit_count == 1
+
+    async def test_complete_background_refresh_returns_none_when_run_is_missing(self) -> None:
+        with patch(
+            "app.services.analytics_service._get_run_by_id",
+            new=AsyncMock(return_value=None),
+        ):
+            result = await complete_dashboard_analytics_refresh(
+                _FakeAsyncSession(),
+                run_id=uuid.uuid4(),
+            )
+
+        assert result is None
 
     async def test_live_recompute_failure_preserves_prior_snapshot_and_marks_run_failed(self) -> None:
         db = _FakeAsyncSession()

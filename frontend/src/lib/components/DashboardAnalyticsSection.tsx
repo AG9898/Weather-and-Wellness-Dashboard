@@ -6,6 +6,7 @@ import {
   type AnalyticsEffectCardResponse,
   type AnalyticsModelSummaryResponse,
   type DashboardAnalyticsResponse,
+  type DashboardAnalyticsRefreshInfo,
 } from "@/lib/api";
 import {
   loadInitialDashboardAnalytics,
@@ -190,17 +191,18 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
   const [analytics, setAnalytics] = useState<DashboardAnalyticsResponse | null>(null);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [loadingMode, setLoadingMode] = useState<LoadingMode>("snapshot");
-  const [loadingMessage, setLoadingMessage] = useState("Checking latest analytics snapshot…");
+  const [loadingMessage, setLoadingMessage] = useState("Checking latest stored analytics snapshot…");
   const [error, setError] = useState<string | null>(null);
   const [snapshotMissing, setSnapshotMissing] = useState(false);
   const [selectedEffectKey, setSelectedEffectKey] = useState<string | null>(null);
+  const [refreshInfo, setRefreshInfo] = useState<DashboardAnalyticsRefreshInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadInitialAnalytics(): Promise<void> {
       setLoadingMode("snapshot");
-      setLoadingMessage("Checking latest analytics snapshot…");
+      setLoadingMessage("Checking latest stored analytics snapshot…");
       setError(null);
       setSnapshotMissing(false);
 
@@ -214,12 +216,14 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
           setAnalytics(result.response.data?.analytics ?? null);
           setCachedAt(result.response.data?.cached_at ?? null);
           setSnapshotMissing(false);
+          setRefreshInfo(result.response.refresh);
         });
       } else if (result.kind === "missing-snapshot") {
         startTransition(() => {
           setAnalytics(null);
           setCachedAt(null);
           setSnapshotMissing(true);
+          setRefreshInfo(null);
         });
       } else {
         startTransition(() => {
@@ -227,6 +231,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
           setCachedAt(null);
           setSnapshotMissing(false);
           setError(result.message);
+          setRefreshInfo(null);
         });
       }
 
@@ -242,9 +247,36 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
     };
   }, [dateFrom, dateTo]);
 
+  useEffect(() => {
+    if (analytics?.status !== "recomputing") {
+      return;
+    }
+
+    let cancelled = false;
+    const timerId = window.setTimeout(async () => {
+      const result = await loadInitialDashboardAnalytics(dateFrom, dateTo);
+      if (cancelled || result.kind !== "loaded") {
+        return;
+      }
+
+      startTransition(() => {
+        setAnalytics(result.response.data?.analytics ?? null);
+        setCachedAt(result.response.data?.cached_at ?? null);
+        setSnapshotMissing(false);
+        setRefreshInfo(result.response.refresh);
+        setError(null);
+      });
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timerId);
+    };
+  }, [analytics?.status, dateFrom, dateTo]);
+
   async function handleRefresh(): Promise<void> {
     setLoadingMode("live");
-    setLoadingMessage("Refreshing analytics from the backend…");
+    setLoadingMessage("Requesting a background analytics recompute…");
     setError(null);
     setSnapshotMissing(false);
 
@@ -255,8 +287,10 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
         setAnalytics(data?.analytics ?? null);
         setCachedAt(data?.cached_at ?? null);
         setSnapshotMissing(false);
+        setRefreshInfo(result.response.refresh);
       });
     } else if (result.kind === "empty" || result.kind === "error") {
+      setRefreshInfo(null);
       setError(result.message);
     }
 
@@ -350,7 +384,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
           <div>
             <h2 className="text-2xl font-bold text-foreground">Analytics Snapshot</h2>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Mixed-model cards stay separate from weather. The section reads the latest snapshot by default and can request a live recompute without blocking the rest of the dashboard.
+              Mixed-model cards stay separate from weather. The section serves the latest stored snapshot by default and the refresh button requests a background recompute while the current snapshot stays visible.
             </p>
           </div>
         </div>
@@ -370,7 +404,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
             disabled={loadingMode === "live"}
           >
             <RefreshCw className={cn("mr-2 h-4 w-4", loadingMode === "live" && "animate-spin")} />
-            Refresh Analytics
+            Refresh In Background
           </Button>
         </div>
       </div>
@@ -389,9 +423,15 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
         </div>
       )}
 
+      {refreshInfo && !error && (refreshInfo.requested || refreshInfo.state === "recomputing") && (
+        <div className="relative mt-5 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-4 text-sm text-sky-900 dark:text-sky-100">
+          {refreshInfo.detail}
+        </div>
+      )}
+
       {snapshotMissing && !error && !analytics && (
         <div className="relative mt-5 rounded-2xl border border-border/70 bg-background/65 px-4 py-4 text-sm text-muted-foreground">
-          No analytics snapshot exists yet for this study window. Use <span className="font-semibold text-foreground">Refresh Analytics</span> to run a live recompute when needed.
+          No analytics snapshot exists yet for this study window. Use <span className="font-semibold text-foreground">Refresh In Background</span> to request the first recompute when needed.
         </div>
       )}
 

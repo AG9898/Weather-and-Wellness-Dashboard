@@ -112,6 +112,11 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(response.headers.get("x-ww-cache-ttl")).toBe("86400");
     expect(body.cached).toBe(true);
     expect(body.data.analytics.status).toBe("ready");
+    expect(body.refresh).toEqual({
+      requested: false,
+      state: "idle",
+      detail: "Serving the latest stored analytics snapshot for this study window.",
+    });
   });
 
   it("returns a refreshed snapshot bundle on success", async () => {
@@ -135,6 +140,7 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("x-ww-cache")).toBe("refresh");
     expect(body.cached).toBe(false);
+    expect(body.refresh.state).toBe("idle");
     expect(writeCacheValue).toHaveBeenCalledWith(
       "ww:ra:analytics:snapshot:v1:2026-03-01:2026-03-12",
       expect.objectContaining({
@@ -165,21 +171,29 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(body.detail).toContain("returned 404");
   });
 
-  it("bypasses Redis on successful live recompute responses", async () => {
+  it("writes the returned analytics state on successful live refresh requests", async () => {
     vi.mocked(requireRaBearerToken).mockResolvedValue({ ok: true, token: "token" });
     vi.mocked(fetchBackend).mockResolvedValue(
-      Response.json({ status: "ready", metadata: { generated_at: "2026-03-12T00:00:00Z" } })
+      Response.json({ status: "recomputing", metadata: { generated_at: "2026-03-12T00:00:00Z" } })
     );
+    vi.mocked(writeCacheValue).mockResolvedValue("refresh");
 
     const response = await GET(
       new NextRequest(
         "http://localhost/api/ra/dashboard/analytics?mode=live&date_from=2026-03-01&date_to=2026-03-12"
       )
     );
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(response.headers.get("x-ww-cache")).toBe("bypass");
-    expect(writeCacheValue).not.toHaveBeenCalled();
+    expect(response.headers.get("x-ww-cache")).toBe("refresh");
+    expect(body.refresh).toEqual({
+      requested: true,
+      state: "recomputing",
+      detail:
+        "Background recompute requested. Showing the last successful snapshot until the backend finishes.",
+    });
+    expect(writeCacheValue).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to the cached snapshot when live recompute fails", async () => {
@@ -203,6 +217,7 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("x-ww-cache")).toBe("stale-fallback");
     expect(body.cached).toBe(true);
+    expect(body.refresh.requested).toBe(true);
   });
 
   it("falls back to backend snapshot mode when live recompute and Redis snapshot both miss", async () => {
@@ -227,6 +242,34 @@ describe("GET /api/ra/dashboard/analytics", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-ww-cache")).toBe("snapshot-fallback");
+    expect(body.cached).toBe(false);
+    expect(body.data.analytics.status).toBe("ready");
+    expect(body.refresh.requested).toBe(true);
+  });
+
+  it("revalidates cached recomputing snapshots against the backend", async () => {
+    vi.mocked(requireRaBearerToken).mockResolvedValue({ ok: true, token: "token" });
+    vi.mocked(readCacheValue).mockResolvedValue({
+      state: "hit",
+      value: {
+        analytics: { status: "recomputing" },
+        cached_at: "2026-03-12T00:00:00.000Z",
+      },
+    });
+    vi.mocked(fetchBackend).mockResolvedValue(
+      Response.json({ status: "ready", metadata: { generated_at: "2026-03-12T00:05:00Z" } })
+    );
+    vi.mocked(writeCacheValue).mockResolvedValue("refresh");
+
+    const response = await GET(
+      new NextRequest(
+        "http://localhost/api/ra/dashboard/analytics?mode=snapshot&date_from=2026-03-01&date_to=2026-03-12"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-ww-cache")).toBe("refresh");
     expect(body.cached).toBe(false);
     expect(body.data.analytics.status).toBe("ready");
   });

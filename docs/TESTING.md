@@ -122,7 +122,7 @@ Config: `frontend/vitest.config.ts`
 | `src/app/api/ra/route-topology.test.ts` | Routing topology | Locks the shipped same-origin RA route inventory and fails if removed dashboard wrappers/routes are reintroduced |
 | `src/app/api/ra/dashboard/route.test.ts` | Route Handler | `GET /api/ra/dashboard`: `401`, live refresh success, stale-cache fallback on live failure |
 | `src/app/api/ra/weather/range/route.test.ts` | Route Handler | `GET /api/ra/weather/range`: `401`, live refresh success, stale-cache fallback on live failure |
-| `src/app/api/ra/dashboard/analytics/route.test.ts` | Route Handler | `GET /api/ra/dashboard/analytics`: `401`, snapshot refresh success, cached snapshot fallback on live failure |
+| `src/app/api/ra/dashboard/analytics/route.test.ts` | Route Handler | `GET /api/ra/dashboard/analytics`: `401`, snapshot refresh success, recomputing-cache revalidation, cached snapshot fallback on live failure |
 | `src/lib/analytics/dashboard-analytics-loader.test.ts` | Analytics UI flow | Snapshot-first dashboard analytics load stays on `mode=snapshot` on mount; explicit refresh uses `mode=live` only |
 | `src/lib/analytics/ui-utils.test.ts` | Analytics UI | All 5 analytics status states (`ready`, `stale`, `recomputing`, `insufficient_data`, `failed`); all error message branches (401, 404, 5xx, other API, non-ApiError); term/outcome formatting; effect ordering |
 | `src/lib/server/route-handler-auth.test.ts` | Route Handler infra | Bearer-token extraction and missing-header auth rejection |

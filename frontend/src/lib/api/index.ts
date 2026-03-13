@@ -398,10 +398,17 @@ export interface DashboardAnalyticsBundle {
   cached_at: string; // ISO 8601
 }
 
+export interface DashboardAnalyticsRefreshInfo {
+  requested: boolean;
+  state: "idle" | "recomputing" | "ready";
+  detail: string;
+}
+
 /** Response envelope from GET /api/ra/dashboard/analytics. */
 export interface DashboardAnalyticsRouteResponse {
   cached: boolean;
   data: DashboardAnalyticsBundle | null;
+  refresh: DashboardAnalyticsRefreshInfo;
 }
 
 /** One-click supervised flow: create anonymous participant + active session. */
@@ -467,7 +474,8 @@ export async function getWeatherRangeBundle(
 /**
  * Fetch analytics from the same-origin Route Handler.
  * mode=snapshot → returns the cached durable snapshot when available.
- * mode=live     → triggers a backend recompute attempt with fast timeout + snapshot fallback.
+ * mode=live     → requests a background backend recompute and immediately returns
+ *                 the current snapshot state for the selected range.
  */
 export async function getDashboardAnalyticsBundle(
   mode: AnalyticsReadMode,

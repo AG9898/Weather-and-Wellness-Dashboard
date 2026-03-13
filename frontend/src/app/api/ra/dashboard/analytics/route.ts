@@ -4,7 +4,7 @@
  * Server-only Vercel Route Handler for RA dashboard analytics reads.
  * - Verifies the Supabase JWT from Authorization: Bearer <token>
  * - mode=snapshot → returns a cached snapshot bundle when available, otherwise proxies backend snapshot mode
- * - mode=live     → attempts a backend recompute with a timeout and falls back to the latest snapshot
+ * - mode=live     → requests a background backend recompute and returns the current snapshot state fast
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -28,15 +28,23 @@ import { readRequiredDateRange } from "@/lib/server/route-handler-validation";
 export const dynamic = "force-dynamic";
 
 type AnalyticsRouteMode = "snapshot" | "live";
+type AnalyticsRefreshState = "idle" | "recomputing" | "ready";
 
 interface DashboardAnalyticsBundle {
   analytics: DashboardAnalyticsResponse;
   cached_at: string;
 }
 
+interface DashboardAnalyticsRefreshInfo {
+  requested: boolean;
+  state: AnalyticsRefreshState;
+  detail: string;
+}
+
 interface DashboardAnalyticsRouteResponse {
   cached: boolean;
   data: DashboardAnalyticsBundle | null;
+  refresh: DashboardAnalyticsRefreshInfo;
 }
 
 const CACHE_KEY_PREFIX = ANALYTICS_SNAPSHOT_CACHE_POLICY.keyPrefix;
@@ -55,6 +63,57 @@ function toBundle(
   return {
     analytics,
     cached_at: new Date().toISOString(),
+  };
+}
+
+function getRefreshInfo(
+  bundle: DashboardAnalyticsBundle | null,
+  requested: boolean
+): DashboardAnalyticsRefreshInfo {
+  const status = bundle?.analytics.status;
+
+  if (requested) {
+    if (status === "recomputing") {
+      return {
+        requested: true,
+        state: "recomputing",
+        detail:
+          "Background recompute requested. Showing the last successful snapshot until the backend finishes.",
+      };
+    }
+    return {
+      requested: true,
+      state: "ready",
+      detail: "Analytics refresh completed and the latest backend result is now visible.",
+    };
+  }
+
+  if (status === "recomputing") {
+    return {
+      requested: false,
+      state: "recomputing",
+      detail:
+        "A background analytics recompute is still running. This response is serving the last successful snapshot.",
+    };
+  }
+
+  return {
+    requested: false,
+    state: "idle",
+    detail: bundle
+      ? "Serving the latest stored analytics snapshot for this study window."
+      : "No analytics snapshot is stored for this study window yet.",
+  };
+}
+
+function toRouteResponse(
+  bundle: DashboardAnalyticsBundle | null,
+  options: { cached: boolean; requested: boolean }
+): DashboardAnalyticsRouteResponse {
+  return {
+    cached: options.cached,
+    data: bundle,
+    refresh: getRefreshInfo(bundle, options.requested),
   };
 }
 
@@ -133,9 +192,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   if (modeParam === "snapshot") {
     const cached = await readCachedSnapshot(cacheKey);
-    if (cached.state === "hit") {
+    const cachedNeedsRevalidation =
+      cached.state === "hit" && cached.value.analytics.status === "recomputing";
+
+    if (cached.state === "hit" && !cachedNeedsRevalidation) {
       return jsonWithCacheState<DashboardAnalyticsRouteResponse>(
-        { cached: true, data: cached.value },
+        toRouteResponse(cached.value, { cached: true, requested: false }),
         {
           cachePolicy: ANALYTICS_SNAPSHOT_CACHE_POLICY,
           cacheState: "hit",
@@ -153,13 +215,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const bundle = toBundle(analytics);
       const cacheState = await writeCachedSnapshot(cacheKey, bundle);
       return jsonWithCacheState<DashboardAnalyticsRouteResponse>(
-        { cached: false, data: bundle },
+        toRouteResponse(bundle, { cached: false, requested: false }),
         {
           cachePolicy: ANALYTICS_SNAPSHOT_CACHE_POLICY,
           cacheState,
         }
       );
     } catch (err) {
+      if (cached.state === "hit") {
+        return jsonWithCacheState<DashboardAnalyticsRouteResponse>(
+          toRouteResponse(cached.value, { cached: true, requested: false }),
+          {
+            cachePolicy: ANALYTICS_SNAPSHOT_CACHE_POLICY,
+            cacheState: "hit",
+          }
+        );
+      }
+
       if (err instanceof BackendRequestError) {
         const cacheState = err.status === 404 ? cached.state : "error";
         return jsonWithCacheState(
@@ -187,18 +259,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     const analytics = await fetchAnalyticsResponse(token, dateFrom, dateTo, "live");
+    const bundle = toBundle(analytics);
+    const cacheState = await writeCachedSnapshot(cacheKey, bundle);
     return jsonWithCacheState<DashboardAnalyticsRouteResponse>(
-      { cached: false, data: toBundle(analytics) },
+      toRouteResponse(bundle, { cached: false, requested: true }),
       {
         cachePolicy: ANALYTICS_SNAPSHOT_CACHE_POLICY,
-        cacheState: "bypass",
+        cacheState,
       }
     );
   } catch (err) {
     const cached = await readCachedSnapshot(cacheKey);
     if (cached.state === "hit") {
       return jsonWithCacheState<DashboardAnalyticsRouteResponse>(
-        { cached: true, data: cached.value },
+        toRouteResponse(cached.value, { cached: true, requested: true }),
         {
           cachePolicy: ANALYTICS_SNAPSHOT_CACHE_POLICY,
           cacheState: "stale-fallback",
@@ -216,7 +290,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const bundle = toBundle(snapshot);
       await writeCachedSnapshot(cacheKey, bundle);
       return jsonWithCacheState<DashboardAnalyticsRouteResponse>(
-        { cached: false, data: bundle },
+        toRouteResponse(bundle, { cached: false, requested: true }),
         {
           cachePolicy: ANALYTICS_SNAPSHOT_CACHE_POLICY,
           cacheState: "snapshot-fallback",
