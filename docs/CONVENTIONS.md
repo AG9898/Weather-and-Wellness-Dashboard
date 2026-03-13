@@ -11,6 +11,7 @@
 - **TypeScript everywhere** in the frontend. No `any` — prefer `unknown` + type narrowing.
 - **Python type hints everywhere** in the backend. All FastAPI path functions and Pydantic models must be fully typed.
 - **No business logic in route handlers.** Route handlers call service functions; service functions call scoring modules or DB helpers.
+- **No orphaned dashboard reads.** Do not create `/dashboard/*` backend endpoints just to mirror a screen when another domain router already owns the data; keep those reads in the owning router and move DB/query logic into a service module.
 - **Never log PII.** Do not log any direct identifiers. Participants are anonymous: do not collect or store names.
 - **UUID v4** for all generated IDs (Python: `uuid.uuid4()`; never client-generated).
 
@@ -90,6 +91,26 @@
 - Never call `fetch` directly from a component or page file
 - Wrapper functions handle headers (including auth tokens) and type the response
 
+### Routing governance
+
+- `docs/API.md` is the canonical reference for **FastAPI endpoints**. `docs/ARCHITECTURE.md` is the canonical reference for **Next.js same-origin Route Handlers**. Do not mix these responsibilities in one doc section.
+- The single dashboard routing inventory and deprecation map lives in `docs/ARCHITECTURE.md` under `Canonical Dashboard Routing Inventory`. Before adding, removing, or reusing any dashboard/weather read path, update that table first.
+- Every same-origin Route Handler must document:
+  - owner screen(s) or caller(s),
+  - backend endpoint(s) it calls,
+  - cache key and TTL policy when applicable,
+  - timeout behavior,
+  - fallback behavior.
+- Every dashboard/weather FastAPI read endpoint must document whether it is `canonical`, `internal-only`, `transitional`, or `remove`, plus its current same-origin caller when one exists.
+- Dashboard routers should contain only dashboard-owned orchestration endpoints. Shared operational reads for shipped dashboard screens should stay in the owning domain router, with router validation/auth separated from service-layer query logic.
+- Before adding a new backend endpoint or Route Handler, first justify why an existing route cannot be consolidated or extended safely.
+- Transitional or deprecated routes must be marked explicitly in docs with a linked cleanup task. Do not leave extra endpoints undocumented.
+- If a typed frontend wrapper has no current screen owner, treat it as transitional and document the removal owner instead of keeping it as an implicit spare path.
+- When deleting or deprecating a same-origin Route Handler or typed wrapper, add or update a topology regression test so the removed path cannot silently return.
+- Shared concerns for Route Handlers such as JWT verification, Redis setup, date parsing, backend timeout helpers, and cache-header shaping must live in shared server-only utilities under `src/lib/server/route-handler-*.ts` rather than duplicated per handler.
+- Default page-load paths must not trigger heavyweight live recompute work unless that behavior is explicitly documented and intentionally accepted for that surface.
+- Route Handlers must not fetch backend sub-resources that the caller does not render.
+
 ### Caching (Vercel + Upstash)
 
 - Caching is implemented only in **Next.js Route Handlers** under `src/app/api/` (server-side only).
@@ -98,13 +119,23 @@
 - Cache keys must use a clear prefix (e.g. `ww:`) and be versioned (e.g. `...:v1`) to allow safe invalidation on schema changes.
 - Cached values must not include direct identifiers (participants are anonymous) and must not include any secrets.
 - JWT verification in Route Handlers uses `jose`: ES256 via JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`) as primary; HS256 with `SUPABASE_JWT_SECRET` as fallback.
-- Redis client (`@upstash/redis`) is instantiated only when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set; handlers degrade gracefully without them.
+- Redis client (`@upstash/redis`) is instantiated only when either the `KV_REST_API_URL` / `KV_REST_API_TOKEN` pair or the `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` pair is set; handlers degrade gracefully without them. Use the shared `getRedisClient()` helper instead of constructing clients per handler.
 - Redis writes should be awaited in Route Handlers; fire-and-forget writes can be dropped in serverless runtimes.
-- Route Handler calls from Vercel to Render should use explicit request timeouts (current standard: 15s per backend fetch) so UI paths fail fast instead of hanging on backend stalls.
+- Route Handler calls from Vercel to Render should use explicit request timeouts (current standard: 15s per backend fetch) so UI paths fail fast instead of hanging on backend stalls. This applies to live-only handlers as well as cached handlers. Use the shared backend fetch helper instead of ad-hoc `AbortController` code per handler.
+- Shared date validation for Route Handlers should go through `readRequiredDateRange()` / `isIsoDate()` in `src/lib/server/route-handler-validation.ts` instead of duplicating regex checks inline.
 - For cached endpoints, `mode=live` should attempt a stale-cache fallback when backend fetches fail, and expose cache-state diagnostics via `x-ww-cache` response headers.
+- Same-origin bundle contracts must stay aligned with rendered UI. Do not keep backend reads in a Route Handler bundle unless the owning screen actually renders that data.
+- Cache docs must state whether reads renew TTL or whether expiry is fixed from the last write. Do not describe fixed-expiry keys as persisting indefinitely through repeated reads.
+- Cache-policy metadata for active RA Route Handlers must come from the shared constants in `src/lib/server/route-handler-cache.ts`. Do not duplicate TTL literals or Redis key prefixes inside handlers or docs.
+- Current cache lifecycle is fixed expiry on write for every active key: reads do not renew TTL, and a fresh TTL starts only after a successful live/snapshot write.
+- Standard cache diagnostics:
+  - `x-ww-cache`: route outcome state. Use `hit`, `miss`, `disabled`, `refresh`, `stale-fallback`, `bypass`, `snapshot-fallback`, `error`, and `skip` consistently with the handler behavior.
+  - `x-ww-cache-ttl`: TTL in seconds for the route's cache keyspace.
+  - `x-ww-cache-renewal`: renewal policy string. Current value for all active keys is `fixed-expiry-on-write`.
 - Current cache keys:
-  - `ww:ra:dashboard:v1` (TTL 6 hours) — summary + today weather bundle
-  - `ww:ra:weather:range:v1:<date_from>:<date_to>` (TTL 24 hours) — weather-only trend bundle
+  - `ww:ra:dashboard:v1` (TTL 24 hours, fixed expiry on write only) — default dashboard weather bundle
+  - `ww:ra:weather:range:v1:<date_from>:<date_to>` (TTL 24 hours, fixed expiry on write only) — weather-only trend bundle
+  - `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` (TTL 24 hours, fixed expiry on write only) — analytics snapshot bundle
 
 ### Styling
 - Tailwind utility classes only
@@ -116,7 +147,7 @@
 ### Testing
 - Test files live in `frontend/src/` co-located with the module under test: `<module>.test.ts`
 - Runner: `vitest` — run with `npm test` from `frontend/`
-- Only pure utility functions (not React components) are tested in the current suite — extract logic into a standalone `.ts` module before testing it
+- The current suite covers Node-runtime Route Handlers plus standalone `.ts` modules; React component rendering is still excluded
 - Do not import `fetch`, `window`, or DOM APIs in test files — the current vitest environment is `node`; update `vitest.config.ts` if jsdom is needed for future component tests
 - Use `@/lib/...` path aliases in test imports (the `@` alias is configured in `vitest.config.ts`)
 - Full conventions, file inventory, and fixture patterns: `docs/TESTING.md`
@@ -161,6 +192,8 @@ Follow this sequence when adding any new instrument in future phases:
 | `ALLOWED_ORIGINS`    | Comma-separated CORS allowed origins for FastAPI (backend). Defaults to localhost dev origins when unset. Set to Vercel URL(s) in production. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (frontend auth; only if auth enabled) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key (frontend auth; only if auth enabled) |
+| `KV_REST_API_URL` | Vercel KV / Upstash integration REST URL alias accepted by the same-origin cache helpers. |
+| `KV_REST_API_TOKEN` | Vercel KV / Upstash integration REST token alias accepted by the same-origin cache helpers. |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (server-side only; provided by Vercel integration or set for local dev). |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (server-side only; provided by Vercel integration or set for local dev). |
 | `DAYLIGHT_START_LOCAL_TIME` | Local clock time `HH:MM` used to compute `participants.daylight_exposure_minutes` (default `06:00` in `America/Vancouver`). |

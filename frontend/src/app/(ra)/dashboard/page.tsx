@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getDashboardBundle,
+  getDashboardWeatherBundle,
   type WeatherDailyResponse,
 } from "@/lib/api";
 import DashboardAnalyticsSection, { type AnalyticsAnnotation } from "@/lib/components/DashboardAnalyticsSection";
@@ -53,7 +53,7 @@ export default function DashboardPage() {
       // Fast path: try cache first
       let cachedAt: string | null = null;
       try {
-        const cached = await getDashboardBundle("cached");
+        const cached = await getDashboardWeatherBundle("cached");
         if (!cancelled && cached.cached && cached.data) {
           setWeatherData(cached.data.weather);
           hasCachedRef.current = true;
@@ -73,7 +73,7 @@ export default function DashboardPage() {
       if (hasCachedRef.current && shouldRefreshLive) {
         void (async () => {
           try {
-            const live = await getDashboardBundle("live");
+            const live = await getDashboardWeatherBundle("live");
             if (!cancelled && live.data) {
               setWeatherData(live.data.weather);
             }
@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
       // Cache miss: block on live data (best-effort) before removing the loading state.
       try {
-        const live = await getDashboardBundle("live");
+        const live = await getDashboardWeatherBundle("live");
         if (!cancelled && live.data) {
           setWeatherData(live.data.weather);
         }
@@ -136,8 +136,8 @@ export default function DashboardPage() {
             <UndoLastSessionControl
               onSuccess={() => {
                 setAnalyticsRefreshKey((k) => k + 1);
-                // Also refresh the live dashboard bundle in the background.
-                void getDashboardBundle("live").then((live) => {
+                // Also refresh the live dashboard weather bundle in the background.
+                void getDashboardWeatherBundle("live").then((live) => {
                   if (live.data) setWeatherData(live.data.weather);
                 }).catch(() => undefined);
               }}

@@ -13,9 +13,86 @@
 - **Backend (Render)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
   - Hosted URL: `https://weather-and-wellness-dashboard.onrender.com`
 - **Database (Supabase)**: Managed Postgres. Lab reads data via Supabase Studio.
-- **Admin data ops (planned, Phase 3)**: RA-only Import/Export endpoints on Render support legacy imports and controlled CSV/XLSX exports.
-- **Planned analytics layer**: backend-generated statistical snapshots derived from DB data will power model-based dashboard KPIs. See `docs/ANALYTICS.md`.
-- **Planned session safety tool**: a narrow RA-only undo action for the latest native session, implemented as transactional hard delete plus audit log rather than soft delete.
+- **Admin data ops**: RA-only Import/Export endpoints on Render support legacy imports and controlled CSV/XLSX exports.
+- **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/ANALYTICS.md`.
+- **Session safety tool**: a narrow RA-only undo action for the latest native session is live on `/dashboard`, implemented as transactional hard delete plus audit log rather than soft delete.
+
+## Dashboard Read Topology
+
+Current shipped dashboard reads are split across these same-origin Vercel Route Handlers:
+
+- `GET /api/ra/dashboard?mode=cached|live`
+- `GET /api/ra/weather/range?mode=cached|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
+- `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
+
+FastAPI endpoints and same-origin Route Handlers are separate routing layers:
+
+- `docs/API.md` is canonical for FastAPI endpoint contracts.
+- This document is canonical for Next.js Route Handler topology, cache behavior, and cross-tier request flow.
+
+---
+
+## Canonical Dashboard Routing Inventory
+
+This section is the single routing inventory for dashboard-related reads across the browser, Next.js Route Handlers, and FastAPI. Classifications mean:
+
+- `canonical`: active shipped path; safe to extend only with the owning screen in mind
+- `transitional`: present in code, but not part of the shipped read topology; do not add callers without resolving the linked cleanup task
+- `internal-only`: backend primitive with an explicitly documented same-origin caller; not for direct browser use
+- `remove`: no current owner; delete as part of the linked cleanup task
+
+### Browser -> Vercel -> Render inventory
+
+| Browser owner / caller | Typed wrapper | Same-origin Route Handler | Render backend read(s) | Classification | Notes |
+|---|---|---|---|---|---|
+| RA dashboard page (`/dashboard`) initial mount and post-undo refresh | `getDashboardWeatherBundle(mode)` | `GET /api/ra/dashboard?mode=cached\|live` | `GET /weather/daily?start=today&end=today&include_forecast_periods=false` | `canonical` | This is the canonical default dashboard read path. The bundle is intentionally weather-only because the current page renders weather but not operational summary KPIs. |
+| `WeatherUnifiedCard` on `/dashboard` | `getWeatherRangeBundle(mode, dateFrom, dateTo)` | `GET /api/ra/weather/range?mode=cached\|live&date_from&date_to` | `GET /weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` | `canonical` | Canonical weather range path for the dashboard trend chart. |
+| `DashboardAnalyticsSection` on `/dashboard` | `getDashboardAnalyticsBundle(mode, dateFrom, dateTo)` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live&date_from&date_to` | `GET /dashboard/analytics?date_from&date_to&mode=snapshot\|live` | `canonical` | Canonical analytics snapshot/live path for dashboard model outputs. |
+
+### Render endpoint inventory
+
+| FastAPI endpoint | Current same-origin caller | Classification | Notes |
+|---|---|---|---|
+| `GET /weather/daily` | `GET /api/ra/dashboard?mode=live`, `GET /api/ra/weather/range?mode=live` | `internal-only` | Canonical backend operational read primitive used by the shipped same-origin weather handlers. Router validation/auth lives in `backend/app/routers/weather.py`; DB read logic lives in `backend/app/services/weather_read_service.py`. |
+| `GET /dashboard/analytics` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live` | `internal-only` | Canonical backend analytics endpoint behind the same-origin analytics handler. |
+
+### Deprecation map and target canonical shapes
+
+| Read surface | Current state | Target canonical shape | Cleanup owner |
+|---|---|---|---|
+| Default dashboard operational reads | `GET /api/ra/dashboard?mode=cached\|live` is the only shipped default bundle path and now carries weather only | Keep one canonical same-origin bundle path for `/dashboard`; default bundle stays limited to currently rendered weather data unless the UI adds a real owner for more fields | `RC03` |
+| Filtered dashboard operational reads | No shipped same-origin operational bundle exists; the dead `/api/ra/dashboard/range` path was removed in `RC04` | Keep filtered operational reads absent until a concrete screen needs them, then introduce exactly one explicitly owned path rather than reviving deleted transitional routes | `RC04` |
+| Weather range reads | `GET /api/ra/weather/range?mode=cached\|live&date_from&date_to` | Keep as the canonical weather-only range path for `WeatherUnifiedCard` | `RC02`, `RC05` |
+| Analytics snapshot/live reads | `GET /api/ra/dashboard/analytics?mode=snapshot\|live&date_from&date_to` | Keep as the canonical analytics read path; default dashboard loads should stay on snapshot-safe behavior unless explicitly opted into live recompute | `RC02`, `RC06` |
+
+### Shared Route Handler Infrastructure
+
+All active RA same-origin Route Handlers now share a single server-only helper layer under `frontend/src/lib/server/`:
+
+- `route-handler-auth.ts` — Supabase bearer-token extraction and JWT verification (JWKS primary, HS256 fallback)
+- `route-handler-backend.ts` — Render backend URL resolution, 15-second timeout fetch wrapper, and normalized backend error type
+- `route-handler-cache.ts` — Upstash Redis bootstrap, shared cache-policy constants, cache read/write helpers, cache-key composition, and standardized `x-ww-cache*` response-header helpers
+- `route-handler-validation.ts` — `date_from` / `date_to` validation shared by filtered handlers
+
+This helper layer is the required path for shared auth/cache/fetch/date behavior in `src/app/api/ra/*`; do not re-inline those concerns per Route Handler.
+
+### Shared cache lifecycle and diagnostics
+
+All active RA cache keys use fixed expiry on write only:
+
+| Cache keyspace | TTL | Renewal policy | Refresh trigger |
+|---|---|---|---|
+| `ww:ra:dashboard:v1` | 24 hours | `fixed-expiry-on-write` | Explicit `mode=live` request; the dashboard page currently issues that live refresh only when its cached bundle is older than about 10 minutes or when a supervised action explicitly refreshes it |
+| `ww:ra:weather:range:v1:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Explicit `mode=live` request for the selected date window |
+| `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Explicit snapshot write path (`mode=snapshot` miss or snapshot fallback after live failure) |
+
+Repeated cache reads do not renew TTL. A key survives only until the last successful write plus its configured TTL.
+
+Standardized same-origin diagnostics:
+
+- `x-ww-cache`: route outcome state (`hit`, `miss`, `disabled`, `refresh`, `stale-fallback`, `bypass`, `snapshot-fallback`, `error`, `skip`)
+- `x-ww-cache-ttl`: TTL in seconds for the route's cache keyspace
+- `x-ww-cache-renewal`: current renewal policy string (`fixed-expiry-on-write`)
 
 ---
 
@@ -26,19 +103,22 @@
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:dashboard:v1`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/dashboard/summary` + `/weather/daily` from the Render backend in parallel with a 15s timeout per backend request. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+| `live` | Fetches `/weather/daily?start=today&end=today&include_forecast_periods=false` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 **Auth:** The handler verifies the Supabase JWT from `Authorization: Bearer <token>` before touching the cache or making backend calls. No auth bypass via cache. Returns 401 for missing or invalid tokens.
 
 **Redis credentials** (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`) are server-only Vercel env vars provided by the Upstash integration. The handler degrades gracefully when these vars are absent (falls back to live-only path).
 
-**Bundle type:** `{ summary: DashboardSummaryResponse, weather: WeatherDailyResponse, cached_at: string }` — no PII, no secrets.
+**Bundle type:** `{ weather: WeatherDailyResponse, cached_at: string }` — no PII, no secrets.
 
 **Cache key:** `ww:ra:dashboard:v1` — versioned prefix allows safe invalidation on schema changes.
 
-> Planned extension: the base dashboard bundle may later include statistical
-> analytics snapshot metadata, but the operational summary/weather contract above
-> remains the current implemented bundle.
+**Refresh threshold:** the `/dashboard` page currently keeps the cache key on fixed expiry, but only triggers a background `mode=live` refresh when the cached bundle is older than about 10 minutes. Cache hits themselves do not extend Redis TTL.
+
+**Shared helper path:** auth, backend timeout fetches, Redis access, and `x-ww-cache` header shaping are implemented via the shared `frontend/src/lib/server/route-handler-*.ts` helper modules rather than inline in this handler.
+
+> Planned extension: if the default dashboard later renders additional server-owned
+> data, extend this bundle only when the new fields have a concrete UI owner.
 
 ## Vercel Weather Range Cache Route Handler
 
@@ -47,22 +127,11 @@
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:weather:range:v1:<date_from>:<date_to>`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 **Payload shaping:** the weather trend chart path requests a lean day-level payload (empty `forecast_periods`) because the chart only needs date, temperature, precipitation, and sunlight-hours values. This keeps first-load range fetches smaller and reduces cold-cache timeout risk on Vercel.
 
-## Vercel Range Bundle Route Handler (Phase 4)
-
-`GET /api/ra/dashboard/range?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD` is a separate Next.js Route Handler for filtered dashboard views.
-
-- **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before any backend call.
-- **Cache behavior:** Intentionally **live-only** and bypasses Redis by default. It also sends backend fetches with `cache: "no-store"` to avoid serving stale filter data.
-- **Backend fan-out:** Fetches these Render endpoints in parallel:
-  - `/dashboard/summary/range?date_from=<...>&date_to=<...>`
-  - `/weather/daily?start=<date_from>&end=<date_to>`
-  - `/dashboard/participants-per-day?start=<date_from>&end=<date_to>`
-- **Bundle type:** `{ summary, weather, participants_per_day, cached_at }` wrapped in `{ cached: false, data }`.
-- **Purpose:** Provides a single typed payload for date-range dashboard KPIs + weather context + graph-ready participant counts.
+**Shared helper path:** auth, Redis access, timeout fetches, date validation, and cache-header responses are delegated to `frontend/src/lib/server/route-handler-*.ts`.
 
 ## Vercel Analytics Route Handler (Phase 4)
 
@@ -70,15 +139,17 @@
 
 | Mode | Behaviour |
 |---|---|
-| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 15s timeout, then caches the response (TTL 6 hours). |
+| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 15s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
 | `live` | Calls `/dashboard/analytics?...&mode=live` on Render with a 15s timeout and `cache: "no-store"`. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
 
 - **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before reading Redis or calling the backend. No auth bypass via cache.
 - **Bundle type:** `{ analytics: DashboardAnalyticsResponse, cached_at }` wrapped in `{ cached, data }`.
 - **Cache boundary:** Analytics reads use a dedicated Redis namespace and do not reuse the operational dashboard or weather cache keys.
 - **Live-path rule:** The handler does not write live-mode responses into Redis; Redis stores only snapshot-safe analytics reads so cached payloads stay semantically aligned with durable snapshots.
+- **Snapshot renewal rule:** Snapshot reads do not renew TTL; the 6-hour clock resets only after a successful snapshot write path.
+- **Shared helper path:** auth, timeout fetches, Redis access, cache-header shaping, and date validation use the shared `frontend/src/lib/server/route-handler-*.ts` modules.
 
-## Planned Analytics Snapshot Architecture
+## Analytics Snapshot Architecture
 
 Canonical analysis spec: `docs/ANALYTICS.md`
 
@@ -89,14 +160,14 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 - **Live recompute path:** explicit filtered/admin requests may trigger backend recompute from current DB rows through `GET /api/ra/dashboard/analytics?mode=live`
 - **Serving rule:** while recompute is running, or if the live path fails, continue serving the most recent successful snapshot when available
 
-### Planned lifecycle
+### Current lifecycle
 
 1. Backend builds a canonical analysis dataset from transactional tables and imported aggregate values.
-2. Backend fits the planned mixed-effects models in Python.
+2. Backend fits the documented mixed-effects models in Python.
 3. Backend serializes both model-card results and separate effect-plot payloads.
 4. Backend writes a versioned snapshot payload plus run metadata to Postgres.
 5. The analytics Route Handler may cache the serialized snapshot in Redis under a dedicated analytics keyspace.
-6. Dashboard reads snapshot data by default and may request `mode=live` for explicit recompute flows without waiting indefinitely on model fitting.
+6. Dashboard reads snapshot data by default, treats snapshot misses as a non-blocking empty state, and may request `mode=live` only for explicit recompute flows without waiting indefinitely on model fitting.
 
 ### Frontend coordination rule
 
@@ -155,8 +226,9 @@ The backend test suite covers scoring modules, service logic, snapshot orchestra
 endpoints, and an R-script parity fixture (`test_analytics_parity.py`) that guards against
 formula or field-name drift in the analytics pipeline.
 
-The frontend test suite covers pure analytics UI utility functions: status-to-panel mapping,
-error message resolution, and display formatting helpers.
+The frontend test suite covers Node-runtime same-origin Route Handlers, route-topology guard
+tests, and extracted analytics utility modules such as status-to-panel mapping, snapshot/live
+loader behavior, error message resolution, and display formatting helpers.
 
 Full inventory, conventions, and guidance for adding new tests: **`docs/TESTING.md`**
 
@@ -218,5 +290,5 @@ Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 - Participants are anonymous: do not collect or store names or other direct identifiers.
 - Day-level semantics (study days, weather day linking, dashboard filtering) use the study timezone `America/Vancouver`.
 - Schema details live in `docs/SCHEMA.md`.
-- Planned analytics dataset rules live in `docs/ANALYTICS.md`.
-- Planned undo-last-session behavior should remove only session-domain rows and must not mutate weather-domain rows.
+- Analytics dataset rules live in `docs/ANALYTICS.md`.
+- Undo-last-session behavior removes only session-domain rows and must not mutate weather-domain rows.

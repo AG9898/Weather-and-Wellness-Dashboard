@@ -27,13 +27,25 @@
 
 ---
 
+## Routing Surfaces
+
+- This document is the canonical reference for **FastAPI endpoints on Render** only.
+- Same-origin Next.js Route Handlers under `/api/ra/*` are a separate routing layer on Vercel. Their topology and cache behavior are documented in `docs/ARCHITECTURE.md`.
+- The single dashboard routing inventory and deprecation map lives in `docs/ARCHITECTURE.md` under `Canonical Dashboard Routing Inventory`.
+- Routing cleanup work is tracked in `docs/ROUTING_CLEANUP.md`.
+- Frontend topology regressions are guarded by `frontend/src/app/api/ra/route-topology.test.ts`; do not reintroduce removed paths such as `/api/ra/dashboard/range` without first updating the routing inventory and regression coverage.
+- Current dashboard-related same-origin Route Handlers are:
+  - `GET /api/ra/dashboard?mode=cached|live` — cached/live weather bundle for default dashboard reads
+  - `GET /api/ra/weather/range?mode=cached|live&date_from&date_to` — cached/live weather chart bundle
+  - `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from&date_to` — snapshot/live analytics bundle
+- Base URLs in the next section apply to the FastAPI backend only; they do not describe same-origin Vercel Route Handlers.
+
+---
+
 ## Endpoint Index
 
 | Method | Path | Auth | Status | Implemented by |
 |--------|------|------|--------|----------------|
-| GET    | /dashboard/summary | RA | implemented | T20 |
-| GET    | /dashboard/summary/range | RA | implemented | T58 |
-| GET    | /dashboard/participants-per-day | RA | implemented | T58 |
 | GET    | /dashboard/analytics | RA | implemented | T88 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
@@ -63,89 +75,18 @@
 
 ## Dashboard
 
-> Operational dashboard counts remain implemented as documented below. Planned
-> statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
-> in `docs/ANALYTICS.md` and will be additive rather than replacing these
-> endpoints.
-
-### GET /dashboard/summary
-- **Auth:** RA required
-- **Status:** implemented (T20)
-- **Response:**
-  ```json
-  {
-    "total_participants": "integer",
-    "sessions_created": "integer",
-    "sessions_active": "integer",
-    "sessions_complete": "integer",
-    "sessions_created_last_7_days": "integer",
-    "sessions_completed_last_7_days": "integer"
-  }
-  ```
-- **Notes:** All counts reflect current DB state. `sessions_created_last_7_days` counts sessions whose `created_at` is within 7 days of the request. `sessions_completed_last_7_days` counts sessions whose `completed_at` is within 7 days of the request. Returns 401 if auth token is missing or invalid.
-
----
-
-### GET /dashboard/summary/range
-- **Auth:** RA required
-- **Status:** implemented (T58)
-- **Query parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `date_from` | date `YYYY-MM-DD` | Inclusive start (interpreted as `created_at` / `completed_at` window bounds) |
-| `date_to` | date `YYYY-MM-DD` | Inclusive end |
-
-- **Response:**
-  ```json
-  {
-    "date_from": "YYYY-MM-DD",
-    "date_to": "YYYY-MM-DD",
-    "sessions_created": "integer",
-    "sessions_completed": "integer",
-    "participants_completed": "integer"
-  }
-  ```
-- **Notes:**
-  - `sessions_created` counts sessions where `created_at` is within `[date_from, date_to]` (inclusive bounds).
-  - `sessions_completed` counts sessions where `completed_at` is within `[date_from, date_to]` (inclusive bounds).
-  - `participants_completed` counts distinct participants among sessions completed within the selected range.
-  - Date bounds are interpreted in the study timezone (`America/Vancouver`) using inclusive local-day windows.
-  - This endpoint supports the Phase 3 dashboard date-range filter without changing the existing `/dashboard/summary` response contract.
-
----
-
-### GET /dashboard/participants-per-day
-- **Auth:** RA required
-- **Status:** implemented (T58)
-- **Query parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| `start` | date `YYYY-MM-DD` | Inclusive start local date (`America/Vancouver`) |
-| `end` | date `YYYY-MM-DD` | Inclusive end local date (`America/Vancouver`) |
-
-- **Response:**
-  ```json
-  {
-    "items": [
-      {
-        "date_local": "YYYY-MM-DD",
-        "sessions_completed": "integer",
-        "participants_completed": "integer"
-      }
-    ]
-  }
-  ```
-- **Notes:**
-  - Aggregation is by `study_days.date_local` (America/Vancouver).
-  - Intended for dashboard graphing and filtered analytics UI; this does not expose participant identifiers.
+> The dashboard router now serves analytics only. Shipped operational dashboard
+> reads use the weather router primitive documented under `GET /weather/daily`.
+> Statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
+> in `docs/ANALYTICS.md`.
 
 ---
 
 ### GET /dashboard/analytics
 - **Auth:** RA required
 - **Status:** implemented (T88)
+- **Classification:** internal-only backend primitive
+- **Current same-origin caller:** `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from&date_to`
 - **Canonical spec:** `docs/ANALYTICS.md`
 - **Purpose:** Return model-based dashboard KPIs computed from the backend DB rather than hard-coded statistical outputs.
 - **Query parameters:**
@@ -230,15 +171,19 @@
 - **Notes:**
   - This endpoint surfaces the mixed-effects analysis derived from `reference/Weather_MLM.R` using the backend dataset/modeling/snapshot pipeline implemented in T83–T88.
   - Date bounds are validated as inclusive study-local days in `America/Vancouver`; `date_from > date_to` returns `422`.
-  - `mode=snapshot` reads the durable Postgres snapshot for the exact requested range and returns `404` when no snapshot exists yet.
+  - `mode=snapshot` reads the durable Postgres snapshot for the exact requested range and returns `404` when no snapshot exists yet. The shipped dashboard treats that `404` as a snapshot-miss empty state and does not auto-trigger `mode=live`.
   - `mode=live` triggers the recompute orchestration service and returns the typed analytics payload for `ready`, `stale`, `recomputing`, `insufficient_data`, or `failed`.
+  - The shipped dashboard uses `mode=live` only for explicit RA actions such as manual analytics refresh.
   - Live recompute calls are tagged with the authenticated LabMember UUID in `analytics_runs.triggered_by_lab_member_id`.
   - Existing scoring logic and stored score semantics remain unchanged.
+  - RC08 added partial `sessions` indexes for the canonical analytics dataset source query and rewrote that source query to select candidate complete sessions via unioned `study_days.date_local` and `sessions.completed_at` range paths instead of a single cross-table `OR`.
+  - Query-plan verification on 2026-03-13 confirmed the `completed_at` range branch uses `ix_sessions_complete_completed_at`; the `study_day` branch continues to use `uq_study_days_date_local` and is currently a justified sequential scan on `sessions` because the live table is still very small.
   - **T92 (implemented):** `visualizations` is now populated on `ready` responses. `visualizations.effect_plots[]` contains partial-residual plots for all non-interaction main effect terms (temperature, precipitation, daylight, depression, loneliness, anxiety) for each fitted outcome. `visualizations.weather_annotations` is always date-range metadata only and must not be used to draw predictor-vs-residual lines on the weather chart.
   - `visualizations.default_selected_term` is the first main effect term present in the fitted models (typically `temperature_z`).
   - Effect plot `points[]` carry `x` (predictor z-score), `y` (partial residual = model residual + term contribution), and `date_local` for optional annotation linkage. `fitted_line[]` carries `x`/`y` points spanning the predictor range at `coef * x`.
   - Snapshot persistence stores the full visualization payload including effect plots and weather annotations.
   - Shared analytics version/config constants live in `backend/app/analytics/constants.py` with `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v1"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v1"`.
+  - Browser-owned reads should use the same-origin analytics handler documented in `docs/ARCHITECTURE.md`; do not add direct component calls to this backend endpoint.
 
 ---
 
@@ -570,6 +515,8 @@
 ### GET /weather/daily
 - **Auth:** RA required
 - **Status:** implemented (T31)
+- **Classification:** internal-only backend primitive for dashboard/weather reads
+- **Current same-origin callers:** `GET /api/ra/dashboard?mode=live`, `GET /api/ra/weather/range?mode=live&date_from&date_to`
 - **Query parameters:**
 
 | Parameter | Type | Default | Description |
@@ -577,6 +524,8 @@
 | `start` | date `YYYY-MM-DD` | — | Start local date (`America/Vancouver`) |
 | `end` | date `YYYY-MM-DD` | — | End local date (`America/Vancouver`) |
 | `station_id` | integer | 3510 | Station id (currently only 3510 supported) |
+| `include_forecast_periods` | boolean | `true` | When `false`, returns an empty `forecast_periods` array for each day to reduce payload size |
+| `include_latest_run` | boolean | `true` | When `false`, skips the latest-ingest metadata query to reduce read latency |
 
 - **Response:**
   ```json
@@ -607,9 +556,12 @@
   - Both `start` and `end` are required. `start` > `end` returns 422.
   - No fixed max range cap (supports multi-year study windows); very large ranges may be slower.
   - `items` ordered by `date_local` ASC. Empty array if no data for the range.
-  - `latest_run` is the most recent ingest run for the station regardless of date range; `null` if no runs exist.
+  - `latest_run` is the most recent ingest run for the station regardless of date range when `include_latest_run=true`; otherwise the response returns `latest_run: null`.
   - `latest_run.parse_status` values: `success | partial | fail`.
   - `date_local` is the analytic join key (study day in `America/Vancouver`). Metadata timestamps like `updated_at` / `current_observed_at` must not be used for day linking.
+  - Router validation/auth stays in `backend/app/routers/weather.py`; the query/aggregation logic for this read path lives in `backend/app/services/weather_read_service.py`.
+  - The default dashboard live bundle currently uses `include_forecast_periods=false`; the range-chart live path uses both `include_forecast_periods=false` and `include_latest_run=false`.
+  - The same-origin callers and their canonical/transitional status are tracked in `docs/ARCHITECTURE.md`.
 - **Phase 4 (T58, implemented):** `current_precip_today_mm` is now included in each `WeatherDailyItem` for dashboard graph tooltip use.
 - **Verified:** 2026-02-26 — returned 1 item with `current_temp_c`, `forecast_periods`, and `latest_run` from live DB.
 

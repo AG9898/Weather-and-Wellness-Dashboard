@@ -180,33 +180,6 @@ export interface CogFunc8aResponse {
   mean_score: number;
 }
 
-export interface DashboardSummaryResponse {
-  total_participants: number;
-  sessions_created: number;
-  sessions_active: number;
-  sessions_complete: number;
-  sessions_created_last_7_days: number;
-  sessions_completed_last_7_days: number;
-}
-
-export interface DashboardSummaryRangeResponse {
-  date_from: string;
-  date_to: string;
-  sessions_created: number;
-  sessions_completed: number;
-  participants_completed: number;
-}
-
-export interface DashboardParticipantsPerDayItem {
-  date_local: string;
-  sessions_completed: number;
-  participants_completed: number;
-}
-
-export interface DashboardParticipantsPerDayResponse {
-  items: DashboardParticipantsPerDayItem[];
-}
-
 export type AnalyticsDirection = "positive" | "negative" | "neutral";
 export type AnalyticsOutcome = "digit_span" | "self_report";
 export type AnalyticsReadMode = "snapshot" | "live";
@@ -388,35 +361,17 @@ export interface StartSessionResponse {
 
 /**
  * Bundle returned by GET /api/ra/dashboard (Vercel Route Handler).
- * Combines dashboard summary + today's weather into a single cached payload.
+ * Contains only the current-day weather payload rendered by the default dashboard.
  */
-export interface DashboardBundle {
-  summary: DashboardSummaryResponse;
+export interface DashboardWeatherBundle {
   weather: WeatherDailyResponse;
   cached_at: string; // ISO 8601
 }
 
 /** Response envelope from GET /api/ra/dashboard. */
-export interface DashboardRouteResponse {
+export interface DashboardWeatherRouteResponse {
   cached: boolean;
-  data: DashboardBundle | null;
-}
-
-/**
- * Bundle returned by GET /api/ra/dashboard/range.
- * Always live (cache-bypass) for filter-specific analytics.
- */
-export interface DashboardRangeBundle {
-  summary: DashboardSummaryRangeResponse;
-  weather: WeatherDailyResponse;
-  participants_per_day: DashboardParticipantsPerDayResponse;
-  cached_at: string; // ISO 8601
-}
-
-/** Response envelope from GET /api/ra/dashboard/range. */
-export interface DashboardRangeRouteResponse {
-  cached: false;
-  data: DashboardRangeBundle;
+  data: DashboardWeatherBundle | null;
 }
 
 /**
@@ -462,16 +417,16 @@ async function buildSameOriginAuthHeaders(): Promise<Record<string, string>> {
 }
 
 /**
- * Fetch the RA dashboard bundle from the Vercel Route Handler (same-origin).
+ * Fetch the default dashboard weather bundle from the Vercel Route Handler (same-origin).
  * mode=cached → returns the Upstash Redis bundle if present (fast path).
  * mode=live   → fetches fresh data from the Render backend, refreshes the cache.
  *
  * Note: uses a relative path (/api/ra/dashboard) so it resolves correctly
  * in both local dev (localhost:3000) and Vercel production.
  */
-export async function getDashboardBundle(
+export async function getDashboardWeatherBundle(
   mode: "cached" | "live"
-): Promise<DashboardRouteResponse> {
+): Promise<DashboardWeatherRouteResponse> {
   const res = await fetch(`/api/ra/dashboard?mode=${mode}`, {
     method: "GET",
     headers: await buildSameOriginAuthHeaders(),
@@ -480,30 +435,7 @@ export async function getDashboardBundle(
     const body = await res.json().catch(() => ({}));
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
-  return res.json() as Promise<DashboardRouteResponse>;
-}
-
-/**
- * Fetch range-filtered dashboard data from the same-origin Route Handler.
- * This endpoint is intentionally live-only (no Redis read path).
- */
-export async function getDashboardRangeBundle(
-  dateFrom: string,
-  dateTo: string
-): Promise<DashboardRangeRouteResponse> {
-  const params = new URLSearchParams({
-    date_from: dateFrom,
-    date_to: dateTo,
-  });
-  const res = await fetch(`/api/ra/dashboard/range?${params.toString()}`, {
-    method: "GET",
-    headers: await buildSameOriginAuthHeaders(),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.detail ?? res.statusText);
-  }
-  return res.json() as Promise<DashboardRangeRouteResponse>;
+  return res.json() as Promise<DashboardWeatherRouteResponse>;
 }
 
 /**

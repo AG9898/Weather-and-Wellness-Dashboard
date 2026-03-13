@@ -33,12 +33,11 @@ from app.models.weather import StudyDay, WeatherDaily, WeatherIngestRun
 from app.schemas.weather import (
     HistoricalBackfillRequest,
     HistoricalBackfillResponse,
-    LatestRunInfo,
-    WeatherDailyItem,
     WeatherDailyResponse,
     WeatherIngestRequest,
     WeatherIngestResponse,
 )
+from app.services import read_weather_daily
 from app.services.historical_weather_backfill_service import run_historical_weather_backfill
 from app.services.historical_weather_service import OpenMeteoError
 from app.services.weather_parser import fetch_and_parse
@@ -257,6 +256,10 @@ async def get_weather_daily(
         default=True,
         description="When false, returns an empty forecast_periods array for each day to reduce payload size",
     ),
+    include_latest_run: bool = Query(
+        default=True,
+        description="When false, skips the latest ingest metadata query to reduce read latency",
+    ),
     _: LabMember = Depends(get_current_lab_member),
     db: AsyncSession = Depends(get_session),
 ) -> WeatherDailyResponse:
@@ -265,79 +268,13 @@ async def get_weather_daily(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="start must not be after end",
         )
-
-    if include_forecast_periods:
-        rows_result = await db.execute(
-            select(WeatherDaily)
-            .where(
-                WeatherDaily.station_id == station_id,
-                WeatherDaily.date_local >= start,
-                WeatherDaily.date_local <= end,
-            )
-            .order_by(WeatherDaily.date_local.asc())
-        )
-        rows = rows_result.scalars().all()
-        items = [WeatherDailyItem.model_validate(row) for row in rows]
-    else:
-        rows_result = await db.execute(
-            select(
-                WeatherDaily.station_id,
-                WeatherDaily.study_day_id,
-                WeatherDaily.date_local,
-                WeatherDaily.source_run_id,
-                WeatherDaily.updated_at,
-                WeatherDaily.current_temp_c,
-                WeatherDaily.current_precip_today_mm,
-                WeatherDaily.forecast_high_c,
-                WeatherDaily.forecast_low_c,
-                WeatherDaily.forecast_condition_text,
-                WeatherDaily.sunshine_duration_hours,
-            )
-            .where(
-                WeatherDaily.station_id == station_id,
-                WeatherDaily.date_local >= start,
-                WeatherDaily.date_local <= end,
-            )
-            .order_by(WeatherDaily.date_local.asc())
-        )
-        rows = rows_result.mappings().all()
-        items = [
-            WeatherDailyItem(
-                station_id=row["station_id"],
-                study_day_id=row["study_day_id"],
-                date_local=row["date_local"],
-                source_run_id=row["source_run_id"],
-                updated_at=row["updated_at"],
-                current_temp_c=row["current_temp_c"],
-                current_precip_today_mm=row["current_precip_today_mm"],
-                forecast_high_c=row["forecast_high_c"],
-                forecast_low_c=row["forecast_low_c"],
-                forecast_condition_text=row["forecast_condition_text"],
-                forecast_periods=[],
-                sunshine_duration_hours=row["sunshine_duration_hours"],
-            )
-            for row in rows
-        ]
-
-    latest_result = await db.execute(
-        select(WeatherIngestRun)
-        .where(WeatherIngestRun.station_id == station_id)
-        .order_by(WeatherIngestRun.ingested_at.desc())
-        .limit(1)
-    )
-    latest_run = latest_result.scalar_one_or_none()
-
-    return WeatherDailyResponse(
-        items=items,
-        latest_run=(
-            LatestRunInfo(
-                run_id=latest_run.run_id,
-                ingested_at=latest_run.ingested_at,
-                parse_status=latest_run.parse_status,
-            )
-            if latest_run is not None
-            else None
-        ),
+    return await read_weather_daily(
+        db,
+        start=start,
+        end=end,
+        station_id=station_id,
+        include_forecast_periods=include_forecast_periods,
+        include_latest_run=include_latest_run,
     )
 
 

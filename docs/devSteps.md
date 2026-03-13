@@ -16,7 +16,7 @@
 ## Verification Checklist
 
 - `alembic upgrade head` completes without errors against your Supabase DB. (T02–T05)
-- `alembic current -v` reports `Rev: 20260228_000008 (head)` after applying all migrations. (T02–T05, T29, T47, T47a)
+- `alembic current -v` reports `Rev: 20260313_000001 (head)` after applying all migrations. (T02–T05, T29, T47, T47a, RC08)
 - Backend starts cleanly and exposes `/health`. (T01)
 - Frontend dev server starts without Next.js compile errors. (T01)
 - Participant/session endpoints return expected status codes once T07/T08 are fixed. (T07–T08)
@@ -40,24 +40,41 @@ JWT verification in Route Handlers requires one of:
 
 ### 2) What is cached
 
-- `GET /api/ra/dashboard?mode=cached|live` caches a bundle of dashboard summary KPIs + today’s weather.
+- `GET /api/ra/dashboard?mode=cached|live` caches the default dashboard weather bundle for today.
 - `GET /api/ra/weather/range?mode=cached|live&date_from=...&date_to=...` caches weather-only range data for the trend chart.
+- `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=...&date_to=...` caches snapshot-safe analytics bundles only; live recompute responses bypass Redis.
+
+Current TTL policy:
+
+- Dashboard weather key `ww:ra:dashboard:v1` → 24 hours, fixed expiry on write only.
+- Weather range keys `ww:ra:weather:range:v1:<date_from>:<date_to>` → 24 hours, fixed expiry on write only.
+- Analytics snapshot keys `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` → 24 hours, fixed expiry on write only.
+
+Repeated cache reads do not renew TTL. A new TTL starts only after a successful cache write.
 
 ### 3) Smoke test checklist (browser)
 
 1) Login as an RA and open `/dashboard`.
 2) In DevTools → Network, inspect:
-   - `/api/ra/dashboard?mode=cached` → response header `x-ww-cache: hit|miss|disabled`
-   - (if a cache miss occurred) `/api/ra/dashboard?mode=live` → `x-ww-cache: refresh|stale-fallback|error`
+   - `/api/ra/dashboard?mode=cached` → `x-ww-cache: hit|miss|disabled`
+   - (if a cache miss occurred) `/api/ra/dashboard?mode=live` → `x-ww-cache: refresh|disabled|stale-fallback|error`
    - `/api/ra/weather/range?...&mode=cached` → `x-ww-cache: hit|miss|disabled`
-   - (if a cache miss occurred) `/api/ra/weather/range?...&mode=live` → `x-ww-cache: refresh|stale-fallback|error`
+   - (if a cache miss occurred) `/api/ra/weather/range?...&mode=live` → `x-ww-cache: refresh|disabled|stale-fallback|error`
+   - `/api/ra/dashboard/analytics?...&mode=snapshot` → `x-ww-cache: hit|miss|disabled|refresh|error`
+   - default dashboard load should not emit `/api/ra/dashboard/analytics?...&mode=live`
+   - manual analytics refresh (`mode=live`) → `x-ww-cache: bypass|stale-fallback|snapshot-fallback|error`
+   - all three handlers should also emit:
+     - `x-ww-cache-ttl` with the route TTL in seconds
+     - `x-ww-cache-renewal: fixed-expiry-on-write`
 3) Reload `/dashboard`:
    - `/api/ra/dashboard?mode=cached` should become `x-ww-cache: hit` after the cache has been populated.
 
 Troubleshooting:
-- `x-ww-cache: disabled` → Upstash/Vercel KV env vars are missing in Vercel.
+- `x-ww-cache: disabled` → Upstash/Vercel KV env vars are missing or the handler could not use Redis for that request.
 - Repeated `miss` even after a `live` call → confirm the Upstash integration is connected to the project and env vars are present in the deployment environment.
+- `x-ww-cache-ttl` does not change on repeated hits → expected. Current policy is fixed expiry on write, not sliding expiration.
 - Repeated `x-ww-cache: error` on `mode=live` with low latency (~15s) indicates backend timeout protection is active and Render should be checked (`/health`, service status, cold-start/load).
+- `GET /api/ra/dashboard/analytics?...&mode=snapshot` returning `404` is an expected snapshot-miss path when no durable analytics snapshot exists yet; the dashboard should show the empty state and wait for an explicit manual refresh instead of auto-triggering `mode=live`.
 
 ---
 

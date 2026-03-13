@@ -7,7 +7,12 @@ from datetime import date
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 
-from app.analytics.dataset import build_canonical_analysis_dataset
+from sqlalchemy.dialects import postgresql
+
+from app.analytics.dataset import (
+    _build_dataset_source_query,
+    build_canonical_analysis_dataset,
+)
 
 
 class _FakeResult:
@@ -92,6 +97,26 @@ def _dataset_row(
 
 
 class AnalyticsDatasetServiceTests(IsolatedAsyncioTestCase):
+    def test_dataset_source_query_uses_unionized_candidate_session_paths(self) -> None:
+        stmt = _build_dataset_source_query(
+            date_from=date(2026, 3, 1),
+            date_to=date(2026, 3, 7),
+        )
+
+        compiled = str(
+            stmt.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True},
+            )
+        )
+
+        self.assertIn("candidate_session_ids AS", compiled)
+        self.assertIn("UNION", compiled)
+        self.assertNotIn(" OR ", compiled)
+        self.assertIn("sessions.status = 'complete'", compiled)
+        self.assertIn("study_days.date_local >=", compiled)
+        self.assertIn("sessions.completed_at IS NOT NULL", compiled)
+
     async def test_build_dataset_prefers_native_values_and_derives_date_bins(self) -> None:
         row_one = _dataset_row(
             date_local=date(2026, 3, 1),

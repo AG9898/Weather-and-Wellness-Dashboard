@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select, union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import STUDY_TIMEZONE
@@ -193,6 +193,84 @@ def _resolve_digit_span(
     return coerced, "native"
 
 
+def _build_dataset_source_query(
+    *,
+    date_from: date,
+    date_to: date,
+):
+    """Build the analytics source query with index-friendly candidate session selection."""
+
+    range_start_utc, range_end_utc = _local_date_to_utc_range(date_from, date_to)
+
+    candidate_session_ids = union(
+        select(Session.session_id)
+        .select_from(StudyDay)
+        .join(Session, Session.study_day_id == StudyDay.study_day_id)
+        .where(
+            Session.status == "complete",
+            StudyDay.date_local >= date_from,
+            StudyDay.date_local <= date_to,
+        ),
+        select(Session.session_id)
+        .where(
+            Session.status == "complete",
+            Session.completed_at.is_not(None),
+            Session.completed_at >= range_start_utc,
+            Session.completed_at < range_end_utc,
+        ),
+    ).cte("candidate_session_ids")
+
+    return (
+        select(
+            Session.session_id.label("session_id"),
+            Session.participant_uuid.label("participant_uuid"),
+            StudyDay.date_local.label("date_local"),
+            WeatherDaily.current_temp_c.label("weather_temperature"),
+            WeatherDaily.current_precip_today_mm.label("weather_precipitation"),
+            WeatherDaily.sunshine_duration_hours.label("weather_daylight_hours"),
+            ImportedSessionMeasures.temperature_c.label("import_temperature"),
+            ImportedSessionMeasures.precipitation_mm.label("import_precipitation"),
+            ImportedSessionMeasures.anxiety_mean.label("import_anxiety_mean"),
+            ImportedSessionMeasures.loneliness_mean.label("import_loneliness_mean"),
+            ImportedSessionMeasures.depression_mean.label("import_depression_mean"),
+            ImportedSessionMeasures.self_report.label("import_self_report"),
+            DigitSpanRun.total_correct.label("digit_span_total_correct"),
+            DigitSpanRun.data_source.label("digit_span_data_source"),
+            SurveyGAD7.total_score.label("gad_total_score"),
+            SurveyGAD7.legacy_total_score.label("gad_legacy_total_score"),
+            SurveyGAD7.legacy_mean_1_4.label("gad_legacy_mean"),
+            SurveyGAD7.data_source.label("gad_data_source"),
+            SurveyCESD10.total_score.label("cesd_total_score"),
+            SurveyCESD10.legacy_mean_1_4.label("cesd_legacy_mean"),
+            SurveyCESD10.data_source.label("cesd_data_source"),
+            SurveyULS8.computed_mean.label("uls_computed_mean"),
+            SurveyULS8.legacy_mean_1_4.label("uls_legacy_mean"),
+            SurveyULS8.data_source.label("uls_data_source"),
+            SurveyCogFunc8a.mean_score.label("cogfunc_mean_score"),
+            SurveyCogFunc8a.legacy_mean_1_5.label("cogfunc_legacy_mean"),
+            SurveyCogFunc8a.data_source.label("cogfunc_data_source"),
+        )
+        .select_from(candidate_session_ids)
+        .join(Session, Session.session_id == candidate_session_ids.c.session_id)
+        .outerjoin(StudyDay, Session.study_day_id == StudyDay.study_day_id)
+        .outerjoin(WeatherDaily, Session.study_day_id == WeatherDaily.study_day_id)
+        .outerjoin(DigitSpanRun, DigitSpanRun.session_id == Session.session_id)
+        .outerjoin(SurveyGAD7, SurveyGAD7.session_id == Session.session_id)
+        .outerjoin(SurveyCESD10, SurveyCESD10.session_id == Session.session_id)
+        .outerjoin(SurveyULS8, SurveyULS8.session_id == Session.session_id)
+        .outerjoin(SurveyCogFunc8a, SurveyCogFunc8a.session_id == Session.session_id)
+        .outerjoin(
+            ImportedSessionMeasures,
+            ImportedSessionMeasures.session_id == Session.session_id,
+        )
+        .order_by(
+            StudyDay.date_local.asc(),
+            Session.completed_at.asc(),
+            Session.session_id.asc(),
+        )
+    )
+
+
 def _build_pending_row(raw_row: object) -> _PendingAnalyticsDatasetRow | AnalyticsExcludedRow:
     session_id = getattr(raw_row, "session_id")
     participant_uuid = getattr(raw_row, "participant_uuid")
@@ -339,66 +417,11 @@ async def build_canonical_analysis_dataset(
     if date_from > date_to:
         raise ValueError("date_from must not be after date_to")
 
-    range_start_utc, range_end_utc = _local_date_to_utc_range(date_from, date_to)
-
     rows_result = await db.execute(
-        select(
-            Session.session_id.label("session_id"),
-            Session.participant_uuid.label("participant_uuid"),
-            StudyDay.date_local.label("date_local"),
-            WeatherDaily.current_temp_c.label("weather_temperature"),
-            WeatherDaily.current_precip_today_mm.label("weather_precipitation"),
-            WeatherDaily.sunshine_duration_hours.label("weather_daylight_hours"),
-            ImportedSessionMeasures.temperature_c.label("import_temperature"),
-            ImportedSessionMeasures.precipitation_mm.label("import_precipitation"),
-            ImportedSessionMeasures.anxiety_mean.label("import_anxiety_mean"),
-            ImportedSessionMeasures.loneliness_mean.label("import_loneliness_mean"),
-            ImportedSessionMeasures.depression_mean.label("import_depression_mean"),
-            ImportedSessionMeasures.self_report.label("import_self_report"),
-            DigitSpanRun.total_correct.label("digit_span_total_correct"),
-            DigitSpanRun.data_source.label("digit_span_data_source"),
-            SurveyGAD7.total_score.label("gad_total_score"),
-            SurveyGAD7.legacy_total_score.label("gad_legacy_total_score"),
-            SurveyGAD7.legacy_mean_1_4.label("gad_legacy_mean"),
-            SurveyGAD7.data_source.label("gad_data_source"),
-            SurveyCESD10.total_score.label("cesd_total_score"),
-            SurveyCESD10.legacy_mean_1_4.label("cesd_legacy_mean"),
-            SurveyCESD10.data_source.label("cesd_data_source"),
-            SurveyULS8.computed_mean.label("uls_computed_mean"),
-            SurveyULS8.legacy_mean_1_4.label("uls_legacy_mean"),
-            SurveyULS8.data_source.label("uls_data_source"),
-            SurveyCogFunc8a.mean_score.label("cogfunc_mean_score"),
-            SurveyCogFunc8a.legacy_mean_1_5.label("cogfunc_legacy_mean"),
-            SurveyCogFunc8a.data_source.label("cogfunc_data_source"),
+        _build_dataset_source_query(
+            date_from=date_from,
+            date_to=date_to,
         )
-        .select_from(Session)
-        .outerjoin(StudyDay, Session.study_day_id == StudyDay.study_day_id)
-        .outerjoin(WeatherDaily, Session.study_day_id == WeatherDaily.study_day_id)
-        .outerjoin(DigitSpanRun, DigitSpanRun.session_id == Session.session_id)
-        .outerjoin(SurveyGAD7, SurveyGAD7.session_id == Session.session_id)
-        .outerjoin(SurveyCESD10, SurveyCESD10.session_id == Session.session_id)
-        .outerjoin(SurveyULS8, SurveyULS8.session_id == Session.session_id)
-        .outerjoin(SurveyCogFunc8a, SurveyCogFunc8a.session_id == Session.session_id)
-        .outerjoin(
-            ImportedSessionMeasures,
-            ImportedSessionMeasures.session_id == Session.session_id,
-        )
-        .where(
-            Session.status == "complete",
-            or_(
-                and_(
-                    StudyDay.date_local.is_not(None),
-                    StudyDay.date_local >= date_from,
-                    StudyDay.date_local <= date_to,
-                ),
-                and_(
-                    Session.completed_at.is_not(None),
-                    Session.completed_at >= range_start_utc,
-                    Session.completed_at < range_end_utc,
-                ),
-            ),
-        )
-        .order_by(StudyDay.date_local.asc(), Session.completed_at.asc(), Session.session_id.asc())
     )
 
     pending_rows: list[_PendingAnalyticsDatasetRow] = []

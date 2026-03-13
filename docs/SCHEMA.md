@@ -200,6 +200,10 @@ replace day-level weather-derived sunlight duration in analytics queries.
 | completed_at     | TIMESTAMPTZ | NULLABLE      | Set when status transitions to "complete" |
 | study_day_id     | UUID        | FK, NULLABLE  | Added T29. Set when session becomes complete; links to `study_days.study_day_id` |
 
+Indexes (applied):
+- Partial index (`completed_at`, `session_id`) WHERE `status = 'complete'`
+- Partial index (`study_day_id`, `completed_at`, `session_id`) WHERE `status = 'complete' AND study_day_id IS NOT NULL`
+
 ---
 
 **Undo-last-session note (T96, implemented):** the RA-only undo flow hard-deletes a
@@ -514,8 +518,9 @@ Behavior notes:
 | 2026-03-10 | T77 | Extend `survey_cogfunc8a` with imported-row schema support (`data_source`, `legacy_mean_1_5`, nullable raw/computed columns, UNIQUE session_id) |
 | 2026-03-10 | T84 | Add durable `analytics_runs` and `analytics_snapshots` tables for per-range analytics audit/state and snapshot payload storage |
 | 2026-03-11 | T96 | Add append-only `admin_session_undo_log` table for RA-triggered undo-last-session audit |
+| 2026-03-13 | RC08 | Add partial `sessions` indexes for analytics date-range reads on `completed_at` and `study_day_id` |
 
-As of 2026-03-11, migration `20260311_000001` (T96) is the current head revision.
+As of 2026-03-13, migration `20260313_000001` (RC08) is the current head revision.
 
 ---
 

@@ -2,6 +2,7 @@
 
 > Read this at the start of every Ralph session to orient on current project state.
 > Never delete rows or entries — this is an append-only historical record.
+> Older entries below may mention superseded dashboard routes such as `getDashboardBundle()` or `/api/ra/dashboard/range`; treat those as historical implementation notes only. The current shipped routing topology lives in `docs/ARCHITECTURE.md`.
 
 ---
 
@@ -28,6 +29,14 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## RC10 — Docs/runbooks — final routing cleanup sync (completed 2026-03-13)
+
+- Audited the active routing docs against the shipped same-origin handlers and backend primitives after `RC03` through `RC09`.
+- Updated `docs/ARCHITECTURE.md` so the summary and testing sections describe the shipped analytics layer, the live undo-last-session dashboard control, and the current frontend regression coverage instead of older "planned" wording.
+- Updated `docs/CONVENTIONS.md` to require topology regression coverage when removing same-origin handlers/wrappers, document the accepted `KV_REST_*` cache env aliases alongside direct Upstash vars, and align frontend testing guidance with the current Node-runtime Route Handler suite.
+- Updated `docs/devSteps.md` to point at the current Alembic head (`20260313_000001`), document that initial dashboard analytics loads should stay snapshot-only, and note that analytics snapshot `404` is now an expected empty-state path rather than a signal to auto-recompute.
+- Added the historical-routing note at the top of this file so superseded route names in older progress entries are explicitly preserved as history, not current topology.
 
 ## T99 — Verification — undo-last-session safeguards and regression coverage (completed 2026-03-11)
 
@@ -1126,14 +1135,14 @@ Phase 3 documentation is now decision-complete for upcoming implementation tasks
 | `next build` passes | Ran 2026-02-28 | ✅ Pass — `ƒ /api/ra/dashboard` listed as dynamic route handler |
 
 **Production e2e checklist (developer-owned — run after Vercel deploy):**
-See `docs/devSteps.md` → "Vercel Upstash Cache Setup → 3) Smoke test checklist" for the full list of curl/browser checks covering 401, cache hit, cache miss, and live refresh.
+See `docs/devSteps.md` → "Frontend Runbook — Vercel + Upstash Cache" for the full list of browser checks covering 401, cache hit, cache miss, and live refresh.
 
 ---
 
 ## T44 — Docs/runbook: Vercel Upstash cache setup (completed 2026-02-28)
 
 All acceptance criteria met by work done during T41:
-- `docs/devSteps.md` "Vercel Upstash Cache Setup" section covers integration steps, server-only vs `NEXT_PUBLIC_*` env vars, local dev setup, and a smoke-test checklist for cache hit/miss/live/401.
+- `docs/devSteps.md` "Frontend Runbook — Vercel + Upstash Cache" section covers integration steps, server-only vs `NEXT_PUBLIC_*` env vars, local dev setup, and a smoke-test checklist for cache hit/miss/live/401.
 - `docs/ARCHITECTURE.md` — Vercel Cache Route Handler section added.
 - `docs/CONVENTIONS.md` — caching conventions expanded (jose, Redis key versioning).
 

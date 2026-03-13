@@ -170,18 +170,17 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
 1. **Hero action zone** — card with blue glow accent, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, ubc-blue-700/600 gradient) that navigates to `/new-session`.
-2. **KPI cards row** — 5 cards: Participants, Active Sessions, Total Sessions, Created (7d), Completed (7d). KPI values are sourced from the base dashboard bundle and are always all-time totals / last-7-day counts (not range-filtered).
-3. **Analytics snapshot section** — separate statistical surface between the KPI row and the weather card. It reads the dashboard analytics payload via the same-origin analytics Route Handler, defaults to the study window (`2025-03-03` → today, `America/Vancouver`), and does not block operational KPI or weather rendering.
-4. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
+2. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
+3. **Analytics snapshot section** — separate statistical surface below the weather card. It reads the dashboard analytics payload via the same-origin analytics Route Handler, defaults to the study window (`2025-03-03` → today, `America/Vancouver`), and does not block weather rendering.
 
-The “Recent Sessions” panel has been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
+The KPI cards row has been removed from the shipped dashboard. The “Recent Sessions” panel has also been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
 
 **Analytics model cards (implemented in T90):**
 - The operational KPI row remains unchanged and loads independently from analytics.
 - The analytics section reads the latest stored snapshot by default through
   `/api/ra/dashboard/analytics?mode=snapshot`. If no snapshot exists yet for the
-  default study window, the UI falls back to a live analytics read so the RA
-  still gets a typed analytics state instead of a blank section.
+  selected study window, the UI shows a snapshot-miss empty state and keeps live
+  recompute behind the manual **Refresh Analytics** action.
 - The section header shows the active study window, the latest snapshot/live
   freshness metadata, and a manual **Refresh Analytics** action that requests a
   live recompute without blocking the rest of the dashboard.
@@ -234,11 +233,12 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
   - created time
 - Explicit confirmation + a non-empty reason field are required before delete.
 - On success, the analytics section remounts (re-fetches snapshot) and the dashboard bundle is refreshed live.
+- On success, the analytics section remounts (re-fetches snapshot) and the default dashboard weather bundle is refreshed live.
 - This flow is intended for accidental test runs / obvious supervised-entry mistakes, not arbitrary historical record deletion.
 
 **Data loading (T41–T43, implemented):**
 - Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then (optionally) refresh from the live Render backend and update the UI when fresh data arrives. The dashboard avoids triggering a live refresh on every visit when cached data is still recent (prevents waking the Render backend unnecessarily).
-- The cached/live dashboard bundle includes: dashboard summary KPIs + today's weather data (`WeatherDailyResponse`).
+- The cached/live dashboard bundle includes only today's weather data (`WeatherDailyResponse`) because the shipped page no longer renders operational KPI summary cards.
 - `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
 - Route handlers enforce backend fetch timeouts (15s) and use stale-cache fallback when `mode=live` fails, so dashboard loading does not hang indefinitely on Render outages.
 
@@ -246,9 +246,8 @@ The “Recent Sessions” panel has been removed. The top-level “Dashboard Ran
 - Statistical dashboard content uses a separate analytics payload and cache key
   from the operational dashboard bundle.
 - Default render path uses the most recent successful analytics snapshot.
-- When snapshot mode returns `404` for the default study window, the dashboard
-  performs a live analytics request so first-run states such as
-  `insufficient_data` or `failed` are still visible in the UI.
+- When snapshot mode returns `404` for the selected study window, the dashboard
+  shows a non-blocking empty state instead of auto-triggering a live recompute.
 - Manual analytics refresh requests use live mode, but the UI keeps the prior
   snapshot visible whenever the backend returns `stale` or `recomputing`.
 

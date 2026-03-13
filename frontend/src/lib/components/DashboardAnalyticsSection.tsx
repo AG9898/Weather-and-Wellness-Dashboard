@@ -3,12 +3,14 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus, RefreshCw, Sparkles } from "lucide-react";
 import {
-  ApiError,
-  getDashboardAnalyticsBundle,
   type AnalyticsEffectCardResponse,
   type AnalyticsModelSummaryResponse,
   type DashboardAnalyticsResponse,
 } from "@/lib/api";
+import {
+  loadInitialDashboardAnalytics,
+  refreshDashboardAnalytics,
+} from "@/lib/analytics/dashboard-analytics-loader";
 import {
   buildAnalyticsWarningDisplayItems,
   compareEffectsByStrength,
@@ -17,7 +19,6 @@ import {
   formatSigned,
   formatTermLabel,
   formatTermPart,
-  getAnalyticsErrorMessage,
   getStatusPanel,
   timeAgo,
 } from "@/lib/analytics/ui-utils";
@@ -191,58 +192,46 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
   const [loadingMode, setLoadingMode] = useState<LoadingMode>("snapshot");
   const [loadingMessage, setLoadingMessage] = useState("Checking latest analytics snapshot…");
   const [error, setError] = useState<string | null>(null);
-  const [selectedEffectKey, setSelectedEffectKey] = useState<string>("");
+  const [snapshotMissing, setSnapshotMissing] = useState(false);
+  const [selectedEffectKey, setSelectedEffectKey] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function requestAnalytics(
-      mode: "snapshot" | "live",
-      pendingMessage: string
-    ): Promise<boolean> {
-      setLoadingMode(mode);
-      setLoadingMessage(pendingMessage);
-      setError(null);
-
-      try {
-        const response = await getDashboardAnalyticsBundle(mode, dateFrom, dateTo);
-        if (cancelled || !response.data) {
-          return false;
-        }
-
-        startTransition(() => {
-          setAnalytics(response.data?.analytics ?? null);
-          setCachedAt(response.data?.cached_at ?? null);
-        });
-        return true;
-      } catch (err) {
-        if (cancelled) {
-          return false;
-        }
-
-        if (mode === "snapshot" && err instanceof ApiError && err.status === 404) {
-          return false;
-        }
-
-        setError(getAnalyticsErrorMessage(err));
-        return false;
-      } finally {
-        if (!cancelled) {
-          setLoadingMode(null);
-        }
-      }
-    }
-
     async function loadInitialAnalytics(): Promise<void> {
-      const snapshotLoaded = await requestAnalytics(
-        "snapshot",
-        "Checking latest analytics snapshot…"
-      );
-      if (!snapshotLoaded && !cancelled) {
-        await requestAnalytics(
-          "live",
-          "No saved snapshot yet. Running analytics from the current dataset…"
-        );
+      setLoadingMode("snapshot");
+      setLoadingMessage("Checking latest analytics snapshot…");
+      setError(null);
+      setSnapshotMissing(false);
+
+      const result = await loadInitialDashboardAnalytics(dateFrom, dateTo);
+      if (cancelled) {
+        return;
+      }
+
+      if (result.kind === "loaded") {
+        startTransition(() => {
+          setAnalytics(result.response.data?.analytics ?? null);
+          setCachedAt(result.response.data?.cached_at ?? null);
+          setSnapshotMissing(false);
+        });
+      } else if (result.kind === "missing-snapshot") {
+        startTransition(() => {
+          setAnalytics(null);
+          setCachedAt(null);
+          setSnapshotMissing(true);
+        });
+      } else {
+        startTransition(() => {
+          setAnalytics(null);
+          setCachedAt(null);
+          setSnapshotMissing(false);
+          setError(result.message);
+        });
+      }
+
+      if (!cancelled) {
+        setLoadingMode(null);
       }
     }
 
@@ -257,24 +246,21 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
     setLoadingMode("live");
     setLoadingMessage("Refreshing analytics from the backend…");
     setError(null);
+    setSnapshotMissing(false);
 
-    try {
-      const response = await getDashboardAnalyticsBundle("live", dateFrom, dateTo);
-      if (!response.data) {
-        setError("Analytics refresh returned no data.");
-        return;
-      }
-      const data = response.data;
-
+    const result = await refreshDashboardAnalytics(dateFrom, dateTo);
+    if (result.kind === "loaded") {
+      const data = result.response.data;
       startTransition(() => {
-        setAnalytics(data.analytics);
-        setCachedAt(data.cached_at);
+        setAnalytics(data?.analytics ?? null);
+        setCachedAt(data?.cached_at ?? null);
+        setSnapshotMissing(false);
       });
-    } catch (err) {
-      setError(getAnalyticsErrorMessage(err));
-    } finally {
-      setLoadingMode(null);
+    } else if (result.kind === "empty" || result.kind === "error") {
+      setError(result.message);
     }
+
+    setLoadingMode(null);
   }
 
   const statusPanel = analytics ? getStatusPanel(analytics) : null;
@@ -303,23 +289,12 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
       .sort((left, right) => compareEffectsByStrength(left.effect, right.effect));
   }, [effectOptions]);
 
-  useEffect(() => {
-    if (effectOptions.length === 0) {
-      setSelectedEffectKey("");
-      return;
-    }
-
-    const currentStillExists = effectOptions.some((option) => option.key === selectedEffectKey);
-    if (currentStillExists) {
-      return;
-    }
-
-    const defaultSelection = significantEffects[0] ?? effectOptions[0];
-    setSelectedEffectKey(defaultSelection.key);
-  }, [effectOptions, selectedEffectKey, significantEffects]);
-
-  const selectedEffect =
-    effectOptions.find((option) => option.key === selectedEffectKey) ?? significantEffects[0] ?? effectOptions[0] ?? null;
+  const defaultSelectedEffect = significantEffects[0] ?? effectOptions[0] ?? null;
+  const selectedEffect = (
+    selectedEffectKey
+      ? effectOptions.find((option) => option.key === selectedEffectKey) ?? null
+      : null
+  ) ?? defaultSelectedEffect;
   const significantHighlights = Array.from({ length: 3 }, (_, index) => significantEffects[index] ?? null);
   const hasEffectCards = effectOptions.length > 0;
   const selectedModelWarnings = useMemo(() => {
@@ -327,14 +302,12 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
   }, [selectedEffect]);
 
   // Find the effect plot for the currently selected effect term
-  const selectedEffectPlot = useMemo(() => {
-    if (!analytics?.visualizations?.effect_plots || !selectedEffect) return null;
-    return (
-      analytics.visualizations.effect_plots.find(
-        (plot) => plot.outcome === selectedEffect.outcome && plot.term === selectedEffect.effect.term
-      ) ?? null
-    );
-  }, [analytics?.visualizations?.effect_plots, selectedEffect]);
+  const selectedEffectPlot =
+    analytics?.visualizations?.effect_plots && selectedEffect
+      ? analytics.visualizations.effect_plots.find(
+          (plot) => plot.outcome === selectedEffect.outcome && plot.term === selectedEffect.effect.term
+        ) ?? null
+      : null;
 
   // Notify parent when the analytics window or selected term changes
   useEffect(() => {
@@ -413,6 +386,12 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
         <div className="relative mt-5 flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-4 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {snapshotMissing && !error && !analytics && (
+        <div className="relative mt-5 rounded-2xl border border-border/70 bg-background/65 px-4 py-4 text-sm text-muted-foreground">
+          No analytics snapshot exists yet for this study window. Use <span className="font-semibold text-foreground">Refresh Analytics</span> to run a live recompute when needed.
         </div>
       )}
 

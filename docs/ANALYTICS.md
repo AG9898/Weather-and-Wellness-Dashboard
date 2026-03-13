@@ -84,8 +84,8 @@ It then produces partial-residual plots for selected predictors.
 - **One canonical analysis dataset.** Native and imported rows must be mapped to
   the same logical analysis fields before model fitting.
 - **Durable snapshots, optional live recompute.** The dashboard should read the
-  latest stored analytics snapshot by default and support explicit recompute for
-  filters/admin use.
+  latest stored analytics snapshot by default, treat snapshot misses as an
+  empty-state outcome, and support explicit recompute for filters/admin use.
 - **Explainable KPIs.** Dashboard analytics should surface model cards with
   coefficients, confidence intervals, p-values, and convergence/warning state.
 - **Keep chart semantics separate.** Weather time-series charts and

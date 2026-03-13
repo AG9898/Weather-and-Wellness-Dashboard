@@ -5,11 +5,14 @@ from datetime import date, datetime, timezone
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
+from fastapi import HTTPException
+from fastapi.routing import APIRoute
 from sqlalchemy.dialects import postgresql
 
+from app.auth import get_current_lab_member
 from app.config import STUDY_TIMEZONE
-from app.routers.weather import _IngestAuth, ingest_weather
-from app.schemas.weather import WeatherIngestRequest
+from app.routers.weather import _IngestAuth, get_weather_daily, ingest_weather, router
+from app.schemas.weather import WeatherDailyResponse, LatestRunInfo, WeatherDailyItem, WeatherIngestRequest
 from app.services.weather_parser import PARSER_VERSION, ParseResult
 
 
@@ -105,3 +108,88 @@ class WeatherIngestRouterTests(IsolatedAsyncioTestCase):
         assert response.parse_status == "partial"
         assert response.upserted_days == 1
         assert db.commit_count == 1
+
+
+class WeatherDailyRouterTests(IsolatedAsyncioTestCase):
+    def test_daily_route_is_registered_with_get_and_lab_member_dependency(self) -> None:
+        daily_route = next(
+            route
+            for route in router.routes
+            if isinstance(route, APIRoute) and route.path == "/weather/daily"
+        )
+
+        dependency_calls = {dependency.call for dependency in daily_route.dependant.dependencies}
+
+        assert daily_route.methods == {"GET"}
+        assert daily_route.response_model is WeatherDailyResponse
+        assert get_current_lab_member in dependency_calls
+
+    async def test_daily_route_rejects_inverted_date_range(self) -> None:
+        with patch(
+            "app.routers.weather.read_weather_daily",
+            new=AsyncMock(),
+        ) as read_mock:
+            with self.assertRaises(HTTPException) as exc_info:
+                await get_weather_daily(
+                    start=date(2026, 3, 12),
+                    end=date(2026, 3, 11),
+                    station_id=3510,
+                    include_forecast_periods=False,
+                    include_latest_run=True,
+                    _=object(),
+                    db=object(),
+                )
+
+        assert exc_info.exception.status_code == 422
+        assert exc_info.exception.detail == "start must not be after end"
+        read_mock.assert_not_awaited()
+
+    async def test_daily_route_delegates_to_weather_read_service(self) -> None:
+        expected_response = WeatherDailyResponse(
+            items=[
+                WeatherDailyItem(
+                    station_id=3510,
+                    study_day_id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                    date_local=date(2026, 3, 11),
+                    source_run_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                    updated_at=datetime(2026, 3, 11, 18, 0, tzinfo=timezone.utc),
+                    current_temp_c=7.2,
+                    current_precip_today_mm=1.2,
+                    forecast_high_c=9.0,
+                    forecast_low_c=4.0,
+                    forecast_condition_text="Cloudy",
+                    forecast_periods=[],
+                    sunshine_duration_hours=6.5,
+                )
+            ],
+            latest_run=LatestRunInfo(
+                run_id=uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                ingested_at=datetime(2026, 3, 11, 18, 5, tzinfo=timezone.utc),
+                parse_status="success",
+            ),
+        )
+        db = object()
+
+        with patch(
+            "app.routers.weather.read_weather_daily",
+            new=AsyncMock(return_value=expected_response),
+        ) as read_mock:
+            response = await get_weather_daily(
+                start=date(2026, 3, 10),
+                end=date(2026, 3, 11),
+                station_id=3510,
+                include_forecast_periods=False,
+                include_latest_run=False,
+                _=object(),
+                db=db,
+            )
+
+        assert response == expected_response
+        read_mock.assert_awaited_once_with(
+            db,
+            start=date(2026, 3, 10),
+            end=date(2026, 3, 11),
+            station_id=3510,
+            include_forecast_periods=False,
+            include_latest_run=False,
+        )

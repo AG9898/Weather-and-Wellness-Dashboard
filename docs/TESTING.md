@@ -102,7 +102,8 @@ install itself as a package. Always set it when running pytest directly.
 ### Setup
 
 The frontend uses [vitest](https://vitest.dev/) v4. No browser or React DOM runtime is
-required for the current test suite — tests cover pure utility functions only.
+required for the current test suite — tests cover pure utility functions and Node-runtime
+Next.js Route Handlers.
 
 ```bash
 cd frontend
@@ -118,7 +119,15 @@ Config: `frontend/vitest.config.ts`
 
 | File | Domain | What It Covers |
 |---|---|---|
+| `src/app/api/ra/route-topology.test.ts` | Routing topology | Locks the shipped same-origin RA route inventory and fails if removed dashboard wrappers/routes are reintroduced |
+| `src/app/api/ra/dashboard/route.test.ts` | Route Handler | `GET /api/ra/dashboard`: `401`, live refresh success, stale-cache fallback on live failure |
+| `src/app/api/ra/weather/range/route.test.ts` | Route Handler | `GET /api/ra/weather/range`: `401`, live refresh success, stale-cache fallback on live failure |
+| `src/app/api/ra/dashboard/analytics/route.test.ts` | Route Handler | `GET /api/ra/dashboard/analytics`: `401`, snapshot refresh success, cached snapshot fallback on live failure |
+| `src/lib/analytics/dashboard-analytics-loader.test.ts` | Analytics UI flow | Snapshot-first dashboard analytics load stays on `mode=snapshot` on mount; explicit refresh uses `mode=live` only |
 | `src/lib/analytics/ui-utils.test.ts` | Analytics UI | All 5 analytics status states (`ready`, `stale`, `recomputing`, `insufficient_data`, `failed`); all error message branches (401, 404, 5xx, other API, non-ApiError); term/outcome formatting; effect ordering |
+| `src/lib/server/route-handler-auth.test.ts` | Route Handler infra | Bearer-token extraction and missing-header auth rejection |
+| `src/lib/server/route-handler-cache.test.ts` | Route Handler infra | Cache-key composition and `x-ww-cache` response helper behavior |
+| `src/lib/server/route-handler-validation.test.ts` | Route Handler infra | Shared `date_from` / `date_to` validation branches |
 
 ### Testable utility modules
 
@@ -127,12 +136,17 @@ Pure utility modules that hold logic extracted from components for testability:
 | Module | Exports |
 |---|---|
 | `src/lib/analytics/ui-utils.ts` | `getStatusPanel`, `getAnalyticsErrorMessage`, `formatTermLabel`, `formatOutcomeLabel`, `formatTermPart`, `formatSigned`, `formatPValue`, `compareEffectsByStrength`, `timeAgo` |
+| `src/lib/server/route-handler-auth.ts` | `extractBearerToken`, `requireRaBearerToken`, `verifySupabaseJWT` |
+| `src/lib/server/route-handler-cache.ts` | `getRedisClient`, `buildCacheKey`, `readCacheValue`, `writeCacheValue`, `jsonWithCacheState` |
+| `src/lib/server/route-handler-validation.ts` | `isIsoDate`, `readRequiredDateRange` |
 
 ### Conventions
 
 **What to test in the frontend**
 - Pure utility functions that determine UI state or format display values
 - Any function that branches on analytics status, API error codes, or model data fields
+- Next.js Route Handlers in `src/app/api/` by mocking shared server helpers and asserting `401`, success, and failure/fallback behavior
+- Route-topology guard tests whenever routing cleanup removes or deprecates a same-origin handler/wrapper, so deleted paths do not silently reappear
 
 **What not to test here (yet)**
 - React component rendering — this requires `@testing-library/react` + jsdom, which is not
