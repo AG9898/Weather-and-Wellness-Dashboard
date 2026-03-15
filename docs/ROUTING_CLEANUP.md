@@ -23,7 +23,7 @@
 | `RB03` | `done` | Backend service | Add staleness cutoff to `_is_recomputing_run` (30-minute timeout) |
 | `RB04` | `done` | Backend startup | Add lifespan cleanup for orphaned recomputing runs on Render restart |
 | `RB05` | `done` | Backend service | Wrap `fit_analytics_models` in `asyncio.to_thread` to unblock event loop |
-| `RB06` | `todo` | GitHub Actions | Add Render keep-alive ping workflow (every 14 minutes) |
+| `RB06` | `done` | GitHub Actions | Add Render keep-alive ping workflow (every 14 minutes) |
 
 ---
 

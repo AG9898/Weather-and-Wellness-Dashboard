@@ -1,0 +1,41 @@
+name: Render Keep-Alive Ping
+
+on:
+  schedule:
+    # Every 14 minutes around the clock — keeps Render free-tier instance warm
+    - cron: '0/14 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Render /health
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping backend health endpoint
+        env:
+          WEATHER_INGEST_BASE_URL: ${{ secrets.WEATHER_INGEST_BASE_URL }}
+        run: |
+          BASE_URL=$(printf '%s' "${WEATHER_INGEST_BASE_URL:-}" | tr -d '\r\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+          BASE_URL="${BASE_URL#\"}"
+          BASE_URL="${BASE_URL%\"}"
+          BASE_URL="${BASE_URL#\'}"
+          BASE_URL="${BASE_URL%\'}"
+          TARGET_URL="${BASE_URL%/}/health"
+
+          if [ -z "${BASE_URL}" ]; then
+            echo "ERROR: WEATHER_INGEST_BASE_URL is empty."
+            exit 1
+          fi
+
+          echo "Pinging ${TARGET_URL}"
+          HTTP_STATUS=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 90 "${TARGET_URL}") || true
+          echo "HTTP status: ${HTTP_STATUS}"
+
+          if [[ "${HTTP_STATUS}" == 2* ]]; then
+            echo "SUCCESS: Backend is warm."
+            exit 0
+          else
+            echo "WARN: Unexpected status ${HTTP_STATUS} — Render may be cold-starting; next ping will retry."
+            exit 0
+          fi

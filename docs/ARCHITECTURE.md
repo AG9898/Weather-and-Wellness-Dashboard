@@ -247,7 +247,9 @@ Full inventory, conventions, and guidance for adding new tests: **`docs/TESTING.
 
 > Canonical feature spec: `docs/WEATHER_INGESTION.md`
 
-Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
+Two scheduled jobs are active.
+
+**1. Daily UBC EOS weather ingestion** (Phase 2)
 
 - Scheduler: **GitHub Actions only** (explicitly excluding Supabase `pg_cron` for now).
 - Workflow file: `.github/workflows/weather-ingest.yml`
@@ -255,6 +257,14 @@ Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 - Schedule: `cron: '0 14 * * *'` (14:00 UTC daily) + `workflow_dispatch` for manual runs.
 - Reliability: bash retry loop (5 attempts, 60s delay) handles Render free-tier cold starts (~50s spin-up); ingestion is idempotent so duplicate runs are safe.
 - Exit policy: 2xx → success; 409/429 → exit 0 (expected control-flow responses); all other non-2xx → retry, then exit 1 (loud failure in Actions UI).
+
+**2. Render keep-alive ping** (RB06)
+
+- Workflow file: `.github/workflows/render-keepalive.yml`
+- Trigger: `cron: '0/14 * * * *'` (every 14 minutes, around the clock) + `workflow_dispatch` for manual runs.
+- Purpose: Prevents Render free-tier cold starts by sending traffic before the 15-minute idle spin-down threshold.
+- Secret: reuses `WEATHER_INGEST_BASE_URL` (already present); no new secret required.
+- Pings `GET /health`. Exit policy: always exits 0 — a missed or non-2xx ping is not a failure; the next ping will resume keep-alive.
 
 ### Secrets ownership
 
