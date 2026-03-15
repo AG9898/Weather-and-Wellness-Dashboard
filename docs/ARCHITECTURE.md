@@ -70,7 +70,7 @@ This section is the single routing inventory for dashboard-related reads across 
 All active RA same-origin Route Handlers now share a single server-only helper layer under `frontend/src/lib/server/`:
 
 - `route-handler-auth.ts` — Supabase bearer-token extraction and JWT verification (JWKS primary, HS256 fallback)
-- `route-handler-backend.ts` — Render backend URL resolution, 15-second timeout fetch wrapper, and normalized backend error type
+- `route-handler-backend.ts` — Render backend URL resolution, 55-second timeout fetch wrapper, and normalized backend error type. Each Route Handler also exports `maxDuration = 60` to allow the full 55s timeout window before Vercel's function limit fires.
 - `route-handler-cache.ts` — Upstash Redis bootstrap, shared cache-policy constants, cache read/write helpers, cache-key composition, and standardized `x-ww-cache*` response-header helpers
 - `route-handler-validation.ts` — `date_from` / `date_to` validation shared by filtered handlers
 
@@ -103,7 +103,7 @@ Standardized same-origin diagnostics:
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:dashboard:v1`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/weather/daily?start=today&end=today&include_forecast_periods=false` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+| `live` | Fetches `/weather/daily?start=today&end=today&include_forecast_periods=false` from the Render backend with a 55s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 **Auth:** The handler verifies the Supabase JWT from `Authorization: Bearer <token>` before touching the cache or making backend calls. No auth bypass via cache. Returns 401 for missing or invalid tokens.
 
@@ -127,7 +127,7 @@ Standardized same-origin diagnostics:
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:weather:range:v1:<date_from>:<date_to>`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` from the Render backend with a 15s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` from the Render backend with a 55s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 **Payload shaping:** the weather trend chart path requests a lean day-level payload (empty `forecast_periods`) because the chart only needs date, temperature, precipitation, and sunlight-hours values. This keeps first-load range fetches smaller and reduces cold-cache timeout risk on Vercel.
 
@@ -139,8 +139,8 @@ Standardized same-origin diagnostics:
 
 | Mode | Behaviour |
 |---|---|
-| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. If the cached bundle is marked `status="recomputing"`, the handler revalidates against the backend snapshot endpoint before serving it so the UI can pick up the newly finished snapshot promptly. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 15s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
-| `live` | Calls `/dashboard/analytics?...&mode=live` on Render with a 15s timeout and `cache: "no-store"`. The backend treats this as a background refresh request and returns immediately with the current snapshot state for the range, which the handler writes back into Redis so the dashboard can keep serving the in-progress snapshot state consistently. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
+| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. If the cached bundle is marked `status="recomputing"`, the handler revalidates against the backend snapshot endpoint before serving it so the UI can pick up the newly finished snapshot promptly. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 55s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
+| `live` | Calls `/dashboard/analytics?...&mode=live` on Render with a 55s timeout and `cache: "no-store"`. The backend treats this as a background refresh request and returns immediately with the current snapshot state for the range, which the handler writes back into Redis so the dashboard can keep serving the in-progress snapshot state consistently. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
 
 - **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before reading Redis or calling the backend. No auth bypass via cache.
 - **Bundle type:** `{ analytics: DashboardAnalyticsResponse, cached_at }` wrapped in `{ cached, data, refresh }`, where `refresh` explains whether the response is an idle snapshot read or a background refresh request.

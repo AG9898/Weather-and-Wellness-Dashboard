@@ -26,6 +26,7 @@ import {
 import { readRequiredDateRange } from "@/lib/server/route-handler-validation";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 type AnalyticsRouteMode = "snapshot" | "live";
 type AnalyticsRefreshState = "idle" | "recomputing" | "ready";

@@ -1,6 +1,6 @@
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-export const BACKEND_FETCH_TIMEOUT_MS = 15_000;
+export const BACKEND_FETCH_TIMEOUT_MS = 55_000;
 
 export class BackendRequestError extends Error {
   constructor(
