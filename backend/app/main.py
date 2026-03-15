@@ -41,28 +41,31 @@ _STARTUP_STALE_THRESHOLD = timedelta(minutes=30)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Mark any stuck recomputing analytics runs as failed on startup."""
-    stale_cutoff = datetime.now(timezone.utc) - _STARTUP_STALE_THRESHOLD
-    async with get_session_factory()() as db:
-        await db.execute(
-            update(AnalyticsRun)
-            .where(
-                AnalyticsRun.status == "recomputing",
-                AnalyticsRun.finished_at.is_(None),
-                AnalyticsRun.started_at < stale_cutoff,
+    try:
+        stale_cutoff = datetime.now(timezone.utc) - _STARTUP_STALE_THRESHOLD
+        async with get_session_factory()() as db:
+            await db.execute(
+                update(AnalyticsRun)
+                .where(
+                    AnalyticsRun.status == "recomputing",
+                    AnalyticsRun.finished_at.is_(None),
+                    AnalyticsRun.started_at < stale_cutoff,
+                )
+                .values(
+                    status="failed",
+                    finished_at=datetime.now(timezone.utc),
+                    error_json={
+                        "error_type": "ProcessKilled",
+                        "message": (
+                            "Run was in progress when the server restarted. "
+                            "Assumed killed by process termination."
+                        ),
+                    },
+                )
             )
-            .values(
-                status="failed",
-                finished_at=datetime.now(timezone.utc),
-                error_json={
-                    "error_type": "ProcessKilled",
-                    "message": (
-                        "Run was in progress when the server restarted. "
-                        "Assumed killed by process termination."
-                    ),
-                },
-            )
-        )
-        await db.commit()
+            await db.commit()
+    except Exception:
+        logger.exception("Startup cleanup of orphaned analytics runs failed — skipping.")
     yield
 
 
