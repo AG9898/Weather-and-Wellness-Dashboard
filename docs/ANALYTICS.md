@@ -313,6 +313,12 @@ The dashboard should use a hybrid analytics flow:
 Redis may cache snapshot reads, but Redis should not be the sole source of truth
 for analytics results. Durable snapshot state belongs in Postgres.
 
+**Model fitting is non-blocking:** `fit_analytics_models` is a synchronous CPU-bound statsmodels call (30–90s). It runs via `asyncio.to_thread` so the uvicorn event loop stays free to serve other requests (health checks, polls, weather fetches) during model fitting.
+
+**Staleness cutoff:** `_is_recomputing_run` treats any run that has been in `recomputing` status for more than 30 minutes as timed out. This allows the system to self-heal on the next "Refresh In Background" click without manual DB intervention (e.g. after a Render process kill or OOM).
+
+**Startup cleanup:** On backend restart, a FastAPI lifespan hook marks any orphaned `analytics_runs` rows (`status="recomputing"`, `finished_at=NULL`, `started_at` older than 30 minutes) as `"failed"`. This clears runs that were in-flight when the previous process was killed, so they are not counted against the staleness window.
+
 ---
 
 ## Planned API Shape

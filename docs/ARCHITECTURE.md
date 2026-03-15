@@ -193,6 +193,8 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
   analytics status and preserve the prior successful snapshot.
 - Route Handlers should not block the dashboard indefinitely waiting for model
   fitting to finish.
+- **30-minute staleness cutoff:** `_is_recomputing_run` in `analytics_service.py` treats any run that has been in `recomputing` status for more than 30 minutes as timed out. The next "Refresh In Background" click will queue a fresh run rather than returning a fake "already recomputing" response.
+- **Startup cleanup:** A FastAPI lifespan hook in `main.py` marks orphaned `analytics_runs` rows (`status="recomputing"`, `finished_at=NULL`, `started_at` older than 30 minutes) as `"failed"` on every backend restart, clearing runs killed by process termination.
 
 ---
 
@@ -269,6 +271,7 @@ Phase 2 introduces a single scheduled job: **daily UBC EOS weather ingestion**.
 - Service is live at `https://weather-and-wellness-dashboard.onrender.com`.
 - Health check path: `/health` → returns `{"status":"ok"}`.
 - Local backend tasks in Phase 1 (DB wiring, models, migrations, stub auth) do not require Render.
+- On startup, a lifespan hook cleans up orphaned `analytics_runs` rows from previous process lifetimes (see "Failure behavior" above).
 
 ### Required Render Environment Variables
 

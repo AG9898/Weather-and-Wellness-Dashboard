@@ -20,9 +20,9 @@
 |---|---|---|---|
 | `RB01` | `done` | Frontend infra | Increase Vercel function `maxDuration` to 60s on all 3 route handlers |
 | `RB02` | `done` | Frontend infra | Increase `BACKEND_FETCH_TIMEOUT_MS` from 15s to 55s |
-| `RB03` | `todo` | Backend service | Add staleness cutoff to `_is_recomputing_run` (30-minute timeout) |
-| `RB04` | `todo` | Backend startup | Add lifespan cleanup for orphaned recomputing runs on Render restart |
-| `RB05` | `todo` | Backend service | Wrap `fit_analytics_models` in `asyncio.to_thread` to unblock event loop |
+| `RB03` | `done` | Backend service | Add staleness cutoff to `_is_recomputing_run` (30-minute timeout) |
+| `RB04` | `done` | Backend startup | Add lifespan cleanup for orphaned recomputing runs on Render restart |
+| `RB05` | `done` | Backend service | Wrap `fit_analytics_models` in `asyncio.to_thread` to unblock event loop |
 | `RB06` | `todo` | GitHub Actions | Add Render keep-alive ping workflow (every 14 minutes) |
 
 ---

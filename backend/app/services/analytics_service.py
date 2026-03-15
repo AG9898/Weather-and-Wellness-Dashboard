@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -280,7 +281,7 @@ async def _finish_recompute_run(
             date_from=run.date_from,
             date_to=run.date_to,
         )
-        modeling_result = fit_analytics_models(dataset_result)
+        modeling_result = await asyncio.to_thread(fit_analytics_models, dataset_result)
     except Exception as exc:
         finished_at = datetime.now(timezone.utc)
         run.status = "failed"
@@ -531,8 +532,19 @@ def _response_without_snapshot(
     )
 
 
+_RECOMPUTE_STALENESS_TIMEOUT = timedelta(minutes=30)
+
+
 def _is_recomputing_run(run: AnalyticsRun | None) -> bool:
-    return run is not None and run.status == "recomputing" and run.finished_at is None
+    if run is None:
+        return False
+    if run.status != "recomputing" or run.finished_at is not None:
+        return False
+    if run.started_at is not None:
+        elapsed = datetime.now(timezone.utc) - run.started_at
+        if elapsed > _RECOMPUTE_STALENESS_TIMEOUT:
+            return False
+    return True
 
 
 __all__ = [

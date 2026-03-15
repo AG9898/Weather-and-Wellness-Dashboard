@@ -1,12 +1,17 @@
 import logging
 import os
+from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import update
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.db import get_session_factory
+from app.models.analytics import AnalyticsRun
 from app.routers import admin, dashboard, digitspan, participants, sessions, surveys, weather
 
 logger = logging.getLogger(__name__)
@@ -30,7 +35,38 @@ ALLOWED_ORIGINS: list[str] = (
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="Weather & Wellness Backend", version="0.1.0")
+_STARTUP_STALE_THRESHOLD = timedelta(minutes=30)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Mark any stuck recomputing analytics runs as failed on startup."""
+    stale_cutoff = datetime.now(timezone.utc) - _STARTUP_STALE_THRESHOLD
+    async with get_session_factory()() as db:
+        await db.execute(
+            update(AnalyticsRun)
+            .where(
+                AnalyticsRun.status == "recomputing",
+                AnalyticsRun.finished_at.is_(None),
+                AnalyticsRun.started_at < stale_cutoff,
+            )
+            .values(
+                status="failed",
+                finished_at=datetime.now(timezone.utc),
+                error_json={
+                    "error_type": "ProcessKilled",
+                    "message": (
+                        "Run was in progress when the server restarted. "
+                        "Assumed killed by process termination."
+                    ),
+                },
+            )
+        )
+        await db.commit()
+    yield
+
+
+app = FastAPI(title="Weather & Wellness Backend", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
