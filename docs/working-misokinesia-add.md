@@ -1,11 +1,31 @@
 # Working Misokinesia Add
 
-> Working planning snapshot for a future misokinesia module. This document records the
+> Working planning snapshot for the misokinesia module. This document records the
 > current direction and draft defaults so the feature can be resumed later without
 > re-deciding the basics.
 >
-> Status: planning only. Auth and role behavior specific to this module are intentionally
-> deferred for a later pass.
+> Status: implementation-ready. Key decisions resolved March 2026 (see Resolved Decisions
+> section below). Auth and role edge cases are intentionally deferred for a later pass.
+
+---
+
+## Resolved Decisions
+
+These items were open during initial planning and are now resolved (March 2026):
+
+| Decision | Resolution |
+|---|---|
+| Number of clips | ~29 videos, ~15 seconds each, longest 33 seconds |
+| Clip order | All 29 shown to every participant in a fixed sort_order sequence |
+| Post-clip questionnaire | Same fixed question set after every clip (explicit columns in trial_responses) |
+| Participant type | Fully anonymous — no demographics collected |
+| Participant numbering | Independent SERIAL (`misokinesia_participant_number`) in `misokinesia_participants`; starts from 1, independent of main study participant_number |
+| Session flow | RA navigates to dedicated /misokinesia page via dock → clicks "Start Misokinesia Session" → backend creates anonymous participant + session → app navigates to participant task page (same device, no external URL or handoff) |
+| Video implementation | Blank placeholder component during development; replaced by real mp4 files when available |
+| Video hosting | Supabase Storage, **public bucket** (`misokinesia-stimuli`), raw CDN URLs — no signing, no expiry |
+| Table naming | `misokinesia_participants` (not `misokinesia_runs`) for per-session execution data |
+| Response submission | Per-trial: submit after each clip's questionnaire, before next clip loads |
+| Undo | Deferred — undo-last-session extension to misokinesia rows is a later pass |
 
 ---
 
@@ -13,15 +33,9 @@
 
 Add a participant-facing misokinesia task to the existing web app where a participant:
 
-1. watches a short sequence of videos (roughly 5 to 10 clips, each about 5 to 8 seconds)
-2. answers short survey-style questions after each clip
-3. stores all results under the existing participant/session model
-
-This is a working spec, not an implementation-ready contract. It captures:
-
-- decisions already made
-- draft architecture and data model defaults
-- open questions to revisit later
+1. watches all ~29 short video clips (each ~15 seconds, fixed order) embedded in the webapp
+2. answers a fixed set of survey-style questions after each clip
+3. stores all results under the existing participant/session model (anonymous, no demographics)
 
 ---
 
@@ -91,153 +105,113 @@ signed URLs in the manifest response.
 
 ---
 
-## Draft Participant Flow
+## Participant Flow
 
-The intended participant flow is currently:
+1. RA navigates to `/misokinesia` (dedicated RA page, accessible from the floating dock on all RA pages)
+2. RA clicks "Start Misokinesia Session" — backend atomically creates anonymous participant +
+   session + misokinesia_participants row, returns manifest
+3. App navigates to `/misokinesia/{misokinesia_participant_id}` (participant task page, outside
+   RA auth group — no login required, same device)
+4. Participant sees intro screen, clicks to begin
+5. For each of 29 clips (fixed order):
+   a. Video clip plays (placeholder during development; real mp4 when available)
+   b. Fixed questionnaire shown after clip
+   c. Frontend submits `POST /misokinesia/participants/{id}/responses` — response includes
+      `is_complete: true` on the 29th submission, at which point backend auto-sets
+      `misokinesia_participants.completed_at`
+6. After final submission, frontend calls existing `PATCH /sessions/{session_id}/status` with
+   status='complete' (same pattern as digitspan)
+7. Completion screen shown — RA clicks "Return to Dashboard"
 
-1. participant reaches the misokinesia module in the existing session flow
-2. frontend requests a run or manifest from the backend
-3. backend validates the session and returns:
-   - assigned clip order
-   - clip metadata
-   - storage URLs or signed URLs
-   - questionnaire metadata if needed
-4. frontend plays one clip at a time
-5. frontend collects survey-style responses after each clip
-6. frontend submits each trial response or a controlled batch to the backend
-7. backend stores all rows under the current session and participant
-8. frontend marks the misokinesia run complete and continues to the next step
-
-Working default:
-
-- prefer a dedicated task page/module with internal state rather than many route transitions
-  between clips
-- prefer one manifest fetch for the full clip sequence rather than a fetch per clip
+Working defaults:
+- single-page state machine for the task (no URL transitions between clips)
+- one manifest fetch on task page load (all 29 clip URLs in one response)
 
 ---
 
-## Draft Data Model
+## Data Model
 
-These table names and shapes are draft defaults only. They should be finalized when the
-feature moves into implementation.
+Four new tables. No changes to the existing `sessions` or `participants` tables beyond creating
+anonymous rows in them via a new lightweight endpoint.
 
 ### `misokinesia_test_sets`
 
-Purpose:
+Purpose: reusable configured stimulus set / study version.
 
-- represent a reusable configured stimulus set or study version
-
-Likely fields:
-
-- `test_set_id`
-- `name`
-- `version`
-- `description`
-- `active`
-- `created_at`
+Fields: `test_set_id` (UUID PK), `name`, `version`, `description`, `active`, `created_at`.
 
 ### `misokinesia_stimuli`
 
-Purpose:
+Purpose: metadata for each video clip. No video bytes stored in the DB.
 
-- represent each clip and its storage metadata
+Fields: `stimulus_id` (UUID PK), `test_set_id` (FK), `storage_path` (Supabase Storage object
+key in public bucket `misokinesia-stimuli`), `filename`, `duration_ms`, `mime_type`, `sort_order`
+(1-based fixed playback order), `active`, `created_at`.
 
-Likely fields:
+### `misokinesia_participants`
 
-- `stimulus_id`
-- `test_set_id`
-- `storage_path`
-- `duration_ms`
-- `mime_type`
-- `checksum`
-- `sort_order`
-- optional condition/tag fields
-- `active`
-- `created_at`
+Purpose: one row per participant's task execution. Named `misokinesia_participants` (not `runs`)
+for consistency with the per-participant focus of the module.
 
-Storage note:
-
-- store only metadata and object location here
-- do not store the binary video in the DB
-
-### `misokinesia_runs`
-
-Purpose:
-
-- represent one session-scoped execution of the task
-
-Likely fields:
-
-- `run_id`
-- `session_id`
-- `participant_uuid`
-- `test_set_id`
-- `started_at`
-- `completed_at`
-- optional randomized ordering seed or stored assignment metadata
-- `created_at`
+Fields: `misokinesia_participant_id` (UUID PK), `session_id` (FK→sessions), `participant_uuid`
+(FK→participants), `test_set_id` (FK), `misokinesia_participant_number` (SERIAL — independent
+auto-increment starting from 1, participant-facing identifier for this module), `started_at`,
+`completed_at` (nullable), `created_at`.
 
 ### `misokinesia_trial_responses`
 
-Purpose:
+Purpose: one row per clip per participant.
 
-- store one response row per shown stimulus
+Fields: `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK),
+`participant_uuid` (FK), `stimulus_id` (FK), `display_order` (1-based), explicit fixed
+questionnaire columns `q1`…`qN` (integer; exact column count and valid ranges determined from
+`reference/Misokinesia Questionnaire.pdf` before the migration is written — confirm with
+researcher before finalising), `completed_at` (nullable), `created_at`.
 
-Likely fields:
+UNIQUE constraint on `(misokinesia_participant_id, stimulus_id)` prevents duplicate submissions.
 
-- `response_id`
-- `run_id`
-- `session_id`
-- `participant_uuid`
-- `stimulus_id`
-- `display_order`
-- watched/completed flags
-- response latency or timing metadata as needed
-- response data
-- `created_at`
-
-Questionnaire storage default:
-
-- if the post-video questionnaire is stable and known, use explicit response columns
-- if the questionnaire is likely to change often, use a versioned JSON response shape instead
-
-Current working default:
-
-- prefer explicit fixed columns if the instrument is stable, because that matches the rest of
-  the project's schema style and keeps validation clearer
+Questionnaire storage: explicit fixed columns matching the rest of the project's schema style.
+Column names and integer ranges must be confirmed from the questionnaire instrument before the
+migration is written (see T104).
 
 ---
 
-## Draft API Surface
+## API Surface
 
-These endpoint shapes are candidates only. Final contracts should be documented in `docs/API.md`
-when implementation begins.
+Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.py`.
+Final contracts documented in `docs/API.md` when implementation is complete.
 
-### RA/Admin-Oriented Endpoints
+### Endpoints
 
-Potential responsibilities:
+| Method | Path | Auth | Status | Description |
+|---|---|---|---|---|
+| `POST` | `/misokinesia/start` | `Depends(get_current_lab_member)` | 201 | RA-triggered. Creates anonymous participant + session + misokinesia_participants row atomically. Returns manifest with misokinesia_participant_id, misokinesia_participant_number, and all clip public URLs in sort_order. |
+| `POST` | `/misokinesia/participants/{participant_id}/responses` | none (participant-facing) | 201 | Submit one trial's questionnaire answers. Validates participant row exists, stimulus belongs to the assigned test_set, no duplicate for this participant+stimulus pair. |
+| `PATCH` | `/sessions/{session_id}/status` | none (existing endpoint) | 200 | **Reuse existing endpoint** to mark session complete after the final response is submitted — same pattern as digitspan. No new endpoint needed. |
 
-- upload/manage stimuli
-- manage test sets
-- inspect available clips and metadata
+`misokinesia_participants.completed_at` is set server-side when the backend detects all stimuli
+in the test_set have a response row for this participant (backend computes this on each
+`POST /responses` call and auto-sets `completed_at` on the final submission).
+This removes the need for a separate complete endpoint entirely.
 
-These are intentionally left high-level for now because feature-specific auth and media
-management roles are not finalized.
+Backend validation rules for `POST /responses`:
+- misokinesia_participants row exists
+- stimulus_id belongs to the test_set assigned to that participant
+- no duplicate (participant_id + stimulus_id) — return 409, not 500
+- qN values within valid integer ranges
 
-### Participant Endpoints
+### Why No Separate Complete Endpoint
 
-Current candidate flow:
+Digitspan does not have its own complete endpoint — the frontend calls the existing
+`PATCH /sessions/{session_id}/status` after submitting the run. Misokinesia follows the same
+pattern. Keeping `misokinesia_participants.completed_at` management server-side (auto-set on
+final response) means the frontend only ever calls two endpoint types: `POST /start` and
+`POST /responses` (×29), then the already-existing session status endpoint.
 
-- run start / manifest endpoint
-- trial response submission endpoint
-- run completion endpoint
+### Admin/RA Stimulus Management
 
-The backend should validate that:
-
-- the session exists
-- the session is in the expected participant-ready state
-- submitted `stimulus_id` values belong to the assigned run
-- duplicate or tampered submissions are rejected cleanly
+Intentionally deferred. Stimuli are seeded via a seed script (see T115). Full upload/management
+endpoints are a later pass once auth roles are finalized.
 
 ---
 
@@ -265,14 +239,8 @@ Working rules:
 
 ### Public vs. Signed Access
 
-If clips are not sensitive:
-
-- public CDN-style access is the simplest and fastest option
-
-If clips are not meant to be public:
-
-- return short-lived signed URLs from the backend
-- still return them in one manifest response instead of one URL request per clip
+**Resolved:** public bucket. Clips are stored in the public `misokinesia-stimuli` Supabase
+Storage bucket. URLs are raw CDN URLs with no signing and no expiry — fastest possible delivery.
 
 ---
 
@@ -301,17 +269,13 @@ Current working default until revisited:
 
 ## Later Decisions To Revisit
 
-These are not resolved yet and should remain open.
+These remain open and should not be assumed without a deliberate decision:
 
-- Final auth and role rules for stimulus upload, management, and launch.
-- Whether stimuli are public assets or private signed assets.
-- Whether the post-video questionnaire is fixed or configurable.
-- Whether responses are submitted one trial at a time or in small batches.
-- Whether playback telemetry beyond completion/latency is needed.
-- Whether this module appears once in the session flow or becomes a versioned reusable study
-  instrument with multiple variants.
-- How admin export surfaces should include the new misokinesia tables.
-- How undo-last-session should clean up misokinesia rows once the feature exists.
+- Final auth and role rules for stimulus upload, management, and launch (who can seed/replace clips).
+- Whether playback telemetry beyond completion flags is needed (e.g. did the participant skip or replay).
+- Whether this module eventually becomes a versioned reusable study instrument with multiple variants.
+- How admin export/data-download surfaces should include the new misokinesia tables.
+- How undo-last-session should clean up misokinesia rows (currently deferred — not in scope for initial implementation).
 
 ---
 
@@ -337,12 +301,17 @@ Use these docs as the baseline when this work resumes:
 
 ---
 
-## Resume Checklist
+## Implementation Checklist
 
-When planning resumes, the next pass should answer these in order:
+Before writing the DB migration (T104):
 
-1. finalize misokinesia-specific auth and role behavior
-2. finalize whether stimuli are public or signed/private
-3. finalize the post-video questionnaire shape
-4. finalize table schema and API contracts
-5. plan frontend flow placement and export/undo implications
+1. Read `reference/Misokinesia Questionnaire.pdf` to determine exact question count and response scales
+2. Confirm the q1…qN column names and integer ranges with the researcher
+3. Then write the migration
+
+Remaining open items for later passes:
+
+- finalize auth rules for stimulus management endpoints
+- decide on playback telemetry requirements
+- plan undo-last-session extension to cover misokinesia rows
+- plan admin data export for misokinesia tables

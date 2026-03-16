@@ -637,3 +637,169 @@
   ]
 }
 ```
+
+---
+
+# Kanban — Phase 4 (archived 2026-03-16)
+
+> Collapsed summary format. Archived from `docs/kanban.md` when done tasks T71–T99 and T103 were moved to the log.
+
+```json
+{
+  "project": "Weather & Wellness + Misokinesia Research Web App",
+  "phase": 4,
+  "phase_status": "in_progress",
+  "tasks": [
+    {
+      "task_number": "T71",
+      "title": "Frontend — Login page glassmorphism refactor",
+      "description": "Redesigned login page with deep UBC blue gradient background, glassmorphism card with backdrop-filter blur, and 4–5 animated SVG blob shapes. Auth logic unchanged."
+    },
+    {
+      "task_number": "T72",
+      "title": "Frontend — Shared cloud loading component with animejs float animation",
+      "description": "Created reusable <CloudLoading /> at src/lib/components/CloudLoading.tsx with animejs stroke draw-in then continuous float loop; installed animejs; replaced inline spinners in WeatherUnifiedCard, DashboardPage, and new-session page."
+    },
+    {
+      "task_number": "T73",
+      "title": "Frontend — Fix survey form question/answer alignment",
+      "description": "Fixed SurveyForm fieldset legend rendering: replaced visible legend with sr-only legend plus sibling visible element for question text, ensuring questions render above answer options."
+    },
+    {
+      "task_number": "T74",
+      "title": "Frontend — Highcharts graph draw-in animation on load and filter change",
+      "description": "Added left-to-right draw-in animation to weather trend chart via plotOptions.series.animation (duration 800ms) and series.setData on filter change, avoiding chart key resets."
+    },
+    {
+      "task_number": "T75",
+      "title": "Frontend — KPI stat number counter animation with animejs",
+      "description": "Added useCountUp hook using animejs animate() on a plain JS object to animate all 5 KPI numbers from 0 to target on load and re-animate on data refresh; prefers-reduced-motion respected."
+    },
+    {
+      "task_number": "T76",
+      "title": "Frontend — Custom rain-style scrollbar (CSS-only)",
+      "description": "Styled app scrollbar in globals.css with UBC blue gradient thumb and animated falling droplet effect via CSS @keyframes; Firefox fallback with scrollbar-width: thin and scrollbar-color."
+    },
+    {
+      "task_number": "T77",
+      "title": "DB — extend survey_cogfunc8a for imported legacy rows",
+      "description": "Alembic migration added data_source VARCHAR DEFAULT 'native', nullable raw/computed columns, legacy_mean_1_5 NUMERIC, and UNIQUE(session_id) to survey_cogfunc8a to support imported rows alongside native rows."
+    },
+    {
+      "task_number": "T78",
+      "title": "Backend — import commit + Phase 4 backfill for legacy CogFunc and digit span semantics cleanup",
+      "description": "Updated import_service.py and phase4_backfill.py to upsert imported survey_cogfunc8a rows (data_source='imported', legacy_mean_1_5); native rows never overwritten; cleaned up legacy Digit Span naming/comments."
+    },
+    {
+      "task_number": "T79",
+      "title": "Backend — export/API parity for imported CogFunc rows",
+      "description": "Extended export_service.py to include survey_cogfunc8a imported-row columns (data_source, legacy_mean_1_5) in XLSX and ZIP exports; removed stale docs claiming imported CogFunc rows were absent."
+    },
+    {
+      "task_number": "T80",
+      "title": "Verification — legacy import regression tests for CogFunc and digit span",
+      "description": "Added/extended backend tests for self_report remap, native-row overwrite protection, export column presence, backfill safety, and legacy Digit Span storage in digitspan_runs.total_correct."
+    },
+    {
+      "task_number": "T81",
+      "title": "Backend ops — add participant-domain wipe script that preserves weather tables",
+      "description": "Added selective wipe utility that clears participants, sessions, imported_session_measures, survey tables, and digitspan tables while preserving weather_daily and weather_ingest_runs; study_days handled safely."
+    },
+    {
+      "task_number": "T82",
+      "title": "Ops — post-T80 selective clear and fresh reference XLSX re-import",
+      "description": "Ran selective wipe after T80 clearing participant/session/survey/digitspan data while preserving weather; performed fresh preview-then-commit import of reference/data_full_1-230.xlsx."
+    },
+    {
+      "task_number": "T83",
+      "title": "Backend analytics — add Python dependencies and response schema scaffolding",
+      "description": "Added pandas, numpy, statsmodels (and scipy) to requirements.txt; scaffolded analytics Pydantic response models (dataset metadata, model summaries, effect cards) and backend analytics version constant."
+    },
+    {
+      "task_number": "T84",
+      "title": "DB — add durable analytics run and snapshot tables",
+      "description": "Alembic migration added append-only analytics run/audit table and snapshot table keyed by date range + model version; ORM models created; Redis confirmed as cache layer only."
+    },
+    {
+      "task_number": "T85",
+      "title": "Backend analytics — build canonical analysis dataset service",
+      "description": "Implemented dataset service applying source-precedence rules (native > imported), deriving date_bin in-memory, and returning included rows with structured exclusion counts/reasons."
+    },
+    {
+      "task_number": "T86",
+      "title": "Backend analytics — implement z-scoring and mixed-model fitting service",
+      "description": "Implemented Python statistics engine z-scoring within the analysis window and fitting two planned mixed-effects models; serializes effect cards with coefficient, SE, p-value, CI, direction, and convergence warnings."
+    },
+    {
+      "task_number": "T87",
+      "title": "Backend analytics — add snapshot persistence and recompute orchestration",
+      "description": "Implemented snapshot service managing ready/stale/recomputing/insufficient_data/failed states; prior snapshot preserved while recompute is running or fails; run metadata captured."
+    },
+    {
+      "task_number": "T88",
+      "title": "Backend API — implement GET /dashboard/analytics",
+      "description": "Added RA-protected GET /dashboard/analytics with date_from/date_to bounds, mode=snapshot|live, America/Vancouver timezone interpretation, and typed analytics response contract; no changes to existing dashboard endpoints."
+    },
+    {
+      "task_number": "T89",
+      "title": "Frontend analytics — add typed API wrappers and same-origin route handler",
+      "description": "Added typed analytics API wrappers in src/lib/api/ and a same-origin Route Handler with JWT validation; analytics cache keys distinct from operational dashboard keys; stale-snapshot fallback preserved."
+    },
+    {
+      "task_number": "T90",
+      "title": "Frontend dashboard — add analytics model cards UI",
+      "description": "Added dashboard analytics section rendering model cards (coefficient, CI, significance, direction, convergence); handles recomputing/stale/insufficient_data/failed states without blocking existing weather and summary surfaces."
+    },
+    {
+      "task_number": "T91",
+      "title": "Verification — analytics dataset, model, endpoint, and dashboard parity tests",
+      "description": "Added end-to-end analytics pipeline tests: dataset precedence rules, model term serialization, endpoint auth/modes/stale-fallback, all frontend UI states, and an R-parity fixture for term naming and included-row logic."
+    },
+    {
+      "task_number": "T92",
+      "title": "Backend analytics — extend snapshot/API payload for effect plots and weather-link metadata",
+      "description": "Extended analytics serialization to include chart-ready effect-plot data (points/fit-line series) per selected term and date-based weather-link metadata; snapshot persistence updated for the added payloads."
+    },
+    {
+      "task_number": "T93",
+      "title": "Frontend dashboard — shared weather and analytics filter state",
+      "description": "Refactored dashboard to own one shared date-range state driving both weather and analytics requests; filter changes update both surfaces consistently; no bare fetch in components."
+    },
+    {
+      "task_number": "T94",
+      "title": "Frontend dashboard — add separate analytics effect plot card with weather annotations",
+      "description": "Added dedicated effect-plot card that responds to model-card selection; weather chart shows date-based annotations only; effect plot and weather chart remain visually and semantically distinct."
+    },
+    {
+      "task_number": "T95",
+      "title": "Verification — linked weather-analysis visualization tests",
+      "description": "Added tests verifying shared date filter drives both weather and analytics requests, model-card selection drives the effect plot, and weather annotations remain date-based without introducing effect series into the weather chart."
+    },
+    {
+      "task_number": "T96",
+      "title": "DB + backend — add undo-last-session audit table and delete service",
+      "description": "Alembic migration added append-only admin_session_undo_log; transactional delete service removes latest native session's survey/digitspan/session rows and conditionally removes participant when no other sessions remain; weather tables untouched."
+    },
+    {
+      "task_number": "T97",
+      "title": "Backend API — implement DELETE /sessions/last-native",
+      "description": "Added RA-protected DELETE /sessions/last-native: validates confirmation, targets only latest native session, rejects imported sessions, calls transactional delete service, returns typed delete summary."
+    },
+    {
+      "task_number": "T98",
+      "title": "Frontend dashboard — add RA Undo Last Session control",
+      "description": "Added RA-only Undo Last Session control showing participant number, session status, and created time; requires explicit confirmation and reason; refreshes dashboard KPI/analytics state on success."
+    },
+    {
+      "task_number": "T99",
+      "title": "Verification — undo-last-session safeguards and regression coverage",
+      "description": "Added backend and frontend tests verifying latest-native-session selection, audit row creation, participant conditional deletion, imported-session rejection, and weather table integrity after undo."
+    },
+    {
+      "task_number": "T103",
+      "title": "Docs — Finalize working-misokinesia-add.md and add T104–T115 to kanban",
+      "description": "Updated docs/working-misokinesia-add.md with all resolved March 2026 planning decisions (video count, questionnaire, anonymity, storage, naming); marked resolved items; added T104–T115 to kanban.md in full JSON format."
+    }
+  ]
+}
+```
