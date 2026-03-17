@@ -230,7 +230,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T109",
       "title": "Frontend — Misokinesia RA page, dock navigation, and API wrappers",
-      "status": "todo",
+      "status": "done",
       "description": "Three parts: (1) Create a new dedicated RA page at `frontend/src/app/(ra)/misokinesia/page.tsx` (URL: /misokinesia). This page lives inside the (ra) route group so it inherits the RA auth guard from `frontend/src/app/(ra)/layout.tsx`. The page is intentionally minimal for now — a hero zone with a 'Start Misokinesia Session' button and placeholder text ('Participant statistics and KPIs coming soon'). The button should have a visually distinct aesthetic from the 'Start New Entry' button on the dashboard — consider a different accent color (e.g. a teal/green-adjacent UBC accent rather than UBC blue) or a different button shape/weight. On click: call POST /misokinesia/start, receive MisokinesiaManifest, then navigate to `/misokinesia/{misokinesia_participant_id}` passing the manifest via router state or sessionStorage. Show loading and inline error states on the button. (2) Update `frontend/src/lib/components/RAFloatingChrome.tsx`: add a misokinesia entry to the DOCK_ITEMS array — `{ href: '/misokinesia', label: 'Misokinesia', icon: Video }` (import Video from lucide-react alongside the existing icons); update `shouldShowRAFloatingChrome()` to return true for `/misokinesia` in addition to the existing routes. (3) Add TypeScript types and API wrapper functions to `frontend/src/lib/api/index.ts`: MisokinesiaClipMeta (stimulus_id, public_url, sort_order, duration_ms), MisokinesiaManifest (misokinesia_participant_id, misokinesia_participant_number, session_id, clips: MisokinesiaClipMeta[]), MisokinesiaTrialResponsePayload (stimulus_id, display_order, q1...qN), MisokinesiaTrialResponseResult (response_id, is_complete: bool, session_id), MisokinesiaEndOfTaskPayload, MisokinesiaEndOfTaskResult; startMisokinesiaSession() → Promise<MisokinesiaManifest>; submitMisokinesiaTrialResponse(participantId, payload) → Promise<MisokinesiaTrialResponseResult>; submitMisokinesiaEndOfTask(participantId, payload) → Promise<MisokinesiaEndOfTaskResult>. Session completion reuses the existing patchSessionStatus() — no new complete wrapper needed. See docs/working-misokinesia-add.md for end-of-task payload type specs. Also create the participant task route folder `frontend/src/app/misokinesia/[misokinesia_participant_id]/` (outside the (ra) group, no auth guard — participants access these pages directly) so the navigation target exists.",
       "stack": ["frontend"],
       "depends_on": ["T106"],
@@ -259,11 +259,11 @@ Follow current JSON Schema when adding tasks.
       "updates_docs": [
         "docs/PROGRESS.md"
       ]
-    },
+    },s
     {
       "id": "T110",
       "title": "Frontend — MisokinesiaVideoPlayer placeholder component",
-      "status": "todo",
+      "status": "done",
       "description": "Create `frontend/src/lib/components/MisokinesiaVideoPlayer.tsx`. This is a PLACEHOLDER implementation — real mp4 video files are not yet available. The component renders a styled box displaying 'Clip [stimulusIndex] of [totalStimuli]' as a centered message, with a 'Continue' button that triggers the onEnded callback. The component interface must be designed for easy future swap to a real <video> element: accept props `{ stimulusIndex: number, totalStimuli: number, publicUrl: string, onEnded: () => void }` — publicUrl is accepted but ignored in the placeholder. Style the placeholder to occupy a consistent height (e.g. a fixed-height card or 16:9 aspect box) so the layout does not shift when replaced by a real video. Follow the existing component style in `frontend/src/lib/components/` for dark/light mode compatibility and Tailwind class conventions (see `docs/styleguide.md`).",
       "stack": ["frontend"],
       "depends_on": ["T109"],
@@ -287,7 +287,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T111",
       "title": "Frontend — MisokinesiaQuestionnaire + MisokinesiaEndOfTaskForm components",
-      "status": "todo",
+      "status": "done",
       "description": "Create two components. (1) `frontend/src/lib/components/MisokinesiaQuestionnaire.tsx` — renders the fixed per-clip questionnaire (4 questions, shown after every clip). Question text and response scales come from `reference/Misokinesia Questionnaire.pdf`. Follow the patterns in `frontend/src/lib/components/SurveyForm.tsx` for layout (question above answer options), radio button inputs, required-answer validation before submit, and submit handling. Props: `{ misokinesiaParticipantId: string, stimulusId: string, displayOrder: number, onComplete: () => void }`. On submit: call submitMisokinesiaTrialResponse, then call onComplete. Show an inline error message if the API call fails (do not navigate away). Show a loading state on the submit button while the call is in-flight. (2) `frontend/src/lib/components/MisokinesiaEndOfTaskForm.tsx` — renders the end-of-task questionnaire shown ONCE after all 29 per-clip questionnaires are complete (before the completion screen). See docs/working-misokinesia-add.md End-of-task Questionnaire section for the exact fields, question text, and input types. Props: `{ misokinesiaParticipantId: string, onComplete: () => void }`. On submit: call submitMisokinesiaEndOfTask(), then call onComplete. All fields are optional. Show loading and inline error states.",
       "stack": ["frontend"],
       "depends_on": ["T110"],
@@ -318,7 +318,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T112",
       "title": "Frontend — Misokinesia task page (full single-page state machine)",
-      "status": "todo",
+      "status": "done",
       "description": "Create `frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx`. This is the main participant-facing task page. It is a single-page state machine — no URL transitions between clips. States: `intro` → `playing` → `questionnaire` → (loop back to playing for next clip) → `end_of_task` → `complete`. On mount: retrieve the manifest from router state or sessionStorage (set in T109); if unavailable, re-fetch via the API. Track `currentClipIndex` (0-based) in React state. In `playing` state: render MisokinesiaVideoPlayer with the current clip; on onEnded transition to `questionnaire`. In `questionnaire` state: render MisokinesiaQuestionnaire with the current clip's stimulusId and displayOrder (currentClipIndex + 1); on onComplete: if more clips remain increment currentClipIndex and transition back to `playing`; if is_complete is true (final submission) transition to `end_of_task`. In `end_of_task` state: render MisokinesiaEndOfTaskForm; on onComplete transition to `complete`. In `complete` state: call the existing `PATCH /sessions/{session_id}/status` endpoint with status='complete', then show the completion screen. Show a progress indicator ('Clip N of 29') in both playing and questionnaire states (not in end_of_task or complete). Reference `frontend/src/app/session/[session_id]/digitspan/page.tsx` for the established multi-phase state machine pattern in this codebase. See docs/working-misokinesia-add.md for the full state machine spec and end-of-task details.",
       "stack": ["frontend"],
       "depends_on": ["T111"],
@@ -345,7 +345,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T113",
       "title": "Frontend — Misokinesia completion screen",
-      "status": "todo",
+      "status": "done",
       "description": "Implement the `complete` state within `frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx` (added in T112). The complete state is entered after the end-of-task form is submitted (NOT directly after the final per-clip questionnaire — see docs/working-misokinesia-add.md for the full flow). When the complete state is entered: call the existing `patchSessionStatus(sessionId, 'complete')` API wrapper (the same wrapper used by digitspan at `frontend/src/app/session/[session_id]/digitspan/page.tsx` — no new API function needed). On success, display a centered 'Thank you — the session is complete' message. Include a 'Return to Dashboard' button that calls `router.push('/dashboard')`. Show a loading state while the PATCH is in-flight. If the PATCH fails, show an inline error with a retry button. Follow the visual style used by the existing session complete page at `frontend/src/app/session/[session_id]/complete/page.tsx` for reference.",
       "stack": ["frontend"],
       "depends_on": ["T112"],
@@ -389,7 +389,7 @@ Follow current JSON Schema when adding tasks.
       "id": "T115",
       "title": "Infra — Supabase Storage public bucket setup + stimuli seed data",
       "status": "todo",
-      "description": "Set up the Supabase Storage bucket for misokinesia video clips and seed the stimulus metadata. (1) In the Supabase dashboard (or via migration/seed script), create a bucket named `misokinesia-stimuli` with public access enabled — public access ensures video URLs are immediately resolvable with no signed-URL generation latency and no token expiry. (2) Upload the ~29 mp4 clip files when they become available; in the meantime, uploading placeholder or dummy files is fine. (3) Write a seed SQL script or Python seed script that inserts one row into `misokinesia_test_sets` (name='v1', version='1.0', active=true) and 29 rows into `misokinesia_stimuli` with correct: test_set_id, storage_path (filename only, e.g. 'clip_01.mp4'), filename, duration_ms (use the known durations — ~15000ms each, longest 33000ms), mime_type='video/mp4', sort_order 1–29, active=true. Public URL pattern to verify: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`. This task can run in parallel with T109–T114 once T104 is complete.",
+      "description": "Set up the Supabase Storage bucket for misokinesia video clips and seed the stimulus metadata. (1 - implemented as a side task in T112 [Please check that it is correct]) In the Supabase dashboard (or via migration/seed script), create a bucket named `misokinesia-stimuli` with public access enabled — public access ensures video URLs are immediately resolvable with no signed-URL generation latency and no token expiry. (2) Upload the ~29 mp4 clip files when they become available; in the meantime, uploading placeholder or dummy files is fine. (3) Write a seed SQL script or Python seed script that inserts one row into `misokinesia_test_sets` (name='v1', version='1.0', active=true) and 29 rows into `misokinesia_stimuli` with correct: test_set_id, storage_path (filename only, e.g. 'clip_01.mp4'), filename, duration_ms (use the known durations — ~15000ms each, longest 33000ms), mime_type='video/mp4', sort_order 1–29, active=true. Public URL pattern to verify: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`. This task can run in parallel with T109–T114 once T104 is complete.",
       "stack": ["backend", "infra"],
       "depends_on": ["T104"],
       "read_docs": [

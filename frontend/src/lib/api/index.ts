@@ -641,6 +641,83 @@ export async function exportXlsx(): Promise<{ blob: Blob; filename: string }> {
   return { blob, filename };
 }
 
+/** Mark a session as complete. Reused by all participant task flows. */
+export async function patchSessionStatus(
+  sessionId: string,
+  status: "complete"
+): Promise<SessionResponse> {
+  return apiPatch<SessionResponse>(`/sessions/${sessionId}/status`, { status });
+}
+
+// ── Misokinesia types + wrappers ──
+
+export interface MisokinesiaClipMeta {
+  stimulus_id: string;
+  public_url: string;
+  sort_order: number;
+  duration_ms: number;
+}
+
+export interface MisokinesiaManifest {
+  misokinesia_participant_id: string;
+  misokinesia_participant_number: number;
+  session_id: string;
+  clips: MisokinesiaClipMeta[];
+}
+
+export interface MisokinesiaTrialResponsePayload {
+  stimulus_id: string;
+  display_order: number;
+  q1: number;
+  q2: number;
+  q3: number;
+  q4: number;
+}
+
+export interface MisokinesiaTrialResponseResult {
+  response_id: string;
+  is_complete: boolean;
+  session_id: string;
+}
+
+export interface MisokinesiaEndOfTaskPayload {
+  end_fidgeting_text?: string;
+  end_emotions_text?: string;
+  stronger_responses?: boolean;
+  stronger_responses_timing?: string;
+}
+
+export interface MisokinesiaEndOfTaskResult {
+  misokinesia_participant_id: string;
+}
+
+/** RA-triggered: creates anonymous participant + session + misokinesia_participants row. Returns manifest. */
+export async function startMisokinesiaSession(): Promise<MisokinesiaManifest> {
+  return apiPost<MisokinesiaManifest>("/misokinesia/start", {}, { auth: true });
+}
+
+/** Submit one per-clip questionnaire response (participant-facing, no auth). */
+export async function submitMisokinesiaTrialResponse(
+  participantId: string,
+  payload: MisokinesiaTrialResponsePayload
+): Promise<MisokinesiaTrialResponseResult> {
+  return apiPost<MisokinesiaTrialResponseResult>(
+    `/misokinesia/participants/${participantId}/responses`,
+    payload
+  );
+}
+
+/** Submit the end-of-task questionnaire (participant-facing, no auth). */
+export async function submitMisokinesiaEndOfTask(
+  participantId: string,
+  payload: MisokinesiaEndOfTaskPayload
+): Promise<MisokinesiaEndOfTaskResult> {
+  return apiPatch<MisokinesiaEndOfTaskResult>(
+    `/misokinesia/participants/${participantId}/end-of-task`,
+    payload
+  );
+}
+
 /** Download the admin CSV zip export. Returns the blob and the server-provided filename. */
 export async function exportZip(): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_BASE}/admin/export.zip`, {
