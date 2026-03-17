@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { animate, stagger } from "animejs";
 
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,18 @@ import LoginDialogForm from "@/lib/components/LoginDialogForm";
 const TITLE_LINES = [["ATTENTIONAL"], ["NEUROSCIENCE", "LAB"]];
 
 export default function LoginPage() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
+
+  // Detect Supabase invite / recovery tokens in the URL hash and forward to
+  // /set-password so the user can set their password instead of seeing the login form.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes("type=invite") || hash.includes("type=recovery")) {
+      router.replace("/set-password" + hash);
+    }
+  }, [router]);
   const titleLetters = useMemo(
     () =>
       TITLE_LINES.map((line) =>
