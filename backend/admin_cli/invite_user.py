@@ -95,7 +95,8 @@ def _admin_headers(service_role_key: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 def invite_user(supabase_url: str, service_role_key: str, email: str, redirect_to: str) -> dict:
-    """Send an invite email and return the created user object."""
+    """Send an invite email and return the created user object.
+    If the email already exists, fall back to a password-recovery (magic link) flow."""
     url = f"{supabase_url}/auth/v1/invite"
     response = httpx.post(
         url,
@@ -103,11 +104,35 @@ def invite_user(supabase_url: str, service_role_key: str, email: str, redirect_t
         json={"email": email, "redirect_to": redirect_to},
         timeout=15,
     )
+    if response.status_code in (200, 201):
+        return response.json()
+
+    body = response.json()
+    if response.status_code == 422 and body.get("error_code") == "email_exists":
+        print("  User already exists — sending a password-reset link instead.")
+        return _generate_recovery_link(supabase_url, service_role_key, email, redirect_to)
+
+    sys.exit(f"ERROR: Supabase invite failed (HTTP {response.status_code}):\n{response.text}")
+
+
+def _generate_recovery_link(
+    supabase_url: str, service_role_key: str, email: str, redirect_to: str
+) -> dict:
+    """Use the admin generate_link endpoint to send a password-recovery email."""
+    url = f"{supabase_url}/auth/v1/admin/generate_link"
+    response = httpx.post(
+        url,
+        headers=_admin_headers(service_role_key),
+        json={"type": "recovery", "email": email, "redirect_to": redirect_to},
+        timeout=15,
+    )
     if response.status_code not in (200, 201):
         sys.exit(
-            f"ERROR: Supabase invite failed (HTTP {response.status_code}):\n{response.text}"
+            f"ERROR: generate_link failed (HTTP {response.status_code}):\n{response.text}"
         )
-    return response.json()
+    data = response.json()
+    # generate_link returns the user under data.user; normalise to same shape as invite
+    return data.get("user") or data
 
 
 def set_app_metadata(
