@@ -151,4 +151,6 @@ def _lab_member() -> object:
     return LabMember(
         id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         email="ra@example.com",
+        role="ra",
+        lab_name="ww",
     )

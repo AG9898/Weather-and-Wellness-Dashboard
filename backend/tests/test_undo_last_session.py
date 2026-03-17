@@ -49,7 +49,7 @@ def _candidate() -> SessionCandidateInfo:
 
 
 def _lab_member() -> LabMember:
-    return LabMember(id=_DELETER_ID, email="ra@lab.test")
+    return LabMember(id=_DELETER_ID, email="ra@lab.test", role="ra", lab_name="ww")
 
 
 # ---------------------------------------------------------------------------

@@ -21,9 +21,10 @@
 
 ## Authentication
 
-- **RA endpoints:** If Supabase Auth is enabled, `Authorization: Bearer <supabase-jwt>` header required
-- **Participant endpoints:** No auth. Validated by `session_id` existence + `status == "active"`
-- **Dev stub:** During T06–T17, auth returns a hardcoded LabMember. Replace when JWT validation is enabled.
+- **RA endpoints:** `Authorization: Bearer <supabase-jwt>` required. JWT is validated by FastAPI; `role` and `lab_name` are extracted from `app_metadata`.
+- **Admin endpoints:** Same JWT requirement, plus `role == 'admin'`; non-admin JWTs return HTTP 403.
+- **Participant endpoints:** No auth. Validated by `session_id` existence + `status == "active"`.
+- **Roles:** `admin` (full access) and `ra` (RA; dashboard access only). Lab membership is tracked via `lab_name` (e.g. `ww` for Weather-Wellness + Misokinesia). Default role when `app_metadata` is absent: `ra`.
 
 ---
 
@@ -65,11 +66,11 @@
 | POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
 | GET    | /weather/daily | RA | implemented | T31 |
 | POST   | /weather/backfill/historical | RA | implemented | T66 |
-| POST   | /admin/import/preview | RA | implemented | T48 |
-| POST   | /admin/import/commit | RA | implemented | T48, T55 |
-| GET    | /admin/export.xlsx | RA | implemented | T49 |
-| GET    | /admin/export.zip | RA | implemented | T49 |
-| POST   | /admin/backfill/legacy-weather | RA | implemented | T56 |
+| POST   | /admin/import/preview | Admin | implemented | T48, T100 |
+| POST   | /admin/import/commit | Admin | implemented | T48, T55, T100 |
+| GET    | /admin/export.xlsx | Admin | implemented | T49, T100 |
+| GET    | /admin/export.zip | Admin | implemented | T49, T100 |
+| POST   | /admin/backfill/legacy-weather | Admin | implemented | T56, T100 |
 
 ---
 

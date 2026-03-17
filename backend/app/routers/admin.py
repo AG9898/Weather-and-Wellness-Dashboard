@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_lab_member
+from app.auth import get_current_admin
 from app.config import STUDY_TIMEZONE
 from app.db import get_session
 from app.schemas.admin import ImportCommitResponse, ImportPreviewResponse, LegacyWeatherBackfillResponse
@@ -60,7 +60,7 @@ def _require_valid_extension(filename: str | None) -> None:
 @router.post(
     "/import/preview",
     response_model=ImportPreviewResponse,
-    dependencies=[Depends(get_current_lab_member)],
+    dependencies=[Depends(get_current_admin)],
 )
 async def import_preview(
     file: UploadFile = File(..., description="CSV or XLSX file to preview"),
@@ -77,7 +77,7 @@ async def import_preview(
     "/import/commit",
     response_model=ImportCommitResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(get_current_lab_member)],
+    dependencies=[Depends(get_current_admin)],
 )
 async def import_commit(
     file: UploadFile = File(..., description="CSV or XLSX file to import"),
@@ -100,7 +100,7 @@ async def import_commit(
     "/backfill/legacy-weather",
     response_model=LegacyWeatherBackfillResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(get_current_lab_member)],
+    dependencies=[Depends(get_current_admin)],
 )
 async def backfill_legacy_weather(
     db: AsyncSession = Depends(get_session),
@@ -135,7 +135,7 @@ def _today_local() -> str:
 
 @router.get(
     "/export.xlsx",
-    dependencies=[Depends(get_current_lab_member)],
+    dependencies=[Depends(get_current_admin)],
     response_class=Response,
 )
 async def export_xlsx(
@@ -158,7 +158,7 @@ async def export_xlsx(
 
 @router.get(
     "/export.zip",
-    dependencies=[Depends(get_current_lab_member)],
+    dependencies=[Depends(get_current_admin)],
     response_class=Response,
 )
 async def export_zip(

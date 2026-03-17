@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { DragEvent } from "react";
+import { useRAUser } from "@/lib/contexts/RAUserContext";
 import { Button } from "@/components/ui/button";
 import PageContainer from "@/lib/components/PageContainer";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,15 @@ function CountTile({ label, value }: { label: string; value: number }) {
 // ── Page ──
 
 export default function ImportExportPage() {
+  const router = useRouter();
+  const { role } = useRAUser();
+
+  useEffect(() => {
+    if (role !== "admin") {
+      router.replace("/unauthorized");
+    }
+  }, [role, router]);
+
   const [file, setFile] = useState<File | null>(null);
   const [phase, setPhase] = useState<ImportPhase>({ tag: "idle" });
   const [importError, setImportError] = useState<string | null>(null);

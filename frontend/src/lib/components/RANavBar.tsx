@@ -8,19 +8,22 @@ import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/lib/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { useRAUser } from "@/lib/contexts/RAUserContext";
 
-const NAV_LINKS = [
+const BASE_NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/import-export", label: "Import / Export", icon: ArrowUpDown },
+  { href: "/import-export", label: "Import / Export", icon: ArrowUpDown, adminOnly: true },
 ];
 
 /**
  * Sticky top navigation bar for RA-facing pages.
  * Shows app name, navigation links, theme control, and a sign-out action.
+ * Import/Export link is only shown for admin-role users.
  */
 export default function RANavBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { role } = useRAUser();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -49,7 +52,7 @@ export default function RANavBar() {
         </Link>
 
         <nav className="flex items-center gap-1 rounded-full border border-border/80 bg-card/65 p-1">
-          {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+          {BASE_NAV_LINKS.filter(({ adminOnly }) => !adminOnly || role === "admin").map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link

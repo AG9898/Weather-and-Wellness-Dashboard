@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -21,11 +21,19 @@ import {
 import ThemeToggle from "@/lib/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { useRAUser } from "@/lib/contexts/RAUserContext";
 
-const DOCK_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/import-export", label: "Export", icon: ArrowUpDown },
-] as const;
+interface DockItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  adminOnly: boolean;
+}
+
+const ALL_DOCK_ITEMS: DockItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: Home, adminOnly: false },
+  { href: "/import-export", label: "Export", icon: ArrowUpDown, adminOnly: true },
+];
 
 const DOCK_DISTANCE_LIMIT = 180;
 const DOCK_BASE_ACTIVE_SCALE = 1;
@@ -77,6 +85,7 @@ export function shouldShowRAFloatingChrome(pathname: string | null): boolean {
 export default function RAFloatingChrome() {
   const pathname = usePathname();
   const router = useRouter();
+  const { role } = useRAUser();
   const prefersReducedMotion = usePrefersReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
@@ -96,11 +105,11 @@ export default function RAFloatingChrome() {
 
   const resolvedItems = useMemo(
     () =>
-      DOCK_ITEMS.map((item) => ({
+      ALL_DOCK_ITEMS.filter((item) => !item.adminOnly || role === "admin").map((item) => ({
         ...item,
         active: isActivePath(pathname, item.href),
       })),
-    [pathname]
+    [pathname, role]
   );
 
   useEffect(() => {

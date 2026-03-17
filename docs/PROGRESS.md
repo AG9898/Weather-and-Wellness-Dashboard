@@ -11,10 +11,10 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 48 — Phase 4 ongoing                                         |
-| Remaining queue    | T100–T102 in kanban.md                                       |
+| Tasks completed    | 51 — Phase 4 ongoing                                         |
+| Remaining queue    | T104–T115 in kanban.md                                       |
 | Tasks in progress  | 0                                                            |
-| Last updated       | 2026-03-11                                                   |
+| Last updated       | 2026-03-16                                                   |
 
 ---
 
@@ -29,6 +29,37 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T102 — Frontend — Role + lab_name UI gating via session context (completed 2026-03-16)
+
+- Created `frontend/src/lib/contexts/RAUserContext.tsx` — React context providing `{ role, lab_name }` with defaults `role='ra'`, `lab_name=''`.
+- Updated `frontend/src/app/(ra)/layout.tsx` to extract `role` and `lab_name` from `session.user.app_metadata` on initial session load and on `onAuthStateChange` events; wraps all RA layout children in `RAUserContext.Provider`. Resets to defaults on sign-out.
+- Updated `frontend/src/lib/components/RANavBar.tsx` to consume `useRAUser()` and filter the nav links so the Import / Export link is rendered only when `role === 'admin'`.
+- Updated `frontend/src/lib/components/RAFloatingChrome.tsx` to consume `useRAUser()` and include the Export dock item only when `role === 'admin'` (computed in `resolvedItems` useMemo with `role` as a dependency).
+- Added `frontend/src/app/(ra)/unauthorized/page.tsx` — 403/Unauthorized page with a "Return to Dashboard" button; inherits the RA auth guard from the layout.
+- Updated `frontend/src/app/(ra)/import-export/page.tsx` to call `useRAUser()` and redirect to `/unauthorized` in a `useEffect` if `role !== 'admin'`, providing a client-side guard that complements the backend's HTTP 403.
+
+## T101 — Backend — Admin invite utility script (completed 2026-03-16)
+
+- Created `backend/admin_cli/invite_user.py` — standalone admin CLI for inviting new users and assigning `role` + `lab_name` via Supabase Admin API.
+- Folder named `backend/admin_cli/` (not `scripts/`) to distinguish admin operator tools from app-internal scripts in `backend/app/scripts/`.
+- Loads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the project root `.env` file via `python-dotenv` (values are never printed or logged).
+- Calls `POST /auth/v1/invite` to send the invite email, then `PUT /auth/v1/admin/users/{id}` to set `app_metadata.role` and `app_metadata.lab_name`.
+- Accepts `--email`, `--role` (choices: `admin`, `ra`), and `--lab-name` args.
+- Rejects use of the anon key: decodes JWT payload without verification and aborts if `role` claim is `anon` rather than `service_role`.
+- Fails with a clear message when required env vars are missing or Supabase returns an error.
+- Created `backend/.env.example` documenting all required backend env vars including `SUPABASE_SERVICE_ROLE_KEY` with a prominent warning.
+
+## T100 — Backend — Auth hardening: role + lab_name claims in FastAPI (completed 2026-03-16)
+
+- Extended `LabMember` Pydantic model with `role: str` and `lab_name: str`, extracted from `app_metadata` JWT claim.
+- `role` defaults to `'ra'` and `lab_name` defaults to `''` when `app_metadata` is absent or missing those keys — no 500 on missing metadata.
+- Two roles in use: `admin` (full access) and `ra` (RA; lab membership tracked via `lab_name`, e.g. `ww` for WW + Misokinesia).
+- Added `get_current_admin` FastAPI dependency: raises HTTP 403 if `role != 'admin'`.
+- Added `get_current_ra_for_lab(lab_name)` factory dependency: admin bypasses, non-admin with wrong `lab_name` gets HTTP 403.
+- All 5 admin-only routes in `backend/app/routers/admin.py` swapped to `Depends(get_current_admin)` (import preview, import commit, export xlsx, export zip, backfill).
+- Updated existing test fixtures in `test_undo_last_session.py` and `test_dashboard_analytics_router.py` to supply the new required `role` and `lab_name` fields — all 13 undo tests pass.
+- Updated `docs/API.md` authentication section and endpoint index (admin routes now show `Admin` auth requirement).
 
 ## RC10 — Docs/runbooks — final routing cleanup sync (completed 2026-03-13)
 

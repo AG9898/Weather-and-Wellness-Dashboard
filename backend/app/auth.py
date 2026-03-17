@@ -14,6 +14,8 @@ from uuid import UUID
 class LabMember(BaseModel):
     id: UUID
     email: str
+    role: str
+    lab_name: str
 
 
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -134,7 +136,44 @@ def get_current_lab_member(
             detail="Token missing required claims",
         )
 
-    return LabMember(id=UUID(sub), email=email)
+    app_metadata: dict[str, Any] = payload.get("app_metadata") or {}
+    role: str = app_metadata.get("role") or "ra"
+    lab_name: str = app_metadata.get("lab_name") or ""
+
+    return LabMember(id=UUID(sub), email=email, role=role, lab_name=lab_name)
 
 
-__all__ = ["LabMember", "get_current_lab_member"]
+def get_current_admin(
+    member: LabMember = Depends(get_current_lab_member),
+) -> LabMember:
+    """Require the authenticated user to have role='admin'; raises HTTP 403 otherwise."""
+    if member.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+    return member
+
+
+def get_current_ra_for_lab(lab_name: str):
+    """Return a FastAPI dependency factory that requires the user to belong to the given lab.
+
+    Admin users bypass the lab check. Non-admin users with a different lab_name get HTTP 403.
+    Usage:
+        Depends(get_current_ra_for_lab("ww"))
+    """
+
+    def _dependency(member: LabMember = Depends(get_current_lab_member)) -> LabMember:
+        if member.role == "admin":
+            return member
+        if member.lab_name != lab_name:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access restricted to lab '{lab_name}'",
+            )
+        return member
+
+    return _dependency
+
+
+__all__ = ["LabMember", "get_current_lab_member", "get_current_admin", "get_current_ra_for_lab"]
