@@ -1,0 +1,612 @@
+"""Tests for misokinesia router endpoints (T108).
+
+Covers:
+- POST /misokinesia/start: valid manifest response, auth requirement, clip ordering
+- misokinesia_participant_number increments across successive start calls
+- POST /misokinesia/participants/{id}/responses: happy path, no-auth requirement,
+  duplicate 409, wrong test-set 422, out-of-range qN 422, completed_at auto-set,
+  post-completion 409
+- PATCH /misokinesia/participants/{id}/end-of-task: valid payload 200,
+  completed_at null 409, stronger_responses_timing/stronger_responses mismatch 422
+- Schema: router registered at correct paths with correct auth dependencies
+"""
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timezone
+from typing import Any
+from unittest import IsolatedAsyncioTestCase
+
+import pytest
+from fastapi import HTTPException
+from fastapi.routing import APIRoute
+from pydantic import ValidationError
+from sqlalchemy import exc as sa_exc
+
+from app.auth import get_current_lab_member
+from app.routers.misokinesia import (
+    router,
+    start_misokinesia_session,
+    submit_end_of_task,
+    submit_trial_response,
+)
+from app.schemas.misokinesia import (
+    MisokinesiaEndOfTaskCreate,
+    MisokinesiaTrialResponseCreate,
+)
+
+# ---------------------------------------------------------------------------
+# Shared IDs
+# ---------------------------------------------------------------------------
+
+_TEST_SET_ID = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+_PARTICIPANT_UUID = uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+_SESSION_ID = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
+_MISO_PARTICIPANT_ID = uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
+_STIMULUS_ID_1 = uuid.UUID("11111111-1111-1111-1111-111111111111")
+_STIMULUS_ID_2 = uuid.UUID("22222222-2222-2222-2222-222222222222")
+_RESPONSE_ID = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
+_NOW = datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc)
+
+# ---------------------------------------------------------------------------
+# Fake ORM objects (SimpleNamespace-style)
+# ---------------------------------------------------------------------------
+
+
+class _FakeTestSet:
+    test_set_id = _TEST_SET_ID
+    active = True
+
+
+class _FakeStimulus:
+    def __init__(
+        self,
+        stimulus_id: uuid.UUID = _STIMULUS_ID_1,
+        sort_order: int = 1,
+        storage_path: str = "clip_01.mp4",
+        duration_ms: int = 15000,
+        test_set_id: uuid.UUID = _TEST_SET_ID,
+        active: bool = True,
+    ) -> None:
+        self.stimulus_id = stimulus_id
+        self.test_set_id = test_set_id
+        self.storage_path = storage_path
+        self.duration_ms = duration_ms
+        self.sort_order = sort_order
+        self.active = active
+
+
+class _FakeMisoParticipant:
+    def __init__(
+        self,
+        completed_at: datetime | None = None,
+        miso_participant_number: int = 1,
+    ) -> None:
+        self.misokinesia_participant_id = _MISO_PARTICIPANT_ID
+        self.session_id = _SESSION_ID
+        self.participant_uuid = _PARTICIPANT_UUID
+        self.test_set_id = _TEST_SET_ID
+        self.misokinesia_participant_number = miso_participant_number
+        self.started_at = _NOW
+        self.completed_at = completed_at
+        self.created_at = _NOW
+        self.end_fidgeting_text: str | None = None
+        self.end_emotions_text: str | None = None
+        self.stronger_responses: bool | None = None
+        self.stronger_responses_timing: str | None = None
+
+
+class _FakeParticipant:
+    participant_uuid = _PARTICIPANT_UUID
+    participant_number = 1
+
+
+class _FakeSession:
+    session_id = _SESSION_ID
+    participant_uuid = _PARTICIPANT_UUID
+    status = "active"
+
+
+class _FakeResponseRow:
+    response_id = _RESPONSE_ID
+    session_id = _SESSION_ID
+    created_at = _NOW
+
+
+# ---------------------------------------------------------------------------
+# Fake AsyncSession helpers
+# ---------------------------------------------------------------------------
+
+
+class _ScalarResult:
+    def __init__(self, value: Any) -> None:
+        self._value = value
+
+    def first(self) -> Any:
+        return self._value
+
+    def scalar_one(self) -> Any:
+        return self._value
+
+    def scalar_one_or_none(self) -> Any:
+        return self._value
+
+    def scalars(self) -> "_ScalarResult":
+        return self
+
+    def all(self) -> list:
+        if isinstance(self._value, list):
+            return self._value
+        return [self._value] if self._value is not None else []
+
+
+class _SequencedDB:
+    """Fake AsyncSession that returns preconfigured values per execute() call.
+
+    execute_returns: list of values to return, consumed in order.
+    Special sentinels:
+      'INTEGRITY_ERROR' → raises sa_exc.IntegrityError on flush()
+    """
+
+    def __init__(
+        self,
+        execute_returns: list,
+        raise_integrity_on_flush: bool = False,
+    ) -> None:
+        self._returns = list(execute_returns)
+        self._index = 0
+        self._raise_integrity = raise_integrity_on_flush
+        self._added: list[Any] = []
+        self.committed = False
+
+    async def execute(self, stmt: object) -> _ScalarResult:  # noqa: ARG002
+        value = self._returns[self._index] if self._index < len(self._returns) else None
+        self._index += 1
+        return _ScalarResult(value)
+
+    def add(self, obj: object) -> None:
+        self._added.append(obj)
+
+    async def flush(self) -> None:
+        if self._raise_integrity:
+            raise sa_exc.IntegrityError("unique", {}, Exception())
+
+    async def rollback(self) -> None:
+        pass
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def refresh(self, obj: object) -> None:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Class 1 — start_misokinesia_session
+# ---------------------------------------------------------------------------
+
+
+class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
+    def _db_for_start(
+        self,
+        test_set: _FakeTestSet | None = None,
+        max_participant_number: int | None = None,
+        stimuli: list | None = None,
+    ) -> _SequencedDB:
+        """Build a fake DB for the start endpoint.
+
+        execute() is called in this order:
+          0. select(MisokinesiaTestSet)          → test_set (or None)
+          1. select(func.max(participant_number)) → int or None
+          2. select(MisokinesiaStimulus)          → list of stimuli
+        """
+        if stimuli is None:
+            stimuli = [_FakeStimulus()]
+        return _SequencedDB(
+            execute_returns=[
+                test_set if test_set is not None else _FakeTestSet(),
+                max_participant_number,
+                stimuli,
+            ]
+        )
+
+    async def test_returns_manifest_with_clips_and_ids(self) -> None:
+        stimuli = [
+            _FakeStimulus(stimulus_id=_STIMULUS_ID_1, sort_order=1),
+            _FakeStimulus(stimulus_id=_STIMULUS_ID_2, sort_order=2),
+        ]
+        db = self._db_for_start(stimuli=stimuli)
+
+        import os
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+
+        # Patch participant/session model constructors to return fakes
+        from unittest.mock import patch, MagicMock
+
+        fake_participant = _FakeParticipant()
+        fake_session = _FakeSession()
+        fake_miso = _FakeMisoParticipant(miso_participant_number=1)
+
+        with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
+             patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso):
+            result = await start_misokinesia_session(db=db)
+
+        self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
+        self.assertEqual(result.misokinesia_participant_number, 1)
+        self.assertEqual(result.session_id, _SESSION_ID)
+        self.assertEqual(len(result.clips), 2)
+        self.assertEqual(result.clips[0].sort_order, 1)
+        self.assertEqual(result.clips[1].sort_order, 2)
+        self.assertTrue(db.committed)
+
+    async def test_clips_contain_public_supabase_url(self) -> None:
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        stimuli = [_FakeStimulus(storage_path="clip_01.mp4")]
+        db = self._db_for_start(stimuli=stimuli)
+
+        fake_participant = _FakeParticipant()
+        fake_session = _FakeSession()
+        fake_miso = _FakeMisoParticipant()
+
+        with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
+             patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso):
+            result = await start_misokinesia_session(db=db)
+
+        expected_url = "https://test.supabase.co/storage/v1/object/public/misokinesia-stimuli/clip_01.mp4"
+        self.assertEqual(result.clips[0].public_url, expected_url)
+
+    async def test_raises_404_when_no_active_test_set(self) -> None:
+        # first execute returns None → no active test set
+        db = _SequencedDB(execute_returns=[None])
+
+        with self.assertRaises(HTTPException) as ctx:
+            await start_misokinesia_session(db=db)
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    async def test_participant_number_uses_max_plus_one(self) -> None:
+        """When max participant_number = 5, next should be 6."""
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        db = self._db_for_start(max_participant_number=5)
+
+        fake_participant = _FakeParticipant()
+        fake_session = _FakeSession()
+        fake_miso = _FakeMisoParticipant(miso_participant_number=2)
+        added_participants: list = []
+
+        original_add = db.add
+
+        def tracking_add(obj: object) -> None:
+            added_participants.append(obj)
+            original_add(obj)
+
+        db.add = tracking_add  # type: ignore[method-assign]
+
+        with patch("app.routers.misokinesia.Participant") as MockParticipant, \
+             patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso):
+            MockParticipant.return_value = fake_participant
+            await start_misokinesia_session(db=db)
+            # Verify Participant was called with participant_number=6
+            MockParticipant.assert_called_once_with(participant_number=6)
+
+    async def test_start_route_requires_lab_member_auth(self) -> None:
+        """The /start route must declare Depends(get_current_lab_member)."""
+        route = next(
+            (
+                r
+                for r in router.routes
+                if isinstance(r, APIRoute)
+                and r.path == "/misokinesia/start"
+                and "POST" in (r.methods or set())
+            ),
+            None,
+        )
+        self.assertIsNotNone(route, "POST /misokinesia/start route not registered")
+        assert route is not None
+        dep_calls = {d.call for d in route.dependant.dependencies}
+        self.assertIn(
+            get_current_lab_member,
+            dep_calls,
+            "POST /misokinesia/start must depend on get_current_lab_member",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Class 2 — submit_trial_response
+# ---------------------------------------------------------------------------
+
+
+class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
+    def _valid_payload(
+        self, stimulus_id: uuid.UUID = _STIMULUS_ID_1
+    ) -> MisokinesiaTrialResponseCreate:
+        return MisokinesiaTrialResponseCreate(
+            stimulus_id=stimulus_id,
+            display_order=1,
+            q1=3,
+            q2=2,
+            q3=4,
+            q4=1,
+        )
+
+    def _db_for_response(
+        self,
+        miso_participant: _FakeMisoParticipant | None = None,
+        stimulus: _FakeStimulus | None = None,
+        total_stimuli: int = 2,
+        submitted_count: int = 1,
+        raise_integrity_on_flush: bool = False,
+    ) -> _SequencedDB:
+        """Build fake DB for submit_trial_response.
+
+        execute() call order:
+          0. select(MisokinesiaParticipant)       → miso_participant or None
+          1. select(MisokinesiaStimulus)           → stimulus or None
+          2. select(func.count(MisokinesiaStimulus)) → total_stimuli
+          3. select(func.count(MisokinesiaTrialResponse)) → submitted_count
+        """
+        if miso_participant is None:
+            miso_participant = _FakeMisoParticipant()
+        if stimulus is None:
+            stimulus = _FakeStimulus()
+        return _SequencedDB(
+            execute_returns=[
+                miso_participant,
+                stimulus,
+                total_stimuli,
+                submitted_count,
+            ],
+            raise_integrity_on_flush=raise_integrity_on_flush,
+        )
+
+    async def test_valid_response_returns_201_with_response_id(self) -> None:
+        db = self._db_for_response(total_stimuli=2, submitted_count=1)
+        fake_response = _FakeResponseRow()
+
+        from unittest.mock import patch
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaTrialResponse",
+            return_value=fake_response,
+        ):
+            result = await submit_trial_response(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+
+        self.assertEqual(result.response_id, _RESPONSE_ID)
+        self.assertEqual(result.session_id, _SESSION_ID)
+        self.assertFalse(result.is_complete)
+        self.assertTrue(db.committed)
+
+    async def test_no_auth_dependency_on_responses_route(self) -> None:
+        """POST /participants/{id}/responses must not declare get_current_lab_member."""
+        route = next(
+            (
+                r
+                for r in router.routes
+                if isinstance(r, APIRoute)
+                and "/responses" in (r.path or "")
+                and "POST" in (r.methods or set())
+            ),
+            None,
+        )
+        self.assertIsNotNone(route, "POST /responses route not registered")
+        assert route is not None
+        dep_calls = {d.call for d in route.dependant.dependencies}
+        self.assertNotIn(
+            get_current_lab_member,
+            dep_calls,
+            "Responses endpoint should not require lab-member auth",
+        )
+
+    async def test_raises_404_when_participant_not_found(self) -> None:
+        # first execute returns None → no participant
+        db = _SequencedDB(execute_returns=[None])
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_trial_response(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    async def test_raises_409_when_participant_already_complete(self) -> None:
+        miso = _FakeMisoParticipant(completed_at=_NOW)
+        db = _SequencedDB(execute_returns=[miso])
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_trial_response(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    async def test_raises_422_when_stimulus_not_in_test_set(self) -> None:
+        miso = _FakeMisoParticipant()
+        # second execute returns None → stimulus not found in participant's test_set
+        db = _SequencedDB(execute_returns=[miso, None])
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_trial_response(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 422)
+
+    async def test_raises_409_on_duplicate_response(self) -> None:
+        db = self._db_for_response(raise_integrity_on_flush=True)
+        from unittest.mock import patch
+
+        with patch("app.routers.misokinesia.MisokinesiaTrialResponse", return_value=_FakeResponseRow()):
+            with self.assertRaises(HTTPException) as ctx:
+                await submit_trial_response(
+                    participant_id=_MISO_PARTICIPANT_ID,
+                    payload=self._valid_payload(),
+                    db=db,
+                )
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    async def test_is_complete_true_on_final_response(self) -> None:
+        """After the Nth (final) response, is_complete must be True and completed_at set."""
+        miso = _FakeMisoParticipant()
+        db = self._db_for_response(
+            miso_participant=miso,
+            total_stimuli=2,
+            submitted_count=2,  # this submission brings count == total
+        )
+        fake_response = _FakeResponseRow()
+
+        from unittest.mock import patch
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaTrialResponse",
+            return_value=fake_response,
+        ):
+            result = await submit_trial_response(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+
+        self.assertTrue(result.is_complete)
+        # completed_at was set on the ORM object (func.now() sentinel)
+        self.assertIsNotNone(miso.completed_at)
+
+    async def test_q_values_out_of_range_rejected_by_schema(self) -> None:
+        """q values outside 1–5 must raise Pydantic ValidationError."""
+        with self.assertRaises(ValidationError):
+            MisokinesiaTrialResponseCreate(
+                stimulus_id=_STIMULUS_ID_1,
+                display_order=1,
+                q1=0,  # below minimum
+                q2=3,
+                q3=3,
+                q4=3,
+            )
+
+        with self.assertRaises(ValidationError):
+            MisokinesiaTrialResponseCreate(
+                stimulus_id=_STIMULUS_ID_1,
+                display_order=1,
+                q1=6,  # above maximum
+                q2=3,
+                q3=3,
+                q4=3,
+            )
+
+
+# ---------------------------------------------------------------------------
+# Class 3 — submit_end_of_task
+# ---------------------------------------------------------------------------
+
+
+class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
+    def _db_for_eot(
+        self,
+        completed_at: datetime | None = _NOW,
+    ) -> _SequencedDB:
+        miso = _FakeMisoParticipant(completed_at=completed_at)
+        return _SequencedDB(execute_returns=[miso])
+
+    async def test_valid_payload_returns_200(self) -> None:
+        db = self._db_for_eot(completed_at=_NOW)
+        payload = MisokinesiaEndOfTaskCreate(
+            end_fidgeting_text="tapping",
+            end_emotions_text="anxious",
+            stronger_responses=True,
+            stronger_responses_timing="After 5 seconds",
+        )
+        result = await submit_end_of_task(
+            participant_id=_MISO_PARTICIPANT_ID,
+            payload=payload,
+            db=db,
+        )
+        self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
+        self.assertEqual(result.end_fidgeting_text, "tapping")
+        self.assertEqual(result.end_emotions_text, "anxious")
+        self.assertTrue(result.stronger_responses)
+        self.assertEqual(result.stronger_responses_timing, "After 5 seconds")
+        self.assertTrue(db.committed)
+
+    async def test_null_fields_accepted(self) -> None:
+        db = self._db_for_eot(completed_at=_NOW)
+        payload = MisokinesiaEndOfTaskCreate()  # all fields None
+        result = await submit_end_of_task(
+            participant_id=_MISO_PARTICIPANT_ID,
+            payload=payload,
+            db=db,
+        )
+        self.assertIsNone(result.end_fidgeting_text)
+        self.assertIsNone(result.stronger_responses)
+        self.assertIsNone(result.stronger_responses_timing)
+
+    async def test_raises_404_when_participant_not_found(self) -> None:
+        db = _SequencedDB(execute_returns=[None])
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_end_of_task(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=MisokinesiaEndOfTaskCreate(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    async def test_raises_409_when_completed_at_is_null(self) -> None:
+        db = self._db_for_eot(completed_at=None)
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_end_of_task(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=MisokinesiaEndOfTaskCreate(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    async def test_stronger_responses_timing_without_stronger_true_raises_422(
+        self,
+    ) -> None:
+        """stronger_responses_timing set when stronger_responses is false → ValidationError."""
+        with self.assertRaises(ValidationError):
+            MisokinesiaEndOfTaskCreate(
+                stronger_responses=False,
+                stronger_responses_timing="Immediately",
+            )
+
+    async def test_stronger_responses_timing_without_stronger_set_raises_422(
+        self,
+    ) -> None:
+        """stronger_responses_timing set when stronger_responses is None → ValidationError."""
+        with self.assertRaises(ValidationError):
+            MisokinesiaEndOfTaskCreate(
+                stronger_responses=None,
+                stronger_responses_timing="After 10 seconds",
+            )
+
+    async def test_end_of_task_route_has_no_auth_dependency(self) -> None:
+        """PATCH /participants/{id}/end-of-task must not require lab-member auth."""
+        route = next(
+            (
+                r
+                for r in router.routes
+                if isinstance(r, APIRoute)
+                and "end-of-task" in (r.path or "")
+                and "PATCH" in (r.methods or set())
+            ),
+            None,
+        )
+        self.assertIsNotNone(route, "PATCH /end-of-task route not registered")
+        assert route is not None
+        dep_calls = {d.call for d in route.dependant.dependencies}
+        self.assertNotIn(
+            get_current_lab_member,
+            dep_calls,
+            "End-of-task endpoint should not require lab-member auth",
+        )

@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.db import get_session_factory
 from app.models.analytics import AnalyticsRun
-from app.routers import admin, dashboard, digitspan, participants, sessions, surveys, weather
+from app.routers import admin, dashboard, digitspan, misokinesia, participants, sessions, surveys, weather
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,7 @@ app.include_router(surveys.router)
 app.include_router(dashboard.router)
 app.include_router(weather.router)
 app.include_router(admin.router)
+app.include_router(misokinesia.router)
 
 
 # ── Exception handlers ────────────────────────────────────────────────────────

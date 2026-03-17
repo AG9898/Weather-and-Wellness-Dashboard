@@ -205,6 +205,12 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 - FastAPI validates JWTs using `SUPABASE_JWT_SECRET`.
 - When using the Vercel cache Route Handler for RA dashboard reads, the Route Handler must also validate the Supabase JWT before returning cached data (no auth bypass via cache).
 - Participant endpoints remain unauthenticated and are validated by `session_id` + status.
+- **Role + lab scoping:** `role` (`admin` | `ra`) and `lab_name` are stored in Supabase `app_metadata` (admin-only writable). FastAPI extracts both from the JWT; `get_current_admin` enforces `role == 'admin'` on admin-only routes. The frontend reads these from the session and gates UI links/pages accordingly (see RESOLVED-15 in `docs/DECISIONS.md`).
+- **Inviting users:** use `backend/admin_cli/invite_user.py` to invite new lab members and assign their role and lab. Requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SITE_URL` in the root `.env`. Run from the repo root:
+  ```
+  python backend/admin_cli/invite_user.py --email user@example.com --role ra --lab-name ww
+  ```
+  The invite email links to `{SITE_URL}/set-password` where the user sets their password. The `/set-password` URL must be in the Supabase redirect allowlist (`Authentication → URL Configuration`).
 
 ---
 

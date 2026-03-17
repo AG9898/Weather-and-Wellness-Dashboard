@@ -11,6 +11,12 @@ from .weather import StudyDay, WeatherIngestRun, WeatherDaily
 from .imported_session_measures import ImportedSessionMeasures
 from .analytics import AnalyticsRun, AnalyticsSnapshot
 from .undo import AdminSessionUndoLog
+from .misokinesia import (
+    MisokinesiaTestSet,
+    MisokinesiaStimulus,
+    MisokinesiaParticipant,
+    MisokinesiaTrialResponse,
+)
 
 __all__ = [
     "Participant",
@@ -28,4 +34,8 @@ __all__ = [
     "AnalyticsRun",
     "AnalyticsSnapshot",
     "AdminSessionUndoLog",
+    "MisokinesiaTestSet",
+    "MisokinesiaStimulus",
+    "MisokinesiaParticipant",
+    "MisokinesiaTrialResponse",
 ]

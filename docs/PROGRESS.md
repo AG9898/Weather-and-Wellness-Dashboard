@@ -11,10 +11,10 @@
 | Field              | Value                                                        |
 |--------------------|--------------------------------------------------------------|
 | Phase              | 4 (in progress)                                              |
-| Tasks completed    | 51 — Phase 4 ongoing                                         |
-| Remaining queue    | T104–T115 in kanban.md                                       |
+| Tasks completed    | 56 — Phase 4 ongoing                                         |
+| Remaining queue    | T109–T115 in kanban.md                                       |
 | Tasks in progress  | 0                                                            |
-| Last updated       | 2026-03-16                                                   |
+| Last updated       | 2026-03-17                                                   |
 
 ---
 
@@ -29,6 +29,57 @@ _No tasks in progress._
 <!-- Ralph: replace the content of this section (not the header) each time a task
      transitions to in_progress or done. Format:
      "**Txx — Title** (started YYYY-MM-DD)" or "_No tasks in progress._" -->
+
+## T108 — Backend — Tests for misokinesia endpoints (completed 2026-03-17)
+
+- Created `backend/tests/test_misokinesia.py` with 20 tests across 3 test classes, all passing.
+- **StartMisokinesiaSessionTests** (5 tests): manifest shape, public URL format, 404 on missing test set, MAX+1 participant_number, `Depends(get_current_lab_member)` on route registration.
+- **SubmitTrialResponseTests** (8 tests): valid 201 response, no-auth route check, 404 on unknown participant, 409 on already-complete participant, 422 on stimulus outside test_set, 409 on duplicate (UNIQUE violation), `is_complete=True` and `completed_at` set on final submission, Pydantic-level rejection of out-of-range q values.
+- **SubmitEndOfTaskTests** (7 tests): valid 200 with all fields, null fields accepted, 404 on unknown participant, 409 when `completed_at` is null, `stronger_responses_timing` with `stronger_responses=False` → 422, `stronger_responses_timing` with `stronger_responses=None` → 422, no-auth route check.
+- All tests use fake `AsyncSession` objects (no live DB); follows `IsolatedAsyncioTestCase` pattern from existing test files.
+- No pre-existing tests broken by this addition.
+
+## T107 — Backend — Trial response submission + end-of-task endpoints (completed 2026-03-17)
+
+- Added `POST /misokinesia/participants/{participant_id}/responses` to `backend/app/routers/misokinesia.py` (no auth, HTTP 201).
+  - Validates: participant exists (404), not already complete (409), stimulus belongs to participant's test_set (422), UNIQUE constraint on `(participant_id, stimulus_id)` — caught as 409 rather than 500.
+  - After insert, counts total active stimuli vs submitted responses; sets `misokinesia_participants.completed_at = func.now()` server-side on the final submission.
+  - Returns `MisokinesiaTrialResponseResponse` including `is_complete` (bool) and `session_id`.
+- Added `PATCH /misokinesia/participants/{participant_id}/end-of-task` (no auth, HTTP 200).
+  - Validates: participant exists (404), `completed_at` is set (409 otherwise).
+  - Writes 4 end-of-task fields (`end_fidgeting_text`, `end_emotions_text`, `stronger_responses`, `stronger_responses_timing`) to the `misokinesia_participants` row.
+  - Returns `MisokinesiaEndOfTaskResponse` with the updated fields.
+  - Pydantic model validator (from T105) already enforces that `stronger_responses_timing` may only be set when `stronger_responses` is true → 422.
+- Both endpoints documented in `docs/API.md` with full request/response schemas and error codes.
+
+## T106 — Backend — Anonymous session start + clip manifest endpoint (completed 2026-03-17)
+
+- Created `backend/app/routers/misokinesia.py` with `router = APIRouter(prefix='/misokinesia', tags=['misokinesia'])`.
+- Implemented `POST /misokinesia/start` (HTTP 201, requires `Depends(get_current_lab_member)`).
+- Endpoint atomically: resolves the single active test set (404 if none), creates an anonymous `participants` row (MAX+1 participant_number), creates an `active` session, creates a `misokinesia_participants` row (misokinesia_participant_number assigned by SERIAL via `server_default`).
+- Fetches active stimuli for the test set ordered by `sort_order` and constructs public Supabase Storage URLs: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
+- Returns `MisokinesiaManifestResponse` (misokinesia_participant_id, misokinesia_participant_number, session_id, clips[]).
+- Router registered in `backend/app/main.py`; `python -c 'from app.main import app'` exits cleanly.
+
+## T105 — Backend — SQLAlchemy models + Pydantic schemas for misokinesia (completed 2026-03-17)
+
+- Created `backend/app/models/misokinesia.py` with 4 ORM classes: `MisokinesiaTestSet`, `MisokinesiaStimulus`, `MisokinesiaParticipant`, `MisokinesiaTrialResponse`.
+- Column types match the T104 migration exactly: UUID PKs with `default=uuid.uuid4`, SMALLINT for q1–q4, `server_default=text("nextval('misokinesia_participant_number_seq')")` for `misokinesia_participant_number`, nullable TIMESTAMPTZ for `completed_at` and end-of-task fields.
+- `MisokinesiaTrialResponse` uses `__table_args__` `UniqueConstraint` on `(misokinesia_participant_id, stimulus_id)` matching the migration constraint name.
+- All 4 models registered in `backend/app/models/__init__.py`.
+- Created `backend/app/schemas/misokinesia.py` with: `MisokinesiaClipMeta`, `MisokinesiaManifestResponse`, `MisokinesiaParticipantResponse`, `MisokinesiaTrialResponseCreate` (q1–q4 validated 1–5), `MisokinesiaTrialResponseResponse` (includes `is_complete` bool and `session_id`), `MisokinesiaEndOfTaskCreate` (model_validator rejects `stronger_responses_timing` when `stronger_responses` is not true; validates timing against the 4 valid options), `MisokinesiaEndOfTaskResponse`.
+- `python -c 'from app.models import *'` and `from app.schemas.misokinesia import *` both exit cleanly.
+
+## T104 — Backend — DB migration: 4 misokinesia tables (completed 2026-03-17)
+
+- Created `backend/alembic/versions/20260317_000001_misokinesia_tables.py`.
+- Adds 4 tables: `misokinesia_test_sets`, `misokinesia_stimuli`, `misokinesia_participants`, `misokinesia_trial_responses`.
+- `misokinesia_participant_number` uses a dedicated PostgreSQL sequence (`misokinesia_participant_number_seq`) independent of `participants.participant_number`.
+- `misokinesia_trial_responses` has 4 per-clip SMALLINT columns (`q1`–`q4`, range 1–5) matching the questionnaire (Strongly Disagree → Strongly Agree): unpleasant, physical discomfort, upset, wanted to stop.
+- `misokinesia_participants` includes 4 end-of-task fields: `end_fidgeting_text` (TEXT), `end_emotions_text` (TEXT), `stronger_responses` (BOOLEAN), `stronger_responses_timing` (VARCHAR) — all nullable, collected once per participant at task end.
+- UNIQUE constraint on `(misokinesia_participant_id, stimulus_id)` in `misokinesia_trial_responses`.
+- Indexes on `misokinesia_participants(session_id)`, `misokinesia_participants(participant_uuid)`, `misokinesia_trial_responses(misokinesia_participant_id)`, `misokinesia_trial_responses(stimulus_id)`.
+- `alembic upgrade head` and `alembic downgrade -1` both verified clean.
 
 ## T102 — Frontend — Role + lab_name UI gating via session context (completed 2026-03-16)
 

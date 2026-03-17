@@ -40,6 +40,12 @@ sessions (1) ──────────────────── (0..1)
 study_days (1) ────────────────── (many) weather_daily
 weather_ingest_runs (1) ───────── (many) weather_daily
 analytics_runs (1) ────────────── (many) analytics_snapshots
+misokinesia_test_sets (1) ──────── (many) misokinesia_stimuli
+misokinesia_test_sets (1) ──────── (many) misokinesia_participants
+sessions (1) ──────────────────── (0..1) misokinesia_participants
+participants (1) ──────────────── (many) misokinesia_participants
+misokinesia_participants (1) ───── (many) misokinesia_trial_responses
+misokinesia_stimuli (1) ────────── (many) misokinesia_trial_responses
 ```
 
 `admin_session_undo_log` is an append-only audit table that stores deleted
@@ -498,6 +504,90 @@ Behavior notes:
 
 ---
 
+---
+
+## Phase 4 Additions — Misokinesia Module (T104, applied 2026-03-17)
+
+> Added by migration `20260317_000001`. Four new tables for the misokinesia video task.
+
+### Table: `misokinesia_test_sets`
+
+Reusable stimulus configurations. One active row = one active study version.
+
+| Column      | Type        | Constraints           | Notes |
+|-------------|-------------|-----------------------|-------|
+| test_set_id | UUID        | PK                    | Generated server-side |
+| name        | VARCHAR     | NOT NULL              | e.g. `'v1'` |
+| version     | VARCHAR     | NOT NULL              | e.g. `'1.0'` |
+| description | TEXT        | NULLABLE              | |
+| active      | BOOLEAN     | NOT NULL DEFAULT true | |
+| created_at  | TIMESTAMPTZ | DEFAULT NOW()         | |
+
+### Table: `misokinesia_stimuli`
+
+Clip metadata. No video bytes stored in DB. Videos served directly from Supabase Storage public bucket `misokinesia-stimuli`.
+
+| Column       | Type        | Constraints               | Notes |
+|--------------|-------------|---------------------------|-------|
+| stimulus_id  | UUID        | PK                        | Generated server-side |
+| test_set_id  | UUID        | FK, NOT NULL              | → misokinesia_test_sets.test_set_id |
+| storage_path | VARCHAR     | NOT NULL                  | Supabase Storage object key (filename only, e.g. `clip_01.mp4`) |
+| filename     | VARCHAR     | NOT NULL                  | |
+| duration_ms  | INTEGER     | NOT NULL                  | Clip duration in milliseconds |
+| mime_type    | VARCHAR     | NOT NULL DEFAULT 'video/mp4' | |
+| sort_order   | INTEGER     | NOT NULL                  | 1-based fixed playback order |
+| active       | BOOLEAN     | NOT NULL DEFAULT true     | |
+| created_at   | TIMESTAMPTZ | DEFAULT NOW()             | |
+
+Public URL pattern: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`
+
+### Table: `misokinesia_participants`
+
+One row per participant's task execution. Contains per-participant progress state and end-of-task questionnaire responses.
+
+| Column                         | Type        | Constraints   | Notes |
+|-------------------------------|-------------|---------------|-------|
+| misokinesia_participant_id    | UUID        | PK            | Generated server-side |
+| session_id                    | UUID        | FK, NOT NULL  | → sessions.session_id |
+| participant_uuid              | UUID        | FK, NOT NULL  | → participants.participant_uuid |
+| test_set_id                   | UUID        | FK, NOT NULL  | → misokinesia_test_sets.test_set_id |
+| misokinesia_participant_number | INTEGER    | NOT NULL      | SERIAL from dedicated sequence; independent of participants.participant_number; participant-facing ID starting from 1 |
+| started_at                    | TIMESTAMPTZ | DEFAULT NOW() | |
+| completed_at                  | TIMESTAMPTZ | NULLABLE      | Set server-side when all stimuli have a response row |
+| created_at                    | TIMESTAMPTZ | DEFAULT NOW() | |
+| end_fidgeting_text            | TEXT        | NULLABLE      | End-of-task: "Please list any fidgeting stimuli you are bothered by that did not show up in the task" |
+| end_emotions_text             | TEXT        | NULLABLE      | End-of-task: "Please list any emotional responses felt during the videos not asked in the questionnaire" |
+| stronger_responses            | BOOLEAN     | NULLABLE      | End-of-task: "Did viewing the videos create stronger responses over time?" (No=false / Yes=true) |
+| stronger_responses_timing     | VARCHAR     | NULLABLE      | One of: "Immediately", "After 5 seconds", "After 10 seconds", "At the end of the video"; only set when stronger_responses=true |
+
+Indexes: `misokinesia_participants(session_id)`, `misokinesia_participants(participant_uuid)`
+
+### Table: `misokinesia_trial_responses`
+
+One row per clip per participant. Per-clip questionnaire responses (scale 1–5: 1=Strongly Disagree, 5=Strongly Agree).
+
+| Column                      | Type        | Constraints   | Notes |
+|-----------------------------|-------------|---------------|-------|
+| response_id                 | UUID        | PK            | Generated server-side |
+| misokinesia_participant_id  | UUID        | FK, NOT NULL  | → misokinesia_participants.misokinesia_participant_id |
+| session_id                  | UUID        | FK, NOT NULL  | → sessions.session_id |
+| participant_uuid            | UUID        | FK, NOT NULL  | → participants.participant_uuid |
+| stimulus_id                 | UUID        | FK, NOT NULL  | → misokinesia_stimuli.stimulus_id |
+| display_order               | INTEGER     | NOT NULL      | 1-based position shown |
+| q1                          | SMALLINT    | NOT NULL      | "I find this video unpleasant" (1–5) |
+| q2                          | SMALLINT    | NOT NULL      | "I felt physical discomfort during the video" (1–5) |
+| q3                          | SMALLINT    | NOT NULL      | "I felt upset during the video" (1–5) |
+| q4                          | SMALLINT    | NOT NULL      | "I wanted to stop the video early / or close my eyes" (1–5) |
+| completed_at                | TIMESTAMPTZ | NULLABLE      | |
+| created_at                  | TIMESTAMPTZ | DEFAULT NOW() | |
+
+Constraints/indexes:
+- UNIQUE (`misokinesia_participant_id`, `stimulus_id`) — prevents duplicate submissions
+- Index (`misokinesia_trial_responses(misokinesia_participant_id)`)
+- Index (`misokinesia_trial_responses(stimulus_id)`)
+
+---
+
 ## Migration History
 
 > Append one row per migration task. Never delete rows. Format:
@@ -519,8 +609,9 @@ Behavior notes:
 | 2026-03-10 | T84 | Add durable `analytics_runs` and `analytics_snapshots` tables for per-range analytics audit/state and snapshot payload storage |
 | 2026-03-11 | T96 | Add append-only `admin_session_undo_log` table for RA-triggered undo-last-session audit |
 | 2026-03-13 | RC08 | Add partial `sessions` indexes for analytics date-range reads on `completed_at` and `study_day_id` |
+| 2026-03-17 | T104 | Add misokinesia_test_sets, misokinesia_stimuli, misokinesia_participants, misokinesia_trial_responses tables |
 
-As of 2026-03-13, migration `20260313_000001` (RC08) is the current head revision.
+As of 2026-03-17, migration `20260317_000001` (T104) is the current head revision.
 
 ---
 

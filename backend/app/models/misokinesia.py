@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func, text
+
+from app.db import Base
+
+
+class MisokinesiaTestSet(Base):
+    __tablename__ = "misokinesia_test_sets"
+
+    test_set_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    version: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class MisokinesiaStimulus(Base):
+    __tablename__ = "misokinesia_stimuli"
+
+    stimulus_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    test_set_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("misokinesia_test_sets.test_set_id"),
+        nullable=False,
+    )
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    mime_type: Mapped[str] = mapped_column(
+        String, nullable=False, server_default=text("'video/mp4'")
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class MisokinesiaParticipant(Base):
+    __tablename__ = "misokinesia_participants"
+
+    misokinesia_participant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.session_id"), nullable=False
+    )
+    participant_uuid: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
+    )
+    test_set_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("misokinesia_test_sets.test_set_id"),
+        nullable=False,
+    )
+    # Independent sequence — auto-assigned server-side
+    misokinesia_participant_number: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("nextval('misokinesia_participant_number_seq')"),
+    )
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    # End-of-task fields (collected once, after all clips)
+    end_fidgeting_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    end_emotions_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    stronger_responses: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    stronger_responses_timing: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )
+
+
+class MisokinesiaTrialResponse(Base):
+    __tablename__ = "misokinesia_trial_responses"
+    __table_args__ = (
+        UniqueConstraint(
+            "misokinesia_participant_id",
+            "stimulus_id",
+            name="uq_misokinesia_trial_responses_participant_stimulus",
+        ),
+    )
+
+    response_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    misokinesia_participant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("misokinesia_participants.misokinesia_participant_id"),
+        nullable=False,
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.session_id"), nullable=False
+    )
+    participant_uuid: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
+    )
+    stimulus_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("misokinesia_stimuli.stimulus_id"),
+        nullable=False,
+    )
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Per-clip questionnaire items (scale 1–5: Strongly Disagree → Strongly Agree)
+    q1: Mapped[int] = mapped_column(SmallInteger, nullable=False)  # I find this video unpleasant
+    q2: Mapped[int] = mapped_column(SmallInteger, nullable=False)  # I felt physical discomfort during the video
+    q3: Mapped[int] = mapped_column(SmallInteger, nullable=False)  # I felt upset during the video
+    q4: Mapped[int] = mapped_column(SmallInteger, nullable=False)  # I wanted to stop the video early / or close my eyes
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

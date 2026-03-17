@@ -94,7 +94,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T104",
       "title": "Backend — DB migration: 4 misokinesia tables",
-      "status": "todo",
+      "status": "done",
       "description": "Write a new Alembic migration file in `backend/alembic/versions/` following the existing naming convention (e.g. `YYYYMMDD_000001_misokinesia_tables.py`). Create 4 tables: (1) `misokinesia_test_sets` — reusable stimulus configurations with fields: test_set_id UUID PK, name VARCHAR, version VARCHAR, description TEXT, active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT now(). (2) `misokinesia_stimuli` — clip metadata (no video bytes): stimulus_id UUID PK, test_set_id UUID FK→misokinesia_test_sets, storage_path VARCHAR (Supabase Storage object key), filename VARCHAR, duration_ms INTEGER, mime_type VARCHAR DEFAULT 'video/mp4', sort_order INTEGER (1-based fixed playback order), active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT now(). (3) `misokinesia_participants` — one row per participant session execution: misokinesia_participant_id UUID PK, session_id UUID FK→sessions, participant_uuid UUID FK→participants, test_set_id UUID FK→misokinesia_test_sets, misokinesia_participant_number SERIAL (independent auto-increment, participant-facing ID starting from 1 — independent of the main study participant_number sequence), started_at TIMESTAMPTZ DEFAULT now(), completed_at TIMESTAMPTZ nullable, created_at TIMESTAMPTZ DEFAULT now(). (4) `misokinesia_trial_responses` — one row per clip per participant: response_id UUID PK, misokinesia_participant_id UUID FK→misokinesia_participants, session_id UUID FK→sessions, participant_uuid UUID FK→participants, stimulus_id UUID FK→misokinesia_stimuli, display_order INTEGER (position shown, 1-based), plus explicit fixed questionnaire columns (determine column names and integer ranges by reading `reference/Misokinesia Questionnaire.pdf` before writing — use q1, q2… qN pattern matching survey table style), completed_at TIMESTAMPTZ nullable, created_at TIMESTAMPTZ DEFAULT now(), UNIQUE(misokinesia_participant_id, stimulus_id). Add indexes on: misokinesia_participants(session_id), misokinesia_participants(participant_uuid), misokinesia_trial_responses(misokinesia_participant_id), misokinesia_trial_responses(stimulus_id). IMPORTANT: Before finalising the migration, read `reference/Misokinesia Questionnaire.pdf`, determine the exact questions and response scales, confirm the column list with the user, then write the migration.",
       "stack": ["backend"],
       "depends_on": ["T103"],
@@ -121,20 +121,22 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T105",
       "title": "Backend — SQLAlchemy models + Pydantic schemas for misokinesia",
-      "status": "todo",
-      "description": "Create SQLAlchemy ORM models and Pydantic request/response schemas for the 4 misokinesia tables added in T104. New model file `backend/app/models/misokinesia.py` with 4 classes: MisokinesiaTestSet, MisokinesiaStimulus, MisokinesiaParticipant, MisokinesiaTrialResponse — following the patterns in `backend/app/models/digitspan.py` and `backend/app/models/surveys.py` (column types, FK declarations, __tablename__). Register the new models in `backend/app/models/__init__.py` so Alembic autogenerate and app startup can discover them. New schema file `backend/app/schemas/misokinesia.py` with at minimum: MisokinesiaClipMeta (stimulus_id, public_url, sort_order, duration_ms), MisokinesiaManifestResponse (misokinesia_participant_id, misokinesia_participant_number, session_id, clips: list[MisokinesiaClipMeta]), MisokinesiaTrialResponseCreate (misokinesia_participant_id, stimulus_id, display_order, q1…qN with integer validation matching the ranges confirmed in T104), MisokinesiaTrialResponseResponse (response_id, is_complete: bool, session_id, created_at) — is_complete signals to the frontend that all stimuli have been answered so it can call PATCH /sessions/{session_id}/status next. Follow the existing Pydantic schema style in `backend/app/schemas/digitspan.py` and `backend/app/schemas/surveys.py`.",
+      "status": "done",
+      "description": "Create SQLAlchemy ORM models and Pydantic request/response schemas for the 4 misokinesia tables added in T104. New model file `backend/app/models/misokinesia.py` with 4 classes: MisokinesiaTestSet, MisokinesiaStimulus, MisokinesiaParticipant, MisokinesiaTrialResponse — following the patterns in `backend/app/models/digitspan.py` and `backend/app/models/surveys.py` (column types, FK declarations, __tablename__). Register the new models in `backend/app/models/__init__.py` so Alembic autogenerate and app startup can discover them. New schema file `backend/app/schemas/misokinesia.py` with at minimum: MisokinesiaClipMeta (stimulus_id, public_url, sort_order, duration_ms), MisokinesiaManifestResponse (misokinesia_participant_id, misokinesia_participant_number, session_id, clips: list[MisokinesiaClipMeta]), MisokinesiaTrialResponseCreate (misokinesia_participant_id, stimulus_id, display_order, q1…qN with integer validation matching the ranges confirmed in T104), MisokinesiaTrialResponseResponse (response_id, is_complete: bool, session_id, created_at) — is_complete signals to the frontend that all stimuli have been answered so it can call PATCH /sessions/{session_id}/status next. ALSO include MisokinesiaEndOfTaskCreate and MisokinesiaEndOfTaskResponse for the end-of-task questionnaire endpoint — see docs/working-misokinesia-add.md End-of-task Questionnaire section for field names, types, and validation rules. Follow the existing Pydantic schema style in `backend/app/schemas/digitspan.py` and `backend/app/schemas/surveys.py`.",
       "stack": ["backend"],
       "depends_on": ["T104"],
       "read_docs": [
         "docs/SCHEMA.md",
         "docs/CONVENTIONS.md",
-        "docs/API.md"
+        "docs/API.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`backend/app/models/misokinesia.py` exists with all 4 model classes",
         "All 4 models registered in `backend/app/models/__init__.py`",
         "`backend/app/schemas/misokinesia.py` exists with MisokinesiaManifestResponse, MisokinesiaTrialResponseCreate, MisokinesiaTrialResponseResponse, MisokinesiaParticipantResponse",
         "MisokinesiaTrialResponseCreate validates qN columns are within the correct integer ranges per the questionnaire",
+        "MisokinesiaEndOfTaskCreate and MisokinesiaEndOfTaskResponse schemas exist in misokinesia.py",
         "All model column definitions match the migration exactly (same names, types, nullability)",
         "App imports cleanly with no errors (`python -c 'from app.models import *'`)"
       ],
@@ -145,7 +147,7 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T106",
       "title": "Backend — Anonymous session start + clip manifest endpoint",
-      "status": "todo",
+      "status": "done",
       "description": "Create `backend/app/routers/misokinesia.py` with `router = APIRouter(prefix='/misokinesia', tags=['misokinesia'])` and register it in `backend/app/main.py`. Implement one endpoint: `POST /misokinesia/start` — RA-triggered, requires `Depends(get_current_lab_member)` (same auth as `POST /sessions/start` in `backend/app/routers/sessions.py`). Returns HTTP 201. Must atomically: (1) create an anonymous participant row in `participants` with no demographics fields set (participant_number auto-assigned via the existing MAX+1 pattern used in sessions.py), (2) create a session row (status='active'), (3) create a misokinesia_participants row (misokinesia_participant_number assigned by SERIAL automatically), (4) query the single active misokinesia_test_sets row and its stimuli ordered by sort_order, (5) construct public Supabase Storage URLs per stimulus: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}` — SUPABASE_URL is already available as a backend env var. Return MisokinesiaManifestResponse with misokinesia_participant_id, misokinesia_participant_number, session_id, and the full ordered clip list. See `backend/app/routers/sessions.py` start_session function for the participant+session creation pattern.",
       "stack": ["backend"],
       "depends_on": ["T105"],
@@ -153,7 +155,8 @@ Follow current JSON Schema when adding tasks.
         "docs/API.md",
         "docs/ARCHITECTURE.md",
         "docs/CONVENTIONS.md",
-        "docs/DECISIONS.md"
+        "docs/DECISIONS.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`POST /misokinesia/start` returns HTTP 201 with MisokinesiaManifestResponse",
@@ -174,14 +177,15 @@ Follow current JSON Schema when adding tasks.
     },
     {
       "id": "T107",
-      "title": "Backend — Trial response submission endpoint",
-      "status": "todo",
-      "description": "Add one endpoint to `backend/app/routers/misokinesia.py`: `POST /misokinesia/participants/{participant_id}/responses` — participant-facing, no auth required (same pattern as `POST /digitspan/runs` in `backend/app/routers/digitspan.py` which has no auth dependency). Returns HTTP 201. Validates: misokinesia_participants row exists for {participant_id}; stimulus_id belongs to the test_set assigned to that participant; no duplicate response already exists for this (participant_id, stimulus_id) pair — catch the UNIQUE constraint violation and return a clean HTTP 409 rather than letting it bubble as a 500; all qN values are within valid integer ranges. On success, create a misokinesia_trial_responses row. After inserting, check whether all stimuli in the participant's test_set now have a response row — if yes, set misokinesia_participants.completed_at = now() server-side (the frontend then calls the existing `PATCH /sessions/{session_id}/status` endpoint with status='complete', exactly as digitspan does — no separate misokinesia complete endpoint needed). Return MisokinesiaTrialResponseResponse. Note: session_id is available from the misokinesia_participants row and must be included in the response so the frontend can call the existing session status endpoint.",
+      "title": "Backend — Trial response submission + end-of-task endpoints",
+      "status": "done",
+      "description": "Add two endpoints to `backend/app/routers/misokinesia.py`. (1) `POST /misokinesia/participants/{participant_id}/responses` — participant-facing, no auth required (same pattern as `POST /digitspan/runs` in `backend/app/routers/digitspan.py` which has no auth dependency). Returns HTTP 201. Validates: misokinesia_participants row exists for {participant_id}; stimulus_id belongs to the test_set assigned to that participant; no duplicate response already exists for this (participant_id, stimulus_id) pair — catch the UNIQUE constraint violation and return a clean HTTP 409 rather than letting it bubble as a 500; all qN values are within valid integer ranges. On success, create a misokinesia_trial_responses row. After inserting, check whether all stimuli in the participant's test_set now have a response row — if yes, set misokinesia_participants.completed_at = now() server-side. Return MisokinesiaTrialResponseResponse (includes session_id and is_complete). (2) `PATCH /misokinesia/participants/{participant_id}/end-of-task` — participant-facing, no auth. Accepts MisokinesiaEndOfTaskCreate body. Validates that misokinesia_participants.completed_at is set (all 29 per-clip responses submitted) — return HTTP 409 if not. On success, writes the 4 end-of-task fields to the misokinesia_participants row and returns MisokinesiaEndOfTaskResponse. The frontend calls this endpoint after the final per-clip questionnaire, then calls `PATCH /sessions/{session_id}/status` to mark the session complete. See docs/working-misokinesia-add.md End-of-task Questionnaire section for full field specs.",
       "stack": ["backend"],
       "depends_on": ["T106"],
       "read_docs": [
         "docs/API.md",
-        "docs/CONVENTIONS.md"
+        "docs/CONVENTIONS.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`POST /misokinesia/participants/{participant_id}/responses` returns HTTP 201 with MisokinesiaTrialResponseResponse on valid input",
@@ -191,7 +195,11 @@ Follow current JSON Schema when adding tasks.
         "qN values outside valid range are rejected with HTTP 422",
         "After the 29th (final) response is submitted, misokinesia_participants.completed_at is set automatically",
         "Response body includes session_id so the frontend can call PATCH /sessions/{session_id}/status",
-        "Submitting a response after all stimuli are already answered returns HTTP 409"
+        "Submitting a response after all stimuli are already answered returns HTTP 409",
+        "`PATCH /misokinesia/participants/{participant_id}/end-of-task` returns HTTP 200 with MisokinesiaEndOfTaskResponse on valid input",
+        "End-of-task endpoint requires no auth",
+        "End-of-task endpoint returns HTTP 409 when misokinesia_participants.completed_at is null",
+        "End-of-task fields are written to the misokinesia_participants row on success"
       ],
       "updates_docs": [
         "docs/PROGRESS.md",
@@ -201,16 +209,17 @@ Follow current JSON Schema when adding tasks.
     {
       "id": "T108",
       "title": "Backend — Tests for misokinesia endpoints",
-      "status": "todo",
-      "description": "Create `backend/tests/test_misokinesia.py` following the patterns in existing backend test files. Write tests covering: happy path (start → submit all N trial responses → auto-complete), validation errors, and edge cases. Use the same test client and DB fixture patterns as the existing test suite. Test cases must include: (1) POST /misokinesia/start returns HTTP 201 with valid manifest, correct clip count, and clips ordered by sort_order; (2) POST /misokinesia/start requires auth — unauthenticated request returns 401; (3) misokinesia_participant_number increments correctly across two successive start calls; (4) POST /responses returns HTTP 201 for a valid trial with no auth required; (5) duplicate response (same participant_id + stimulus_id) returns 409; (6) response with out-of-range qN value returns 422; (7) response with stimulus_id not in the participant's test_set returns 422; (8) after submitting the final (29th) response, misokinesia_participants.completed_at is set; (9) submitting a response when all stimuli are already answered returns 409.",
+      "status": "done",
+      "description": "Create `backend/tests/test_misokinesia.py` following the patterns in existing backend test files. Write tests covering: happy path (start → submit all N trial responses → end-of-task → session complete), validation errors, and edge cases. Use the same test client and DB fixture patterns as the existing test suite. Test cases must include: (1) POST /misokinesia/start returns HTTP 201 with valid manifest, correct clip count, and clips ordered by sort_order; (2) POST /misokinesia/start requires auth — unauthenticated request returns 401; (3) misokinesia_participant_number increments correctly across two successive start calls; (4) POST /responses returns HTTP 201 for a valid trial with no auth required; (5) duplicate response (same participant_id + stimulus_id) returns 409; (6) response with out-of-range qN value returns 422; (7) response with stimulus_id not in the participant's test_set returns 422; (8) after submitting the final (29th) response, misokinesia_participants.completed_at is set; (9) submitting a response when all stimuli are already answered returns 409; (10) PATCH /end-of-task returns 200 with valid payload when completed_at is set; (11) PATCH /end-of-task returns 409 when completed_at is null; (12) PATCH /end-of-task with stronger_responses_timing present but stronger_responses false/null returns 422. See docs/working-misokinesia-add.md End-of-task Questionnaire section for endpoint spec.",
       "stack": ["backend"],
       "depends_on": ["T107"],
       "read_docs": [
-        "docs/CONVENTIONS.md"
+        "docs/CONVENTIONS.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`backend/tests/test_misokinesia.py` exists",
-        "All listed test cases are present and pass",
+        "All listed test cases (including end-of-task cases 10–12) are present and pass",
         "`pytest backend/tests/test_misokinesia.py` exits 0 with no failures or errors",
         "No existing tests are broken by the new test file"
       ],
@@ -222,12 +231,13 @@ Follow current JSON Schema when adding tasks.
       "id": "T109",
       "title": "Frontend — Misokinesia RA page, dock navigation, and API wrappers",
       "status": "todo",
-      "description": "Three parts: (1) Create a new dedicated RA page at `frontend/src/app/(ra)/misokinesia/page.tsx` (URL: /misokinesia). This page lives inside the (ra) route group so it inherits the RA auth guard from `frontend/src/app/(ra)/layout.tsx`. The page is intentionally minimal for now — a hero zone with a 'Start Misokinesia Session' button and placeholder text ('Participant statistics and KPIs coming soon'). The button should have a visually distinct aesthetic from the 'Start New Entry' button on the dashboard — consider a different accent color (e.g. a teal/green-adjacent UBC accent rather than UBC blue) or a different button shape/weight. On click: call POST /misokinesia/start, receive MisokinesiaManifest, then navigate to `/misokinesia/{misokinesia_participant_id}` passing the manifest via router state or sessionStorage. Show loading and inline error states on the button. (2) Update `frontend/src/lib/components/RAFloatingChrome.tsx`: add a misokinesia entry to the DOCK_ITEMS array — `{ href: '/misokinesia', label: 'Misokinesia', icon: Video }` (import Video from lucide-react alongside the existing icons); update `shouldShowRAFloatingChrome()` to return true for `/misokinesia` in addition to the existing routes. (3) Add TypeScript types and API wrapper functions to `frontend/src/lib/api/index.ts`: MisokinesiaClipMeta (stimulus_id, public_url, sort_order, duration_ms), MisokinesiaManifest (misokinesia_participant_id, misokinesia_participant_number, session_id, clips: MisokinesiaClipMeta[]), MisokinesiaTrialResponsePayload (stimulus_id, display_order, q1...qN), MisokinesiaTrialResponseResult (response_id, is_complete: bool, session_id); startMisokinesiaSession() → Promise<MisokinesiaManifest>; submitMisokinesiaTrialResponse(participantId, payload) → Promise<MisokinesiaTrialResponseResult>. Session completion reuses the existing patchSessionStatus() — no new complete wrapper needed. Also create the participant task route folder `frontend/src/app/misokinesia/[misokinesia_participant_id]/` (outside the (ra) group, no auth guard — participants access these pages directly) so the navigation target exists.",
+      "description": "Three parts: (1) Create a new dedicated RA page at `frontend/src/app/(ra)/misokinesia/page.tsx` (URL: /misokinesia). This page lives inside the (ra) route group so it inherits the RA auth guard from `frontend/src/app/(ra)/layout.tsx`. The page is intentionally minimal for now — a hero zone with a 'Start Misokinesia Session' button and placeholder text ('Participant statistics and KPIs coming soon'). The button should have a visually distinct aesthetic from the 'Start New Entry' button on the dashboard — consider a different accent color (e.g. a teal/green-adjacent UBC accent rather than UBC blue) or a different button shape/weight. On click: call POST /misokinesia/start, receive MisokinesiaManifest, then navigate to `/misokinesia/{misokinesia_participant_id}` passing the manifest via router state or sessionStorage. Show loading and inline error states on the button. (2) Update `frontend/src/lib/components/RAFloatingChrome.tsx`: add a misokinesia entry to the DOCK_ITEMS array — `{ href: '/misokinesia', label: 'Misokinesia', icon: Video }` (import Video from lucide-react alongside the existing icons); update `shouldShowRAFloatingChrome()` to return true for `/misokinesia` in addition to the existing routes. (3) Add TypeScript types and API wrapper functions to `frontend/src/lib/api/index.ts`: MisokinesiaClipMeta (stimulus_id, public_url, sort_order, duration_ms), MisokinesiaManifest (misokinesia_participant_id, misokinesia_participant_number, session_id, clips: MisokinesiaClipMeta[]), MisokinesiaTrialResponsePayload (stimulus_id, display_order, q1...qN), MisokinesiaTrialResponseResult (response_id, is_complete: bool, session_id), MisokinesiaEndOfTaskPayload, MisokinesiaEndOfTaskResult; startMisokinesiaSession() → Promise<MisokinesiaManifest>; submitMisokinesiaTrialResponse(participantId, payload) → Promise<MisokinesiaTrialResponseResult>; submitMisokinesiaEndOfTask(participantId, payload) → Promise<MisokinesiaEndOfTaskResult>. Session completion reuses the existing patchSessionStatus() — no new complete wrapper needed. See docs/working-misokinesia-add.md for end-of-task payload type specs. Also create the participant task route folder `frontend/src/app/misokinesia/[misokinesia_participant_id]/` (outside the (ra) group, no auth guard — participants access these pages directly) so the navigation target exists.",
       "stack": ["frontend"],
       "depends_on": ["T106"],
       "read_docs": [
         "docs/styleguide.md",
-        "docs/CONVENTIONS.md"
+        "docs/CONVENTIONS.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "New page exists at `frontend/src/app/(ra)/misokinesia/page.tsx` and is accessible at /misokinesia when authenticated",
@@ -241,7 +251,7 @@ Follow current JSON Schema when adding tasks.
         "shouldShowRAFloatingChrome('/misokinesia') returns true",
         "The floating dock is visible on /misokinesia and the misokinesia item is highlighted as active",
         "The floating dock is still visible and correct on /dashboard and /import-export (no regressions)",
-        "startMisokinesiaSession() and submitMisokinesiaTrialResponse() wrappers exist in api/index.ts with correct TypeScript types",
+        "startMisokinesiaSession(), submitMisokinesiaTrialResponse(), and submitMisokinesiaEndOfTask() wrappers exist in api/index.ts with correct TypeScript types",
         "MisokinesiaManifest type includes session_id; MisokinesiaTrialResponseResult includes is_complete and session_id",
         "No new complete wrapper added — session completion reuses the existing patchSessionStatus()",
         "Participant task route folder `frontend/src/app/misokinesia/[misokinesia_participant_id]/` exists"
@@ -259,7 +269,8 @@ Follow current JSON Schema when adding tasks.
       "depends_on": ["T109"],
       "read_docs": [
         "docs/styleguide.md",
-        "docs/CONVENTIONS.md"
+        "docs/CONVENTIONS.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`frontend/src/lib/components/MisokinesiaVideoPlayer.tsx` exists and exports a default component",
@@ -275,24 +286,30 @@ Follow current JSON Schema when adding tasks.
     },
     {
       "id": "T111",
-      "title": "Frontend — MisokinesiaQuestionnaire component",
+      "title": "Frontend — MisokinesiaQuestionnaire + MisokinesiaEndOfTaskForm components",
       "status": "todo",
-      "description": "Create `frontend/src/lib/components/MisokinesiaQuestionnaire.tsx`. Renders the fixed post-clip questionnaire — the same question set is shown after every clip. Question text and response scales come from `reference/Misokinesia Questionnaire.pdf`. Follow the patterns in `frontend/src/lib/components/SurveyForm.tsx` for layout (question above answer options), radio button inputs, required-answer validation before submit, and submit handling. Props: `{ misokinesiaParticipantId: string, stimulusId: string, displayOrder: number, onComplete: () => void }`. On submit: call the submitMisokinesiaTrialResponse API wrapper from `frontend/src/lib/api/index.ts` with the collected qN responses, then call onComplete. Show an inline error message if the API call fails (do not navigate away). Show a loading state on the submit button while the call is in-flight.",
+      "description": "Create two components. (1) `frontend/src/lib/components/MisokinesiaQuestionnaire.tsx` — renders the fixed per-clip questionnaire (4 questions, shown after every clip). Question text and response scales come from `reference/Misokinesia Questionnaire.pdf`. Follow the patterns in `frontend/src/lib/components/SurveyForm.tsx` for layout (question above answer options), radio button inputs, required-answer validation before submit, and submit handling. Props: `{ misokinesiaParticipantId: string, stimulusId: string, displayOrder: number, onComplete: () => void }`. On submit: call submitMisokinesiaTrialResponse, then call onComplete. Show an inline error message if the API call fails (do not navigate away). Show a loading state on the submit button while the call is in-flight. (2) `frontend/src/lib/components/MisokinesiaEndOfTaskForm.tsx` — renders the end-of-task questionnaire shown ONCE after all 29 per-clip questionnaires are complete (before the completion screen). See docs/working-misokinesia-add.md End-of-task Questionnaire section for the exact fields, question text, and input types. Props: `{ misokinesiaParticipantId: string, onComplete: () => void }`. On submit: call submitMisokinesiaEndOfTask(), then call onComplete. All fields are optional. Show loading and inline error states.",
       "stack": ["frontend"],
       "depends_on": ["T110"],
       "read_docs": [
         "docs/styleguide.md",
         "docs/CONVENTIONS.md",
-        "reference/Misokinesia Questionnaire.pdf"
+        "reference/Misokinesia Questionnaire.pdf",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`frontend/src/lib/components/MisokinesiaQuestionnaire.tsx` exists and exports a default component",
-        "All questionnaire items from the PDF are rendered with correct question text and response options",
+        "All 4 per-clip questionnaire items from the PDF are rendered with correct question text and 1–5 response options",
         "Submit button is disabled until all required questions are answered",
         "On submit, calls submitMisokinesiaTrialResponse with correct payload (stimulusId, displayOrder, q1…qN values)",
         "onComplete is called after a successful submission",
         "API errors are displayed inline without navigating away",
-        "Submit button shows a loading state during the API call"
+        "Submit button shows a loading state during the API call",
+        "`frontend/src/lib/components/MisokinesiaEndOfTaskForm.tsx` exists and exports a default component",
+        "Renders all 3 end-of-task question groups (fidgeting text, emotions text, stronger-responses binary + conditional timing options)",
+        "stronger_responses_timing options are only shown when stronger_responses is Yes",
+        "All fields are optional — submit is never blocked by unanswered fields",
+        "On submit, calls submitMisokinesiaEndOfTask() with correct payload then calls onComplete"
       ],
       "updates_docs": [
         "docs/PROGRESS.md"
@@ -302,19 +319,22 @@ Follow current JSON Schema when adding tasks.
       "id": "T112",
       "title": "Frontend — Misokinesia task page (full single-page state machine)",
       "status": "todo",
-      "description": "Create `frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx`. This is the main participant-facing task page. It is a single-page state machine — no URL transitions between clips. States: `intro` → `playing` → `questionnaire` → (loop back to playing for next clip) → `complete`. On mount: retrieve the manifest from router state or sessionStorage (set in T109); if unavailable, re-fetch via the API. Track `currentClipIndex` (0-based) in React state. In `playing` state: render MisokinesiaVideoPlayer with the current clip; on onEnded transition to `questionnaire`. In `questionnaire` state: render MisokinesiaQuestionnaire with the current clip's stimulusId and displayOrder (currentClipIndex + 1); on onComplete (the POST /responses call returns is_complete=true on the final submission): if more clips remain increment currentClipIndex and transition back to `playing`, else transition to `complete`. In `complete` state: call the existing `PATCH /sessions/{session_id}/status` endpoint with status='complete' (session_id is returned in the manifest and in each MisokinesiaTrialResponseResponse — same pattern as digitspan which calls this endpoint after submitting its run). Then show the completion screen. Show a progress indicator ('Clip N of 29') in both playing and questionnaire states. Reference `frontend/src/app/session/[session_id]/digitspan/page.tsx` for the established multi-phase state machine pattern in this codebase.",
+      "description": "Create `frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx`. This is the main participant-facing task page. It is a single-page state machine — no URL transitions between clips. States: `intro` → `playing` → `questionnaire` → (loop back to playing for next clip) → `end_of_task` → `complete`. On mount: retrieve the manifest from router state or sessionStorage (set in T109); if unavailable, re-fetch via the API. Track `currentClipIndex` (0-based) in React state. In `playing` state: render MisokinesiaVideoPlayer with the current clip; on onEnded transition to `questionnaire`. In `questionnaire` state: render MisokinesiaQuestionnaire with the current clip's stimulusId and displayOrder (currentClipIndex + 1); on onComplete: if more clips remain increment currentClipIndex and transition back to `playing`; if is_complete is true (final submission) transition to `end_of_task`. In `end_of_task` state: render MisokinesiaEndOfTaskForm; on onComplete transition to `complete`. In `complete` state: call the existing `PATCH /sessions/{session_id}/status` endpoint with status='complete', then show the completion screen. Show a progress indicator ('Clip N of 29') in both playing and questionnaire states (not in end_of_task or complete). Reference `frontend/src/app/session/[session_id]/digitspan/page.tsx` for the established multi-phase state machine pattern in this codebase. See docs/working-misokinesia-add.md for the full state machine spec and end-of-task details.",
       "stack": ["frontend"],
       "depends_on": ["T111"],
       "read_docs": [
         "docs/styleguide.md",
-        "docs/CONVENTIONS.md"
+        "docs/CONVENTIONS.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx` exists",
         "Page renders an intro state with a 'Begin' button before the first clip",
-        "After 'Begin', cycles through all clips: video placeholder → questionnaire → next clip",
+        "After 'Begin', cycles through all clips: video placeholder → per-clip questionnaire → next clip",
         "Progress indicator ('Clip N of 29') is visible and accurate during playing and questionnaire states",
-        "After the final questionnaire submission, completeMisokinesiaSession is called and the page transitions to the complete state",
+        "After the final per-clip questionnaire submission (is_complete=true), page transitions to end_of_task state (NOT directly to complete)",
+        "In end_of_task state, MisokinesiaEndOfTaskForm is rendered; on form submission page transitions to complete",
+        "In complete state, patchSessionStatus is called and the completion screen is shown",
         "No URL change occurs between clips (single-page state machine)",
         "Manifest re-fetch fallback works if router state is unavailable"
       ],
@@ -326,17 +346,19 @@ Follow current JSON Schema when adding tasks.
       "id": "T113",
       "title": "Frontend — Misokinesia completion screen",
       "status": "todo",
-      "description": "Implement the `complete` state within `frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx` (added in T112). When all clips are done: call the existing `patchSessionStatus(sessionId, 'complete')` API wrapper (the same wrapper used by digitspan at `frontend/src/app/session/[session_id]/digitspan/page.tsx` — no new API function needed). On success, display a centered 'Thank you — the session is complete' message. Include a 'Return to Dashboard' button that calls `router.push('/dashboard')`. Show a loading state while the PATCH is in-flight. If the PATCH fails, show an inline error with a retry button. Follow the visual style used by the existing session complete page at `frontend/src/app/session/[session_id]/complete/page.tsx` for reference.",
+      "description": "Implement the `complete` state within `frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx` (added in T112). The complete state is entered after the end-of-task form is submitted (NOT directly after the final per-clip questionnaire — see docs/working-misokinesia-add.md for the full flow). When the complete state is entered: call the existing `patchSessionStatus(sessionId, 'complete')` API wrapper (the same wrapper used by digitspan at `frontend/src/app/session/[session_id]/digitspan/page.tsx` — no new API function needed). On success, display a centered 'Thank you — the session is complete' message. Include a 'Return to Dashboard' button that calls `router.push('/dashboard')`. Show a loading state while the PATCH is in-flight. If the PATCH fails, show an inline error with a retry button. Follow the visual style used by the existing session complete page at `frontend/src/app/session/[session_id]/complete/page.tsx` for reference.",
       "stack": ["frontend"],
       "depends_on": ["T112"],
       "read_docs": [
-        "docs/styleguide.md"
+        "docs/styleguide.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
-        "Completion state displays a 'Thank you' message after the final clip's questionnaire is submitted",
+        "Completion state is entered after the end-of-task form is submitted (not directly after the final per-clip questionnaire)",
+        "Completion state displays a 'Thank you' message",
         "'Return to Dashboard' button navigates to /dashboard",
-        "Loading state shown while completeMisokinesiaSession is in-flight",
-        "If completeMisokinesiaSession errors, an inline error message and retry button are shown",
+        "Loading state shown while patchSessionStatus is in-flight",
+        "If patchSessionStatus errors, an inline error message and retry button are shown",
         "Session status in the DB is 'complete' after the page reaches this state successfully"
       ],
       "updates_docs": [
@@ -347,11 +369,12 @@ Follow current JSON Schema when adding tasks.
       "id": "T114",
       "title": "Frontend — Tests for misokinesia flow",
       "status": "todo",
-      "description": "Write frontend tests for the misokinesia feature following the patterns of existing frontend test files. Cover: (1) RA dashboard renders 'Start Misokinesia' button and clicking it calls the startMisokinesiaSession API wrapper; (2) MisokinesiaVideoPlayer placeholder renders the clip index and triggers onEnded when Continue is clicked; (3) MisokinesiaQuestionnaire renders all question items, blocks submit until all answered, calls submitMisokinesiaTrialResponse on submit, then calls onComplete; (4) the task page advances from playing → questionnaire on onEnded, then from questionnaire → playing (next clip) on onComplete, and transitions to complete after the last clip; (5) progress indicator shows correct 'Clip N of 29' value at each step; (6) the completion screen renders correctly and 'Return to Dashboard' navigates to /dashboard.",
+      "description": "Write frontend tests for the misokinesia feature following the patterns of existing frontend test files. Cover: (1) RA dashboard renders 'Start Misokinesia' button and clicking it calls the startMisokinesiaSession API wrapper; (2) MisokinesiaVideoPlayer placeholder renders the clip index and triggers onEnded when Continue is clicked; (3) MisokinesiaQuestionnaire renders all 4 question items, blocks submit until all answered, calls submitMisokinesiaTrialResponse on submit, then calls onComplete; (4) the task page advances from playing → questionnaire on onEnded, then from questionnaire → playing (next clip) on onComplete for non-final clips; (5) after the 29th per-clip questionnaire (is_complete=true), page transitions to end_of_task — NOT complete; (6) MisokinesiaEndOfTaskForm renders all 3 question groups, stronger_responses_timing options only appear when stronger_responses is Yes, calling submitMisokinesiaEndOfTask on submit then onComplete; (7) after end-of-task form submission, page transitions to complete; (8) progress indicator shows correct 'Clip N of 29' during playing/questionnaire states; (9) completion screen renders correctly and 'Return to Dashboard' navigates to /dashboard. See docs/working-misokinesia-add.md for the full state machine and end-of-task specs.",
       "stack": ["frontend"],
       "depends_on": ["T113"],
       "read_docs": [
-        "docs/CONVENTIONS.md"
+        "docs/CONVENTIONS.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "All listed test cases are present and pass",
@@ -371,7 +394,8 @@ Follow current JSON Schema when adding tasks.
       "depends_on": ["T104"],
       "read_docs": [
         "docs/ARCHITECTURE.md",
-        "docs/SCHEMA.md"
+        "docs/SCHEMA.md",
+        "docs/working-misokinesia-add.md"
       ],
       "acceptance_criteria": [
         "`misokinesia-stimuli` Supabase Storage bucket exists with public access enabled",

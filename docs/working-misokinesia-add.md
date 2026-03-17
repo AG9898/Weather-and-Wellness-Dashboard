@@ -115,17 +115,121 @@ signed URLs in the manifest response.
 4. Participant sees intro screen, clicks to begin
 5. For each of 29 clips (fixed order):
    a. Video clip plays (placeholder during development; real mp4 when available)
-   b. Fixed questionnaire shown after clip
+   b. Per-clip questionnaire shown after clip (4 questions, 1–5 scale — see Per-clip questionnaire below)
    c. Frontend submits `POST /misokinesia/participants/{id}/responses` — response includes
       `is_complete: true` on the 29th submission, at which point backend auto-sets
       `misokinesia_participants.completed_at`
-6. After final submission, frontend calls existing `PATCH /sessions/{session_id}/status` with
-   status='complete' (same pattern as digitspan)
-7. Completion screen shown — RA clicks "Return to Dashboard"
+6. After the 29th per-clip questionnaire is submitted, the frontend transitions to the
+   **end-of-task questionnaire** state (NOT directly to complete) — see End-of-task questionnaire below
+7. Participant completes the end-of-task form; frontend submits
+   `PATCH /misokinesia/participants/{id}/end-of-task`
+8. After successful end-of-task submission, frontend calls existing
+   `PATCH /sessions/{session_id}/status` with status='complete' (same pattern as digitspan)
+9. Completion screen shown — RA clicks "Return to Dashboard"
 
 Working defaults:
 - single-page state machine for the task (no URL transitions between clips)
 - one manifest fetch on task page load (all 29 clip URLs in one response)
+
+---
+
+## Per-clip Questionnaire
+
+4 questions shown after every clip (same question set each time). All items are integer 1–5
+(1 = Strongly Disagree, 5 = Strongly Agree):
+
+| Column | Question |
+|--------|----------|
+| q1 | I find this video unpleasant |
+| q2 | I felt physical discomfort during the video |
+| q3 | I felt upset during the video |
+| q4 | I wanted to stop the video early / or close my eyes |
+
+Submitted via `POST /misokinesia/participants/{id}/responses` (no auth — participant-facing).
+
+---
+
+## End-of-task Questionnaire
+
+**Added post-T103 planning (confirmed in T104).** The original kanban tasks T105–T114 were
+written before this was resolved and do not mention it. All agents working on T105–T114 must
+account for this.
+
+Three questions shown **once** after all 29 per-clip questionnaires are complete, before the
+completion screen. Stored on `misokinesia_participants` (4 nullable columns added in T104
+migration).
+
+| Column | Type | Question / Notes |
+|--------|------|-----------------|
+| `end_fidgeting_text` | TEXT | "Please list any fidgeting stimuli that you are bothered by that did not show up in the task" (free text) |
+| `end_emotions_text` | TEXT | "Please list any emotional responses that you felt during the videos that were not asked in the questionnaire" (free text) |
+| `stronger_responses` | BOOLEAN | "Did viewing the videos create stronger responses over time?" — No (false) / Yes (true) |
+| `stronger_responses_timing` | VARCHAR | If `stronger_responses` is true: one of "Immediately", "After 5 seconds", "After 10 seconds", "At the end of the video"; otherwise null |
+
+### New backend endpoint required (T107)
+
+`PATCH /misokinesia/participants/{participant_id}/end-of-task` — participant-facing, no auth.
+Validates that `misokinesia_participants.completed_at` is set (i.e. all 29 per-clip responses
+have been submitted) before accepting the end-of-task payload. On success, writes the 4 fields
+to the `misokinesia_participants` row and returns HTTP 200 with the updated participant record.
+If `completed_at` is null (clips not yet finished), return HTTP 409.
+
+### New Pydantic schemas required (T105)
+
+- `MisokinesiaEndOfTaskCreate`: `end_fidgeting_text: str | None`, `end_emotions_text: str | None`,
+  `stronger_responses: bool | None`, `stronger_responses_timing: str | None` with validation
+  that `stronger_responses_timing` is only set when `stronger_responses` is `True`.
+- `MisokinesiaEndOfTaskResponse`: the updated `misokinesia_participant_id`, plus the 4
+  end-of-task fields, returned after successful PATCH.
+
+### New frontend API wrapper required (T109)
+
+`submitMisokinesiaEndOfTask(participantId: string, payload: MisokinesiaEndOfTaskPayload) → Promise<MisokinesiaEndOfTaskResult>`
+
+Types needed:
+- `MisokinesiaEndOfTaskPayload`: `{ end_fidgeting_text?: string, end_emotions_text?: string, stronger_responses?: boolean, stronger_responses_timing?: string }`
+- `MisokinesiaEndOfTaskResult`: `{ misokinesia_participant_id: string }` (minimal — enough for the frontend to proceed)
+
+### New frontend component required (T111 or separate)
+
+`MisokinesiaEndOfTaskForm` component (can be a separate file or part of the task page). Renders:
+1. A free-text input for `end_fidgeting_text`
+2. A free-text input for `end_emotions_text`
+3. A binary Yes/No for `stronger_responses`
+4. If Yes: a radio group for `stronger_responses_timing` with the 4 options above
+
+All fields are optional (the questionnaire PDF shows them as open-ended, not required). Submit
+calls `submitMisokinesiaEndOfTask()`.
+
+### Updated state machine (T112)
+
+The complete state sequence is:
+
+```
+intro → playing → questionnaire → (loop × 29) → end_of_task → complete
+```
+
+- After the 29th `questionnaire` onComplete (when `is_complete: true` is returned from the
+  per-clip response endpoint), transition to `end_of_task` — NOT directly to `complete`.
+- In `end_of_task`: render `MisokinesiaEndOfTaskForm`; on form submit call
+  `submitMisokinesiaEndOfTask()`, then transition to `complete`.
+- In `complete`: call `patchSessionStatus(sessionId, 'complete')`, then show the thank-you screen.
+
+### Backend tests required (T108)
+
+Add test cases for:
+- `PATCH /end-of-task` returns 200 with valid payload when `completed_at` is set
+- `PATCH /end-of-task` returns 409 when `completed_at` is null (clips not yet done)
+- `stronger_responses_timing` present when `stronger_responses` is false is rejected with 422
+
+### Frontend tests required (T114)
+
+Add test cases for:
+- `MisokinesiaEndOfTaskForm` renders all 3 question groups
+- `stronger_responses_timing` options appear only when `stronger_responses` is Yes
+- Submitting the form calls `submitMisokinesiaEndOfTask()` with correct payload
+- Task page transitions to `end_of_task` state after the 29th per-clip questionnaire
+- Task page transitions from `end_of_task` to `complete` after end-of-task form submission
 
 ---
 

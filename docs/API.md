@@ -71,6 +71,9 @@
 | GET    | /admin/export.xlsx | Admin | implemented | T49, T100 |
 | GET    | /admin/export.zip | Admin | implemented | T49, T100 |
 | POST   | /admin/backfill/legacy-weather | Admin | implemented | T56, T100 |
+| POST   | /misokinesia/start | RA | implemented | T106 |
+| POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
+| PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
 
 ---
 
@@ -757,6 +760,108 @@
   - Each CSV has a header row and is schema-faithful with all join keys.
   - `survey_cogfunc8a.csv` includes `legacy_mean_1_5` and `data_source`, so imported legacy cognition rows are visible on the canonical survey export surface instead of only in `imported_session_measures`.
   - All values follow the same conversion rules as the XLSX export.
+
+---
+
+## Misokinesia
+
+> Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.py`.
+> Participant-facing endpoints (T107) are no-auth; the start endpoint requires RA auth.
+
+### POST /misokinesia/start
+- **Auth:** RA required
+- **Status:** implemented (T106)
+- **Request body:** none
+- **Response (HTTP 201):** `MisokinesiaManifestResponse`
+  ```json
+  {
+    "misokinesia_participant_id": "uuid",
+    "misokinesia_participant_number": "integer",
+    "session_id": "uuid",
+    "clips": [
+      {
+        "stimulus_id": "uuid",
+        "public_url": "string",
+        "sort_order": "integer",
+        "duration_ms": "integer"
+      }
+    ]
+  }
+  ```
+- **Notes:**
+  - Atomically creates an anonymous `participants` row (no demographics), an `active` session, and a `misokinesia_participants` row.
+  - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
+  - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
+  - `clips` are ordered by `sort_order` ascending (all 29 active stimuli for the test set).
+  - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
+  - Unauthenticated requests return 401.
+
+### POST /misokinesia/participants/{participant_id}/responses
+- **Auth:** None (participant-facing)
+- **Status:** implemented (T107)
+- **Request body:** `MisokinesiaTrialResponseCreate`
+  ```json
+  {
+    "stimulus_id": "uuid",
+    "display_order": "integer (≥1)",
+    "q1": "integer (1–5)",
+    "q2": "integer (1–5)",
+    "q3": "integer (1–5)",
+    "q4": "integer (1–5)"
+  }
+  ```
+- **Response (HTTP 201):** `MisokinesiaTrialResponseResponse`
+  ```json
+  {
+    "response_id": "uuid",
+    "session_id": "uuid",
+    "is_complete": "boolean",
+    "created_at": "datetime"
+  }
+  ```
+- **Notes:**
+  - No auth required.
+  - Returns 404 if `participant_id` not found.
+  - Returns 409 if a response for this `(participant_id, stimulus_id)` pair already exists (UNIQUE constraint violation).
+  - Returns 409 if all stimuli are already answered (`completed_at` is set).
+  - Returns 422 if `stimulus_id` does not belong to the participant's assigned test set.
+  - Returns 422 if any `qN` value is outside 1–5.
+  - After the final response, `misokinesia_participants.completed_at` is set server-side automatically.
+  - `is_complete: true` signals to the frontend to transition to the end-of-task state.
+  - `session_id` is included so the frontend can call `PATCH /sessions/{session_id}/status` after the end-of-task step.
+
+---
+
+### PATCH /misokinesia/participants/{participant_id}/end-of-task
+- **Auth:** None (participant-facing)
+- **Status:** implemented (T107)
+- **Request body:** `MisokinesiaEndOfTaskCreate`
+  ```json
+  {
+    "end_fidgeting_text": "string | null",
+    "end_emotions_text": "string | null",
+    "stronger_responses": "boolean | null",
+    "stronger_responses_timing": "string | null"
+  }
+  ```
+  - `stronger_responses_timing` must be one of: `"Immediately"`, `"After 5 seconds"`, `"After 10 seconds"`, `"At the end of the video"`.
+  - `stronger_responses_timing` may only be set when `stronger_responses` is `true`; otherwise returns 422.
+  - All fields are optional (null accepted).
+- **Response (HTTP 200):** `MisokinesiaEndOfTaskResponse`
+  ```json
+  {
+    "misokinesia_participant_id": "uuid",
+    "end_fidgeting_text": "string | null",
+    "end_emotions_text": "string | null",
+    "stronger_responses": "boolean | null",
+    "stronger_responses_timing": "string | null"
+  }
+  ```
+- **Notes:**
+  - No auth required.
+  - Returns 404 if `participant_id` not found.
+  - Returns 409 if `misokinesia_participants.completed_at` is null (not all per-clip responses submitted yet).
+  - After success, frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'`.
 
 ---
 
