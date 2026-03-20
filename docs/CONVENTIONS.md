@@ -71,6 +71,13 @@
 - For Supabase connectivity in IPv4-only environments, prefer session pooler `DATABASE_URL` values
 - With SQLAlchemy asyncpg in this repo, use `ssl=require` query param (not `sslmode=require`)
 
+### Misokinesia module
+- **No media through FastAPI.** Video clips are served directly from Supabase Storage CDN. Never proxy video bytes through a Render endpoint.
+- **Manifest-first.** `POST /misokinesia/start` returns all 29 clip CDN URLs in one response. The frontend fetches clips directly from these URLs — no per-clip backend round-trips.
+- **Participant task endpoints are no-auth.** `POST /responses` and `PATCH /end-of-task` require no JWT. Validate by participant row existence only (404 if not found).
+- **`completed_at` is server-side only.** Backend sets `misokinesia_participants.completed_at` automatically on the final stimulus response. The frontend must not set or infer this value.
+- **Public Supabase Storage bucket.** `misokinesia-stimuli` is public. CDN URLs require no signing. Do not introduce signed URL generation without an explicit decision (see `docs/DECISIONS.md` OPEN-02).
+
 ---
 
 ## Frontend (Next.js)

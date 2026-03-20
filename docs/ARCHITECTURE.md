@@ -56,6 +56,15 @@ This section is the single routing inventory for dashboard-related reads across 
 | `GET /weather/daily` | `GET /api/ra/dashboard?mode=live`, `GET /api/ra/weather/range?mode=live` | `internal-only` | Canonical backend operational read primitive used by the shipped same-origin weather handlers. Router validation/auth lives in `backend/app/routers/weather.py`; DB read logic lives in `backend/app/services/weather_read_service.py`. |
 | `GET /dashboard/analytics` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live` | `internal-only` | Canonical backend analytics endpoint behind the same-origin analytics handler. |
 
+### Frontend page route inventory
+
+| Route | Auth | Classification | Notes |
+|---|---|---|---|
+| `/misokinesia` | RA required (via `(ra)` layout) | `canonical` | RA page — launch a Misokinesia session via "Start Misokinesia Session" button |
+| `/misokinesia/[id]` | None | `canonical` | Participant task page — video clips + questionnaires; `id` = `misokinesia_participant_id` |
+
+Backend API endpoints for Misokinesia are documented in `docs/API.md`. Dashboard and session routes are implicitly canonical and owned by their respective layout groups.
+
 ### Deprecation map and target canonical shapes
 
 | Read surface | Current state | Target canonical shape | Cleanup owner |

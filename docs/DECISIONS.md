@@ -10,18 +10,23 @@
 
 ## Open Decisions
 
-### OPEN-01 — Monorepo vs. Split Repositories
+### OPEN-05 — Multi-Lab Schema Scoping
 
-**Why it matters:** Governs CI configuration, deployment pipeline, versioning strategy,
-and whether a shared types package makes sense. Affects all path references in code.
+**Question:** How should the database schema isolate data between labs and studies?
 
-**Options considered:**
-- **Monorepo** (frontend/ + backend/ in one repo): simpler for a small lab team, shared kanban, single PR for full-stack changes. Currently assumed.
-- **Split repos**: cleaner separation, independent deploy pipelines, but more overhead for a 2-person team.
+**Context:** The platform is expanding from a single study (Weather & Wellness) to multiple
+labs and studies. Auth already carries `app_metadata.lab` (slug) and `app_metadata.role`.
+The planned model adds `labs` and `studies` tables as FKs on `participants` and `sessions`,
+but the exact isolation strategy is not yet finalized.
 
-**Current default:** Proceed with monorepo layout. Use `frontend/` and `backend/` prefixes in all path references. Do not flatten both source trees into the root.
+**Options under consideration:**
+1. **Row-level isolation** — single schema, `study_id` FK on all data tables, enforced at app layer via `get_current_lab_member`. Simple to implement; row-level security (RLS) on Neon could reinforce it.
+2. **Schema-level isolation** — each lab gets its own Postgres schema (e.g. `weather_wellness.*`). Stronger isolation; more complex migrations and connection management.
+3. **Separate deployments** — each lab is a fully independent deploy. Maximum isolation; highest operational overhead.
 
-**Blocks / affects:** T01 and all tasks with path references.
+**Blocking:** First new lab requirements must be confirmed before resolving.
+
+**See also:** `docs/MULTI_LAB.md` for the full open questions list.
 
 ---
 
@@ -34,6 +39,21 @@ and whether a shared types package makes sense. Affects all path references in c
 ---
 
 *(OPEN-04 moved to Resolved section — see RESOLVED-06)*
+
+---
+
+### OPEN-02 — Misokinesia Auth & Stimulus Management Roles
+
+**Why it matters:** Governs who can upload/replace video stimuli, manage test sets, and launch the module. Affects endpoint auth, admin UI scope, and whether non-admin RAs can configure the task.
+
+**Options considered:**
+- Admin-only for all stimulus management; RAs can only launch sessions.
+- All lab members can manage stimuli within their lab scope.
+- Separate stimulus-admin role.
+
+**Current default:** Assume management endpoints are admin-only (`Depends(get_current_admin)`). Participant task endpoints follow the existing participant session-validation model (no JWT, validated by participant row existence). Stimulus seeding via one-time seed script only.
+
+**Blocks / affects:** Future stimulus upload/management endpoints; admin export coverage for misokinesia tables; undo-last-session extension to misokinesia rows.
 
 ---
 
@@ -95,16 +115,16 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 **Resolved:** 2026-02-28
 
 **Decision:**
-- The study’s day-level semantics use timezone `America/Vancouver` for:
+- The study's day-level semantics use timezone `America/Vancouver` for:
   - `study_days.date_local`
   - session → study day linking (`sessions.study_day_id`)
   - weather_daily day linking (`weather_daily.study_day_id`)
   - dashboard date-range filtering
-- Participant daylight exposure (`participants.daylight_exposure_minutes`) is computed as minutes since the local “daylight start” time:
+- Participant daylight exposure (`participants.daylight_exposure_minutes`) is computed as minutes since the local "daylight start" time:
   - `daylight_exposure_minutes = max(0, minutes_between(DAYLIGHT_START_LOCAL_TIME, session_start_local_time))`
   - Default `DAYLIGHT_START_LOCAL_TIME` is `06:00` in `America/Vancouver` and must be configurable.
 
-**Why:** Day-level analyses and UI filtering should match a single local day boundary. Daylight exposure is a derived participant attribute based on the session start time relative to a fixed local “daylight start”.
+**Why:** Day-level analyses and UI filtering should match a single local day boundary. Daylight exposure is a derived participant attribute based on the session start time relative to a fixed local "daylight start".
 
 **Affects:** docs/WEATHER_INGESTION.md, docs/SCHEMA.md, docs/API.md, docs/DESIGN_SPEC.md, backend weather/session day-linking logic, Phase 3 import/start-session implementations.
 
@@ -131,7 +151,7 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 
 **Resolved:** 2026-02-28
 
-**Decision:** The RA “Start New Entry” flow requires selecting participant demographics (preset options) before creating a participant+session. Values are stored on `participants` only:
+**Decision:** The RA "Start New Entry" flow requires selecting participant demographics (preset options) before creating a participant+session. Values are stored on `participants` only:
 - `age_band`, `gender`, `origin`, `commute_method`, `time_outside`
 - If `origin` or `commute_method` is `"Other"`, store the free-text detail in a dedicated `*_other_text` column (length-limited; UI warns against PII).
 
@@ -190,7 +210,7 @@ Auth is optional. If enabled, Next.js obtains a Supabase JWT and sends `Authoriz
 
 **Why:** This split cleanly separates UI, API, and data layers; keeps deployment straightforward for a small lab team; and preserves server-side canonical scoring while using managed Postgres.
 
-**Affects:** docs/ARCHITECTURE.md (canonical), docs/CONVENTIONS.md, docs/API.md, docs/devSteps.md, docs/kanban.md.
+**Affects:** docs/ARCHITECTURE.md (canonical), docs/CONVENTIONS.md, docs/API.md, docs/devSteps.md.
 
 ---
 
@@ -204,7 +224,7 @@ Supabase `pg_cron` is explicitly excluded for now.
 **Why:** Keeps scheduling simple and portable, avoids database-side cron complexity, and fits free-tier
 constraints while preserving idempotent ingestion behavior.
 
-**Affects:** docs/WEATHER_INGESTION.md, docs/ARCHITECTURE.md, docs/API.md, docs/kanban.md.
+**Affects:** docs/WEATHER_INGESTION.md, docs/ARCHITECTURE.md, docs/API.md.
 
 ---
 
@@ -219,7 +239,7 @@ constraints while preserving idempotent ingestion behavior.
 **Why:** Maximizes relational consistency for day-level analyses and avoids fragile computed-date joins
 while keeping sessions linkable even if weather ingestion is missing for a day.
 
-**Affects:** docs/WEATHER_INGESTION.md, docs/SCHEMA.md, docs/kanban.md.
+**Affects:** docs/WEATHER_INGESTION.md, docs/SCHEMA.md.
 
 ---
 
@@ -231,7 +251,7 @@ while keeping sessions linkable even if weather ingestion is missing for a day.
 
 **Why:** Reduces PII handling burden and aligns the app with anonymity requirements while keeping relational integrity via UUID keys.
 
-**Affects:** docs/PRD.md, docs/SCHEMA.md, docs/API.md, docs/DESIGN_SPEC.md, docs/kanban.md.
+**Affects:** docs/PRD.md, docs/SCHEMA.md, docs/API.md, docs/DESIGN_SPEC.md.
 
 ---
 
@@ -243,11 +263,11 @@ while keeping sessions linkable even if weather ingestion is missing for a day.
 
 **Why:** Matches the desired supervised lab workflow and enables a single one-click launch into Survey 1 without intermediate digit span instructions.
 
-**Affects:** docs/DESIGN_SPEC.md, docs/API.md, docs/kanban.md.
+**Affects:** docs/DESIGN_SPEC.md, docs/API.md.
 
 ---
 
-### RESOLVED-13 — RA Undo Last Session Uses Hard Delete + Audit Log
+### RESOLVED-16 — RA Undo Last Session Uses Hard Delete + Audit Log
 
 **Resolved:** 2026-03-09
 
@@ -271,7 +291,7 @@ correctness surface for little benefit.
 - deletion is transactional and audit-logged
 
 **Affects:** docs/API.md, docs/SCHEMA.md, docs/DESIGN_SPEC.md,
-docs/ARCHITECTURE.md, docs/kanban.md.
+docs/ARCHITECTURE.md.
 
 ---
 
@@ -319,7 +339,38 @@ secure user metadata.
 
 **Affects:** `backend/app/auth.py`, `backend/app/routers/admin.py`,
 `backend/scripts/invite_user.py`, `frontend/src/lib/components/RANavBar.tsx`,
-`frontend/src/app/(ra)/layout.tsx`, `docs/kanban.md`.
+`frontend/src/app/(ra)/layout.tsx`, `docs/ARCHITECTURE.md`.
+
+---
+
+### RESOLVED-17 — Monorepo vs. Split Repositories (was OPEN-01)
+
+**Resolved:** Pre-project (before T01)
+
+**Decision:** Monorepo layout with `frontend/` and `backend/` subdirectories. All path references use these prefixes.
+
+**Why:** Simpler for a small lab team — shared kanban, single PR for full-stack changes, no overhead of split deployment pipelines.
+
+**Affects:** All tasks with path references. Routing conventions in ARCHITECTURE.md and CONVENTIONS.md.
+
+---
+
+### RESOLVED-18 — Misokinesia Module Core Architecture
+
+**Resolved:** 2026-03-17
+
+**Decision:** The Misokinesia video task module uses the following settled defaults:
+- **29 video clips**, ~15 seconds each, shown to every participant in a fixed `sort_order` sequence.
+- **Fully anonymous participants** — no demographics collected. Independent `misokinesia_participant_number` SERIAL sequence (separate from `participants.participant_number`), starting from 1.
+- **Video hosting:** Supabase Storage, public bucket (`misokinesia-stimuli`), raw CDN URLs — no signing, no expiry.
+- **Table naming:** `misokinesia_participants` (not `misokinesia_runs`).
+- **Per-clip questionnaire:** 4 questions (q1–q4, scale 1–5) submitted after each clip. End-of-task questionnaire (3 items stored on `misokinesia_participants`) collected once after all 29 per-clip submissions.
+- **Session flow:** RA navigates to `/misokinesia` via dock → clicks "Start Misokinesia Session" → backend atomically creates anonymous participant + session + misokinesia_participants row → app navigates to `/misokinesia/[id]` participant task page (same device, no external URL handoff).
+- **Response submission:** Per-trial, one POST per clip. `completed_at` set server-side automatically on final response. No client-side complete endpoint.
+
+**Why:** Keeps video delivery on Supabase CDN (avoiding Render cold-start on media paths), uses existing participant/session model, and matches the existing per-instrument column schema style.
+
+**Affects:** `docs/MISOKINESIA.md`, `docs/SCHEMA.md`, `docs/API.md`, `docs/ARCHITECTURE.md`.
 
 ---
 

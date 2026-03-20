@@ -1,95 +1,100 @@
 <p align="center">
-  <img src="reference/UI%20Reference/Logo/logo.png" alt="Weather &amp; Wellness" width="120" />
+  <img src="reference/UI%20Reference/Logo/logo.png" alt="UBC Psychology Lab Platform" width="120" />
 </p>
 
-<h1 align="center">Weather &amp; Wellness + Misokinesia Research Web App</h1>
+<h1 align="center">UBC Psychology Lab Research Platform</h1>
 
 <p align="center">
-  Internal lab web app for administering a Backwards Digit Span task and validated surveys,
-  scoring server-side, and storing results in Supabase (Postgres).
+  Multi-lab research platform for administering tasks and validated surveys —
+  scoring server-side, storing results in Neon (Postgres), with per-lab data isolation.
 </p>
 
 ---
 
-## Stack (at a glance)
+## Stack
 
-- **Frontend:** Next.js (TypeScript) + Tailwind + shadcn/ui (`frontend/`)
-- **Backend:** FastAPI (Python) - canonical validation/scoring + all DB writes (`backend/`)
-- **Database:** Supabase Postgres (lab reads data via Supabase Studio)
-- **Auth:** Supabase Auth for LabMembers/RAs only (participants do not have accounts)
+| Layer    | Technology                        | Role                                         |
+|----------|-----------------------------------|----------------------------------------------|
+| Frontend | Next.js + TypeScript + Tailwind   | UI, session flow, digit span timing          |
+| Backend  | FastAPI (Python)                  | Canonical scoring, validation, all DB writes |
+| Database | Neon (PostgreSQL)                 | Managed Postgres; lab reads via Neon Console |
+| Auth     | Supabase Auth                     | LabMembers only; participants have no account |
 
-## Roles and flow
+## Roles
 
-- **LabMember (RA):** authenticated; uses `/dashboard` and RA-only admin tools like `/import-export`
-- **Participant:** unauthenticated; completes a single session flow via a `session_id`
+| Role | Description |
+|---|---|
+| **LabMember (RA)** | Authenticated; runs sessions, views dashboard, accesses `/import-export` |
+| **Participant** | Unauthenticated; completes a single session flow via `session_id` |
 
-Core rules:
+## Platform rules
 
-- **Client timing, server scoring:** the frontend handles digit presentation timing only; the backend scores everything.
-- **Anonymous participants:** results are linked by `participant_uuid` + `session_id` (no names or direct identifiers).
-- **Session-scoped rows:** no orphaned results; every result row references both identifiers.
-- **Study timezone:** day-level semantics use `America/Vancouver`.
+- **Client timing, server scoring.** Frontend handles digit presentation timing only. All scores computed in FastAPI.
+- **Anonymous participants.** Results linked by `participant_uuid` + `session_id` — no names or direct identifiers.
+- **Lab isolation.** Each lab's data is scoped to its `study_id`. LabMembers cannot read or write another lab's data.
+- **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.
 
-## What this app includes
+## Labs
 
-- **Backwards Digit Span task** (client timing; server scoring)
-- **Validated surveys**: ULS-8, CES-D 10, GAD-7, CogFunc 8a (scored server-side)
-- **RA dashboard** for study progress + weather context
-- **Planned statistical analytics layer** for model-based weather/cognition KPIs derived from backend DB values
-- **RA-only Import/Export** for controlled legacy imports and admin exports (CSV/XLSX)
-- **Weather ingestion** (scheduled via GitHub Actions) with day-level semantics in `America/Vancouver`
+| Lab slug | Study |
+|---|---|
+| `weather-wellness` | Weather & Wellness — daily weather × psychological wellbeing (ULS-8, CES-D 10, GAD-7, CogFunc 8a, Digit Span, Misokinesia) |
+
+New lab? See `docs/MULTI_LAB.md`.
 
 ## Repository layout
 
 | Path | What it contains |
 |---|---|
-| `frontend/` | Next.js app (participant + RA UIs, typed API wrappers, optional cache handlers) |
-| `backend/` | FastAPI app (routers, scoring modules, DB models, Alembic migrations) |
-| `docs/` | API contracts, architecture, schema, scoring rules, style guide |
-| `reference/` | Study materials + UI references (source PDFs/images, legacy data) |
+| `frontend/` | Next.js app — participant + RA UIs, typed API wrappers, Route Handlers |
+| `backend/` | FastAPI app — routers, scoring modules, DB models, Alembic migrations |
+| `docs/` | Platform-wide: architecture, schema, conventions, decisions, style guide |
+| `docs/labs/<slug>/` | Lab-specific: API contracts, design spec, scoring rules, surveys, tasks |
+| `reference/UI Reference/` | Universal design assets — logo, branding, component mockups |
+| `reference/labs/<slug>/` | Lab-specific research instruments and analysis scripts |
 | `scripts/` | Local dev helpers (e.g. `scripts/dev.sh`) |
+
+---
 
 ## Quickstart (local development)
 
-### Prereqs
+### Prerequisites
 
 - Python 3.11+
 - Node.js 18+
-- A Supabase project + Postgres connection string
+- A Neon database (or any Postgres connection string)
+- A Supabase project (for Auth only)
 
 ### 1) Create `.env` (repo root)
 
-Create a file at `.env` and set at least:
+```bash
+cp .env.example .env
+```
 
-- `DATABASE_URL` (Supabase session pooler URL; include `ssl=require`)
+Required variables:
 
-Optional / when enabled:
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Neon connection string (include `?sslmode=require` for IPv4) |
+| `SUPABASE_URL` | Supabase project URL (Auth only) |
+| `SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_JWT_SECRET` | Backend JWT validation |
+| `NEXT_PUBLIC_SUPABASE_URL` | Frontend auth |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Frontend auth |
 
-- `ALLOWED_ORIGINS` (CORS allow-list; defaults to localhost dev origins when unset)
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY` (backend Supabase SDK usage)
-- `SUPABASE_JWT_SECRET` (backend JWT validation when RA auth is enabled)
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (frontend auth when enabled)
-- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (Vercel cache layer)
+Optional:
 
-Notes:
+| Variable | Purpose |
+|---|---|
+| `ALLOWED_ORIGINS` | CORS allow-list (defaults to localhost dev origins) |
+| `UPSTASH_REDIS_REST_URL` | Vercel cache layer (Route Handlers) |
+| `UPSTASH_REDIS_REST_TOKEN` | Vercel cache layer |
 
-- Do not commit `.env`.
-- Full environment conventions live in `docs/CONVENTIONS.md`.
+Never commit `.env`. Full environment variable reference: `docs/CONVENTIONS.md`.
 
 ### 2) Backend (FastAPI)
 
-Windows (PowerShell):
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
-python -m dotenv -f ..\.env run -- alembic upgrade head
-python -m dotenv -f ..\.env run -- uvicorn app.main:app --reload
-```
-
-macOS/Linux/WSL (bash):
-
+**macOS / Linux / WSL:**
 ```bash
 cd backend
 python3 -m venv .venv
@@ -99,9 +104,16 @@ python -m dotenv -f ../.env run -- alembic upgrade head
 python -m dotenv -f ../.env run -- uvicorn app.main:app --reload
 ```
 
-Backend URLs:
+**Windows (PowerShell):**
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\pip install -r requirements.txt
+python -m dotenv -f ..\.env run -- alembic upgrade head
+python -m dotenv -f ..\.env run -- uvicorn app.main:app --reload
+```
 
-- Health: `http://127.0.0.1:8000/health`
+- Health check: `http://127.0.0.1:8000/health`
 - OpenAPI docs: `http://127.0.0.1:8000/docs`
 
 ### 3) Frontend (Next.js)
@@ -112,43 +124,63 @@ npm install
 npm run dev
 ```
 
-Frontend URL (default): `http://127.0.0.1:3000`
+Frontend: `http://127.0.0.1:3000`
 
-### One-command startup (optional)
-
-If you have a bash-compatible shell (WSL, Git Bash, macOS/Linux), you can start both services with:
+### One-command startup (bash)
 
 ```bash
 ./scripts/dev.sh
+# Override ports:
+BACKEND_PORT=8001 FRONTEND_PORT=3001 ./scripts/dev.sh
 ```
 
-Overrides:
+---
 
-```bash
-BACKEND_PORT=8001 FRONTEND_PORT=3001 HOST=127.0.0.1 ./scripts/dev.sh
-```
+## Documentation
 
-## Documentation index
+**Platform-wide:**
 
-- Architecture and deployment: `docs/ARCHITECTURE.md`
-- Backend API contracts: `docs/API.md`
-- Planned dashboard analytics spec: `docs/ANALYTICS.md`
-- Schema + migrations: `docs/SCHEMA.md`
-- Scoring rules: `docs/SCORING.md` and per-instrument docs in `docs/`
-- UI style guide: `docs/styleguide.md`
-- shadcn usage guide: `docs/shadcn.md`
-- Local setup / verification checklist: `docs/devSteps.md`
-- Decisions log: `docs/DECISIONS.md`
+| Document | Purpose |
+|---|---|
+| `docs/ARCHITECTURE.md` | Deployment topology, caching, auth |
+| `docs/SCHEMA.md` | Database schema and migrations |
+| `docs/CONVENTIONS.md` | Coding standards (full stack) |
+| `docs/DECISIONS.md` | Architectural decisions log |
+| `docs/MULTI_LAB.md` | Multi-lab data model and onboarding |
+| `docs/TESTING.md` | Test infrastructure |
+| `docs/styleguide.md` | UI design system |
+| `docs/shadcn.md` | shadcn/ui component usage |
+| `docs/devSteps.md` | Local setup checklist |
 
-## Deployment (high level)
+**Weather & Wellness lab:**
 
-- **Frontend:** Vercel (Next.js)
-- **Backend:** Render (FastAPI), health endpoint at `/health`
-- **Database:** Supabase Postgres (lab reads via Supabase Studio)
-- **Scheduled jobs:** GitHub Actions (e.g. daily weather ingestion) - see `docs/ARCHITECTURE.md`
+| Document | Purpose |
+|---|---|
+| `docs/labs/weather-wellness/README.md` | Lab overview and data access |
+| `docs/labs/weather-wellness/API.md` | FastAPI endpoint contracts |
+| `docs/labs/weather-wellness/DESIGN_SPEC.md` | Participant + RA UX flows |
+| `docs/labs/weather-wellness/SCORING.md` | Scoring rules |
+| `docs/labs/weather-wellness/ANALYTICS.md` | Analytics architecture (MLM, KPIs) |
+| `docs/labs/weather-wellness/surveys/` | Survey instrument specs |
+| `docs/labs/weather-wellness/tasks/` | Task specs (Digit Span, Misokinesia) |
+
+---
+
+## Deployment
+
+| Service | Platform |
+|---|---|
+| Frontend | Vercel |
+| Backend | Railway (FastAPI), health at `/health` |
+| Database | Neon (PostgreSQL, `aws-ca-central-1`) |
+| Auth | Supabase Auth |
+| Scheduled jobs | GitHub Actions (weather ingestion, keep-alive) |
+
+---
 
 ## Privacy and data handling
 
-- Participants are anonymous by design; do not add PII collection.
-- Do not log direct identifiers or secrets.
-- Admin Import/Export features are RA-only and must remain protected server-side.
+- Participants are anonymous by design. Do not add PII collection.
+- Never log direct identifiers or secrets.
+- Admin Import/Export is RA-only and must remain protected server-side.
+- Lab data isolation is enforced at the application layer; LabMembers cannot access other labs' data.

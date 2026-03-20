@@ -65,6 +65,7 @@ install itself as a package. Always set it when running pytest directly.
 | `test_analytics_service.py` | Analytics | Snapshot orchestration: snapshot reads, live recompute, stale fallback, failure preservation |
 | `test_dashboard_analytics_router.py` | Analytics | Endpoint: auth dependency, date-range validation, snapshot and live mode delegation |
 | `test_analytics_parity.py` | Analytics | R-script parity: formula structure, field naming, z-score convention, complete-case inclusion, end-to-end term parity with `reference/Weather_MLM.R` |
+| `test_misokinesia.py` | Misokinesia | Endpoint tests: POST /start (RA auth), POST /responses (per-clip, no auth), PATCH /end-of-task (no auth); 409 on duplicate response, 409 on end-of-task before completed_at set, 422 on invalid stronger_responses_timing |
 
 ### Conventions
 
