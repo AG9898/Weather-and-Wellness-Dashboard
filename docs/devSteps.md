@@ -73,17 +73,18 @@ Troubleshooting:
 - `x-ww-cache: disabled` → Upstash/Vercel KV env vars are missing or the handler could not use Redis for that request.
 - Repeated `miss` even after a `live` call → confirm the Upstash integration is connected to the project and env vars are present in the deployment environment.
 - `x-ww-cache-ttl` does not change on repeated hits → expected. Current policy is fixed expiry on write, not sliding expiration.
-- Repeated `x-ww-cache: error` on `mode=live` with low latency (~15s) indicates backend timeout protection is active and Render should be checked (`/health`, service status, cold-start/load).
+- Repeated `x-ww-cache: error` on `mode=live` with low latency (~15s) indicates backend timeout protection is active and the deployed backend service should be checked (`/health`, service status, cold-start/load during transition).
 - `GET /api/ra/dashboard/analytics?...&mode=snapshot` returning `404` is an expected snapshot-miss path when no durable analytics snapshot exists yet; the dashboard should show the empty state and wait for an explicit manual refresh instead of auto-triggering `mode=live`.
 
 ---
 
-## T27 Runbook — Render Backend Service
+## T27 Runbook — Backend Deployment Service
 
-> **Status (2026-02-25):** Service is live at `https://weather-and-wellness-dashboard.onrender.com`.
-> Verification results: `/health` → 200 `{"status":"ok"}` ✓ | `/docs` → 200 ✓ | `/openapi.json` → 200 valid JSON ✓
+> Historical note: this section originally documented the live Render service.
+> The current target deployment is Railway; keep any remaining Render-specific
+> steps only until the cutover is complete.
 
-Use this runbook when re-deploying or reconfiguring the Render backend.
+Use this runbook when re-deploying or reconfiguring the backend service.
 
 ### 1) Service configuration (reference)
 
@@ -95,7 +96,7 @@ Use this runbook when re-deploying or reconfiguring the Render backend.
 | Start Command | `PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
 | Health Check Path | `/health` |
 
-### 2) Required Render environment variables
+### 2) Required backend environment variables
 
 | Variable | Required | Notes |
 |---|---|---|
@@ -105,7 +106,7 @@ Use this runbook when re-deploying or reconfiguring the Render backend.
 | `SUPABASE_URL` | When backend uses Supabase SDK | Supabase project URL |
 | `SUPABASE_ANON_KEY` | When backend uses Supabase SDK | Supabase anonymous key |
 
-> Keep all secret values in Render env settings only — never commit values to the repo.
+> Keep all secret values in deployment env settings only — never commit values to the repo.
 
 ## Admin Import/Export Setup (Phase 3 — T46+)
 
@@ -117,7 +118,7 @@ Added Python packages (T48) — included in `backend/requirements.txt`:
 - `openpyxl>=3.1.0` — XLSX file reading (import preview/commit) and writing (export)
 - `python-multipart>=0.0.9` — FastAPI multipart file upload support
 
-Install/update backend deps as usual (Render deploy or local):
+Install/update backend deps as usual (deployed service or local):
 
 ```bash
 cd backend
@@ -126,7 +127,7 @@ pip install -r requirements.txt
 
 ### 1b) Backend environment variables (Phase 3)
 
-Optional env vars (Render and local dev):
+Optional env vars (deployed service and local dev):
 
 | Variable | Default | Notes |
 |---|---:|---|

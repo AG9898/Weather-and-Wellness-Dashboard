@@ -2,18 +2,21 @@
 
 > Canonical source for hosting, tiers, and environment boundaries. Other docs should link
 > here instead of restating architecture details.
+>
+> This document reflects the **target post-cutover topology**. Until the
+> migration is executed, some operational runbooks may still reference the
+> current Render deployment as the live service.
 
 ---
 
 ## Summary
 
 - **Three-tier web app**: Next.js frontend → FastAPI backend → Supabase Postgres
-- **Optional cache layer (Vercel)**: Next.js Route Handlers use **Upstash Redis** (via Vercel integration) to cache select RA read responses to reduce perceived cold-start latency, while still fetching live data from the Render backend.
+- **Optional cache layer (Vercel)**: Next.js Route Handlers use **Upstash Redis** (via Vercel integration) to cache select RA read responses while still fetching live data from the backend service.
 - **Frontend (Vercel)**: Next.js (TypeScript + Tailwind) for UI and Route Handlers. No FastAPI on Vercel.
-- **Backend (Render)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
-  - Hosted URL: `https://weather-and-wellness-dashboard.onrender.com`
-- **Database (Supabase)**: Managed Postgres. Lab reads data via Supabase Studio.
-- **Admin data ops**: RA-only Import/Export endpoints on Render support legacy imports and controlled CSV/XLSX exports.
+- **Backend (Railway target)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
+- **Database (Supabase)**: Managed Postgres in the target Canada Central region. Lab reads data via Supabase Studio.
+- **Admin data ops**: RA-only Import/Export endpoints on the backend service support legacy imports and controlled CSV/XLSX exports.
 - **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/ANALYTICS.md`.
 - **Session safety tool**: a narrow RA-only undo action for the latest native session is live on `/dashboard`, implemented as transactional hard delete plus audit log rather than soft delete.
 
@@ -41,15 +44,15 @@ This section is the single routing inventory for dashboard-related reads across 
 - `internal-only`: backend primitive with an explicitly documented same-origin caller; not for direct browser use
 - `remove`: no current owner; delete as part of the linked cleanup task
 
-### Browser -> Vercel -> Render inventory
+### Browser -> Vercel -> backend inventory
 
-| Browser owner / caller | Typed wrapper | Same-origin Route Handler | Render backend read(s) | Classification | Notes |
+| Browser owner / caller | Typed wrapper | Same-origin Route Handler | Backend read(s) | Classification | Notes |
 |---|---|---|---|---|---|
 | RA dashboard page (`/dashboard`) initial mount and post-undo refresh | `getDashboardWeatherBundle(mode)` | `GET /api/ra/dashboard?mode=cached\|live` | `GET /weather/daily?start=today&end=today&include_forecast_periods=false` | `canonical` | This is the canonical default dashboard read path. The bundle is intentionally weather-only because the current page renders weather but not operational summary KPIs. |
 | `WeatherUnifiedCard` on `/dashboard` | `getWeatherRangeBundle(mode, dateFrom, dateTo)` | `GET /api/ra/weather/range?mode=cached\|live&date_from&date_to` | `GET /weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` | `canonical` | Canonical weather range path for the dashboard trend chart. |
 | `DashboardAnalyticsSection` on `/dashboard` | `getDashboardAnalyticsBundle(mode, dateFrom, dateTo)` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live&date_from&date_to` | `GET /dashboard/analytics?date_from&date_to&mode=snapshot\|live` | `canonical` | Canonical analytics snapshot/live path for dashboard model outputs. |
 
-### Render endpoint inventory
+### Backend endpoint inventory
 
 | FastAPI endpoint | Current same-origin caller | Classification | Notes |
 |---|---|---|---|
@@ -79,7 +82,7 @@ Backend API endpoints for Misokinesia are documented in `docs/API.md`. Dashboard
 All active RA same-origin Route Handlers now share a single server-only helper layer under `frontend/src/lib/server/`:
 
 - `route-handler-auth.ts` — Supabase bearer-token extraction and JWT verification (JWKS primary, HS256 fallback)
-- `route-handler-backend.ts` — Render backend URL resolution, 55-second timeout fetch wrapper, and normalized backend error type. Each Route Handler also exports `maxDuration = 60` to allow the full 55s timeout window before Vercel's function limit fires.
+- `route-handler-backend.ts` — backend URL resolution, 55-second timeout fetch wrapper, and normalized backend error type. Each Route Handler also exports `maxDuration = 60` to allow the full 55s timeout window before Vercel's function limit fires.
 - `route-handler-cache.ts` — Upstash Redis bootstrap, shared cache-policy constants, cache read/write helpers, cache-key composition, and standardized `x-ww-cache*` response-header helpers
 - `route-handler-validation.ts` — `date_from` / `date_to` validation shared by filtered handlers
 
@@ -112,7 +115,7 @@ Standardized same-origin diagnostics:
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:dashboard:v1`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/weather/daily?start=today&end=today&include_forecast_periods=false` from the Render backend with a 55s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+| `live` | Fetches `/weather/daily?start=today&end=today&include_forecast_periods=false` from the backend service with a 55s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 **Auth:** The handler verifies the Supabase JWT from `Authorization: Bearer <token>` before touching the cache or making backend calls. No auth bypass via cache. Returns 401 for missing or invalid tokens.
 
@@ -136,7 +139,7 @@ Standardized same-origin diagnostics:
 | Mode | Behaviour |
 |---|---|
 | `cached` | Reads bundle from Upstash Redis (`ww:ra:weather:range:v1:<date_from>:<date_to>`). Returns `{ cached: true, data }` on hit, `{ cached: false, data: null }` on miss. |
-| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` from the Render backend with a 55s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
+| `live` | Fetches `/weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` from the backend service with a 55s timeout. On success, writes the result bundle to Redis (TTL 24 hours; write is awaited, reads do not renew TTL) and returns `{ cached: false, data }`. On live failure, best-effort returns stale cached data when available. |
 
 **Payload shaping:** the weather trend chart path requests a lean day-level payload (empty `forecast_periods`) because the chart only needs date, temperature, precipitation, and sunlight-hours values. This keeps first-load range fetches smaller and reduces cold-cache timeout risk on Vercel.
 
@@ -148,8 +151,8 @@ Standardized same-origin diagnostics:
 
 | Mode | Behaviour |
 |---|---|
-| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. If the cached bundle is marked `status="recomputing"`, the handler revalidates against the backend snapshot endpoint before serving it so the UI can pick up the newly finished snapshot promptly. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from Render with a 55s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
-| `live` | Calls `/dashboard/analytics?...&mode=live` on Render with a 55s timeout and `cache: "no-store"`. The backend treats this as a background refresh request and returns immediately with the current snapshot state for the range, which the handler writes back into Redis so the dashboard can keep serving the in-progress snapshot state consistently. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
+| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. If the cached bundle is marked `status="recomputing"`, the handler revalidates against the backend snapshot endpoint before serving it so the UI can pick up the newly finished snapshot promptly. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from the backend service with a 55s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
+| `live` | Calls `/dashboard/analytics?...&mode=live` on the backend service with a 55s timeout and `cache: "no-store"`. The backend treats this as a background refresh request and returns immediately with the current snapshot state for the range, which the handler writes back into Redis so the dashboard can keep serving the in-progress snapshot state consistently. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
 
 - **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before reading Redis or calling the backend. No auth bypass via cache.
 - **Bundle type:** `{ analytics: DashboardAnalyticsResponse, cached_at }` wrapped in `{ cached, data, refresh }`, where `refresh` explains whether the response is an idle snapshot read or a background refresh request.
@@ -227,7 +230,7 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 
 - Allowed origins are configured via the `ALLOWED_ORIGINS` env var (comma-separated list).
 - When `ALLOWED_ORIGINS` is unset, the backend defaults to localhost dev origins only.
-- In production (Render), set `ALLOWED_ORIGINS` to the Vercel frontend URL(s).
+- In production, set `ALLOWED_ORIGINS` to the Vercel frontend URL(s).
 - No wildcard (`*`) origins are used — least-privilege policy.
 
 ---
@@ -268,47 +271,49 @@ Two scheduled jobs are active.
 
 - Scheduler: **GitHub Actions only** (explicitly excluding Supabase `pg_cron` for now).
 - Workflow file: `.github/workflows/weather-ingest.yml`
-- Trigger: GitHub Actions calls a protected backend endpoint on Render.
+- Trigger: GitHub Actions calls a protected backend endpoint.
 - Schedule: `cron: '0 14 * * *'` (14:00 UTC daily) + `workflow_dispatch` for manual runs.
-- Reliability: bash retry loop (5 attempts, 60s delay) handles Render free-tier cold starts (~50s spin-up); ingestion is idempotent so duplicate runs are safe.
+- Reliability: ingestion is idempotent so duplicate runs are safe. Retry policy can remain for transient backend/network failures during the transition.
 - Exit policy: 2xx → success; 409/429 → exit 0 (expected control-flow responses); all other non-2xx → retry, then exit 1 (loud failure in Actions UI).
 
-**2. Render keep-alive ping** (RB06)
+**2. Render keep-alive ping** (transitional only)
 
 - Workflow file: `.github/workflows/render-keepalive.yml`
 - Trigger: `cron: '0/14 * * * *'` (every 14 minutes, around the clock) + `workflow_dispatch` for manual runs.
-- Purpose: Prevents Render free-tier cold starts by sending traffic before the 15-minute idle spin-down threshold.
+- Purpose: Prevents Render free-tier cold starts before the Railway cutover is complete.
 - Secret: reuses `WEATHER_INGEST_BASE_URL` (already present); no new secret required.
 - Pings `GET /health`. Exit policy: always exits 0 — a missed or non-2xx ping is not a failure; the next ping will resume keep-alive.
+- Remove this workflow after the backend cutover to Railway.
 
 ### Secrets ownership
 
 - GitHub repository secrets (used by Actions):
-  - `WEATHER_INGEST_BASE_URL` (Render backend base URL)
+  - `WEATHER_INGEST_BASE_URL` (backend base URL; Railway after cutover)
   - `WEATHER_INGEST_SHARED_SECRET` (shared secret header value)
-- Render backend environment:
+- Backend environment:
   - `WEATHER_INGEST_SHARED_SECRETS` (comma-separated to allow rotation)
 
 ---
 
-## Render Setup
+## Railway Setup
 
-- Service is live at `https://weather-and-wellness-dashboard.onrender.com`.
+- Target service host: Railway.
 - Health check path: `/health` → returns `{"status":"ok"}`.
-- Local backend tasks in Phase 1 (DB wiring, models, migrations, stub auth) do not require Render.
+- Local backend tasks in Phase 1 (DB wiring, models, migrations, stub auth) do not require Railway.
 - On startup, a lifespan hook cleans up orphaned `analytics_runs` rows from previous process lifetimes (see "Failure behavior" above).
 
-### Required Render Environment Variables
+### Required Railway Environment Variables
 
 | Variable | Required | Notes |
 |---|---|---|
-| `DATABASE_URL` | Always | Supabase pooler URL; include `ssl=require` |
+| `DATABASE_URL` | Always | Supabase Postgres URL; include `ssl=require` / `sslmode=require` as required by the driver |
 | `ALLOWED_ORIGINS` | Always | Comma-separated Vercel frontend URL(s) for CORS |
 | `SUPABASE_JWT_SECRET` | When RA JWT auth enabled | Used by FastAPI to validate Supabase JWTs |
 | `SUPABASE_URL` | When backend uses Supabase SDK | Supabase project URL |
 | `SUPABASE_ANON_KEY` | When backend uses Supabase SDK | Supabase anonymous key |
+| `SUPABASE_SERVICE_ROLE_KEY` | When admin tooling runs in this environment | Supabase admin API access |
 
-> Do not commit secret values to the repo. Set them only in Render service environment settings.
+> Do not commit secret values to the repo. Set them only in deployment environment settings.
 
 ---
 

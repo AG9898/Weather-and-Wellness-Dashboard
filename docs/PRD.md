@@ -6,7 +6,7 @@ Internal lab-operated web app to:
 - Administer 4 surveys (exact wording)
 - Auto-score all instruments
 - Store data linked by participant + session
-- Provide data access via Supabase Studio (Phase 1)
+- Provide data access via Supabase Studio (Phase 1 and after infra cutover)
 - Phase 3: provide an RA-only Import/Export page for legacy imports and controlled admin exports (CSV/XLSX)
 
 ## Users
@@ -38,3 +38,7 @@ Internal lab-operated web app to:
 - End-to-end session without manual scoring
 - All data linked to participant_uuid + session_id
 - Lab team can view stored results via Supabase Studio
+
+## Infrastructure Direction
+- Target deployment after the infrastructure migration: Vercel frontend + Railway backend + Supabase project in Canada Central (`ca-central-1`)
+- The pending multi-lab schema redesign remains out of scope for this PRD update

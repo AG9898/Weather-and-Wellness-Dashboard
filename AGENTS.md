@@ -2,7 +2,7 @@
 
 Internal research platform for UBC Psychology labs. Each lab uses the platform to administer
 tasks and validated surveys, auto-score server-side, and store results linked to a stable
-participant UUID and session ID. Lab members access data via Neon Console. The platform
+participant UUID and session ID. Lab members access data via Supabase Studio. The platform
 supports multiple labs and studies; each lab is isolated by `lab_id` in the database and by
 `app_metadata.lab` in auth. Two roles: authenticated LabMember (RA/admin) and unauthenticated
 Participant.
@@ -15,7 +15,7 @@ Participant.
 |----------|-----------------------------------|----------------------------------------------|
 | Frontend | Next.js + TypeScript + Tailwind   | UI, session flow, digit span timing          |
 | Backend  | FastAPI (Python)                  | Canonical scoring, validation, all DB writes |
-| Database | Neon (PostgreSQL)                 | Managed Postgres; lab reads via Neon Console |
+| Database | Supabase (PostgreSQL)            | Managed Postgres; lab reads via Supabase Studio |
 | Auth     | Supabase Auth                     | LabMember only; participants have no account |
 
 ---
@@ -29,7 +29,7 @@ Participant.
 - **Lab isolation is enforced.** Every data-writing endpoint must resolve the caller's `lab_id` from auth and reject cross-lab writes. Participants, sessions, and study results are always scoped to a single `study_id`. See `docs/MULTI_LAB.md` for the data model.
 - **Default timezone.** Day-level semantics (study days, weather linking, dashboard date filtering) use `America/Vancouver` by default. Lab-level overrides are stored in the `labs` table.
 - **Study-specific derived fields** (e.g. daylight exposure minutes) are documented in `docs/labs/<lab>/` for the relevant study. Do not assume they apply platform-wide.
-- **No participant-facing export.** Participants never download data. Lab access is via Neon Console by default.
+- **No participant-facing export.** Participants never download data. Lab access is via Supabase Studio by default.
 - **Admin Import/Export is allowed.** RA-only Import/Export may provide controlled CSV/XLSX downloads and legacy imports. Keep endpoints RA-protected (`Depends(get_current_lab_member)`); do not expose secrets; avoid adding PII.
 - **RA navigation is minimal.** RA UI centers on `/dashboard` with an admin-only `/import-export` page; avoid reintroducing participant/session list UIs unless explicitly requested.
 - **Start-session demographics are required.** The RA must select demographic values (preset options) before creating a new participant+session; store values on `participants` only.

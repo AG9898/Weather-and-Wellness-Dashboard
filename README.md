@@ -6,7 +6,7 @@
 
 <p align="center">
   Multi-lab research platform for administering tasks and validated surveys —
-  scoring server-side, storing results in Neon (Postgres), with per-lab data isolation.
+  scoring server-side, storing results in Supabase Postgres, with per-lab data isolation.
 </p>
 
 ---
@@ -17,7 +17,7 @@
 |----------|-----------------------------------|----------------------------------------------|
 | Frontend | Next.js + TypeScript + Tailwind   | UI, session flow, digit span timing          |
 | Backend  | FastAPI (Python)                  | Canonical scoring, validation, all DB writes |
-| Database | Neon (PostgreSQL)                 | Managed Postgres; lab reads via Neon Console |
+| Database | Supabase (PostgreSQL)            | Managed Postgres; lab reads via Supabase Studio |
 | Auth     | Supabase Auth                     | LabMembers only; participants have no account |
 
 ## Roles
@@ -62,8 +62,7 @@ New lab? See `docs/MULTI_LAB.md`.
 
 - Python 3.11+
 - Node.js 18+
-- A Neon database (or any Postgres connection string)
-- A Supabase project (for Auth only)
+- A Supabase project (database + auth)
 
 ### 1) Create `.env` (repo root)
 
@@ -75,8 +74,8 @@ Required variables:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | Neon connection string (include `?sslmode=require` for IPv4) |
-| `SUPABASE_URL` | Supabase project URL (Auth only) |
+| `DATABASE_URL` | Supabase Postgres connection string (include `?sslmode=require` for IPv4) |
+| `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon key |
 | `SUPABASE_JWT_SECRET` | Backend JWT validation |
 | `NEXT_PUBLIC_SUPABASE_URL` | Frontend auth |
@@ -171,10 +170,10 @@ BACKEND_PORT=8001 FRONTEND_PORT=3001 ./scripts/dev.sh
 | Service | Platform |
 |---|---|
 | Frontend | Vercel |
-| Backend | Railway (FastAPI), health at `/health` |
-| Database | Neon (PostgreSQL, `aws-ca-central-1`) |
-| Auth | Supabase Auth |
-| Scheduled jobs | GitHub Actions (weather ingestion, keep-alive) |
+| Backend | Railway (target cutover from Render), health at `/health` |
+| Database | Supabase Postgres (target region: `ca-central-1`) |
+| Auth | Supabase Auth (same Canada-region project as the target DB) |
+| Scheduled jobs | GitHub Actions (weather ingestion; Render keep-alive is transitional until cutover) |
 
 ---
 

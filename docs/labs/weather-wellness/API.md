@@ -33,7 +33,7 @@
 - This document is the canonical reference for **FastAPI endpoints on Render** only.
 - Same-origin Next.js Route Handlers under `/api/ra/*` are a separate routing layer on Vercel. Their topology and cache behavior are documented in `docs/ARCHITECTURE.md`.
 - The single dashboard routing inventory and deprecation map lives in `docs/ARCHITECTURE.md` under `Canonical Dashboard Routing Inventory`.
-- Routing cleanup work is tracked in `docs/ROUTING_CLEANUP.md`.
+- Backend reliability fix history (timeout increases, keep-alive, analytics staleness) is documented in `docs/ROUTING_CLEANUP.md` (completed playbook, preserved for historical reference).
 - Frontend topology regressions are guarded by `frontend/src/app/api/ra/route-topology.test.ts`; do not reintroduce removed paths such as `/api/ra/dashboard/range` without first updating the routing inventory and regression coverage.
 - Current dashboard-related same-origin Route Handlers are:
   - `GET /api/ra/dashboard?mode=cached|live` — cached/live weather bundle for default dashboard reads

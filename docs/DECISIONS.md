@@ -20,7 +20,7 @@ The planned model adds `labs` and `studies` tables as FKs on `participants` and 
 but the exact isolation strategy is not yet finalized.
 
 **Options under consideration:**
-1. **Row-level isolation** — single schema, `study_id` FK on all data tables, enforced at app layer via `get_current_lab_member`. Simple to implement; row-level security (RLS) on Neon could reinforce it.
+1. **Row-level isolation** — single schema, `study_id` FK on all data tables, enforced at app layer via `get_current_lab_member`. Simple to implement; row-level security (RLS) in Postgres/Supabase could reinforce it.
 2. **Schema-level isolation** — each lab gets its own Postgres schema (e.g. `weather_wellness.*`). Stronger isolation; more complex migrations and connection management.
 3. **Separate deployments** — each lab is a fully independent deploy. Maximum isolation; highest operational overhead.
 
@@ -66,11 +66,11 @@ but the exact isolation strategy is not yet finalized.
 **Decision:** Supabase is the managed database platform for Phase 1. Supabase Auth is optional.
 
 **Why:** Supabase bundles three required capabilities:
-1. Managed PostgreSQL — same semantics as Neon or self-hosted; Alembic/SQLAlchemy unchanged
+1. Managed PostgreSQL — same semantics as other hosted Postgres options; Alembic/SQLAlchemy unchanged
 2. Optional Supabase Auth — when enabled, RA login uses Supabase JWTs validated by FastAPI
 3. Supabase Studio — lab team reads all stored results directly via the web UI
 
-Neon would be preferred if DB branching were a priority and a separate auth solution existed. For this project, a single managed platform with optional auth is the right tradeoff.
+For this project, a single managed platform with optional auth is the right tradeoff.
 
 **Affects:** All DB and auth tasks; T02 (Supabase connection), T06/T18 (auth pattern).
 
@@ -211,6 +211,29 @@ Auth is optional. If enabled, Next.js obtains a Supabase JWT and sends `Authoriz
 **Why:** This split cleanly separates UI, API, and data layers; keeps deployment straightforward for a small lab team; and preserves server-side canonical scoring while using managed Postgres.
 
 **Affects:** docs/ARCHITECTURE.md (canonical), docs/CONVENTIONS.md, docs/API.md, docs/devSteps.md.
+
+---
+
+### RESOLVED-16 — Infrastructure Cutover Target: Railway + Canada-Region Supabase
+
+**Resolved:** 2026-03-24
+
+**Decision:** The infrastructure migration target is:
+1. **Frontend:** Vercel
+2. **Backend:** Railway (Hobby plan) instead of Render
+3. **Database + Auth:** a new Supabase project in `ca-central-1`
+
+This supersedes the **hosting target** from RESOLVED-06 while keeping Supabase as the managed
+platform chosen in RESOLVED-01.
+
+**Why:** Railway removes the Render cold-start problem on write paths, and Supabase's Canada
+Central region satisfies the current database residency requirement without introducing a second
+managed platform for auth and data access. The migration is project-level for Supabase, so the
+new project requires recreated auth/project settings and updated env vars across backend,
+frontend, and admin tooling.
+
+**Affects:** `docs/ARCHITECTURE.md`, `docs/PRD.md`, `AGENTS.md`, `README.md`, migration runbooks,
+and any operator env-var checklists referencing Render or the old Supabase project.
 
 ---
 

@@ -41,7 +41,7 @@ See `docs/DECISIONS.md` OPEN-03 for the open decision on finalizing this model.
 - [ ] What are the timezone requirements for each lab?
 - [ ] What are the demographic fields for new lab sessions?
 - [ ] Do new labs need weather data linking, or is that Weather & Wellness specific?
-- [ ] Should each lab have its own Neon schema (schema-level isolation) or use row-level isolation?
+- [ ] Should each lab have its own Postgres schema (schema-level isolation) or use row-level isolation?
 - [ ] What is the admin model — one platform admin, or per-lab admins?
 
 ---

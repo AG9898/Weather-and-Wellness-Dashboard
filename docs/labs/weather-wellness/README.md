@@ -18,7 +18,7 @@ assigned at first session.
 
 ## Data Access
 
-Lab data is accessed via **Neon Console** (direct Postgres access). There is no participant-facing
+Lab data is accessed via **Supabase Studio**. There is no participant-facing
 data export. RA dashboard is read-only for data review; all bulk exports go through the
 `/import-export` page (RA-only).
 

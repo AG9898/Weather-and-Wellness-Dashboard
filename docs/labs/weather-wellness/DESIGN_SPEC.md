@@ -1,4 +1,4 @@
-# Design Spec — Phase 1 + Phase 2 + Phase 3 (planned)
+# Design Spec — Phase 1 + Phase 2 + Phase 3 + Phase 4
 
 Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation library: [docs/animejs.md](animejs.md)
 
@@ -15,6 +15,7 @@ Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation libra
 5. RA is navigated directly into the participant survey flow (`/session/<id>/uls8`)
 6. After completion, return to RA dashboard; KPIs reflect the new complete session
 7. View data via Supabase Studio
+8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click "Start Misokinesia Session" → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Flow](#misokinesia-flow) below.
 
 ## Participant Flow
 1. ULS-8 survey
@@ -25,6 +26,25 @@ Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation libra
 6. Completion screen (thank you) → return to RA dashboard
 
 > **Note:** Consent is obtained at `/new-session` (Step 1 of the RA flow) before the participant session is created. There is no consent page within the `/session/[id]/` route tree.
+
+---
+
+## Misokinesia Flow
+
+Full specification: [docs/MISOKINESIA.md](MISOKINESIA.md)
+
+**RA steps:**
+1. Navigate to `/misokinesia` via floating dock
+2. Click "Start Misokinesia Session" — backend atomically creates anonymous participant + session
+3. App navigates to `/misokinesia/[id]` participant task page (same device, no login required)
+
+**Participant task:**
+1. Intro screen → click to begin
+2. For each of 29 clips (fixed order): video plays → 4-question per-clip form (scale 1–5) → submit
+3. End-of-task form shown once after all 29 clips (3 questions)
+4. Completion screen → RA clicks "Return to Dashboard"
+
+Key differences from survey/digit-span flow: fully anonymous (no demographics), single-page state machine, videos served directly from Supabase Storage CDN (not proxied through backend).
 
 ---
 
