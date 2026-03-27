@@ -135,9 +135,9 @@ function hexToRgba(hex: string, alpha: number): string {
 
 function readChartColors(): ChartColors {
   return {
-    chart1: getCssVar("--chart-1") || "#0052f5",
-    chart2: getCssVar("--chart-2") || "#00a2fa",
-    chart3: getCssVar("--chart-3") || "#33e0fc",
+    chart1: getCssVar("--chart-1") || "#28455d",
+    chart2: getCssVar("--chart-2") || "#597188",
+    chart3: getCssVar("--chart-3") || "#8a9bab",
     border: getCssVar("--border") || "rgba(0,19,40,0.12)",
     mutedFg: getCssVar("--muted-foreground") || "#6e7c95",
   };
@@ -201,7 +201,7 @@ function PresetButton({ active, label, onClick }: PresetButtonProps) {
           ? "border-transparent text-primary-foreground"
           : "border-border/60 text-muted-foreground hover:border-ring/40 hover:text-foreground"
       )}
-      style={active ? { background: "var(--ubc-blue-700)" } : undefined}
+      style={active ? { background: "var(--primary)" } : undefined}
     >
       {label}
     </button>
@@ -278,9 +278,9 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
 
   // ── Chart theme state ────────────────────────────────────────────────────
   const [chartColors, setChartColors] = useState<ChartColors>({
-    chart1: "#0052f5",
-    chart2: "#00a2fa",
-    chart3: "#33e0fc",
+    chart1: "#28455d",
+    chart2: "#597188",
+    chart3: "#8a9bab",
     border: "rgba(0,19,40,0.12)",
     mutedFg: "#6e7c95",
   });

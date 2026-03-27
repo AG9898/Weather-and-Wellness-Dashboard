@@ -53,6 +53,10 @@ BACKEND_PID=$!
 
 (
   cd "$FRONTEND_DIR"
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
   npm run dev -- --hostname "$HOST" --port "$FRONTEND_PORT" 2>&1 \
     | sed 's/^/[frontend] /'
 ) &

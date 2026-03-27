@@ -120,14 +120,14 @@ All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
 
 | Variable | Hex | Usage |
 |---|---|---|
-| `--ubc-video-blue` | `#001328` | Primary “ink” / deepest anchor (light); background anchor (dark) |
-| `--ubc-navy` | `#000847` | Deepest surfaces / nav bar (dark) |
-| `--ubc-blue-700` | `#0052F5` | Primary actions / emphasis |
-| `--ubc-blue-600` | `#00A2FA` | Secondary emphasis / interactive |
-| `--ubc-blue-500` | `#33E0FC` | Focus ring / highlight |
-| `--ubc-blue-300` | `#5CE5FC` | Soft accent / glow |
-| `--ubc-blue-200` | `#7AF2F7` | Softer accent tint |
-| `--ubc-blue-100` | `#9EFAF2` | Lightest accent tint |
+| `--ubc-video-blue` | `#001328` | Branded UI accent anchor |
+| `--ubc-navy` | `#000847` | Reserved brand token |
+| `--ubc-blue-700` | `#001328` | Legacy compatibility token, same accent anchor |
+| `--ubc-blue-600` | `#11263A` | Tonal lift of the accent family |
+| `--ubc-blue-500` | `#23415A` | Tonal lift of the accent family |
+| `--ubc-blue-300` | `#506A81` | Tonal lift of the accent family |
+| `--ubc-blue-200` | `#8E9EAF` | Tonal lift of the accent family |
+| `--ubc-blue-100` | `#CFD7DE` | Tonal lift of the accent family |
 | `--ubc-earth` | `#878343` | Rare warm accent only |
 | `--ink-100` | `#E6EDF8` | Light theme background; dark theme primary text |
 | `--ink-70` | `#A9B6CC` | Secondary text (dark) / muted UI (light) |
@@ -135,10 +135,10 @@ All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
 
 ### Shadcn Semantic Token Mapping
 
-Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to the UBC palette.
-- Current implementation is **light-first**:
+Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to a neutral light/dark theme system with `#001328` as the only branded UI accent family.
+- Current implementation keeps the existing theme preference behavior:
   - `:root` = light theme semantic tokens
-  - `.dark` = tonal dark theme semantic tokens
+  - `.dark` = dark theme semantic tokens
   - root class is controlled by theme preference (`system` resolves via `prefers-color-scheme`)
 
 ## Shared Components
@@ -189,7 +189,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom):
 
-1. **Hero action zone** — card with blue glow accent, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, ubc-blue-700/600 gradient) that navigates to `/new-session`.
+1. **Hero action zone** — raised neutral card with a restrained tonal accent glow, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, semantic `primary`) that navigates to `/new-session`.
 2. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
 3. **Analytics snapshot section** — separate statistical surface below the weather card. It reads the dashboard analytics payload via the same-origin analytics Route Handler, defaults to the study window (`2025-03-03` → today, `America/Vancouver`), and does not block weather rendering.
 
@@ -314,9 +314,9 @@ The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx
 
 | Series | CSS Variable | Light hex | Dark hex |
 |--------|-------------|-----------|----------|
-| Temperature | `--chart-1` | `#0052f5` | `#00a2fa` |
-| Precipitation | `--chart-2` | `#00a2fa` | `#33e0fc` |
-| Sunlight Hours | `--chart-3` | `#33e0fc` | `#0052f5` |
+| Temperature | `--chart-1` | `#28455d` | `#7993a8` |
+| Precipitation | `--chart-2` | `#597188` | `#a4b4c1` |
+| Sunlight Hours | `--chart-3` | `#8a9bab` | `#5f7387` |
 
 ---
 
@@ -346,15 +346,15 @@ This is an RA-only two-step page (`src/app/(ra)/new-session/page.tsx`) that runs
 - **Digit display phase:** `text-8xl font-bold text-foreground select-none` centered; uses `\u00A0` to hold space when digit is blank.
 - **Input phase:** "PRACTICE TRIAL" / "TRIAL N OF 14" uppercase label at top; `border-b-2 border-border` input line; large mono (`text-4xl`) entered digits; `text-muted-foreground` hint row at bottom.
 - **Practice feedback:** uses theme-aware success/error text (`text-emerald-700 dark:text-emerald-300` / `text-red-700 dark:text-red-300`).
-- **End of task / Continue button:** `--ubc-blue-700` styled, same as primary buttons on RA pages.
+- **End of task / Continue button:** semantic `primary` styling, same as primary buttons on RA pages.
 
 ### Survey Pages (`/session/[id]/uls8|cesd10|gad7|cogfunc`)
 
 All four surveys use the shared `SurveyForm` component with:
-- **Card-shell presentation:** rounded glass-like panel with subtle blue glow accents; calm, high-contrast typography for long-form completion.
+- **Card-shell presentation:** rounded neutral panel with restrained tonal accent treatment; calm, high-contrast typography for long-form completion.
 - **`stepLabel` + progress bar:** "Survey 1 of 4" … "Survey 4 of 4" label with auto-derived progress fill when pattern matches `N of M`.
 - **Question blocks:** each item is rendered in its own rounded bordered panel for easier scanning.
-- **Selected radio option:** blue gradient (`--ubc-blue-700` → `--ubc-blue-600`) with `text-primary-foreground`.
+- **Selected radio option:** semantic `primary` fill with `text-primary-foreground`.
 - **Unselected radio option:** muted bordered chips with hover/focus ring states.
 - **Submit button:** shared shadcn `Button` styling, disabled until all items answered and not currently submitting. Shows "Submitting…" while pending.
 - **Completion helper:** answered count (`X/Y answered`) shown near submit action.
@@ -365,11 +365,11 @@ All four surveys use the shared `SurveyForm` component with:
 
 - RA top bar uses the provided logo mark (`frontend/public/ww-mark.png`) and capsule navigation treatment inspired by the navbar references.
 - App icon is wired from `src/app/icon.png` (derived from the provided logo reference).
-- Browser theme colors are declared via `viewport.themeColor` for light and dark modes (`#e6edf8` / `#001328`) to keep top-bar coloring aligned with the active theme.
+- Browser theme colors are declared via `viewport.themeColor` for light and dark modes (`#f6f7f8` / `#12161c`) to keep top-bar coloring aligned with the active theme.
 
 ### Completion Page (`/session/[id]/complete`)
 
-- Vertically centered blue checkmark circle (`--ubc-blue-700`), bold "Thank You" heading, muted instruction paragraph.
+- Vertically centered primary-accent checkmark circle, bold "Thank You" heading, muted instruction paragraph.
 - No scores or stored data are shown. Completion provides a clear return-to-dashboard action for supervised lab use.
 
 ---
@@ -394,11 +394,11 @@ The Import/Export page at `/import-export` is RA-only and contains two sections:
 
 - **Cards/panels:** `rounded-2xl border border-border` + `background: var(--card)`
 - **Section headings inside cards:** `text-xs font-semibold uppercase tracking-widest text-muted-foreground`
-- **Primary buttons:** `background: var(--ubc-blue-700)` + `text-primary-foreground`
-- **Secondary/activate buttons:** `background: var(--ubc-blue-600)`
+- **Primary buttons:** `background: var(--primary)` + `text-primary-foreground`
+- **Secondary/activate buttons:** neutral support surface or semantic `secondary`
 - **Inputs:** `border border-border bg-input/30` + focus ring on `--ring`
 - **Status badges:** colored border + bg at 15% opacity (yellow/emerald/white for created/active/complete)
 - **Tables:** `rounded-2xl border border-border overflow-hidden` + muted header row; responsive columns use `hidden sm:table-cell`
 - **Success banners:** `border-emerald-500/30 bg-emerald-500/10 text-emerald-300 rounded-lg`
 - **Error banners:** `border-destructive/30 bg-destructive/10 text-destructive rounded-lg` (inline, no toast)
-- **Participant number badge:** `w-8 h-8 rounded-lg bg-ubc-blue-700 text-white text-xs font-bold`
+- **Participant number badge:** `w-8 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-bold`

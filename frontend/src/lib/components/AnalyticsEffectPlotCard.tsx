@@ -15,8 +15,8 @@ interface ChartColors {
 function readChartColors(): ChartColors {
   const styles = getComputedStyle(document.documentElement);
   return {
-    primary: styles.getPropertyValue("--chart-1").trim() || "#0052f5",
-    secondary: styles.getPropertyValue("--chart-2").trim() || "#00a2fa",
+    primary: styles.getPropertyValue("--chart-1").trim() || "#28455d",
+    secondary: styles.getPropertyValue("--chart-2").trim() || "#597188",
     border: styles.getPropertyValue("--border").trim() || "rgba(0,19,40,0.12)",
     mutedFg: styles.getPropertyValue("--muted-foreground").trim() || "#6e7c95",
   };
@@ -29,8 +29,8 @@ interface Props {
 export default function AnalyticsEffectPlotCard({ effectPlot }: Props) {
   const [mounted, setMounted] = useState(false);
   const [chartColors, setChartColors] = useState<ChartColors>({
-    primary: "#0052f5",
-    secondary: "#00a2fa",
+    primary: "#28455d",
+    secondary: "#597188",
     border: "rgba(0,19,40,0.12)",
     mutedFg: "#6e7c95",
   });

@@ -21,8 +21,8 @@ It defines the shared look-and-feel across pages so individual page work stays c
 
 ## 3) Visual Direction (Target Vibe)
 
-- Light-first baseline with cool-tinted surfaces (not stark white).
-- Glass-like surfaces for cards/panels with subtle borders and (optional) blur.
+- Standardized light and dark themes built from neutral surface ramps.
+- One branded UI accent only, anchored to `--ubc-video-blue` (`#001328`).
 - Quiet, high-contrast typography tuned for long-form task flow.
 - Minimal, deliberate motion; no excessive animation.
 - Clinical/research tone over marketing tone.
@@ -51,14 +51,14 @@ For this repo:
 
 | Token | Hex | Usage |
 |---|---|---|
-| `--ubc-video-blue` | `#001328` | Primary “ink” / deepest anchor |
-| `--ubc-navy` | `#000847` | Nav bar / deepest surfaces (dark theme) |
-| `--ubc-blue-700` | `#0052F5` | Primary actions / emphasis |
-| `--ubc-blue-600` | `#00A2FA` | Secondary emphasis / interactive |
-| `--ubc-blue-500` | `#33E0FC` | Focus ring / highlight |
-| `--ubc-blue-300` | `#5CE5FC` | Soft accent / glow |
-| `--ubc-blue-200` | `#7AF2F7` | Softer accent tint |
-| `--ubc-blue-100` | `#9EFAF2` | Lightest accent tint |
+| `--ubc-video-blue` | `#001328` | Branded accent anchor |
+| `--ubc-navy` | `#000847` | Reserved brand token |
+| `--ubc-blue-700` | `#001328` | Legacy compatibility token, same accent anchor |
+| `--ubc-blue-600` | `#11263A` | Tonal lift of the accent family |
+| `--ubc-blue-500` | `#23415A` | Tonal lift of the accent family |
+| `--ubc-blue-300` | `#506A81` | Tonal lift of the accent family |
+| `--ubc-blue-200` | `#8E9EAF` | Tonal lift of the accent family |
+| `--ubc-blue-100` | `#CFD7DE` | Tonal lift of the accent family |
 | `--ubc-earth` | `#878343` | Rare warm accent only |
 | `--ink-100` | `#E6EDF8` | Light theme background / dark theme primary text |
 | `--ink-70` | `#A9B6CC` | Secondary text (dark) / muted UI (light) |
@@ -67,6 +67,7 @@ For this repo:
 Notes:
 - `#001328` corresponds to `RGB(0, 19, 40)` (UBC Video Blue).
 - Do not introduce off-brand purple/pink as a default accent.
+- Do not treat `--ubc-blue-*` as separate branded UI accents; they exist to support tonal lifts and legacy component migration.
 
 ### 4.3 Theme Guidance (Phase 4)
 
@@ -77,14 +78,19 @@ Theme switching is implemented by swapping **semantic** tokens (shadcn tokens) i
 Brand tokens (`--ubc-*`, `--ink-*`) remain constant across themes; only the semantic mapping changes.
 
 **Light theme rules (default):**
-- Background uses `--ink-100` (cool-tinted off-white); cards can be `white` or a slightly brighter tint of `--ink-100`.
-- Text/headers use `--ubc-video-blue` for maximum contrast without harsh black.
-- Primary actions use `--ubc-blue-700`; focus ring uses `--ubc-blue-500`.
+- Background uses a near-white neutral canvas.
+- Cards, popovers, and sidebars use white or near-white neutral surfaces.
+- Text uses dark neutral ink.
+- Primary actions use `--primary`, mapped to `#001328`.
+- Focus rings use `--ring`, a tonal lift of the same hue family.
+- `secondary`, `accent`, and `muted` stay neutral; they are not blue support fills.
 
-**Tonal dark theme rules:**
-- Background uses a deep blue tone (typically `--ubc-video-blue` or `--ubc-navy`); cards are a slightly lighter tone of the same hue family.
-- Text uses `--ink-100`; muted text uses `--ink-70`.
-- Accents remain the same hue family as the light theme (UBC blues), but avoid “neon on black” by keeping chroma controlled in semantic token mapping.
+**Dark theme rules:**
+- Background uses a charcoal-neutral surface rather than a navy-heavy surface.
+- Cards and overlays are slightly raised dark neutrals.
+- Text uses a soft off-white neutral.
+- `--primary` may be a tonal lift derived from `#001328` so primary actions remain contrast-safe.
+- `secondary`, `accent`, and `muted` stay neutral in dark mode as well.
 
 ## 5) Typography
 
@@ -114,8 +120,8 @@ Rules:
 - Section vertical spacing: 48-96px depending on density.
 - Card radius: 16-24px.
 - Control radius: 10-16px.
-- Border style: 1px low-contrast border (light: `--ubc-video-blue` at ~8–14% alpha; dark: `white` at ~8–14% alpha).
-- Preferred card treatment: soft gradient + low-opacity border + subtle backdrop blur.
+- Border style: 1px low-contrast neutral border.
+- Preferred card treatment: neutral surface, low-opacity border, restrained shadow, optional subtle blur where the page already uses glass treatment.
 
 ## 7) Component Language
 
@@ -132,7 +138,7 @@ Rules:
 - Keep transitions 150-300ms.
 - Use opacity/translate/scale lightly; avoid bouncy motion.
 - Hover: slightly brighter surface + subtle elevation.
-- Focus: visible ring in `--ubc-blue-500` or `--ubc-blue-300`.
+- Focus: visible ring in `--ring`; do not use cyan or unrelated highlight colors.
 - Respect `prefers-reduced-motion`.
 
 ## 9) Accessibility Baseline
@@ -188,6 +194,7 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 - `tooltip.shared: true` for multi-series charts. Use `useHTML: true` for rich tooltip HTML; set `backgroundColor: "var(--card)"` so the tooltip inherits the card theme.
 - `plotOptions.series.connectNulls: false` — do not interpolate across missing data points.
 - Semi-transparent series (opacity 0.5) are used to visually subordinate secondary data series to the primary one.
+- Keep chart colors restrained and distinct, but do not reuse them as general UI accent colors.
 - **SSR guard:** Wrap `<HighchartsReact>` in a `mounted` state guard (`useState(false)` + `useEffect(() => setMounted(true), [])`) to prevent SSR/hydration errors since Highcharts requires `window`.
 - **Tooltip `this` typing:** Highcharts 12 types `formatter` as `(this: Point) => string`. For shared tooltip access, cast: `const ctx = this as unknown as { points?: Point[]; x?: number }`.
 - **Theme re-read pattern:** Use `MutationObserver` on `document.documentElement` with `attributeFilter: ["class"]` to detect theme class changes and call `setChartColors(readChartColors())` so charts re-theme without a page reload.
@@ -207,12 +214,12 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 :root {
   --ubc-video-blue: #001328;
   --ubc-navy: #000847;
-  --ubc-blue-700: #0052f5;
-  --ubc-blue-600: #00a2fa;
-  --ubc-blue-500: #33e0fc;
-  --ubc-blue-300: #5ce5fc;
-  --ubc-blue-200: #7af2f7;
-  --ubc-blue-100: #9efaf2;
+  --ubc-blue-700: #001328;
+  --ubc-blue-600: #11263a;
+  --ubc-blue-500: #23415a;
+  --ubc-blue-300: #506a81;
+  --ubc-blue-200: #8e9eaf;
+  --ubc-blue-100: #cfd7de;
   --ubc-earth: #878343;
   --ink-100: #e6edf8;
   --ink-70: #a9b6cc;
@@ -220,4 +227,4 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 }
 ```
 
-This token block is a starter; treat these hex values as canonical and map shadcn semantic tokens to them per theme.
+This token block is a starter; treat these hex values as canonical and map shadcn semantic tokens to a neutral light/dark system with `#001328` as the only branded UI accent family.

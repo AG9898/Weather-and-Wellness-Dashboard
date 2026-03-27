@@ -1,221 +1,187 @@
 # UI/UX Overhaul — Weather & Wellness Research Platform (2026)
 
-> **Status:** Approved for implementation — March 2026
-> **Scope:** RA-facing dashboard and shared design system
-> **Out of scope:** Participant session pages, login page, backend
+> **Status:** Phase 1 implemented — March 2026
+> **Scope:** Platform-wide theming reset for RA pages, participant pages, auth surfaces, and shared components
+> **Out of scope:** Layout rewrites, participant flow redesign, backend changes
 
 ---
 
-## 1. Audit Findings
+## 1. Direction Reset
 
-### 1.1 Light Mode — Core Problem: "Blue Soup"
+The previous redesign direction improved the existing palette but still treated the interface as a UBC-blue tonal system. That kept too much chroma in the UI itself, especially in light mode, and left dark mode visually tied to navy-heavy surfaces.
 
-The pre-overhaul light mode mapped all semantic surface tokens to the same cool-blue hue family:
+Phase 1 replaces that approach with a standardized light/dark theme model:
 
-| Token | Old Value | Problem |
-|-------|-----------|---------|
-| `--background` | `#e6edf8` | Heavily chromatic blue — not a neutral canvas |
-| `--card` | `#f7fafe` | Only marginally lighter than background — no surface separation |
-| `--primary` | `#0052f5` | Electric cobalt on blue surfaces feels neon, not intentional |
-| `--muted-foreground` | `#6e7c95` | ~4.4:1 contrast on `#f7fafe` — barely AA, feels washed out |
-| `--ring` | `#33e0fc` | Neon cyan focus ring — too electric for light mode |
+- Light mode uses near-white neutral surfaces with dark neutral text.
+- Dark mode uses charcoal-neutral surfaces with soft off-white text.
+- The only branded UI accent is `--ubc-video-blue` (`#001328`).
+- Dark mode may use tonal lifts derived from `#001328` for accessible focus, active, and primary-action contrast.
+- Charts keep a separate, restrained visualization palette so data remains readable without turning the whole interface into a multi-accent system.
 
-The result: a monochromatic blue wash where the primary action button "glares" (it's the only saturated element in a desaturated blue field) and body text reads as low-contrast. The eye has nowhere to rest.
-
-### 1.2 Dark Mode — Works Well
-
-Dark mode (`--background: #001328`) gives the UBC blues proper canvas contrast. The blues read as intentional signals against the deep navy. No structural changes needed here.
-
-### 1.3 Navigation Architecture
-
-`RANavBar.tsx` is defined but not used. The layout renders `RAFloatingChrome.tsx` exclusively — a macOS-dock-inspired floating navigation with:
-- Fixed utility button (top-left, 48px) — opens popover for Theme + Sign Out
-- Bottom floating dock with spring-physics scaling on hover
-- Auto-hide on scroll-down, auto-return on scroll-up
-
-This pattern is creative, distinctive, and works well for a focused research tool used on tablets/desktops. **It is preserved** in the overhaul.
-
-**Problems found:**
-- Active dock item has no visible state indicator — only proximity scaling (invisible unless you know to hover)
-- Fixed utility button partially overlaps page content headings (no top clearance in `PageContainer`)
-
-### 1.4 Card Elevation Model
-
-Pre-overhaul: cards defined by border only (`border border-border`). With very subtle borders on blue-tinted cards against a blue-tinted background, the card boundaries are visually weak.
-
-### 1.5 Typography
-
-JetBrains Mono for all UI text — intentional and distinctive for a research tool. **Preserved.**
-Issues: eyebrow label patterns slightly inconsistent across pages; some body descriptions missing `leading-relaxed`.
-
-### 1.6 Empty States
-
-The Misokinesia statistics section showed bare placeholder text with no visual design. Analytics section already had a styled empty state notice.
+The reference image in `reference/UI Reference/theme makeover/stitch_research_dashboard_redesign/screen.png` is used here for tonal normalization, restraint, and natural dark-surface contrast. It is not a layout clone target.
 
 ---
 
-## 2. Design Principles
+## 2. Audit Findings
 
-**Neutral canvas, intentional accent.** The UBC blues are strong, distinctive brand colors. They don't need to change — the surfaces around them need to become more neutral so the blues read as purposeful signals rather than ambient noise.
+### 2.1 Theme Model Problem
 
-**Elevation through shadow, not just border.** Cards should feel like lifted surfaces. Shadows provide depth cues that borders alone cannot. Light mode particularly benefits from this — borders disappear on low-contrast backgrounds.
+The old theme system interpreted light and dark mode through the UBC blue family rather than through conventional neutral surface ramps.
 
-**Contrast hierarchy.** Primary text (headings, data values) should be near-black. Secondary text (descriptions, labels) should pass WCAG AA comfortably (~6:1) with clear visual separation from primary. The current design collapsed this distinction.
+That created three recurring issues:
 
-**Keep the creative decisions.** The floating dock, spring animations, scrollbar raindrop effect, and JetBrains Mono stack are all deliberate and distinctive choices. The overhaul refines execution, it does not replace the design language.
+- Light mode felt tinted instead of calm and baseline-neutral.
+- Dark mode relied on deep navy surfaces that read more branded than standardized.
+- Multiple bright blues appeared as UI chrome rather than staying limited to intentional emphasis.
+
+### 2.2 Token Problem
+
+The semantic token layer existed, but several decisions still pushed the UI toward legacy color behavior:
+
+- `--primary` and `--ring` were mapped to bright accent blues.
+- `--secondary`, `--accent`, and `--sidebar` still carried blue tint.
+- Several components bypassed semantic tokens and used direct `--ubc-blue-*` fills or raw blue gradients.
+
+### 2.3 Scope Problem
+
+The previous overhaul document was RA-focused. That was too narrow for a theme reset because auth flows, participant surfaces, and shared components would otherwise keep the legacy palette alive.
+
+This document now defines platform-wide theming rules. Page-specific redesign work can still be phased separately.
 
 ---
 
-## 3. Color System — Revised
+## 3. Design Principles
 
-### 3.1 Brand Tokens (Unchanged)
+**Neutral surfaces first.** Light and dark modes should both feel like familiar, standardized interfaces before brand identity is layered on top.
 
-Brand tokens (`--ubc-*`, `--ink-*`) are **not modified**. They remain the source of truth for the palette.
+**One branded UI accent.** The interface should not rotate between multiple bright blues. `#001328` is the brand anchor; derived tonal lifts are allowed only where contrast demands them.
+
+**Semantic tokens are the source of truth.** Shared UI should consume `background`, `card`, `foreground`, `primary`, `accent`, `muted`, `border`, `input`, and `ring` tokens. Raw `--ubc-blue-*` tokens are legacy support, not the preferred authoring path.
+
+**Charts are separate from chrome.** Data visualization may use additional restrained series colors, but those colors do not become general UI accents.
+
+**Keep the existing structure.** This phase does not replace the floating chrome, typography stack, or current page layouts. It changes the theme system underneath them.
+
+---
+
+## 4. Color System — Revised
+
+### 4.1 Brand Anchor and Tonal Support
+
+The brand anchor remains:
 
 ```css
 --ubc-video-blue: #001328;
---ubc-navy:       #000847;
---ubc-blue-700:   #0052f5;
---ubc-blue-600:   #00a2fa;
---ubc-blue-500:   #33e0fc;
---ubc-blue-300:   #5ce5fc;
---ubc-blue-200:   #7af2f7;
---ubc-blue-100:   #9efaf2;
---ubc-earth:      #878343;
---ink-100:        #e6edf8;
---ink-70:         #a9b6cc;
---ink-45:         #6e7c95;
 ```
 
-### 3.2 Light Mode Semantic Tokens — Before vs After
-
-| Token | Before | After | Rationale |
-|-------|--------|-------|-----------|
-| `--background` | `#e6edf8` | `#f1f4f8` | Lighter, far less chromatic — neutral canvas |
-| `--card` | `#f7fafe` | `#ffffff` | Pure white — clear surface separation from background |
-| `--card-foreground` | `#001328` | `#0b1829` | Warmer charcoal, same visual weight |
-| `--foreground` | `#001328` | `#0b1829` | Same as card-foreground |
-| `--popover` | `#ffffff` | `#ffffff` | Unchanged |
-| `--popover-foreground` | `#001328` | `#0b1829` | Warmer |
-| `--primary` | `#0052f5` | `#0052f5` | **Unchanged** — looks much better on white canvas |
-| `--secondary` | `#dfe9f8` | `#e8edf9` | Slightly lighter |
-| `--secondary-foreground` | `#001328` | `#0b1829` | Warmer |
-| `--muted` | `#edf3fb` | `#f5f7fb` | Lighter |
-| `--muted-foreground` | `#6e7c95` | `#536078` | Darker — ~6.3:1 on white, clear WCAG AA |
-| `--accent` | `#d7eefc` | `#dce9fb` | Slight hue shift, kept similar |
-| `--accent-foreground` | `#001328` | `#0b1829` | Warmer |
-| `--border` | `rgb(0 19 40 / 12%)` | `rgb(11 24 41 / 9%)` | Slightly warmer, slightly lighter |
-| `--input` | `rgb(0 19 40 / 10%)` | `rgb(11 24 41 / 7%)` | Lighter input backgrounds |
-| `--ring` | `#33e0fc` | `#0052f5` | Primary blue ring — not neon cyan |
-| `--sidebar` | `#f7fafe` | `#ffffff` | Matches new card white |
-
-### 3.3 New Elevation Tokens
+Legacy `--ubc-blue-*` tokens are retained only as tonal lifts/shades of the same hue family so older components do not reintroduce unrelated bright blues:
 
 ```css
---shadow-card:   0 1px 3px rgb(0 0 0 / 5%), 0 1px 2px rgb(0 0 0 / 4%);
---shadow-raised: 0 4px 16px rgb(0 0 0 / 7%), 0 2px 4px rgb(0 0 0 / 4%);
+--ubc-blue-700: #001328;
+--ubc-blue-600: #11263a;
+--ubc-blue-500: #23415a;
+--ubc-blue-300: #506a81;
+--ubc-blue-200: #8e9eaf;
+--ubc-blue-100: #cfd7de;
 ```
 
-- `--shadow-card`: default card elevation (most surfaces)
-- `--shadow-raised`: hero/primary action cards (slightly more prominent)
+### 4.2 Light Theme Semantic Targets
 
-### 3.4 Dark Mode Changes (Minimal)
+Light mode is now a normalized neutral palette:
 
-| Token | Before | After | Rationale |
-|-------|--------|-------|-----------|
-| `--card-foreground` | `#e6edf8` | `#e2e8f4` | Marginally warmer |
-| `--foreground` | `#e6edf8` | `#e2e8f4` | Consistent with card-foreground |
-| `--popover-foreground` | `#e6edf8` | `#e2e8f4` | Consistent |
-| `--ring` | `#5ce5fc` | `#00a2fa` | Matches dark primary — more expected |
-| `--muted-foreground` | `#a9b6cc` | `#8fa0b8` | Slightly darker for better body text contrast |
+| Token | Target behavior |
+|-------|------------------|
+| `--background` | near-white neutral page canvas |
+| `--card` / `--popover` | white or near-white surface |
+| `--foreground` | dark neutral ink |
+| `--muted-foreground` | mid neutral gray with AA-safe contrast |
+| `--primary` | `#001328` |
+| `--primary-foreground` | light text on dark fill |
+| `--secondary` / `--accent` / `--muted` | neutral support surfaces, not blue fills |
+| `--border` / `--input` | neutral separators and control fills |
+| `--ring` | tonal lift of the same hue family, not cyan |
+
+### 4.3 Dark Theme Semantic Targets
+
+Dark mode is now a standardized charcoal theme:
+
+| Token | Target behavior |
+|-------|------------------|
+| `--background` | dark neutral background, not navy-forward |
+| `--card` / `--popover` | slightly raised dark neutral surfaces |
+| `--foreground` | soft off-white text |
+| `--muted-foreground` | subdued neutral supporting text |
+| `--primary` | contrast-safe tonal lift derived from `#001328` |
+| `--primary-foreground` | light text |
+| `--secondary` / `--accent` / `--muted` | neutral dark support surfaces |
+| `--border` / `--input` | low-contrast neutral separators |
+| `--ring` | brighter tonal lift of the same hue family |
+
+### 4.4 Chart Tokens
+
+Charts use a restrained slate/steel palette via `--chart-*` tokens so multiple data series remain legible without turning the rest of the UI into a multi-accent system.
+
+These chart colors are for data visualization only.
 
 ---
 
-## 4. Elevation Model
+## 5. Elevation Model
 
-Cards use shadow + border (not border alone):
+Elevation now reinforces neutral themes rather than blue-tinted surfaces:
 
-```
-Level 0: page background      bg-background, no shadow
-Level 1: standard card         bg-card, shadow-[var(--shadow-card)], border border-border
-Level 2: hero / raised card    bg-card, shadow-[var(--shadow-raised)], border border-border
-Level 3: popovers/dropdowns    existing shadow-lg treatment (unchanged)
+```css
+--shadow-card:   0 1px 2px rgb(15 23 42 / 5%), 0 10px 24px rgb(15 23 42 / 6%);
+--shadow-raised: 0 6px 18px rgb(15 23 42 / 8%), 0 24px 48px rgb(15 23 42 / 8%);
 ```
 
-The hero card on Dashboard and Misokinesia pages uses Level 2; data cards (Weather, Analytics, Statistics) use Level 1.
+Usage:
+
+- Level 0: page background
+- Level 1: standard cards and data panels
+- Level 2: hero/action cards
+- Level 3: overlays and popovers
 
 ---
 
-## 5. Navigation Chrome
+## 6. Component Rules
 
-### 5.1 Floating Dock — Active State
+### 6.1 Primary Actions
 
-Active dock items now receive a visible background tint:
-```tsx
-// active item:
-"bg-primary/10 text-foreground border-primary/20"
-// inactive item:
-"text-muted-foreground hover:bg-accent/75 hover:text-foreground"
-```
+- Primary buttons use the semantic `primary` token.
+- Do not use bright blue gradients for standard actions.
+- If a dark theme needs more contrast, use the defined tonal lift in `primary`, not a new accent hue.
 
-The `bg-primary/10` (10% opacity blue fill) provides an immediate visual cue for the current page without being heavy or dominating the icon.
+### 6.2 Secondary and Ghost Treatments
 
-### 5.2 Content Clearance
+- Secondary, ghost, muted, and hover surfaces stay neutral.
+- Hover states should read as tonal elevation, not as colored fills.
 
-`PageContainer.tsx` gains top clearance to prevent the fixed utility button (64px from top of viewport) from overlapping page headings:
+### 6.3 Focus States
 
-```tsx
-// RA pages (floating chrome active): pt-16 sm:pt-20
-// Non-RA pages: py-8 (unchanged)
-```
+- Focus indicators use `ring`.
+- Cyan rings and unrelated highlight colors are removed.
 
-A `floatingChrome` prop is added to `PageContainer` to opt into the top clearance. The RA pages that use `PageContainer` pass this prop.
+### 6.4 Navigation Chrome
 
----
+- The floating chrome architecture stays.
+- Active and hover states must be driven by semantic tokens and the new accent policy.
 
-## 6. Typography Canonical Patterns
+### 6.5 Auth Surfaces
 
-All RA pages standardize to:
-
-**Eyebrow label:**
-```tsx
-<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-```
-
-**Page heading (H1):**
-```tsx
-<h1 className="text-3xl font-bold leading-tight text-foreground">
-```
-
-**Body description:**
-```tsx
-<p className="text-sm leading-relaxed text-muted-foreground">
-```
-
-**Section heading (within card):**
-```tsx
-<h2 className="text-xl font-bold text-foreground">
-```
+- Login and password flows use the same dark neutral base as the main dark theme.
+- Auth CTAs and highlights follow the single-accent system rather than blue gradients.
 
 ---
 
-## 7. Empty State Pattern
+## 7. What Changed in Phase 1
 
-For sections with no data (e.g. Misokinesia statistics):
+Implemented changes:
 
-```tsx
-<div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-  <div className="rounded-full bg-muted p-3">
-    <Icon className="size-5 text-muted-foreground" />
-  </div>
-  <div className="space-y-1">
-    <p className="text-sm font-medium text-foreground">No data yet</p>
-    <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
-      Descriptive context sentence.
-    </p>
-  </div>
-</div>
-```
+- `frontend/src/app/globals.css` now defines a standardized neutral light/dark semantic palette.
+- `frontend/src/app/layout.tsx` browser theme-color metadata now matches the new light/dark backgrounds.
+- Shared chart components now fall back to restrained chart token colors instead of legacy bright blues.
+- RA hero/action surfaces were moved toward semantic `primary`/`ring` usage.
+- Login and set-password flows were re-toned to the new dark neutral system.
 
 ---
 
@@ -223,25 +189,19 @@ For sections with no data (e.g. Misokinesia statistics):
 
 | Element | Status | Reason |
 |---------|--------|--------|
-| Login page | Unchanged | Dark mode hero works excellently as-is |
-| JetBrains Mono typography | Unchanged | Intentional, distinctive research-tool voice |
-| Floating dock concept | Unchanged | Creative, functional, worth keeping |
-| Scrollbar raindrop animation | Unchanged | Signature design detail |
-| UBC brand tokens | Unchanged | Source-of-truth hex values |
-| Dark mode (mostly) | Minor ring + text warmth | Dark mode had no fundamental contrast problems |
-| Highcharts integration | Unchanged | Derives colors from semantic tokens automatically |
-| Participant session pages | Out of scope | Separate concern, not RA-facing |
+| Theme preference behavior (`system` / `light` / `dark`) | Unchanged | Palette reset only in this phase |
+| Floating dock concept | Unchanged | Structural redesign deferred |
+| JetBrains Mono typography | Unchanged | Broader visual-language decisions deferred |
+| Page layouts | Unchanged | This phase targets theme system, not layout composition |
+| Participant flow logic | Unchanged | Theming only |
 
 ---
 
-## 9. File Change Index
+## 9. Follow-On Work
 
-| File | Type of Change |
-|------|---------------|
-| `frontend/src/app/globals.css` | Light + dark mode token overhaul, elevation variables |
-| `frontend/src/lib/components/PageContainer.tsx` | `floatingChrome` prop for top clearance |
-| `frontend/src/lib/components/RAFloatingChrome.tsx` | Active item visual indicator |
-| `frontend/src/app/(ra)/dashboard/page.tsx` | Shadow elevation on cards |
-| `frontend/src/app/(ra)/misokinesia/page.tsx` | Shadow elevation, styled empty state |
-| `frontend/src/app/(ra)/import-export/page.tsx` | Shadow elevation, top clearance prop |
-| `docs/styleguide.md` | Updated sections 3, 4.3, 6, 13 |
+Later phases can build on this foundation with:
+
+- broader auth-page visual redesign,
+- page-by-page component cleanup away from legacy `--ubc-blue-*` usage,
+- stricter semantic-token enforcement,
+- and any larger visual-language decisions beyond color and tone.

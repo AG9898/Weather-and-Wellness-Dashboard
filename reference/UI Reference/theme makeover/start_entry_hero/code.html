@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LUMINARY RESEARCH | Research Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;700;800&amp;family=Space+Grotesk:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary": "#adc6ff",
+                        "on-primary-container": "#00285c",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#d8e2ff",
+                        "tertiary": "#ffb595",
+                        "on-secondary-fixed": "#001a42",
+                        "background": "#0e1419",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "surface-container-lowest": "#090f14",
+                        "inverse-primary": "#005bc1",
+                        "tertiary-fixed": "#ffdbcc",
+                        "inverse-surface": "#dde3ea",
+                        "on-surface": "#dde3ea",
+                        "on-secondary-fixed-variant": "#2c4677",
+                        "surface-bright": "#343a40",
+                        "surface-variant": "#2f353b",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary": "#571e00",
+                        "inverse-on-surface": "#2b3137",
+                        "on-secondary-container": "#9cb5ed",
+                        "on-primary-fixed-variant": "#004493",
+                        "surface-container-highest": "#2f353b",
+                        "on-primary": "#002e69",
+                        "on-primary-fixed": "#001a41",
+                        "surface-tint": "#adc6ff",
+                        "surface": "#0e1419",
+                        "outline-variant": "#414755",
+                        "surface-dim": "#0e1419",
+                        "primary-fixed-dim": "#adc6ff",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-secondary": "#122f5f",
+                        "tertiary-container": "#ef6719",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "primary-container": "#4b8eff",
+                        "surface-container-high": "#252b30",
+                        "surface-container": "#1a2026",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "error-container": "#93000a",
+                        "primary": "#adc6ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "on-error": "#690005",
+                        "secondary-container": "#2c4677",
+                        "on-tertiary-container": "#4c1a00",
+                        "on-background": "#dde3ea",
+                        "outline": "#8b90a0",
+                        "surface-container-low": "#161c21",
+                        "on-tertiary-fixed": "#351000"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Space Grotesk"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #0e1419; color: #dde3ea; font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { backdrop-filter: blur(20px); background: rgba(47, 53, 59, 0.6); }
+        .glow-text { text-shadow: 0 0 20px rgba(173, 198, 255, 0.4); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="overflow-x-hidden selection:bg-primary selection:text-on-primary">
+<!-- SideNavBar (Rail) -->
+<nav class="fixed left-0 top-0 h-screen z-50 flex flex-col h-full w-20 hover:w-64 transition-all duration-500 ease-in-out border-r border-white/5 bg-[#161c21]/80 backdrop-blur-xl shadow-[20px_0_40px_rgba(0,0,0,0.4)] group">
+<div class="p-6 flex flex-col items-center group-hover:items-start transition-all">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center overflow-hidden mb-8">
+<img alt="Lead Researcher Avatar" class="w-full h-full object-cover" data-alt="Professional portrait of a male researcher in a dark studio setting with cool rim lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnf1CuwQqX57jKKutqdCt8X8QDnTNUqt75vybHL_h_PNWiOZZ5338zZV5U72fmvKPp35IDwC2cZhofDqD2IhkXdMLh9LlOb6dOVBHs6UfpvB3fL7TjBjwYF9pdFLAkk4C_wCEWfbBVIpSpa908BSSu62rRt9nsiF4-EQaO_X_RpM93K3ySY3zjM8taUo3-_VhfFQZJCH65spMe_Clm1IPkgGE6UggbEADDL1LV2xNsJ1DlKmPWafYrWwolTvledfoJRHukRFop1ng"/>
+</div>
+<div class="hidden group-hover:block mb-8">
+<p class="text-lg font-bold tracking-[0.2em] text-[#adc6ff] uppercase">LUMINARY</p>
+<p class="font-label text-[10px] tracking-[0.3em] text-outline">RESEARCH</p>
+</div>
+</div>
+<div class="flex-1 px-4 space-y-4">
+<!-- Overview (Active) -->
+<a class="flex items-center gap-4 p-3 rounded-lg text-[#adc6ff] bg-[#252b30] shadow-[inset_0_0_10px_rgba(173,198,255,0.1)] border-r-2 border-[#adc6ff] transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label text-sm font-medium hidden group-hover:block">Overview</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#2f353b]/40 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">cloudy_snowing</span>
+<span class="font-label text-sm font-medium hidden group-hover:block">Weather</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#2f353b]/40 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">health_metrics</span>
+<span class="font-label text-sm font-medium hidden group-hover:block">Wellness</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-[#2f353b]/40 transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label text-sm font-medium hidden group-hover:block">Archive</span>
+</a>
+</div>
+<div class="p-4 space-y-4 border-t border-white/5">
+<a class="flex items-center gap-4 p-3 rounded-lg text-slate-400 hover:text-slate-200 transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label text-sm font-medium hidden group-hover:block">Settings</span>
+</a>
+<a class="flex items-center gap-4 p-3 rounded-lg text-slate-400 hover:text-slate-200 transition-all" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-label text-sm font-medium hidden group-hover:block">Support</span>
+</a>
+</div>
+</nav>
+<main class="ml-20 min-h-screen bg-surface flex flex-col">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-12 py-6 w-full max-w-[calc(100%-5rem)] h-16 bg-transparent">
+<div class="flex items-center gap-12">
+<h1 class="text-xl font-black tracking-widest text-[#adc6ff]">LUMINARY RESEARCH</h1>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-[#adc6ff] font-bold border-b-2 border-[#adc6ff] pb-1 font-label text-sm tracking-widest uppercase" href="#">Signals</a>
+<a class="text-slate-400 font-medium hover:text-[#4b8eff] transition-all duration-300 font-label text-sm tracking-widest uppercase" href="#">Climate</a>
+<a class="text-slate-400 font-medium hover:text-[#4b8eff] transition-all duration-300 font-label text-sm tracking-widest uppercase" href="#">Telemetry</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative group">
+<span class="absolute inset-y-0 left-3 flex items-center text-outline">
+<span class="material-symbols-outlined text-sm">search</span>
+</span>
+<input class="bg-surface-container-highest rounded-sm border-none pl-10 pr-4 py-1.5 text-xs font-label w-64 focus:ring-0 focus:border-b-2 focus:border-primary transition-all" placeholder="Global Telemetry Search..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-[#adc6ff]">
+<button class="hover:drop-shadow-[0_0_8px_rgba(173,198,255,0.4)]"><span class="material-symbols-outlined">notifications</span></button>
+<button class="hover:drop-shadow-[0_0_8px_rgba(173,198,255,0.4)]"><span class="material-symbols-outlined">account_circle</span></button>
+</div>
+</div>
+</header>
+<!-- Hero Section: Editorial Banner -->
+<section class="relative w-full h-[512px] flex items-center justify-center overflow-hidden px-12 py-20">
+<!-- Background Cinematics -->
+<div class="absolute inset-0 z-0">
+<div class="absolute inset-0 bg-gradient-to-r from-surface via-transparent to-surface z-10"></div>
+<div class="absolute inset-0 bg-gradient-to-b from-surface via-transparent to-surface z-10"></div>
+<img alt="Cinematic abstract space nebula" class="w-full h-full object-cover opacity-40 scale-105" data-alt="Abstract cinematic nebula with glowing blue and cyan particles, deep space atmosphere, soft lens flare, high contrast" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2u0-F72QJC_NPFd5wLza_RXmO58bHeFzLjsI8NeEF_5AH3-1_rsjZorCp8nCMXCchm4AC-T_ihra6jzUiRor_xxxVIe2Xb0mHeC7AmKejZZ7XitpvFlEr1BPDJ4eTwWdRcYppUxssXquZCgo4MgpKajSzDlrWRfk4vKRatqFDgxvix8AGCJbS-BtqW849eCK68-LLVmRAxlhAzsu8clONDnoaLPT896U-WQ0_h4lsbfVM7bVKtO2I-NRW_UxuzqkdfZN9xkmlL0s"/>
+</div>
+<!-- Hero Content -->
+<div class="relative z-20 text-center flex flex-col items-center">
+<span class="font-label text-primary tracking-[0.5em] uppercase text-xs mb-6">System Initialization</span>
+<h2 class="font-headline font-extrabold text-7xl md:text-8xl tracking-tighter text-on-surface mb-8 leading-none">
+                    START A NEW <br/> <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container glow-text">ENTRY</span>
+</h2>
+<button class="bg-gradient-to-r from-primary to-primary-container px-12 py-4 rounded-md text-on-primary-container font-headline font-extrabold uppercase tracking-widest hover:scale-105 transition-transform shadow-[0_10px_40px_rgba(75,142,255,0.3)]">
+                    Begin Session
+                </button>
+</div>
+<!-- Technical Overlay -->
+<div class="absolute bottom-8 left-12 font-label text-[10px] text-outline tracking-[0.2em] uppercase space-y-1">
+<p>COORD: 45.523° N, 122.676° W</p>
+<p>STATUS: SYSTEM NOMINAL</p>
+</div>
+</section>
+<!-- Main Content Grid -->
+<section class="px-12 py-12 grid grid-cols-12 gap-12">
+<!-- Left Column: Signal Metrics -->
+<div class="col-span-12 lg:col-span-3 flex flex-col gap-12">
+<div>
+<h3 class="font-label text-[11px] text-outline tracking-[0.3em] uppercase mb-8">Signal Analysis</h3>
+<div class="space-y-10">
+<div class="group">
+<p class="font-label text-[10px] text-primary/60 tracking-widest mb-1">SIGNAL ALPHA</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-headline font-extrabold tracking-tight">142.8</span>
+<span class="text-primary font-label text-xs">MHz</span>
+</div>
+<div class="w-full h-px bg-gradient-to-r from-primary/20 via-primary/5 to-transparent mt-4"></div>
+</div>
+<div class="group">
+<p class="font-label text-[10px] text-tertiary/60 tracking-widest mb-1">SPECTRAL DRIFT</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-headline font-extrabold tracking-tight">0.004</span>
+<span class="text-tertiary font-label text-xs">Δv</span>
+</div>
+<div class="w-full h-px bg-gradient-to-r from-tertiary/20 via-tertiary/5 to-transparent mt-4"></div>
+</div>
+<div class="group">
+<p class="font-label text-[10px] text-secondary/60 tracking-widest mb-1">OSCILLATION</p>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-headline font-extrabold tracking-tight">72.1%</span>
+<span class="material-symbols-outlined text-secondary text-sm">trending_up</span>
+</div>
+<div class="w-full h-px bg-gradient-to-r from-secondary/20 via-secondary/5 to-transparent mt-4"></div>
+</div>
+</div>
+</div>
+<!-- Analytics Snapshot -->
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary/20">
+<div class="flex justify-between items-start mb-6">
+<h4 class="font-headline font-bold text-sm">Analytics Snapshot</h4>
+<span class="material-symbols-outlined text-primary text-lg">insights</span>
+</div>
+<div class="mb-6">
+<div class="flex justify-between text-[10px] font-label text-outline mb-2">
+<span>Processing Cluster C-09</span>
+<span>84%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[84%] shadow-[0_0_10px_rgba(173,198,255,0.8)]"></div>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-3">
+<div class="bg-surface-container-high p-3 rounded-md flex justify-between items-center">
+<span class="font-label text-[10px] text-outline">Total Observations</span>
+<span class="font-label text-xs font-bold">24,812</span>
+</div>
+<div class="bg-surface-container-high p-3 rounded-md flex justify-between items-center">
+<span class="font-label text-[10px] text-outline">Success Rate</span>
+<span class="font-label text-xs font-bold text-primary">99.98%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Middle Column: Weather Visualization -->
+<div class="col-span-12 lg:col-span-9 flex flex-col gap-8">
+<div class="bg-surface-container-low rounded-xl p-8 relative overflow-hidden group">
+<div class="flex justify-between items-end mb-12 relative z-10">
+<div>
+<h3 class="font-headline font-extrabold text-3xl tracking-tight mb-2">Climate Dynamics</h3>
+<p class="font-label text-xs text-outline tracking-widest uppercase">Visualizing Atmospheric Anomalies</p>
+</div>
+<div class="flex gap-2">
+<div class="bg-surface-container-high p-1 rounded-lg flex">
+<button class="px-4 py-1.5 text-[10px] font-label rounded-md bg-primary text-on-primary-container shadow-lg">7D</button>
+<button class="px-4 py-1.5 text-[10px] font-label rounded-md text-outline hover:text-on-surface">30D</button>
+<button class="px-4 py-1.5 text-[10px] font-label rounded-md text-outline hover:text-on-surface">90D</button>
+</div>
+<div class="bg-surface-container-high p-1 rounded-lg flex">
+<button class="px-4 py-1.5 text-[10px] font-label rounded-md text-primary bg-primary/10">TEMP</button>
+<button class="px-4 py-1.5 text-[10px] font-label rounded-md text-outline hover:text-on-surface">PRECIP</button>
+<button class="px-4 py-1.5 text-[10px] font-label rounded-md text-outline hover:text-on-surface">SUNLIGHT</button>
+</div>
+</div>
+</div>
+<!-- Custom Chart Area -->
+<div class="h-80 w-full relative">
+<!-- Chart Lines (Simulated SVG) -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 300">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#adc6ff" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#adc6ff" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,250 Q100,220 200,240 T400,180 T600,210 T800,120 T1000,160 V300 H0 Z" fill="url(#chartGradient)"></path>
+<path d="M0,250 Q100,220 200,240 T400,180 T600,210 T800,120 T1000,160" fill="none" stroke="#adc6ff" stroke-linecap="round" stroke-width="3"></path>
+<!-- Data Points -->
+<circle cx="200" cy="240" fill="#0e1419" r="4" stroke="#adc6ff" stroke-width="2"></circle>
+<circle cx="400" cy="180" fill="#0e1419" r="4" stroke="#adc6ff" stroke-width="2"></circle>
+<circle class="animate-pulse shadow-[0_0_10px_rgba(173,198,255,1)]" cx="800" cy="120" fill="#adc6ff" r="4"></circle>
+</svg>
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-5">
+<div class="w-full h-px bg-white"></div>
+<div class="w-full h-px bg-white"></div>
+<div class="w-full h-px bg-white"></div>
+<div class="w-full h-px bg-white"></div>
+</div>
+</div>
+<!-- X-Axis Labels -->
+<div class="flex justify-between mt-4 px-2 font-label text-[10px] text-outline uppercase tracking-tighter">
+<span>MON 01</span>
+<span>TUE 02</span>
+<span>WED 03</span>
+<span>THU 04</span>
+<span>FRI 05</span>
+<span>SAT 06</span>
+<span>SUN 07</span>
+</div>
+</div>
+<!-- Secondary Data Row -->
+<div class="grid grid-cols-3 gap-8">
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between h-48">
+<div class="flex justify-between items-center">
+<span class="font-label text-[10px] text-outline tracking-widest uppercase">Relative Humidity</span>
+<span class="material-symbols-outlined text-secondary">water_drop</span>
+</div>
+<div>
+<p class="text-4xl font-headline font-extrabold">42<span class="text-lg font-light text-outline">%</span></p>
+<div class="flex items-center gap-1 text-[10px] font-label text-error mt-2">
+<span class="material-symbols-outlined text-xs">south</span>
+<span>-2.4% FROM MEAN</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between h-48">
+<div class="flex justify-between items-center">
+<span class="font-label text-[10px] text-outline tracking-widest uppercase">Pressure HPA</span>
+<span class="material-symbols-outlined text-secondary">compress</span>
+</div>
+<div>
+<p class="text-4xl font-headline font-extrabold">1013</p>
+<div class="flex items-center gap-1 text-[10px] font-label text-primary mt-2">
+<span class="material-symbols-outlined text-xs">video_stable</span>
+<span>ATMOSPHERIC STABILITY</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl flex flex-col justify-between h-48 overflow-hidden relative">
+<div class="absolute inset-0 opacity-20 pointer-events-none">
+<img alt="Abstract map topology" class="w-full h-full object-cover" data-alt="Technical topological map overlay with blue glowing contour lines on a dark background" data-location="Portland" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALSu93hQkeU86USHyd40YIZf81OYyPRf8CZkC5PeXcAhYHPoOeRQRPoSK-uV5H8CS2qFtzBq-OHPaGGKndHbv05R7DeX6XCi0q4NllMZvW9yUdNqOcdC5dyvEIcxo7OWKibcrb-ZCCgNDnAl5wH4sU0ankS-MkWqvdqLN02OsY43GYXlNcVPE-A8gsaCG6Wwx9-cXV8k82E7FV6fMyCN_Ai7znzbhpoNjfZYaTDnP01PixN03yuanDAbnDt2dgpiAA0K6x0EqLTIc"/>
+</div>
+<div class="relative z-10 flex justify-between items-center">
+<span class="font-label text-[10px] text-outline tracking-widest uppercase">Active Node</span>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+<div class="relative z-10">
+<p class="text-xl font-headline font-extrabold leading-tight">SECTOR <br/> PORTLAND_04</p>
+<p class="font-label text-[10px] text-primary mt-2">LINK: ACTIVE</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Navigation Shell (Mobile Floating UI) -->
+<div class="fixed bottom-0 left-20 right-0 flex justify-center pb-6 z-40 md:hidden">
+<nav class="rounded-full bg-[#2f353b]/60 backdrop-blur-2xl px-8 py-3 border border-white/10 shadow-2xl shadow-black/50 flex items-center gap-10">
+<a class="flex flex-col items-center gap-1 text-[#adc6ff] drop-shadow-[0_0_5px_rgba(173,198,255,0.6)]" href="#">
+<span class="material-symbols-outlined">biotech</span>
+<span class="font-label uppercase text-[10px] tracking-widest">Research</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 hover:scale-110 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">sensors</span>
+<span class="font-label uppercase text-[10px] tracking-widest">Signals</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 hover:scale-110 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">thermostat</span>
+<span class="font-label uppercase text-[10px] tracking-widest">Climate</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 hover:scale-110 transition-transform duration-300" href="#">
+<span class="material-symbols-outlined">tune</span>
+<span class="font-label uppercase text-[10px] tracking-widest">Settings</span>
+</a>
+</nav>
+</div>
+</main>
+<!-- Footer Stats (Desktop Only) -->
+<footer class="ml-20 px-12 py-8 bg-surface-container-lowest border-t border-white/5 flex justify-between items-center">
+<div class="flex gap-12">
+<div class="flex flex-col">
+<span class="font-label text-[9px] text-outline tracking-widest uppercase">System Load</span>
+<span class="font-label text-xs font-bold text-primary">12.4%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label text-[9px] text-outline tracking-widest uppercase">Uptime</span>
+<span class="font-label text-xs font-bold text-on-surface">1,242H 12M</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label text-[9px] text-outline tracking-widest uppercase">Encrypted</span>
+<span class="font-label text-xs font-bold text-secondary">AES-256</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_#adc6ff]"></span>
+<span class="font-label text-[10px] text-outline tracking-widest uppercase">Luminary Core Live</span>
+</div>
+</footer>
+</body></html>

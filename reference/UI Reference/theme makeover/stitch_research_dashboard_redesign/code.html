@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LUMINARY RESEARCH | Synthesis Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Space+Grotesk:wght@300..700&amp;family=Inter:wght@300..700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-container": "#003a6b",
+                        "surface-container": "#1c2026",
+                        "secondary-fixed": "#dee2ec",
+                        "tertiary": "#bfc7cf",
+                        "primary-fixed-dim": "#a2c9ff",
+                        "on-primary-fixed-variant": "#004882",
+                        "surface-container-low": "#181c22",
+                        "surface-bright": "#353940",
+                        "primary-container": "#58a6ff",
+                        "secondary-container": "#42474f",
+                        "background": "#10141a",
+                        "on-primary": "#00315c",
+                        "on-secondary-container": "#b1b5bf",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#262a31",
+                        "outline-variant": "#414752",
+                        "inverse-on-surface": "#2d3137",
+                        "surface-tint": "#a2c9ff",
+                        "surface-container-highest": "#31353c",
+                        "on-tertiary-container": "#323a41",
+                        "on-tertiary-fixed": "#151d22",
+                        "on-secondary": "#2c3138",
+                        "secondary-fixed-dim": "#c2c7d0",
+                        "on-surface": "#dfe2eb",
+                        "inverse-surface": "#dfe2eb",
+                        "inverse-primary": "#0060aa",
+                        "surface-variant": "#31353c",
+                        "surface": "#10141a",
+                        "primary-fixed": "#d3e4ff",
+                        "outline": "#8b919d",
+                        "on-tertiary": "#293138",
+                        "tertiary-fixed": "#dbe3ec",
+                        "on-secondary-fixed-variant": "#42474f",
+                        "error-container": "#93000a",
+                        "surface-dim": "#10141a",
+                        "on-error": "#690005",
+                        "on-background": "#dfe2eb",
+                        "on-tertiary-fixed-variant": "#40484e",
+                        "tertiary-fixed-dim": "#bfc7cf",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#171c23",
+                        "tertiary-container": "#9ca4ac",
+                        "primary": "#a2c9ff",
+                        "on-primary-fixed": "#001c38",
+                        "surface-container-lowest": "#0a0e14",
+                        "secondary": "#c2c7d0",
+                        "on-surface-variant": "#c0c7d4",
+                        "accent-amber": "#d97706"
+                    },
+                    fontFamily: {
+                        "headline": ["Newsreader", "serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Space Grotesk", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        body {
+            background-color: #10141a;
+            color: #dfe2eb;
+            -webkit-font-smoothing: antialiased;
+        }
+        .chart-grid {
+            background-image: linear-gradient(#1c2026 1px, transparent 1px), linear-gradient(90deg, #1c2026 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- Shared SideNavBar -->
+<nav class="fixed left-0 top-0 bottom-0 flex flex-col items-center py-4 z-50 bg-[#10141a] w-[48px] border-r border-[#1c2026]">
+<div class="mb-8 opacity-40">
+<span class="material-symbols-outlined text-primary">science</span>
+</div>
+<div class="flex flex-col gap-6">
+<!-- Data Tab Active (Closest match for Dashboard) -->
+<button class="w-10 h-10 flex items-center justify-center bg-[#262a31] text-[#a2c9ff] border-l-2 border-[#58a6ff] transition-all duration-150 active:scale-90">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-[#262a31] hover:text-[#a2c9ff] transition-all duration-150">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-[#262a31] hover:text-[#a2c9ff] transition-all duration-150">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-[#262a31] hover:text-[#a2c9ff] transition-all duration-150">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center text-[#262a31] hover:text-[#a2c9ff] transition-all duration-150">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+</button>
+</div>
+<div class="mt-auto flex flex-col items-center gap-4">
+<div class="w-6 h-6 bg-surface-container-highest"></div>
+<span class="font-label text-[8px] tracking-widest text-outline rotate-90 mb-4 origin-center">V.01</span>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-[48px] min-h-screen flex flex-col">
+<!-- Header Row -->
+<header class="h-16 flex items-center justify-between px-8 bg-surface border-b border-[#181c22]">
+<div class="flex flex-col">
+<span class="font-label text-[9px] text-outline tracking-[0.18em]">STATION_REF // 09-XRAY</span>
+<h1 class="font-body text-base font-medium text-on-surface">Climate Dynamics</h1>
+</div>
+<div class="flex gap-6">
+<div class="flex flex-col items-center group cursor-pointer">
+<span class="font-label text-[10px] tracking-[0.12em] text-on-surface">TEMP</span>
+<div class="w-full h-[2px] bg-accent-amber mt-1"></div>
+</div>
+<div class="flex flex-col items-center group cursor-pointer opacity-40 hover:opacity-100 transition-opacity">
+<span class="font-label text-[10px] tracking-[0.12em] text-on-surface">PRECIP</span>
+<div class="w-full h-[2px] bg-transparent group-hover:bg-primary-container mt-1"></div>
+</div>
+<div class="flex flex-col items-center group cursor-pointer opacity-40 hover:opacity-100 transition-opacity">
+<span class="font-label text-[10px] tracking-[0.12em] text-on-surface">SUNLIGHT</span>
+<div class="w-full h-[2px] bg-transparent group-hover:bg-primary-container mt-1"></div>
+</div>
+</div>
+</header>
+<!-- Edge-to-Edge Chart Section (300px) -->
+<section class="h-[300px] w-full relative overflow-hidden bg-surface-container-lowest chart-grid">
+<!-- Simulated Hairstyle Gridlines & Gradient -->
+<div class="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent"></div>
+<!-- The Chart Line (SVG for 1.5px precision) -->
+<svg class="absolute inset-0 w-full h-full preserve-3d" preserveaspectratio="none" viewbox="0 0 1200 300">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#e8eaf0" stop-opacity="0.08"></stop>
+<stop offset="100%" stop-color="#e8eaf0" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,220 Q150,180 300,210 T600,140 T900,190 T1200,120 V300 H0 Z" fill="url(#chartGradient)"></path>
+<path d="M0,220 Q150,180 300,210 T600,140 T900,190 T1200,120" fill="none" stroke="#e8eaf0" stroke-width="1.5"></path>
+</svg>
+<!-- Data Tooltip Anchor -->
+<div class="absolute left-1/2 top-1/3 -translate-x-1/2 flex flex-col items-center">
+<div class="w-[1px] h-32 bg-primary/20"></div>
+<div class="p-2 bg-surface-container-high border border-outline-variant/30">
+<span class="font-label text-[9px] text-primary">λ 842.01 NM</span>
+</div>
+</div>
+</section>
+<!-- Two Column Content Area -->
+<section class="flex flex-1 border-t border-[#1c2026]">
+<!-- Left Column: Narrative (30%) -->
+<aside class="w-[30%] p-10 bg-surface-container-low border-r border-[#1c2026]">
+<div class="max-w-xs">
+<h2 class="font-headline text-[32px] leading-[1.1] font-extralight italic text-on-surface mb-12">
+                        The silence of atmospheric oscillation.
+                    </h2>
+<p class="font-body text-sm text-outline leading-relaxed mb-16">
+                        Observations recorded at the peak of the thermal inversion indicate a stabilization of core telemetry metrics. The system maintains equilibrium despite external variance.
+                    </p>
+<button class="flex items-center gap-4 group">
+<span class="font-label text-[10px] tracking-[0.2em] text-accent-amber border-b border-accent-amber/30 pb-1 group-hover:border-accent-amber transition-all">
+                            BEGIN NEW SESSION →
+                        </span>
+</button>
+</div>
+</aside>
+<!-- Right Column: Data Table (70%) -->
+<div class="w-[70%] bg-surface flex flex-col">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest">
+<th class="py-4 px-6 font-label text-[9px] tracking-[0.18em] text-outline font-normal">STATUS</th>
+<th class="py-4 px-6 font-label text-[9px] tracking-[0.18em] text-outline font-normal">MODEL NAME</th>
+<th class="py-4 px-6 font-label text-[9px] tracking-[0.18em] text-outline font-normal">SEQUENCE STARTED</th>
+<th class="py-4 px-6 font-label text-[9px] tracking-[0.18em] text-outline font-normal">CONFIDENCE</th>
+<th class="py-4 px-6 font-label text-[9px] tracking-[0.18em] text-outline font-normal">ACTION</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#181c22]">
+<!-- Row 1 -->
+<tr class="bg-[#0d1117] hover:bg-surface-container-low transition-colors group">
+<td class="py-6 px-6">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+</td>
+<td class="py-6 px-6">
+<div class="flex flex-col">
+<span class="font-body text-sm font-medium text-on-surface">SYNTH_CORE_ALPHA</span>
+<span class="font-label text-[9px] text-outline tracking-wider">V.1.04.12</span>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="font-label text-xs text-on-surface/80">14:02:45 UTC</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<span class="font-label text-xs text-primary">0.98</span>
+<div class="w-[60px] h-[2px] bg-surface-container-highest">
+<div class="h-full bg-primary w-[98%]"></div>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<a class="font-label text-[9px] text-outline group-hover:text-primary transition-colors underline underline-offset-4 decoration-outline-variant" href="#">ARCHIVE_LINK</a>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="bg-[#0a0e14] hover:bg-surface-container-low transition-colors group">
+<td class="py-6 px-6">
+<div class="w-2 h-2 rounded-full bg-outline/40"></div>
+</td>
+<td class="py-6 px-6">
+<div class="flex flex-col">
+<span class="font-body text-sm font-medium text-on-surface">VECTOR_FIELD_STABLE</span>
+<span class="font-label text-[9px] text-outline tracking-wider">V.0.98.00</span>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="font-label text-xs text-on-surface/80">12:15:10 UTC</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<span class="font-label text-xs text-primary">0.82</span>
+<div class="w-[60px] h-[2px] bg-surface-container-highest">
+<div class="h-full bg-primary w-[82%]"></div>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<a class="font-label text-[9px] text-outline group-hover:text-primary transition-colors underline underline-offset-4 decoration-outline-variant" href="#">ARCHIVE_LINK</a>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="bg-[#0d1117] hover:bg-surface-container-low transition-colors group">
+<td class="py-6 px-6">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+</td>
+<td class="py-6 px-6">
+<div class="flex flex-col">
+<span class="font-body text-sm font-medium text-on-surface">RADIAL_DIST_MODEL</span>
+<span class="font-label text-[9px] text-outline tracking-wider">V.2.11.02</span>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="font-label text-xs text-on-surface/80">09:44:00 UTC</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<span class="font-label text-xs text-primary">0.94</span>
+<div class="w-[60px] h-[2px] bg-surface-container-highest">
+<div class="h-full bg-primary w-[94%]"></div>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<a class="font-label text-[9px] text-outline group-hover:text-primary transition-colors underline underline-offset-4 decoration-outline-variant" href="#">ARCHIVE_LINK</a>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="bg-[#0a0e14] hover:bg-surface-container-low transition-colors group">
+<td class="py-6 px-6">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+</td>
+<td class="py-6 px-6">
+<div class="flex flex-col">
+<span class="font-body text-sm font-medium text-on-surface">OSCILLATION_SYNC</span>
+<span class="font-label text-[9px] text-outline tracking-wider">V.1.22.01</span>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="font-label text-xs text-on-surface/80">08:00:22 UTC</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<span class="font-label text-xs text-primary">0.45</span>
+<div class="w-[60px] h-[2px] bg-surface-container-highest">
+<div class="h-full bg-error w-[45%]"></div>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<a class="font-label text-[9px] text-outline group-hover:text-primary transition-colors underline underline-offset-4 decoration-outline-variant" href="#">ARCHIVE_LINK</a>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Bottom Editorial Note -->
+<div class="mt-auto p-8 border-t border-[#1c2026] flex justify-between items-end">
+<div class="flex flex-col gap-2">
+<span class="font-label text-[8px] text-outline uppercase tracking-[0.2em]">Footnote_Ref</span>
+<p class="font-headline text-lg italic text-outline/60 leading-tight max-w-sm">
+                            "Accuracy is the only currency in the void of uncertainty."
+                        </p>
+</div>
+<div class="text-right">
+<span class="font-label text-[9px] text-primary tracking-[0.1em]">LUMINARY RESEARCH SYNTHESIS ENGINE</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Fixed Decorative Artifacts -->
+<div class="fixed right-4 bottom-4 pointer-events-none opacity-20">
+<span class="font-label text-[10px] tracking-[0.5em] text-outline">LAT 42.3601 N // LON 71.0589 W</span>
+</div>
+</body></html>

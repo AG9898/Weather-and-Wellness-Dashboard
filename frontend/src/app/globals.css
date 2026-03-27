@@ -50,19 +50,19 @@
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   UBC Brand Tokens + Light/Dark Semantic Mapping
-   :root = light, .dark = tonal dark
+   UBC brand anchors + standardized light/dark semantic mapping
+   :root = light, .dark = dark
    ────────────────────────────────────────────────────────────────── */
 :root {
-  /* UBC brand palette */
+  /* UBC brand anchor + tonal lifts */
   --ubc-video-blue: #001328;
   --ubc-navy: #000847;
-  --ubc-blue-700: #0052f5;
-  --ubc-blue-600: #00a2fa;
-  --ubc-blue-500: #33e0fc;
-  --ubc-blue-300: #5ce5fc;
-  --ubc-blue-200: #7af2f7;
-  --ubc-blue-100: #9efaf2;
+  --ubc-blue-700: #001328;
+  --ubc-blue-600: #11263a;
+  --ubc-blue-500: #23415a;
+  --ubc-blue-300: #506a81;
+  --ubc-blue-200: #8e9eaf;
+  --ubc-blue-100: #cfd7de;
   --ubc-earth: #878343;
   --ink-100: #e6edf8;
   --ink-70: #a9b6cc;
@@ -70,88 +70,90 @@
 
   /* Border radius — 12px base for research-tool feel */
   --radius: 0.75rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 5%), 0 10px 24px rgb(15 23 42 / 6%);
+  --shadow-raised: 0 6px 18px rgb(15 23 42 / 8%), 0 24px 48px rgb(15 23 42 / 8%);
 
-  /* Shadcn semantic tokens mapped to UBC light palette */
-  --background: #e6edf8;
-  --foreground: #001328;
-  --card: #f7fafe;
-  --card-foreground: #001328;
+  /* Shadcn semantic tokens mapped to a normalized light palette */
+  --background: #f6f7f8;
+  --foreground: #18212b;
+  --card: #ffffff;
+  --card-foreground: #18212b;
   --popover: #ffffff;
-  --popover-foreground: #001328;
-  --primary: #0052f5;
-  --primary-foreground: #ffffff;
-  --secondary: #dfe9f8;
-  --secondary-foreground: #001328;
-  --muted: #edf3fb;
-  --muted-foreground: #6e7c95;
-  --accent: #d7eefc;
-  --accent-foreground: #001328;
+  --popover-foreground: #18212b;
+  --primary: var(--ubc-video-blue);
+  --primary-foreground: #f8fafc;
+  --secondary: #eceff2;
+  --secondary-foreground: #18212b;
+  --muted: #f1f3f4;
+  --muted-foreground: #5d6773;
+  --accent: #e7ebee;
+  --accent-foreground: #18212b;
   --destructive: #dc2626;
-  --border: rgb(0 19 40 / 12%);
-  --input: rgb(0 19 40 / 10%);
-  --ring: #33e0fc;
-  --chart-1: #0052f5;
-  --chart-2: #00a2fa;
-  --chart-3: #33e0fc;
-  --chart-4: #5ce5fc;
+  --border: rgb(24 33 43 / 10%);
+  --input: rgb(24 33 43 / 6%);
+  --ring: #36506b;
+  --chart-1: #28455d;
+  --chart-2: #597188;
+  --chart-3: #8a9bab;
+  --chart-4: #b8c2cb;
   --chart-5: #878343;
-  --sidebar: #f7fafe;
-  --sidebar-foreground: #001328;
-  --sidebar-primary: #0052f5;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #dfe9f8;
-  --sidebar-accent-foreground: #001328;
-  --sidebar-border: rgb(0 19 40 / 10%);
-  --sidebar-ring: #33e0fc;
-  --scrollbar-thumb-start: var(--ubc-blue-700);
-  --scrollbar-thumb-end: var(--ubc-blue-500);
-  --scrollbar-thumb-highlight: rgb(158 250 242 / 85%);
-  --scrollbar-thumb-gloss: rgb(255 255 255 / 20%);
-  --scrollbar-thumb-droplet: rgb(92 229 252 / 48%);
-  --scrollbar-thumb-droplet-shadow: rgb(0 82 245 / 32%);
-  --scrollbar-firefox-thumb: var(--ubc-blue-700);
+  --sidebar: #fbfbfc;
+  --sidebar-foreground: #18212b;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #eceff2;
+  --sidebar-accent-foreground: #18212b;
+  --sidebar-border: rgb(24 33 43 / 8%);
+  --sidebar-ring: var(--ring);
+  --scrollbar-thumb-start: #2f4558;
+  --scrollbar-thumb-end: #445d73;
+  --scrollbar-thumb-highlight: rgb(255 255 255 / 52%);
+  --scrollbar-thumb-gloss: rgb(255 255 255 / 14%);
+  --scrollbar-thumb-droplet: rgb(255 255 255 / 16%);
+  --scrollbar-thumb-droplet-shadow: rgb(0 19 40 / 16%);
+  --scrollbar-firefox-thumb: #3d566b;
   color-scheme: light;
 }
 
 .dark {
-  --background: #001328;
-  --foreground: #e6edf8;
-  --card: #0b1f3d;
-  --card-foreground: #e6edf8;
-  --popover: #0f274a;
-  --popover-foreground: #e6edf8;
-  --primary: #00a2fa;
-  --primary-foreground: #001328;
-  --secondary: #102846;
-  --secondary-foreground: #e6edf8;
-  --muted: #132f53;
-  --muted-foreground: #a9b6cc;
-  --accent: #1a4270;
-  --accent-foreground: #e6edf8;
+  --background: #12161c;
+  --foreground: #edf1f5;
+  --card: #181d24;
+  --card-foreground: #edf1f5;
+  --popover: #171c22;
+  --popover-foreground: #edf1f5;
+  --primary: #39556e;
+  --primary-foreground: #f8fafc;
+  --secondary: #20262d;
+  --secondary-foreground: #edf1f5;
+  --muted: #1c2229;
+  --muted-foreground: #9aa5b1;
+  --accent: #252c35;
+  --accent-foreground: #edf1f5;
   --destructive: #f87171;
-  --border: rgb(230 237 248 / 16%);
-  --input: rgb(230 237 248 / 12%);
-  --ring: #5ce5fc;
-  --chart-1: #00a2fa;
-  --chart-2: #33e0fc;
-  --chart-3: #0052f5;
-  --chart-4: #7af2f7;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 6%);
+  --ring: #607f99;
+  --chart-1: #7993a8;
+  --chart-2: #a4b4c1;
+  --chart-3: #5f7387;
+  --chart-4: #ced7dd;
   --chart-5: #878343;
-  --sidebar: #000847;
-  --sidebar-foreground: #e6edf8;
-  --sidebar-primary: #00a2fa;
-  --sidebar-primary-foreground: #001328;
-  --sidebar-accent: #102846;
-  --sidebar-accent-foreground: #e6edf8;
-  --sidebar-border: rgb(230 237 248 / 14%);
-  --sidebar-ring: #5ce5fc;
-  --scrollbar-thumb-start: #00a2fa;
-  --scrollbar-thumb-end: #33e0fc;
-  --scrollbar-thumb-highlight: rgb(230 237 248 / 72%);
-  --scrollbar-thumb-gloss: rgb(255 255 255 / 24%);
-  --scrollbar-thumb-droplet: rgb(122 242 247 / 54%);
-  --scrollbar-thumb-droplet-shadow: rgb(0 19 40 / 32%);
-  --scrollbar-firefox-thumb: var(--ubc-blue-500);
+  --sidebar: #151b21;
+  --sidebar-foreground: #edf1f5;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #212831;
+  --sidebar-accent-foreground: #edf1f5;
+  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-ring: var(--ring);
+  --scrollbar-thumb-start: #496177;
+  --scrollbar-thumb-end: #68839a;
+  --scrollbar-thumb-highlight: rgb(255 255 255 / 30%);
+  --scrollbar-thumb-gloss: rgb(255 255 255 / 10%);
+  --scrollbar-thumb-droplet: rgb(255 255 255 / 8%);
+  --scrollbar-thumb-droplet-shadow: rgb(0 0 0 / 18%);
+  --scrollbar-firefox-thumb: #60798f;
   color-scheme: dark;
 }
 
@@ -252,7 +254,7 @@
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 14%),
     0 0 0 1px rgb(0 19 40 / 10%),
-    0 0 14px rgb(51 224 252 / 22%);
+    0 0 14px rgb(54 80 107 / 18%);
   animation-duration: 2.1s, 2.6s, 2.25s;
 }
 

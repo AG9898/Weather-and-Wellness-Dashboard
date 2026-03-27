@@ -327,9 +327,6 @@ export default function ImportExportPage() {
                       phase.tag === "committing" || phase.data.errors.length > 0
                     }
                     className="rounded-xl px-4 text-primary-foreground"
-                    style={{
-                      background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
-                    }}
                   >
                     {phase.tag === "committing" ? "Importing…" : "Confirm Import"}
                   </Button>
@@ -363,9 +360,6 @@ export default function ImportExportPage() {
             onClick={handleExportXlsx}
             disabled={xlsxLoading}
             className="rounded-xl px-4 text-primary-foreground"
-            style={{
-              background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
-            }}
           >
             {xlsxLoading ? "Downloading…" : "Export XLSX"}
           </Button>
@@ -374,9 +368,6 @@ export default function ImportExportPage() {
             onClick={handleExportZip}
             disabled={zipLoading}
             className="rounded-xl px-4 text-primary-foreground"
-            style={{
-              background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
-            }}
           >
             {zipLoading ? "Downloading…" : "Export CSV (zip)"}
           </Button>

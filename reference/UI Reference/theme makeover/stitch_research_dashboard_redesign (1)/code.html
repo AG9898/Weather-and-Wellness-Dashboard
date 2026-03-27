@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PRECISION AUSTERITY | Research Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "outline-variant": "#414752",
+                        "secondary-fixed-dim": "#c2c7d0",
+                        "on-primary-container": "#003a6b",
+                        "surface-container-low": "#181c22",
+                        "primary-fixed-dim": "#a2c9ff",
+                        "secondary-fixed": "#dee2ec",
+                        "primary": "#a2c9ff",
+                        "inverse-surface": "#dfe2eb",
+                        "surface-container-highest": "#31353c",
+                        "tertiary-fixed": "#dbe3ec",
+                        "on-tertiary-fixed": "#151d22",
+                        "on-background": "#dfe2eb",
+                        "error-container": "#93000a",
+                        "primary-container": "#58a6ff",
+                        "on-secondary": "#2c3138",
+                        "surface-container": "#1c2026",
+                        "secondary-container": "#42474f",
+                        "outline": "#8b919d",
+                        "surface-container-high": "#262a31",
+                        "surface": "#10141a",
+                        "error": "#ffb4ab",
+                        "surface-dim": "#10141a",
+                        "surface-tint": "#a2c9ff",
+                        "on-error": "#690005",
+                        "background": "#10141a",
+                        "on-surface": "#dfe2eb",
+                        "on-primary": "#00315c",
+                        "on-primary-fixed": "#001c38",
+                        "inverse-on-surface": "#2d3137",
+                        "on-secondary-fixed": "#171c23",
+                        "on-secondary-container": "#b1b5bf",
+                        "surface-container-lowest": "#0a0e14",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#42474f",
+                        "on-surface-variant": "#c0c7d4",
+                        "on-tertiary-fixed-variant": "#40484e",
+                        "surface-variant": "#31353c",
+                        "tertiary": "#bfc7cf",
+                        "tertiary-container": "#9ca4ac",
+                        "on-tertiary": "#293138",
+                        "tertiary-fixed-dim": "#bfc7cf",
+                        "on-tertiary-container": "#323a41",
+                        "inverse-primary": "#0060aa",
+                        "primary-fixed": "#d3e4ff",
+                        "surface-bright": "#353940",
+                        "secondary": "#c2c7d0",
+                        "on-primary-fixed-variant": "#004882"
+                    },
+                    fontFamily: {
+                        "headline": ["Newsreader", "serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Space Grotesk", "monospace"]
+                    },
+                    borderRadius: { "DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #10141a;
+            color: #dfe2eb;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-chart-gradient {
+            background: linear-gradient(180deg, rgba(162, 201, 255, 0.03) 0%, rgba(16, 20, 26, 0) 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- TOP APP BAR -->
+<header class="fixed top-0 w-full z-50 h-16 flex justify-between items-center px-8 bg-[#10141a]">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#58a6ff]">analytics</span>
+<h1 class="font-headline italic text-xl text-[#a2c9ff] tracking-widest uppercase">PRECISION</h1>
+</div>
+<div class="flex items-center gap-6">
+<span class="font-label text-xs tracking-[0.1em] text-on-surface-variant uppercase">SYSTEM_STATE: OPTIMAL</span>
+<span class="material-symbols-outlined text-[#31353c] hover:text-[#58a6ff] transition-colors duration-150 cursor-pointer">settings</span>
+</div>
+</header>
+<!-- LEFT NAV RAIL (DESKTOP) -->
+<aside class="hidden md:flex fixed left-0 top-16 bottom-14 w-16 flex-col items-center py-8 gap-8 bg-[#10141a] z-40">
+<button class="text-[#58a6ff] transition-all duration-300">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+</button>
+<button class="text-[#31353c] hover:text-[#a2c9ff] transition-all duration-300">
+<span class="material-symbols-outlined">biotech</span>
+</button>
+<button class="text-[#31353c] hover:text-[#a2c9ff] transition-all duration-300">
+<span class="material-symbols-outlined">history_edu</span>
+</button>
+<button class="text-[#31353c] hover:text-[#a2c9ff] transition-all duration-300">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</aside>
+<!-- MAIN CANVAS -->
+<main class="pt-32 pb-24 px-8 md:pl-24 max-w-7xl mx-auto">
+<!-- HERO SECTION -->
+<section class="mb-20">
+<span class="font-label text-xs tracking-[0.2em] text-primary uppercase mb-4 block">CLIMATOLOGICAL_OBSERVATORY_V.04</span>
+<h2 class="font-headline font-extralight text-6xl md:text-8xl text-on-surface leading-tight tracking-tighter">
+                The silence of atmospheric <br/>
+<span class="italic text-primary">oscillation</span>.
+            </h2>
+</section>
+<!-- WEATHER SECTION (FULL-WIDTH CHART) -->
+<section class="mb-24">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h3 class="font-label text-sm tracking-widest uppercase text-on-surface-variant">Barometric Variance</h3>
+<p class="font-headline text-2xl text-on-surface mt-1">29.92 inHg <span class="text-sm font-label text-primary-container ml-2">STABLE</span></p>
+</div>
+<div class="flex gap-4">
+<span class="font-label text-[10px] text-outline uppercase tracking-tighter">12:00</span>
+<span class="font-label text-[10px] text-outline uppercase tracking-tighter">18:00</span>
+<span class="font-label text-[10px] text-on-surface uppercase tracking-tighter">00:00</span>
+</div>
+</div>
+<div class="relative h-64 w-full overflow-hidden border-b border-surface-container-highest">
+<!-- Hairline Gridlines -->
+<div class="absolute inset-0 flex flex-col justify-between py-2 pointer-events-none">
+<div class="w-full border-t border-surface-container-low"></div>
+<div class="w-full border-t border-surface-container-low"></div>
+<div class="w-full border-t border-surface-container-low"></div>
+<div class="w-full border-t border-surface-container-low"></div>
+</div>
+<!-- Mock Bezier Line -->
+<svg class="absolute inset-0 w-full h-full preserve-3d" viewbox="0 0 1000 200">
+<defs>
+<lineargradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#a2c9ff" stop-opacity="0.05"></stop>
+<stop offset="100%" stop-color="#10141a" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 Q150,140 250,100 T500,80 T750,120 T1000,90 V200 H0 Z" fill="url(#chartFill)"></path>
+<path d="M0,150 Q150,140 250,100 T500,80 T750,120 T1000,90" fill="none" stroke="#e8eaf0" stroke-width="1"></path>
+</svg>
+</div>
+</section>
+<!-- ANALYTICS / MODEL SECTION -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-16">
+<div class="lg:col-span-8">
+<h3 class="font-label text-xs tracking-widest uppercase text-on-surface-variant mb-8">Active Computational Models</h3>
+<div class="w-full">
+<!-- Table Header -->
+<div class="grid grid-cols-12 pb-4 border-b border-surface-container text-on-surface-variant font-label text-[10px] uppercase tracking-widest">
+<div class="col-span-1">Status</div>
+<div class="col-span-5">Model Identity</div>
+<div class="col-span-3">Last Sequence</div>
+<div class="col-span-3 text-right">Confidence</div>
+</div>
+<!-- Row 1 -->
+<div class="grid grid-cols-12 py-6 border-b border-surface-container-low items-center hover:bg-surface-container-lowest transition-colors group">
+<div class="col-span-1">
+<div class="w-1.5 h-1.5 bg-primary-container"></div>
+</div>
+<div class="col-span-5">
+<span class="font-label text-sm text-on-surface tracking-wide">STRATOS_A14</span>
+</div>
+<div class="col-span-3 font-label text-xs text-on-surface-variant">14:02:11 UTC</div>
+<div class="col-span-3 text-right font-label text-sm text-primary">98.42%</div>
+</div>
+<!-- Row 2 -->
+<div class="grid grid-cols-12 py-6 border-b border-surface-container-low items-center hover:bg-surface-container-lowest transition-colors group">
+<div class="col-span-1">
+<div class="w-1.5 h-1.5 bg-primary-container"></div>
+</div>
+<div class="col-span-5">
+<span class="font-label text-sm text-on-surface tracking-wide">ISOBAR_MAPPER</span>
+</div>
+<div class="col-span-3 font-label text-xs text-on-surface-variant">13:58:45 UTC</div>
+<div class="col-span-3 text-right font-label text-sm text-primary">92.11%</div>
+</div>
+<!-- Row 3 -->
+<div class="grid grid-cols-12 py-6 border-b border-surface-container-low items-center hover:bg-surface-container-lowest transition-colors group">
+<div class="col-span-1">
+<div class="w-1.5 h-1.5 bg-surface-container-highest"></div>
+</div>
+<div class="col-span-5">
+<span class="font-label text-sm text-on-surface tracking-wide">DEEP_REACTION_B</span>
+</div>
+<div class="col-span-3 font-label text-xs text-on-surface-variant">12:00:00 UTC</div>
+<div class="col-span-3 text-right font-label text-sm text-on-surface-variant">84.00%</div>
+</div>
+</div>
+</div>
+<!-- ASYMMETRIC SIDEBAR MODULE -->
+<div class="lg:col-span-4 bg-surface-container-low p-8">
+<h4 class="font-label text-xs tracking-widest uppercase text-primary mb-6">Field Observation</h4>
+<div class="mb-8 overflow-hidden grayscale contrast-125 brightness-75">
+<img class="w-full h-48 object-cover" data-alt="monochrome cinematic landscape of jagged mountain peaks shrouded in heavy mist and morning fog with sharp contrast" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpEE8m2pRWscsfKo-rQj5QD0MkZq0R6Onogw5mugg5MscejclfEHbIsNRYfCvz0bFoRHppc3XDVNrU-1HmdV2WN9ZytmD-xg6BCM5IMk-TK1kOQWSBCqctYjtrMTd64nugbUyjq8hRV6rGd7AoXaLMWad2OrztJY4uW16XcoNank4R9CvixDvfI1PkGXAAV3KDrsXiDPnD8e0OdziL82t51EWlKEDk1WtLeuTPHxqp90S8tYcfkHeUONJtF0Q4JvGNhefx9MucTBM"/>
+</div>
+<p class="font-headline italic text-lg text-on-surface mb-6 leading-relaxed">
+                    "The integration of sub-surface thermal data suggests a significant shift in tectonic friction coefficients."
+                </p>
+<div class="flex flex-col gap-2">
+<span class="font-label text-[10px] text-on-surface-variant uppercase">Observer: K. VANCE</span>
+<span class="font-label text-[10px] text-on-surface-variant uppercase">Coordinates: 45.8327° N, 6.8650° E</span>
+</div>
+<button class="mt-8 w-full py-4 bg-primary-container text-on-primary-container font-label text-xs uppercase tracking-widest hover:brightness-110 transition-all">
+                    Generate Report
+                </button>
+</div>
+</section>
+</main>
+<!-- BOTTOM NAV BAR (MOBILE) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-12 bg-[#10141a] z-50 h-14">
+<a class="text-[#58a6ff] border-t-2 border-[#58a6ff] pt-1" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+</a>
+<a class="text-[#31353c] pt-1 hover:text-[#a2c9ff] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">biotech</span>
+</a>
+<a class="text-[#31353c] pt-1 hover:text-[#a2c9ff] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">history_edu</span>
+</a>
+<a class="text-[#31353c] pt-1 hover:text-[#a2c9ff] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+</a>
+</nav>
+</body></html>

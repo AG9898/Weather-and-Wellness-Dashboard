@@ -39,12 +39,12 @@ export default function MisokinesiaPage() {
     <PageContainer>
       {/* Hero action zone */}
       <div
-        className="relative mb-8 overflow-hidden rounded-2xl border border-border px-8 py-10"
+        className="relative mb-8 overflow-hidden rounded-2xl border border-border px-8 py-10 shadow-[var(--shadow-raised)]"
         style={{ background: "var(--card)" }}
       >
         <div
-          className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-20 blur-3xl"
-          style={{ background: "var(--ubc-blue-600)" }}
+          className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-16 blur-3xl"
+          style={{ background: "var(--ring)" }}
         />
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-lg space-y-2">
@@ -64,7 +64,6 @@ export default function MisokinesiaPage() {
               disabled={loading}
               onClick={handleStart}
               className="rounded-xl px-6 font-semibold text-primary-foreground"
-              style={{ background: "var(--ubc-blue-700)" }}
             >
               <Video className="mr-2 size-4" />
               {loading ? "Starting…" : "Start Misokinesia Session"}
@@ -78,7 +77,7 @@ export default function MisokinesiaPage() {
 
       {/* Placeholder KPI zone */}
       <div
-        className="rounded-2xl border border-border px-8 py-8"
+        className="rounded-2xl border border-border px-8 py-8 shadow-[var(--shadow-card)]"
         style={{ background: "var(--card)" }}
       >
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">

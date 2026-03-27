@@ -106,15 +106,15 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#001328_0%,#001a41_34%,#002455_68%,#001328_100%)] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#12161c_0%,#171c22_36%,#1d232b_68%,#12161c_100%)] text-white">
       <LoginBackgroundPaths />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(92,229,252,0.14),transparent_24%),radial-gradient(circle_at_50%_72%,rgba(0,82,245,0.20),transparent_34%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(96,127,153,0.16),transparent_24%),radial-gradient(circle_at_50%_72%,rgba(0,19,40,0.24),transparent_36%)]" />
 
       <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-8">
         <div ref={heroRef} className="mx-auto flex w-full max-w-6xl flex-col items-center text-center">
           <p
             data-hero-eyebrow
-            className="mb-6 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-[11px] font-semibold tracking-[0.34em] text-[#9efaf2]/88 uppercase backdrop-blur-md"
+            className="mb-6 rounded-full border border-white/12 bg-white/6 px-4 py-2 text-[11px] font-semibold tracking-[0.34em] text-white/72 uppercase backdrop-blur-md"
           >
             University of British Columbia
           </p>
@@ -134,7 +134,7 @@ export default function LoginPage() {
                       <span
                         key={id}
                         data-title-letter
-                        className="inline-block bg-gradient-to-b from-white via-[#dff6ff] to-[#79dbff] bg-clip-text pr-[0.02em] text-transparent [text-shadow:0_0_28px_rgba(92,229,252,0.16)]"
+                        className="inline-block bg-gradient-to-b from-white via-white to-white/62 bg-clip-text pr-[0.02em] text-transparent [text-shadow:0_0_28px_rgba(255,255,255,0.08)]"
                       >
                         {letter}
                       </span>
@@ -152,10 +152,10 @@ export default function LoginPage() {
             <Button
               type="button"
               onClick={() => setOpen(true)}
-              className="h-14 rounded-[1.3rem] border border-white/10 bg-[#061a38]/88 px-8 text-base font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-300 hover:-translate-y-0.5 hover:bg-[#0a2245]"
+              className="h-14 rounded-[1.3rem] border border-white/10 bg-white px-8 text-base font-semibold text-[#12161c] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-300 hover:-translate-y-0.5 hover:bg-white/92"
             >
               <span className="opacity-94">Login</span>
-              <span aria-hidden="true" className="ml-3 text-lg leading-none text-[#79dbff]">
+              <span aria-hidden="true" className="ml-3 text-lg leading-none text-[#12161c]/56">
                 →
               </span>
             </Button>
@@ -165,7 +165,7 @@ export default function LoginPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="max-w-[calc(100%-2rem)] border-white/12 bg-[linear-gradient(180deg,rgba(6,26,56,0.94),rgba(2,12,32,0.88))] p-0 text-white shadow-[0_30px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl sm:max-w-md"
+          className="max-w-[calc(100%-2rem)] border-white/12 bg-[linear-gradient(180deg,rgba(22,28,34,0.96),rgba(16,20,25,0.92))] p-0 text-white shadow-[0_30px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl sm:max-w-md"
         >
           <LoginDialogForm />
         </DialogContent>
