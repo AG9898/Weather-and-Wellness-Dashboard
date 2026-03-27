@@ -47,6 +47,7 @@ Participant.
 - For universal UI assets (branding, logos, component mockups), use `reference/UI Reference/`.
 - For UI style, `docs/styleguide.md` is the canonical reference.
 - For shadcn component usage and CLI patterns, follow `docs/shadcn.md`.
+- For Storybook-driven isolated UI review, story scope, and story authoring expectations, follow `docs/storybook.md`.
 - For the multi-lab data model and onboarding new labs, see `docs/MULTI_LAB.md`.
 
 ---
