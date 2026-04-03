@@ -363,12 +363,12 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
       className="relative overflow-hidden rounded-3xl border border-border/90 px-6 py-6 shadow-[0_28px_60px_-46px_rgb(0_19_40/0.95)]"
       style={{
         background:
-          "linear-gradient(180deg, color-mix(in srgb, var(--card) 94%, var(--ubc-blue-100) 6%) 0%, var(--card) 100%)",
+          "linear-gradient(180deg, color-mix(in srgb, var(--card) 96%, var(--accent) 4%) 0%, var(--card) 100%)",
       }}
     >
       <div
         className="pointer-events-none absolute -right-16 top-0 h-36 w-36 rounded-full opacity-20 blur-3xl"
-        style={{ background: "var(--ubc-blue-500)" }}
+        style={{ background: "color-mix(in srgb, var(--ring) 68%, transparent)" }}
       />
 
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

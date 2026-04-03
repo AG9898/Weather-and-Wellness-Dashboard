@@ -102,7 +102,13 @@ export default function LoginBackgroundPaths() {
 
   return (
     <div ref={rootRef} className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(92,229,252,0.14),transparent_34%),radial-gradient(circle_at_bottom,rgba(0,82,245,0.20),transparent_42%)]" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle_at_top, color-mix(in srgb, var(--ring) 20%, transparent), transparent 34%), radial-gradient(circle_at_bottom, color-mix(in srgb, var(--primary) 28%, transparent), transparent 42%)",
+        }}
+      />
       {LAYER_CONFIGS.map((layer, layerIndex) => (
         <div
           key={layer.key}

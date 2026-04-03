@@ -148,7 +148,6 @@ export default function MisokinesiaTaskPage() {
         <Button
           onClick={() => setPhase("playing")}
           className="mt-8 rounded-xl px-8 text-primary-foreground"
-          style={{ background: "var(--ubc-blue-700)" }}
         >
           Begin
         </Button>
@@ -217,7 +216,6 @@ export default function MisokinesiaTaskPage() {
           <Button
             onClick={handleRetry}
             className="rounded-xl px-8 text-primary-foreground"
-            style={{ background: "var(--ubc-blue-700)" }}
           >
             Retry
           </Button>
@@ -228,8 +226,7 @@ export default function MisokinesiaTaskPage() {
     return (
       <Screen>
         <div
-          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full"
-          style={{ background: "var(--ubc-blue-700)" }}
+          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary"
         >
           <svg
             className="h-8 w-8 text-primary-foreground"
@@ -253,7 +250,6 @@ export default function MisokinesiaTaskPage() {
         <Button
           onClick={() => router.push("/dashboard")}
           className="mt-8 rounded-xl px-8 text-primary-foreground"
-          style={{ background: "var(--ubc-blue-700)" }}
         >
           Return to Dashboard
         </Button>

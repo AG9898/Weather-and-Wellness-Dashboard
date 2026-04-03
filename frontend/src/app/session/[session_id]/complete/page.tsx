@@ -9,8 +9,7 @@ export default function CompletePage() {
       <div className="max-w-sm w-full text-center space-y-6">
         {/* Checkmark icon */}
         <div
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full"
-          style={{ background: "var(--ubc-blue-700)" }}
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary"
         >
           <svg
             className="h-8 w-8 text-primary-foreground"
@@ -40,7 +39,6 @@ export default function CompletePage() {
           asChild
           size="lg"
           className="w-full rounded-xl font-semibold text-primary-foreground"
-          style={{ background: "var(--ubc-blue-700)" }}
         >
           <Link href="/dashboard">Return to Dashboard</Link>
         </Button>

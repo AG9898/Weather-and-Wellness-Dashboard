@@ -215,4 +215,4 @@ blocking before merging analytics changes.
 | Database schema | `docs/SCHEMA.md` |
 | Code style and patterns | `docs/CONVENTIONS.md` |
 | Reference R analysis | `reference/Weather_MLM.R` |
-| Current task queue | `docs/kanban.md` |
+| Current task queue | `docs/workboard.json` |

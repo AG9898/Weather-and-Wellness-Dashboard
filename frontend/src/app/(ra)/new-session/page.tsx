@@ -160,7 +160,6 @@ export default function NewSessionPage() {
             onClick={handleConsent}
             size="lg"
             className="rounded-xl font-semibold text-primary-foreground"
-            style={{ background: "var(--ubc-blue-700)" }}
           >
             I Consent
           </Button>
@@ -361,7 +360,6 @@ export default function NewSessionPage() {
                 type="submit"
                 size="lg"
                 className="flex-1 rounded-xl font-semibold text-primary-foreground"
-                style={{ background: "var(--ubc-blue-700)" }}
                 disabled={!isFormComplete(demoForm) || starting}
               >
                 {starting ? (

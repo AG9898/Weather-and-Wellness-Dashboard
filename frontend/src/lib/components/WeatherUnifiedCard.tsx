@@ -451,8 +451,8 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
           {
             from: dateToTs(analyticsAnnotation.dateFrom),
             to: dateToTs(analyticsAnnotation.dateTo) + 86_400_000, // include the end date
-            color: "rgba(0,82,245,0.05)",
-            borderColor: "rgba(0,82,245,0.15)",
+            color: "color-mix(in srgb, var(--ring) 12%, transparent)",
+            borderColor: "color-mix(in srgb, var(--ring) 28%, transparent)",
             borderWidth: 1,
             zIndex: 0,
           },
@@ -654,7 +654,7 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
       {/* Background glow accent */}
       <div
         className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-25 blur-3xl"
-        style={{ background: "var(--ubc-blue-500)" }}
+        style={{ background: "color-mix(in srgb, var(--ring) 68%, transparent)" }}
       />
 
       <div className="relative p-5 sm:p-6">
@@ -662,8 +662,7 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
         <div className="mb-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <svg
-              className="h-4 w-4 shrink-0"
-              style={{ color: "var(--ubc-blue-500)" }}
+              className="h-4 w-4 shrink-0 text-primary"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -784,11 +783,14 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
           <div className="mb-3 flex items-center gap-2">
             <span
               className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-              style={{ borderColor: "rgba(0,82,245,0.25)", background: "rgba(0,82,245,0.06)" }}
+              style={{
+                borderColor: "color-mix(in srgb, var(--ring) 36%, transparent)",
+                background: "color-mix(in srgb, var(--ring) 12%, transparent)",
+              }}
             >
               <span
                 className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: "var(--ubc-blue-700)" }}
+                style={{ background: "var(--primary)" }}
               />
               Analysis: {analyticsAnnotation.selectedTermLabel}
             </span>

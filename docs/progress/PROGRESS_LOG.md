@@ -1,4 +1,5 @@
 **Historical log of progress**
+**Archive only. The active task board is `docs/workboard.json`.**
 **If you are an agent reading this stop here**
 
 ## Completed Tasks

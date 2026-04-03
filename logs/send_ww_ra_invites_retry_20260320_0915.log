@@ -1,0 +1,14 @@
+[2026-03-20T15:15:04Z] Starting scheduled WW RA invite retry batch
+[2026-03-20T15:15:04Z] Inviting Ni <ni.an@ubc.ca> as role=ra lab_name=ww
+Inviting ni.an@ubc.ca (role=ra, lab_name='ww') ...
+  redirect_to: https://weather-and-wellness-dashboard.vercel.app/set-password
+Success. User ID: aa28aa73-be75-40a4-909a-3ce83309e826
+  email    : ni.an@ubc.ca
+  role     : ra
+  lab_name : 'ww'
+Invite email sent. The user must accept it before they can log in.
+[2026-03-20T15:15:05Z] Inviting Alannah <alannahw@psych.ubc.ca> as role=ra lab_name=ww
+Inviting alannahw@psych.ubc.ca (role=ra, lab_name='ww') ...
+  redirect_to: https://weather-and-wellness-dashboard.vercel.app/set-password
+ERROR: Supabase invite failed (HTTP 429):
+{"code":429,"error_code":"over_email_send_rate_limit","msg":"email rate limit exceeded"}

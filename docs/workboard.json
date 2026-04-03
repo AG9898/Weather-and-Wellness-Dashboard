@@ -1,0 +1,41 @@
+{
+  "tasks": [
+    {
+      "id": "T115",
+      "group_id": "INFRA",
+      "title": "Infra - Supabase Storage bucket setup and misokinesia stimuli verification",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Provision the public misokinesia storage bucket and verify the seeded stimulus metadata for launch.",
+      "description": "Set up the public Supabase Storage bucket `misokinesia-stimuli`, upload placeholder or final mp4 clips, and verify that the existing seed script populates one active test set plus 29 active stimuli rows with the expected storage paths, durations, and sort order. Confirm that the public CDN URLs resolve without authentication using the documented `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}` pattern.",
+      "acceptance_criteria": [
+        "`misokinesia-stimuli` Supabase Storage bucket exists with public access enabled",
+        "At least one placeholder or final mp4 is uploaded and its public URL is directly accessible in a browser with no auth",
+        "`backend/admin_cli/seed_misokinesia_stimuli.py` exists and can seed the misokinesia test set plus 29 stimuli rows",
+        "Running the seed inserts exactly 1 row in `misokinesia_test_sets` and 29 rows in `misokinesia_stimuli`",
+        "All 29 stimuli rows have correct `sort_order`, `storage_path`, and `duration_ms` values",
+        "POST `/misokinesia/start` returns manifest URLs that load immediately with no 403 or redirect"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/admin_cli/seed_misokinesia_stimuli.py"
+      ],
+      "docs": [
+        "docs/CONVENTIONS.md",
+        "docs/DECISIONS.md",
+        "docs/API.md",
+        "docs/SCHEMA.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "notes": [
+        "The seed script already exists in the repo; the remaining work is external bucket provisioning, asset upload, and verification."
+      ],
+      "commands": [
+        "python3 backend/admin_cli/seed_misokinesia_stimuli.py"
+      ],
+      "estimate": "M"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ralph Loop"
+  short_description: "Orchestrate delegated workboard cycles"
+  default_prompt: "Use $ralphloop start-task iterations:1 to run one delegated workboard cycle."
+policy:
+  allow_implicit_invocation: false

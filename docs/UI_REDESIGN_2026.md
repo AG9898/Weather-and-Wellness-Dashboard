@@ -1,207 +1,384 @@
-# UI/UX Overhaul — Weather & Wellness Research Platform (2026)
+# UI Redesign 2026 — Editorial Dashboard Direction
 
-> **Status:** Phase 1 implemented — March 2026
-> **Scope:** Platform-wide theming reset for RA pages, participant pages, auth surfaces, and shared components
-> **Out of scope:** Layout rewrites, participant flow redesign, backend changes
-
----
-
-## 1. Direction Reset
-
-The previous redesign direction improved the existing palette but still treated the interface as a UBC-blue tonal system. That kept too much chroma in the UI itself, especially in light mode, and left dark mode visually tied to navy-heavy surfaces.
-
-Phase 1 replaces that approach with a standardized light/dark theme model:
-
-- Light mode uses near-white neutral surfaces with dark neutral text.
-- Dark mode uses charcoal-neutral surfaces with soft off-white text.
-- The only branded UI accent is `--ubc-video-blue` (`#001328`).
-- Dark mode may use tonal lifts derived from `#001328` for accessible focus, active, and primary-action contrast.
-- Charts keep a separate, restrained visualization palette so data remains readable without turning the whole interface into a multi-accent system.
-
-The reference image in `reference/UI Reference/theme makeover/stitch_research_dashboard_redesign/screen.png` is used here for tonal normalization, restraint, and natural dark-surface contrast. It is not a layout clone target.
+> **Status:** Proposed next phase
+> **Current baseline:** The 2026 semantic theme re-tone is already implemented in the app
+> **Primary scope:** RA dashboard redesign and dashboard-specific chrome
+> **Out of scope for this phase:** Login/set-password redesign, participant flow redesign, backend changes
 
 ---
 
-## 2. Audit Findings
+## 1. Purpose
 
-### 2.1 Theme Model Problem
+The previous 2026 UI work largely completed the platform theme reset:
 
-The old theme system interpreted light and dark mode through the UBC blue family rather than through conventional neutral surface ramps.
+- normalized light/dark semantic tokens,
+- removed the bright-blue chrome problem,
+- re-toned auth surfaces,
+- and moved shared UI closer to `primary` / `ring` semantic usage.
 
-That created three recurring issues:
+That work changed the **palette system** but not the **layout language**.
 
-- Light mode felt tinted instead of calm and baseline-neutral.
-- Dark mode relied on deep navy surfaces that read more branded than standardized.
-- Multiple bright blues appeared as UI chrome rather than staying limited to intentional emphasis.
+This document defines the next step: shift the RA dashboard from a stacked utility page into a more intentional, dashboard-centered research workspace with a stronger editorial feel.
 
-### 2.2 Token Problem
+The reference material in `reference/UI Reference/theme makeover/` is used here for:
 
-The semantic token layer existed, but several decisions still pushed the UI toward legacy color behavior:
+- compositional inspiration,
+- hierarchy,
+- pacing,
+- asymmetry,
+- atmosphere,
+- and section framing.
 
-- `--primary` and `--ring` were mapped to bright accent blues.
-- `--secondary`, `--accent`, and `--sidebar` still carried blue tint.
-- Several components bypassed semantic tokens and used direct `--ubc-blue-*` fills or raw blue gradients.
-
-### 2.3 Scope Problem
-
-The previous overhaul document was RA-focused. That was too narrow for a theme reset because auth flows, participant surfaces, and shared components would otherwise keep the legacy palette alive.
-
-This document now defines platform-wide theming rules. Page-specific redesign work can still be phased separately.
+It is **not** a cloning target and its code is **not** a source of truth.
 
 ---
 
-## 3. Design Principles
+## 2. Direction
 
-**Neutral surfaces first.** Light and dark modes should both feel like familiar, standardized interfaces before brand identity is layered on top.
+### 2.1 Creative Target
 
-**One branded UI accent.** The interface should not rotate between multiple bright blues. `#001328` is the brand anchor; derived tonal lifts are allowed only where contrast demands them.
+The desired direction is a **hybrid editorial dashboard**:
 
-**Semantic tokens are the source of truth.** Shared UI should consume `background`, `card`, `foreground`, `primary`, `accent`, `muted`, `border`, `input`, and `ring` tokens. Raw `--ubc-blue-*` tokens are legacy support, not the preferred authoring path.
+- more distinctly dashboard-centered than the current page,
+- more artistic in composition,
+- more research-workspace than admin utility,
+- still clinical, credible, and data-first.
 
-**Charts are separate from chrome.** Data visualization may use additional restrained series colors, but those colors do not become general UI accents.
+This is not a cinematic marketing landing page. It is a lab operations surface with stronger visual authorship.
 
-**Keep the existing structure.** This phase does not replace the floating chrome, typography stack, or current page layouts. It changes the theme system underneath them.
+### 2.2 What Should Feel Different
 
----
+The current dashboard mostly reads as:
 
-## 4. Color System — Revised
+- a hero action card,
+- followed by a weather card,
+- followed by an analytics card,
+- inside a generic shared shell.
 
-### 4.1 Brand Anchor and Tonal Support
+The redesigned dashboard should instead feel like:
 
-The brand anchor remains:
+- a single composed workspace,
+- with one dominant data canvas,
+- one clear structural hierarchy,
+- supporting secondary regions,
+- and a stronger sense of narrative flow across the page.
 
-```css
---ubc-video-blue: #001328;
-```
+### 2.3 Desired User Impression
 
-Legacy `--ubc-blue-*` tokens are retained only as tonal lifts/shades of the same hue family so older components do not reintroduce unrelated bright blues:
+When an RA lands on `/dashboard`, the page should feel:
 
-```css
---ubc-blue-700: #001328;
---ubc-blue-600: #11263a;
---ubc-blue-500: #23415a;
---ubc-blue-300: #506a81;
---ubc-blue-200: #8e9eaf;
---ubc-blue-100: #cfd7de;
-```
+- like the central operating surface for the lab,
+- quieter and more deliberate,
+- more analytical,
+- more premium,
+- and less like stacked shadcn cards.
 
-### 4.2 Light Theme Semantic Targets
+The first read should be:
 
-Light mode is now a normalized neutral palette:
-
-| Token | Target behavior |
-|-------|------------------|
-| `--background` | near-white neutral page canvas |
-| `--card` / `--popover` | white or near-white surface |
-| `--foreground` | dark neutral ink |
-| `--muted-foreground` | mid neutral gray with AA-safe contrast |
-| `--primary` | `#001328` |
-| `--primary-foreground` | light text on dark fill |
-| `--secondary` / `--accent` / `--muted` | neutral support surfaces, not blue fills |
-| `--border` / `--input` | neutral separators and control fills |
-| `--ring` | tonal lift of the same hue family, not cyan |
-
-### 4.3 Dark Theme Semantic Targets
-
-Dark mode is now a standardized charcoal theme:
-
-| Token | Target behavior |
-|-------|------------------|
-| `--background` | dark neutral background, not navy-forward |
-| `--card` / `--popover` | slightly raised dark neutral surfaces |
-| `--foreground` | soft off-white text |
-| `--muted-foreground` | subdued neutral supporting text |
-| `--primary` | contrast-safe tonal lift derived from `#001328` |
-| `--primary-foreground` | light text |
-| `--secondary` / `--accent` / `--muted` | neutral dark support surfaces |
-| `--border` / `--input` | low-contrast neutral separators |
-| `--ring` | brighter tonal lift of the same hue family |
-
-### 4.4 Chart Tokens
-
-Charts use a restrained slate/steel palette via `--chart-*` tokens so multiple data series remain legible without turning the rest of the UI into a multi-accent system.
-
-These chart colors are for data visualization only.
+1. what this lab is monitoring right now,
+2. what the primary action is,
+3. where the live or recent data sits,
+4. where secondary lab actions and context live.
 
 ---
 
-## 5. Elevation Model
+## 3. Reference Interpretation
 
-Elevation now reinforces neutral themes rather than blue-tinted surfaces:
+The useful lessons from `reference/UI Reference/theme makeover/` are:
 
-```css
---shadow-card:   0 1px 2px rgb(15 23 42 / 5%), 0 10px 24px rgb(15 23 42 / 6%);
---shadow-raised: 0 6px 18px rgb(15 23 42 / 8%), 0 24px 48px rgb(15 23 42 / 8%);
-```
+- large editorial headings and stronger sectional hierarchy,
+- asymmetrical composition,
+- a dominant central workspace,
+- companion rails or supporting modules,
+- quieter chrome,
+- atmosphere created by tone, spacing, and depth instead of many colors,
+- and a more composed relationship between narrative context and data.
 
-Usage:
+The project should **not** inherit directly from the references:
 
-- Level 0: page background
-- Level 1: standard cards and data panels
-- Level 2: hero/action cards
-- Level 3: overlays and popovers
+- hard sci-fi naming,
+- fictional telemetry styling,
+- copied rail layouts,
+- copied tables/charts,
+- or copied HTML/CSS structure.
 
----
+The translation must stay grounded in the actual product:
 
-## 6. Component Rules
-
-### 6.1 Primary Actions
-
-- Primary buttons use the semantic `primary` token.
-- Do not use bright blue gradients for standard actions.
-- If a dark theme needs more contrast, use the defined tonal lift in `primary`, not a new accent hue.
-
-### 6.2 Secondary and Ghost Treatments
-
-- Secondary, ghost, muted, and hover surfaces stay neutral.
-- Hover states should read as tonal elevation, not as colored fills.
-
-### 6.3 Focus States
-
-- Focus indicators use `ring`.
-- Cyan rings and unrelated highlight colors are removed.
-
-### 6.4 Navigation Chrome
-
-- The floating chrome architecture stays.
-- Active and hover states must be driven by semantic tokens and the new accent policy.
-
-### 6.5 Auth Surfaces
-
-- Login and password flows use the same dark neutral base as the main dark theme.
-- Auth CTAs and highlights follow the single-accent system rather than blue gradients.
+- participant/session workflows,
+- weather-linked dashboard content,
+- lab-specific study needs,
+- and RA operational tasks.
 
 ---
 
-## 7. What Changed in Phase 1
+## 4. Platform-Wide Direction vs Lab-Specific Composition
 
-Implemented changes:
+This redesign must be scoped so that there is a **shared platform direction** without forcing every lab page into the same dashboard layout.
 
-- `frontend/src/app/globals.css` now defines a standardized neutral light/dark semantic palette.
-- `frontend/src/app/layout.tsx` browser theme-color metadata now matches the new light/dark backgrounds.
-- Shared chart components now fall back to restrained chart token colors instead of legacy bright blues.
-- RA hero/action surfaces were moved toward semantic `primary`/`ring` usage.
-- Login and set-password flows were re-toned to the new dark neutral system.
+### 4.1 Shared Across Labs
+
+All lab-specific pages should inherit the same overall design language:
+
+- the same semantic token system,
+- the same surface hierarchy,
+- the same typography rules,
+- the same motion rules,
+- the same spacing rhythm,
+- the same chrome principles,
+- and the same dashboard composition vocabulary.
+
+This shared direction should make the product feel like one platform.
+
+### 4.2 Allowed to Vary By Lab
+
+Each lab page may, and likely should, differ in:
+
+- section order,
+- module density,
+- information priority,
+- navigation composition,
+- action placement,
+- presence or absence of a side context rail,
+- presence or absence of large data canvases,
+- and the ratio between narrative, controls, and analysis.
+
+Labs should be free to compose different page structures because their studies and workflows are not uniform.
+
+### 4.3 Constraint
+
+Labs may vary in **composition**, but not in **visual identity fundamentals**.
+
+That means:
+
+- no separate lab-specific palette systems,
+- no unrelated accent colors,
+- no unrelated typography systems,
+- and no one-off page aesthetics that break platform coherence.
+
+The platform should provide a **dashboard grammar**, not a single dashboard template.
 
 ---
 
-## 8. What Did Not Change
+## 5. Core Design Rules
 
-| Element | Status | Reason |
-|---------|--------|--------|
-| Theme preference behavior (`system` / `light` / `dark`) | Unchanged | Palette reset only in this phase |
-| Floating dock concept | Unchanged | Structural redesign deferred |
-| JetBrains Mono typography | Unchanged | Broader visual-language decisions deferred |
-| Page layouts | Unchanged | This phase targets theme system, not layout composition |
-| Participant flow logic | Unchanged | Theming only |
+### 5.1 Dashboard First, Card Stack Second
+
+Pages in this redesign should be composed as dashboards first, not as vertical piles of isolated cards.
+
+Preferred structure:
+
+- masthead or editorial header,
+- dominant workspace,
+- supporting modules,
+- quiet utility actions.
+
+### 5.2 One Primary Workspace
+
+Each lab dashboard page should have one visually dominant region.
+
+Examples:
+
+- a weather-analysis workspace,
+- a study monitoring panel,
+- a session activity surface,
+- or a model/results workspace.
+
+The page should not give equal weight to every module.
+
+### 5.3 Intentional Asymmetry
+
+Use asymmetry to improve hierarchy, not for novelty.
+
+Good uses:
+
+- wide main canvas + narrow context rail,
+- large masthead + offset utility actions,
+- strong left-aligned content blocks with staggered supporting modules.
+
+Avoid symmetric three-card rows as the default composition language.
+
+### 5.4 Atmosphere Through Tone, Not Noise
+
+Art direction should come from:
+
+- tonal layering,
+- sectional rhythm,
+- spacing,
+- restrained gradients,
+- background texture,
+- and subtle depth.
+
+It should not come from:
+
+- many accent colors,
+- loud borders,
+- decorative icon clutter,
+- or excessive glow.
+
+### 5.5 Dashboard Chrome Should Support the Page
+
+The dashboard route may use different RA chrome from the rest of the RA app if needed.
+
+For this phase, dashboard chrome should become:
+
+- quieter,
+- more structural,
+- less visually dominant than the page content,
+- and more compatible with wide editorial composition.
 
 ---
 
-## 9. Follow-On Work
+## 6. Visual Draft
 
-Later phases can build on this foundation with:
+### 6.1 What the Dashboard Should Look Like
 
-- broader auth-page visual redesign,
-- page-by-page component cleanup away from legacy `--ubc-blue-*` usage,
-- stricter semantic-token enforcement,
-- and any larger visual-language decisions beyond color and tone.
+The target visual structure for the RA dashboard is:
+
+- a tall editorial masthead instead of a boxed hero card,
+- a primary action integrated into the masthead rather than isolated in a standalone panel,
+- a wide data workspace below or adjacent to the masthead,
+- a secondary rail or companion column for summary, context, undo/session actions, or lab notes,
+- and stronger separation between primary and secondary content through space and tone rather than borders.
+
+The weather and analytics regions should feel like parts of one coordinated research surface, not like unrelated modules.
+
+### 6.2 Typography
+
+For this phase, keep the repo's JetBrains Mono-led identity.
+
+The new feel should therefore come mainly from:
+
+- scale contrast,
+- reduced visual clutter,
+- calmer uppercase/meta usage,
+- more breathing room,
+- and clearer hierarchy between title, section kicker, body, and data labels.
+
+### 6.3 Motion
+
+Motion should remain restrained:
+
+- staged reveal of major sections,
+- subtle canvas/chart load-in,
+- gentle emphasis on active modules,
+- no ambient perpetual motion unless it is extremely low-noise.
+
+---
+
+## 7. Implementation Strategy
+
+### 7.1 Replace the Role of This Document
+
+This file replaces the old theme-retone plan as the active UI redesign document.
+
+The theme retone should now be treated as completed background work, not the main roadmap.
+
+### 7.2 Introduce Dashboard Composition Primitives
+
+Frontend should gain reusable composition primitives rather than a single hard-coded dashboard layout.
+
+Suggested primitives:
+
+- `DashboardCanvas`
+- `DashboardMasthead`
+- `DashboardWorkspace`
+- `DashboardContextRail`
+- `DashboardMetricStrip`
+- `DashboardSectionKicker`
+- `DashboardQuietTable`
+- `DashboardActionCluster`
+
+These primitives should define layout language and hierarchy, not business logic.
+
+### 7.3 Allow Dashboard-Specific RA Chrome
+
+`/dashboard` should be allowed to diverge from the current floating dock shell if needed.
+
+Recommended outcome:
+
+- dashboard-specific top utility bar or restrained shell,
+- optional dashboard rail only if the layout benefits from it,
+- shared RA shell can remain for non-dashboard routes in this phase.
+
+### 7.4 Recompose the Current Dashboard
+
+The current dashboard should be rebuilt around:
+
+- a masthead,
+- a dominant weather/analytics workspace,
+- integrated primary action,
+- and a secondary region for auxiliary actions and summaries.
+
+This should replace the current:
+
+- hero box,
+- weather card,
+- analytics card
+
+stacking model.
+
+### 7.5 Add Lab Dashboard Profiles
+
+Introduce a frontend configuration layer so each lab dashboard can choose composition without redefining the visual system.
+
+Suggested types:
+
+- `LabDashboardProfile`
+- `LabDashboardSection`
+- `DashboardModuleKind`
+- `DashboardChromeMode`
+
+A lab dashboard profile should control:
+
+- title and kicker,
+- section ordering,
+- active modules,
+- preferred composition mode,
+- and available quick actions.
+
+This stays frontend-only for this phase.
+
+---
+
+## 8. Initial Route Scope
+
+### Included
+
+- RA dashboard route
+- dashboard-specific RA chrome on `/dashboard`
+- shared dashboard primitives used by future lab dashboards
+
+### Not Included Yet
+
+- login page
+- set-password page
+- participant task flows
+- participant completion pages
+- broad restyling of all RA routes
+
+---
+
+## 9. Acceptance Criteria
+
+This redesign phase is successful when:
+
+- `/dashboard` no longer reads as a simple stack of independent cards,
+- the dashboard has one dominant workspace and a clear supporting hierarchy,
+- weather and analytics feel coordinated rather than adjacent,
+- the dashboard chrome no longer competes with the page composition,
+- at least two future lab dashboards can be described using the same composition primitives but different layouts,
+- and the platform feels more authored without losing its research-tool credibility.
+
+---
+
+## 10. Explicit Non-Goals
+
+This redesign does not aim to:
+
+- copy the reference layouts,
+- turn the product into a marketing site,
+- introduce multiple accent systems,
+- redesign every route at once,
+- or let each lab invent an unrelated visual language.
+
+The goal is a stronger platform dashboard direction with controlled, lab-specific layout flexibility.

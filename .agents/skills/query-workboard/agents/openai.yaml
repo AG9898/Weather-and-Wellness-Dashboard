@@ -1,0 +1,4 @@
+interface:
+  display_name: "Query Workboard"
+  short_description: "Inspect docs/workboard.json for the next task"
+  default_prompt: "Use $query-workboard to find the next actionable task in docs/workboard.json."

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KANBAN_MD="docs/kanban.md"
+WORKBOARD_JSON="docs/workboard.json"
 MAX_ITERS="${MAX_ITERS:-200}"
 CODEX_MODEL="${CODEX_MODEL:-gpt-5}"
 CODEX_PROFILE="${CODEX_PROFILE:-}"
@@ -11,71 +11,54 @@ need_cmd() {
 }
 
 need_cmd jq
-need_cmd awk
 need_cmd codex
 need_cmd base64
 need_cmd paste
 need_cmd sed
 need_cmd date
 
-extract_kanban_json() {
-  awk '
-    BEGIN { in_json=0 }
-    /^```json[[:space:]]*$/ { in_json=1; next }
-    /^```[[:space:]]*$/ && in_json { in_json=0; exit }
-    in_json { print }
-  ' "$KANBAN_MD"
+ensure_workboard() {
+  if [[ ! -f "$WORKBOARD_JSON" ]]; then
+    echo "Missing workboard file: $WORKBOARD_JSON" >&2
+    exit 1
+  fi
 }
 
-write_kanban_json_back() {
-  local json_file="$1"
-  awk -v new_json="$json_file" '
-    BEGIN {
-      while ((getline line < new_json) > 0) {
-        j[++n] = line
-      }
-      in_json = 0
-    }
-    /^```json[[:space:]]*$/ {
-      print
-      for (i = 1; i <= n; i++) print j[i]
-      in_json = 1
-      next
-    }
-    in_json && /^```[[:space:]]*$/ {
-      in_json = 0
-      print
-      next
-    }
-    !in_json { print }
-  ' "$KANBAN_MD" > "${KANBAN_MD}.tmp"
-  mv "${KANBAN_MD}.tmp" "$KANBAN_MD"
+validate_workboard() {
+  jq -e '
+    type == "object" and
+    (.tasks | type == "array")
+  ' "$WORKBOARD_JSON" >/dev/null
 }
 
 next_task_b64() {
-  local json_file="$1"
   jq -r '
-    .tasks as $all
+    . as $root
+    | (reduce $root.tasks[] as $task ({}; .[$task.id] = ($task.status // "missing"))) as $statuses
+    | $root.tasks
     | [
-        .tasks[]
+        .[]
         | select(.status == "todo")
-        | select((.depends_on | all(. as $d | ($all[] | select(.id == $d) | .status) == "done")))
+        | select((.depends_on // [] | all(.[]; $statuses[.] == "done")))
       ][0]
     | if . == null then "" else @base64 end
-  ' "$json_file"
+  ' "$WORKBOARD_JSON"
 }
 
 set_task_status() {
-  local json_file="$1"
-  local task_id="$2"
-  local status="$3"
+  local task_id="$1"
+  local status="$2"
+  local tmp_file
+  tmp_file="$(mktemp)"
   jq --arg id "$task_id" --arg s "$status" '
     (.tasks[] | select(.id == $id) | .status) = $s
-  ' "$json_file" > "${json_file}.tmp"
-  mv "${json_file}.tmp" "$json_file"
+  ' "$WORKBOARD_JSON" > "$tmp_file"
+  mv "$tmp_file" "$WORKBOARD_JSON"
 }
 
 echo "=== Starting Ralph Loop (terminal-only) ==="
+ensure_workboard
+validate_workboard
 iter=0
 
 while (( iter < MAX_ITERS )); do
@@ -85,13 +68,9 @@ while (( iter < MAX_ITERS )); do
   echo "Iteration $iter"
   echo "-------------------------------"
 
-  tmp_json="$(mktemp)"
-  extract_kanban_json > "$tmp_json"
-
-  task_b64="$(next_task_b64 "$tmp_json")"
+  task_b64="$(next_task_b64)"
   if [[ -z "$task_b64" ]]; then
     echo "No ready todo task found. Exiting."
-    rm -f "$tmp_json"
     break
   fi
 
@@ -101,34 +80,32 @@ while (( iter < MAX_ITERS )); do
 
   echo "Running task: $task_id - $task_title"
 
-  set_task_status "$tmp_json" "$task_id" "in_progress"
-  write_kanban_json_back "$tmp_json"
+  set_task_status "$task_id" "in_progress"
 
-  read_docs="$(printf '%s' "$task_json" | jq -r '.read_docs[]?' | paste -sd ', ' -)"
-  update_docs="$(printf '%s' "$task_json" | jq -r '.updates_docs[]?' | paste -sd ', ' -)"
+  docs_list="$(printf '%s' "$task_json" | jq -r '.docs[]?' | paste -sd ', ' -)"
+  files_list="$(printf '%s' "$task_json" | jq -r '.files[]?' | paste -sd ', ' -)"
   criteria="$(printf '%s' "$task_json" | jq -r '.acceptance_criteria[]?' | sed 's/^/- /')"
 
   prompt=$(cat <<EOF
-You are a Codex implementation instance for one kanban task.
+You are a Codex implementation instance for one workboard task.
 
 Task ID: $task_id
 Task Title: $task_title
 
 Strict workflow:
-1) Read AGENTS.md, docs/PROGRESS.md, docs/kanban.md.
-2) Read all task read_docs: $read_docs
-3) Implement this task end-to-end in code.
-4) Verify acceptance criteria:
+1) Read AGENTS.md and docs/workboard.json.
+2) Read all task docs: $docs_list
+3) Inspect all task-owned files first: $files_list
+4) Implement this task end-to-end in code.
+5) Verify acceptance criteria:
 $criteria
-5) Update every path in updates_docs: $update_docs
-6) Keep documentation consistent.
-7) Mark task as "done" in docs/kanban.md when complete.
-8) Append proper entry to docs/PROGRESS.md.
-9) Return a concise final summary with:
-   - Files changed
-   - Acceptance criteria verification
-   - Docs updated
-   - Remaining risks/blockers (if any)
+6) Update any additional docs needed to keep the repo consistent.
+7) Mark task as "done" in docs/workboard.json when complete.
+8) Return a concise final summary with:
+-   Files changed
+-   Acceptance criteria verification
+-   Docs updated
+-   Remaining risks/blockers (if any)
 
 Emit clear step-by-step progress messages.
 EOF
@@ -152,11 +129,9 @@ EOF
   echo ""
   echo "Codex exit code: $codex_exit"
 
-  extract_kanban_json > "$tmp_json"
-  new_status="$(jq -r --arg id "$task_id" '.tasks[] | select(.id == $id) | .status' "$tmp_json")"
-  rm -f "$tmp_json"
+  new_status="$(jq -r --arg id "$task_id" '.tasks[] | select(.id == $id) | .status' "$WORKBOARD_JSON")"
 
-  echo "Kanban status after run: $new_status"
+  echo "Workboard status after run: $new_status"
 
   if [[ "$codex_exit" -ne 0 ]]; then
     echo "Stopping: Codex exited non-zero."

@@ -25,7 +25,7 @@ export default function MisokinesiaVideoPlayer({
           className="pointer-events-none absolute inset-0 opacity-20"
           style={{
             background:
-              "radial-gradient(ellipse 60% 50% at 50% 50%, var(--ubc-blue-300), transparent)",
+              "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, var(--ring) 72%, transparent), transparent)",
           }}
         />
 
@@ -36,20 +36,13 @@ export default function MisokinesiaVideoPlayer({
           >
             Video placeholder
           </p>
-          <p
-            className="text-center text-3xl font-bold text-foreground"
-            style={{ color: "var(--ubc-blue-700)" }}
-          >
+          <p className="text-center text-3xl font-bold text-primary">
             Clip {stimulusIndex} of {totalStimuli}
           </p>
           <Button
             type="button"
             onClick={onEnded}
             className="mt-2 rounded-xl px-8 py-2.5 text-sm font-semibold"
-            style={{
-              background: "var(--ubc-blue-700)",
-              color: "#fff",
-            }}
           >
             Continue
           </Button>

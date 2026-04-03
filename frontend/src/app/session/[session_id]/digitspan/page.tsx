@@ -287,9 +287,6 @@ export default function DigitSpanPage() {
           onClick={handleSubmitToBackend}
           disabled={submitting}
           className="mt-8 rounded-xl px-8 text-primary-foreground"
-          style={{
-            background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
-          }}
         >
           {submitting ? "Submitting…" : "Continue"}
         </Button>

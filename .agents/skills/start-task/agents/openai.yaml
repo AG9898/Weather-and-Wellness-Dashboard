@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start Task"
+  short_description: "Run the next WW Webapp workboard task"
+  default_prompt: "Use $start-task to implement the next actionable task from docs/workboard.json with repo-native validation."

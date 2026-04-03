@@ -78,11 +78,11 @@ export default function MisokinesiaQuestionnaire({
       {/* Ambient glows */}
       <div
         className="pointer-events-none absolute left-0 top-6 h-44 w-44 rounded-full opacity-35 blur-3xl"
-        style={{ background: "var(--ubc-blue-300)" }}
+        style={{ background: "color-mix(in srgb, var(--ring) 72%, transparent)" }}
       />
       <div
         className="pointer-events-none absolute bottom-0 right-0 h-52 w-52 rounded-full opacity-20 blur-3xl"
-        style={{ background: "var(--ubc-blue-500)" }}
+        style={{ background: "color-mix(in srgb, var(--primary) 68%, transparent)" }}
       />
 
       <div
@@ -124,17 +124,9 @@ export default function MisokinesiaQuestionnaire({
                         className={cn(
                           "cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
                           isSelected
-                            ? "border-transparent text-primary-foreground shadow-sm"
+                            ? "border-transparent bg-primary text-primary-foreground shadow-sm"
                             : "border-border bg-card/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
                         )}
-                        style={
-                          isSelected
-                            ? {
-                                background:
-                                  "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
-                              }
-                            : undefined
-                        }
                       >
                         <input
                           type="radio"
@@ -167,9 +159,6 @@ export default function MisokinesiaQuestionnaire({
               type="submit"
               disabled={!allAnswered || submitting}
               className="min-w-36 rounded-xl px-6 text-primary-foreground"
-              style={{
-                background: "linear-gradient(135deg, var(--ubc-blue-700), var(--ubc-blue-600))",
-              }}
             >
               {submitting ? "Submitting…" : "Continue"}
             </Button>

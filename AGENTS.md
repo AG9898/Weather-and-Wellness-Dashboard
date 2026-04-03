@@ -36,6 +36,9 @@ Participant.
 - **Auth adapter.** `Depends(get_current_lab_member)` on all RA endpoints. Isolate Supabase JWT/SDK logic in `backend/app/auth.py`.
 - **No bare fetch.** All frontend API calls go through typed wrappers in `src/lib/api/`. Never call `fetch` directly from a component.
 - **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.
+- **Active task board.** Use `docs/workboard.json` as the canonical active task queue. `docs/progress/PROGRESS_LOG.md` is archive history only.
+- **Repo-local task skills.** Use the repo-local task workflow skills under `.codex/skills/` (`query-workboard`, `start-task`, `ralphloop`) when working from the board or loop. `ralph_loop.sh` is CLI fallback only.
+- **Workboard schema.** Active tasks in this repo use the lean `tasks[]` schema in `docs/workboard.json`, with `docs`, `files`, `commands`, and `acceptance_criteria` fields. Do not expect older `read_docs` or `updates_docs` fields from other repos.
 
 ---
 
@@ -49,6 +52,22 @@ Participant.
 - For shadcn component usage and CLI patterns, follow `docs/shadcn.md`.
 - For Storybook-driven isolated UI review, story scope, and story authoring expectations, follow `docs/storybook.md`.
 - For the multi-lab data model and onboarding new labs, see `docs/MULTI_LAB.md`.
+- For active task metadata and current work queue, use `docs/workboard.json`.
+- For repo-local task automation prompts and loop guidance, use `.codex/skills/`.
+
+---
+
+## Task Execution
+
+- Start from `AGENTS.md`, then `docs/workboard.json`, then the selected task’s `docs` and `files` entries.
+- Treat a task’s `commands` array as its preferred verification checklist.
+- When task commands are missing or incomplete, choose validation from this repo’s actual setup:
+  - backend: `cd backend && PYTHONPATH=. .venv/bin/pytest ...`
+  - frontend: `cd frontend && npm test`
+  - broader frontend route/config/build work: add `cd frontend && npm run build` when build coverage matters
+- Update canonical docs when behavior, contracts, schema, or workflow guidance changes.
+- Do not append to `docs/progress/PROGRESS_LOG.md`; it is archive-only.
+- Mark the task done only by updating `docs/workboard.json` after verification passes.
 
 ---
 
