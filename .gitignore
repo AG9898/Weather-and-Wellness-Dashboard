@@ -20,3 +20,6 @@ backend/alembic/versions/20260228_000009_clear_all_test_data.py
 
 # Reference import data (demo/test) should never be committed
 reference/data_full_1-230.xlsx
+
+# Local media source files are uploaded to Supabase Storage and should not be committed
+reference/labs/Misokinesia/videos_on_site/
