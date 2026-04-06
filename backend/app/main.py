@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -38,9 +39,8 @@ ALLOWED_ORIGINS: list[str] = (
 _STARTUP_STALE_THRESHOLD = timedelta(minutes=30)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Mark any stuck recomputing analytics runs as failed on startup."""
+async def _cleanup_orphaned_analytics_runs() -> None:
+    """Best-effort cleanup for stale analytics runs from prior processes."""
     try:
         stale_cutoff = datetime.now(timezone.utc) - _STARTUP_STALE_THRESHOLD
         async with get_session_factory()() as db:
@@ -66,6 +66,12 @@ async def lifespan(app: FastAPI):
             await db.commit()
     except Exception:
         logger.exception("Startup cleanup of orphaned analytics runs failed — skipping.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start serving immediately; run startup cleanup in the background."""
+    asyncio.create_task(_cleanup_orphaned_analytics_runs())
     yield
 
 
