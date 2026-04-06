@@ -40,7 +40,7 @@ Full specification: [docs/MISOKINESIA.md](MISOKINESIA.md)
 
 **Participant task:**
 1. Intro screen → click to begin
-2. For each of 29 clips (fixed order): video plays → 4-question per-clip form (scale 1–5) → submit
+2. For each of 29 clips (randomized per session): video plays → 4-question per-clip form (scale 1–5) → submit
 3. End-of-task form shown once after all 29 clips (3 questions)
 4. Completion screen → RA clicks "Return to Dashboard"
 
@@ -280,6 +280,10 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 **Analytics loading now includes weather-linking (T94):**
 - The analytics payload's `weather_annotations` drives the badge and plot band on the weather chart.
 - The effect plot renders in its own card (`AnalyticsEffectPlotCard`) and is not overlaid on the weather chart.
+- The backend analytics contract also includes a day-level `temperature_summary`
+  payload (`overall`, `fall_winter`, `spring_summer`) for hot/cold day analysis.
+  The shipped dashboard does not yet render a dedicated UI for that summary; it
+  is a backend/API surface first.
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 

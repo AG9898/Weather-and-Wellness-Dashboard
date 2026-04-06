@@ -4,7 +4,7 @@
       "id": "T115",
       "group_id": "INFRA",
       "title": "Infra - Supabase Storage bucket setup and misokinesia stimuli verification",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Provision the public misokinesia storage bucket and verify the seeded stimulus metadata for launch.",
@@ -34,6 +34,209 @@
       ],
       "commands": [
         "python3 backend/admin_cli/seed_misokinesia_stimuli.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T116",
+      "group_id": "ANALYTICS_V2",
+      "title": "Analytics v2 - Contract scaffolding and version bump",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Define the backend/frontend analytics v2 contract for day-level temperature summaries before modeling or UI changes land.",
+      "description": "Update shared analytics constants and typed response models to introduce the `dashboard-analytics-v2` / `weather-mlm-v2` contract plus a scaffolded `temperature_summary` payload. Limit this patch to constants, backend Pydantic schemas, frontend API typings, and schema-level tests. Do not change mixed-model logic, snapshot orchestration, or dashboard rendering in this task.",
+      "acceptance_criteria": [
+        "`backend/app/analytics/constants.py` defines `ANALYTICS_RESPONSE_VERSION=\\\"dashboard-analytics-v2\\\"` and `ANALYTICS_MODEL_VERSION=\\\"weather-mlm-v2\\\"`",
+        "`backend/app/schemas/analytics.py` includes typed models for `temperature_summary`, summary windows, frequency bins, and hot/cold group payloads",
+        "`frontend/src/lib/api/index.ts` matches the new backend response shape including `temperature_summary`",
+        "`backend/tests/test_analytics_schema.py` is updated to serialize a valid scaffolded v2 payload"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/analytics/constants.py",
+        "backend/app/schemas/analytics.py",
+        "frontend/src/lib/api/index.ts",
+        "backend/tests/test_analytics_schema.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Keep this task schema-only so later implementation tasks can build on a stable typed contract.",
+        "Do not wire `temperature_summary` into live responses yet."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_schema.py"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T117",
+      "group_id": "ANALYTICS_V2",
+      "title": "Analytics v2 - Day-level weather z-score parity",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Refactor mixed-model preparation so day-level weather predictors are standardized by unique study day rather than repeated participant rows.",
+      "description": "Change the analytics modeling path so `temperature`, `precipitation`, and `daylight_hours` are z-scored across unique `date_local` values in the complete-case sample for each outcome, then mapped back onto participant rows before fitting. Keep participant-level predictors and outcomes standardized on participant rows, and leave the mixed-model formulas unchanged.",
+      "acceptance_criteria": [
+        "For each outcome, weather predictor z-scores are computed from unique complete-case study days only",
+        "`anxiety`, `depression`, `loneliness`, `self_report`, and `digit_span_score` continue to standardize across participant rows in the complete-case sample",
+        "Uneven participant counts per day no longer change the weather z-score assigned to a given day",
+        "Existing model formulas and random intercept grouping by `date_bin` remain unchanged",
+        "Regression tests cover repeated-day weighting and zero-variance warning behavior"
+      ],
+      "depends_on": [
+        "T116"
+      ],
+      "blocked_by": [
+        "T116"
+      ],
+      "files": [
+        "backend/app/analytics/modeling.py",
+        "backend/tests/test_analytics_modeling.py",
+        "backend/tests/test_analytics_parity.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Do not add the temperature summary payload in this task.",
+        "Avoid changing response schemas or route-handler code here."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_modeling.py tests/test_analytics_parity.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T118",
+      "group_id": "ANALYTICS_V2",
+      "title": "Analytics v2 - Temperature summary engine",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Build a standalone backend helper that computes overall and seasonal day-level temperature summaries, histograms, and hot/cold groups.",
+      "description": "Add a dedicated analytics helper module for `temperature_summary` that works from the canonical analytics dataset rows without changing the mixed-model path. The helper should generate `overall`, `fall_winter`, and `spring_summer` windows, count temperature frequencies by unique day using 1°C bins, and compute strict hot/cold groups from window-specific day-level temperature z-scores.",
+      "acceptance_criteria": [
+        "A standalone backend helper returns `overall`, `fall_winter`, and `spring_summer` summary windows from canonical analytics dataset rows",
+        "Frequency bins count unique days rather than participant rows",
+        "`cold_group` uses `temperature_z < -2` and `hot_group` uses `temperature_z > 2` within each window",
+        "Empty seasonal windows or empty hot/cold groups serialize as zero-count payloads rather than errors",
+        "Regression coverage encodes the current workbook oracle counts and dates documented in `docs/labs/weather-wellness/ANALYTICS.md`"
+      ],
+      "depends_on": [
+        "T116"
+      ],
+      "blocked_by": [
+        "T116"
+      ],
+      "files": [
+        "backend/app/analytics/temperature_summary.py",
+        "backend/app/analytics/__init__.py",
+        "backend/tests/test_analytics_temperature_summary.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Keep this task focused on the summary engine and its tests only; wiring into snapshot/live responses happens later.",
+        "If a new test file is created, keep fixture data minimal and deterministic."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_temperature_summary.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T119",
+      "group_id": "ANALYTICS_V2",
+      "title": "Analytics v2 - Snapshot and route integration",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Wire the v2 temperature summary into backend snapshot/live responses and the same-origin analytics route/cache layer.",
+      "description": "Integrate the new summary helper into the analytics service so `temperature_summary` appears in ready/stale/recomputing responses and round-trips through snapshot persistence. Update the same-origin Route Handler and cache key namespace to serve the v2 payload shape without mixing old cached snapshot data into new responses.",
+      "acceptance_criteria": [
+        "`backend/app/services/analytics_service.py` includes `temperature_summary` in the returned analytics payload and persisted snapshot payloads",
+        "Snapshot and live responses continue to behave correctly for `ready`, `stale`, `recomputing`, `insufficient_data`, and `failed` states",
+        "The same-origin analytics route uses a v2 cache key namespace so old v1 cached payloads are not reused",
+        "Backend service/router tests and frontend route-handler tests are updated for the new field and version strings"
+      ],
+      "depends_on": [
+        "T116",
+        "T117",
+        "T118"
+      ],
+      "blocked_by": [
+        "T116",
+        "T117",
+        "T118"
+      ],
+      "files": [
+        "backend/app/services/analytics_service.py",
+        "backend/tests/test_analytics_service.py",
+        "backend/tests/test_dashboard_analytics_router.py",
+        "frontend/src/lib/server/route-handler-cache.ts",
+        "frontend/src/app/api/ra/dashboard/analytics/route.ts",
+        "frontend/src/app/api/ra/dashboard/analytics/route.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Do not add new dashboard UI in this task.",
+        "Preserve the existing snapshot-miss and background refresh behavior."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_service.py tests/test_dashboard_analytics_router.py",
+        "cd frontend && npm test -- --runInBand src/app/api/ra/dashboard/analytics/route.test.ts"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T120",
+      "group_id": "ANALYTICS_V2",
+      "title": "Analytics v2 - Minimal dashboard temperature summary UI",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "summary": "Render a minimal RA-facing temperature summary card in the analytics section using the new v2 payload.",
+      "description": "Add a compact dashboard UI for `temperature_summary` beneath the existing analytics cards/effect plot. Keep the initial UI simple: selector tabs for `overall`, `fall_winter`, and `spring_summer`; a small summary strip; a day-level frequency-vs-temperature chart or histogram; and hot/cold group panels listing counts and qualifying dates. Do not redesign the broader dashboard in this task.",
+      "acceptance_criteria": [
+        "`DashboardAnalyticsSection` renders temperature summary controls for `overall`, `fall_winter`, and `spring_summer` when `temperature_summary` is present",
+        "The selected window shows day count, participant count, mean temperature, standard deviation, and hot/cold participant counts",
+        "The UI includes a simple day-level frequency-vs-temperature visualization based on `frequency_bins`",
+        "Hot and cold groups render qualifying dates and participant counts, and show a benign empty state when a group has no days",
+        "Existing model cards, status panels, and effect plot behavior remain intact"
+      ],
+      "depends_on": [
+        "T119"
+      ],
+      "blocked_by": [
+        "T119"
+      ],
+      "files": [
+        "frontend/src/lib/components/DashboardAnalyticsSection.tsx",
+        "frontend/src/lib/components/AnalyticsTemperatureSummaryCard.tsx",
+        "frontend/src/lib/analytics/ui-utils.ts",
+        "frontend/src/lib/analytics/ui-utils.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Keep this as a first-pass UI; visual polish can follow in a later task.",
+        "Do not move or merge this summary into the weather time-series chart."
+      ],
+      "commands": [
+        "cd frontend && npm test -- --runInBand src/lib/analytics/ui-utils.test.ts"
       ],
       "estimate": "M"
     }

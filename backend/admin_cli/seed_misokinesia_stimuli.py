@@ -34,15 +34,40 @@ except ImportError:
     sys.exit(1)
 
 
-# ── 29 placeholder stimuli ──────────────────────────────────────────────────
-# duration_ms values are approximate; update once real files are measured.
-# All clips are ~15 s; the longest known clip is ~33 s (assigned to clip_19).
-STIMULI: list[dict] = [
-    {"sort_order": i, "filename": f"clip_{i:02d}.mp4", "duration_ms": 15000}
-    for i in range(1, 30)
+# ── 29 production stimuli ───────────────────────────────────────────────────
+# File names and durations come from reference/labs/Misokinesia/videos_on_site.
+# storage_path matches the object key uploaded to the public Supabase bucket.
+STIMULI: list[dict[str, int | str]] = [
+    {"sort_order": 1, "filename": "ankleWagging.mp4", "duration_ms": 15191},
+    {"sort_order": 2, "filename": "armRubbing.mp4", "duration_ms": 15060},
+    {"sort_order": 3, "filename": "articulatedToy.mp4", "duration_ms": 15034},
+    {"sort_order": 4, "filename": "blinking.mp4", "duration_ms": 15067},
+    {"sort_order": 5, "filename": "bobblehead.mp4", "duration_ms": 15100},
+    {"sort_order": 6, "filename": "chewing.mp4", "duration_ms": 15039},
+    {"sort_order": 7, "filename": "chewingExaggerated.mp4", "duration_ms": 15039},
+    {"sort_order": 8, "filename": "chimes.mp4", "duration_ms": 15334},
+    {"sort_order": 9, "filename": "chinScratching.mp4", "duration_ms": 15060},
+    {"sort_order": 10, "filename": "clothing.mp4", "duration_ms": 15039},
+    {"sort_order": 11, "filename": "fan.mp4", "duration_ms": 15100},
+    {"sort_order": 12, "filename": "fingerRolling.mp4", "duration_ms": 15060},
+    {"sort_order": 13, "filename": "fingerTapping.mp4", "duration_ms": 15060},
+    {"sort_order": 14, "filename": "footTapping.mp4", "duration_ms": 15570},
+    {"sort_order": 15, "filename": "gesturing.mp4", "duration_ms": 15060},
+    {"sort_order": 16, "filename": "hairTwirling.mp4", "duration_ms": 33834},
+    {"sort_order": 17, "filename": "handRubbing.mp4", "duration_ms": 15060},
+    {"sort_order": 18, "filename": "headScratching.mp4", "duration_ms": 15060},
+    {"sort_order": 19, "filename": "heelTapping.mp4", "duration_ms": 17067},
+    {"sort_order": 20, "filename": "intentionalGestures.mp4", "duration_ms": 15060},
+    {"sort_order": 21, "filename": "jewlery.mp4", "duration_ms": 19067},
+    {"sort_order": 22, "filename": "luckyCat.mp4", "duration_ms": 15134},
+    {"sort_order": 23, "filename": "metronome.mp4", "duration_ms": 15167},
+    {"sort_order": 24, "filename": "nailPicking.mp4", "duration_ms": 15060},
+    {"sort_order": 25, "filename": "neckRubbing.mp4", "duration_ms": 15060},
+    {"sort_order": 26, "filename": "penClicking.mp4", "duration_ms": 15060},
+    {"sort_order": 27, "filename": "penSpinning.mp4", "duration_ms": 15060},
+    {"sort_order": 28, "filename": "signLanguage.mp4", "duration_ms": 15060},
+    {"sort_order": 29, "filename": "wristRotation.mp4", "duration_ms": 15060},
 ]
-# Mark the longest clip (position 19 per study materials)
-STIMULI[18]["duration_ms"] = 33000
 
 
 def _to_asyncpg_dsn(url: str) -> str:
@@ -78,18 +103,71 @@ async def main() -> None:
     conn = await asyncpg.connect(dsn=dsn, ssl=ssl)
 
     try:
+        stimuli_by_order = {
+            int(s["sort_order"]): s
+            for s in STIMULI
+        }
+
         # Check for existing active test set
         existing = await conn.fetchval(
             "SELECT test_set_id FROM misokinesia_test_sets WHERE active = true LIMIT 1"
         )
         if existing:
-            stimulus_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM misokinesia_stimuli WHERE test_set_id = $1",
+            existing_rows = await conn.fetch(
+                """
+                SELECT stimulus_id, sort_order, storage_path, filename, duration_ms
+                FROM misokinesia_stimuli
+                WHERE test_set_id = $1
+                ORDER BY sort_order
+                """,
                 existing,
             )
+            if len(existing_rows) != len(STIMULI):
+                print(
+                    "ERROR: Active test set exists but does not contain the expected "
+                    f"{len(STIMULI)} stimuli rows (found {len(existing_rows)}).",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            changed_rows = 0
+            async with conn.transaction():
+                for row in existing_rows:
+                    expected = stimuli_by_order.get(row["sort_order"])
+                    if expected is None:
+                        print(
+                            "ERROR: Active test set contains an unexpected sort_order "
+                            f"value ({row['sort_order']}).",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+
+                    expected_filename = str(expected["filename"])
+                    expected_duration = int(expected["duration_ms"])
+                    if (
+                        row["storage_path"] == expected_filename
+                        and row["filename"] == expected_filename
+                        and row["duration_ms"] == expected_duration
+                    ):
+                        continue
+
+                    await conn.execute(
+                        """
+                        UPDATE misokinesia_stimuli
+                        SET storage_path = $2,
+                            filename = $2,
+                            duration_ms = $3
+                        WHERE stimulus_id = $1
+                        """,
+                        row["stimulus_id"],
+                        expected_filename,
+                        expected_duration,
+                    )
+                    changed_rows += 1
+
             print(
-                f"Active test set already exists (id={existing}, "
-                f"{stimulus_count} stimuli). Nothing to do."
+                f"Active test set already exists (id={existing}, {len(existing_rows)} stimuli). "
+                f"Synchronized {changed_rows} stimulus rows."
             )
             return
 

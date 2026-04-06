@@ -6,7 +6,7 @@
 
 ## Purpose
 
-The Misokinesia module presents a participant with 29 short video clips (each approximately 15 seconds, longest 33 seconds) in a fixed order. After each clip the participant answers a 4-question per-clip questionnaire. After all 29 clips are complete, the participant answers a 3-item end-of-task questionnaire. All results are stored anonymously — no demographics are collected — linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
+The Misokinesia module presents a participant with 29 short video clips (each approximately 15 seconds, longest 33 seconds) in a randomized per-session order. After each clip the participant answers a 4-question per-clip questionnaire. After all 29 clips are complete, the participant answers a 3-item end-of-task questionnaire. All results are stored anonymously — no demographics are collected — linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
 
 ---
 
@@ -16,7 +16,7 @@ The Misokinesia module presents a participant with 29 short video clips (each ap
 2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, then returns the full clip manifest (all 29 URLs).
 3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required).
 4. Participant sees intro screen and clicks to begin.
-5. For each of 29 clips (fixed `sort_order`):
+5. For each of 29 clips (session-randomized playback order):
    - Video clip plays.
    - Per-clip questionnaire (4 questions) is shown after the clip.
    - Frontend submits `POST /misokinesia/participants/{id}/responses`.
@@ -55,7 +55,7 @@ Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.p
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns full clip manifest (all 29 URLs in sort_order) |
+| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full 29-clip manifest in a randomized playback order |
 | `POST` | `/misokinesia/participants/{participant_id}/responses` | None (participant-facing) | Submits one per-clip questionnaire; sets `completed_at` server-side on final submission; returns `is_complete` flag |
 | `PATCH` | `/misokinesia/participants/{participant_id}/end-of-task` | None (participant-facing) | Writes the 4 end-of-task fields to `misokinesia_participants`; returns 409 if `completed_at` is null |
 
@@ -94,7 +94,7 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 ## Architecture Notes
 
 - **Videos served from Supabase Storage public CDN.** Bucket: `misokinesia-stimuli`. URL format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`. No signing, no expiry. Never proxied through FastAPI.
-- **Manifest-first pattern.** All 29 clip URLs are returned in a single `POST /misokinesia/start` response. The frontend preloads the next clip during questionnaire time; no per-clip backend round-trip for media.
+- **Manifest-first pattern.** All 29 clip URLs are returned in a single `POST /misokinesia/start` response in the randomized order used for that participant. The frontend plays clips directly from those URLs; no per-clip backend round-trip for media.
 - **`completed_at` set server-side.** On each `POST /responses` call the backend counts submitted responses for the participant; when all stimuli are answered it sets `misokinesia_participants.completed_at` automatically and returns `is_complete: true`.
 - **Independent participant numbering.** `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence and starts from 1, independent of `participants.participant_number`.
 - **Stimuli seeded via seed script.** No admin upload endpoint exists yet; stimulus rows are inserted manually or via a seed script.

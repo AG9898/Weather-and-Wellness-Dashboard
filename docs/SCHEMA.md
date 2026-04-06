@@ -531,11 +531,11 @@ Clip metadata. No video bytes stored in DB. Videos served directly from Supabase
 |--------------|-------------|---------------------------|-------|
 | stimulus_id  | UUID        | PK                        | Generated server-side |
 | test_set_id  | UUID        | FK, NOT NULL              | → misokinesia_test_sets.test_set_id |
-| storage_path | VARCHAR     | NOT NULL                  | Supabase Storage object key (filename only, e.g. `clip_01.mp4`) |
+| storage_path | VARCHAR     | NOT NULL                  | Supabase Storage object key (filename only, e.g. `ankleWagging.mp4`) |
 | filename     | VARCHAR     | NOT NULL                  | |
 | duration_ms  | INTEGER     | NOT NULL                  | Clip duration in milliseconds |
 | mime_type    | VARCHAR     | NOT NULL DEFAULT 'video/mp4' | |
-| sort_order   | INTEGER     | NOT NULL                  | 1-based fixed playback order |
+| sort_order   | INTEGER     | NOT NULL                  | 1-based canonical stimulus order stored with the seeded metadata |
 | active       | BOOLEAN     | NOT NULL DEFAULT true     | |
 | created_at   | TIMESTAMPTZ | DEFAULT NOW()             | |
 

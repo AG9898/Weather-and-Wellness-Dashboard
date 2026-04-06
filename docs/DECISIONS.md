@@ -383,7 +383,7 @@ secure user metadata.
 **Resolved:** 2026-03-17
 
 **Decision:** The Misokinesia video task module uses the following settled defaults:
-- **29 video clips**, ~15 seconds each, shown to every participant in a fixed `sort_order` sequence.
+- **29 video clips**, ~15 seconds each, with a stable canonical `sort_order` in storage metadata but a randomized playback order per participant session.
 - **Fully anonymous participants** — no demographics collected. Independent `misokinesia_participant_number` SERIAL sequence (separate from `participants.participant_number`), starting from 1.
 - **Video hosting:** Supabase Storage, public bucket (`misokinesia-stimuli`), raw CDN URLs — no signing, no expiry.
 - **Table naming:** `misokinesia_participants` (not `misokinesia_runs`).

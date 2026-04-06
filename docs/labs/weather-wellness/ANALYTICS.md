@@ -11,10 +11,10 @@
 
 - **Implementation status:** partially implemented
 - **Implemented through:** T83-T92 (response schema, durable storage, canonical dataset builder, mixed-model fitting, snapshot orchestration, backend API endpoint, effect-plot and weather-annotation serialization)
-- **Still pending:** frontend Route Handler/UI integration (shared filter state, effect plot card, weather chart annotations) and end-to-end analytics/dashboard verification tasks
+- **Still pending:** day-level weather standardization parity fix, temperature frequency/extreme-day summary contract, and end-to-end analytics/dashboard verification tasks
 - **Source reference:** `reference/Weather_MLM.R`
 - **Scope:** analysis dataset construction, mixed-effects model definitions, KPI
-  serialization, snapshot/cache behavior
+  serialization, day-level temperature summaries, snapshot/cache behavior
 - **Non-scope:** changing instrument scoring, changing the existing study schema,
   recreating the R script's manual Excel workflow
 
@@ -88,6 +88,12 @@ It then produces partial-residual plots for selected predictors.
   empty-state outcome, and support explicit recompute for filters/admin use.
 - **Explainable KPIs.** Dashboard analytics should surface model cards with
   coefficients, confidence intervals, p-values, and convergence/warning state.
+- **Day-level weather weighting.** Weather predictors are day-level variables and
+  must be standardized across unique study days, not over-weighted by dates that
+  happen to have more participant rows.
+- **Workbook as acceptance oracle only.** `reference/data_full_1-230.xlsx` is
+  the current validation oracle for Weather & Wellness outputs, but it is not a
+  production analytics input. Runtime analytics stay database-backed.
 - **Keep chart semantics separate.** Weather time-series charts and
   model-effect plots should be linked by shared filters and interaction state,
   not overlaid into one ambiguous chart.
@@ -149,17 +155,30 @@ metadata.
   - then compute z-scores from that sample only
   - do not standardize predictors on rows that will later be dropped for a
     missing outcome
+- Standardization is also **field-type-specific**:
+  - `temperature`, `precipitation`, and `daylight_hours` are day-level weather
+    predictors and must be standardized from the unique `date_local` values
+    present in the complete-case sample for that outcome
+  - `anxiety`, `depression`, `loneliness`, `self_report`, and
+    `digit_span_score` remain participant/session-level values and are
+    standardized across participant rows in the complete-case sample
+- After day-level weather z-scores are computed, they are mapped back onto each
+  participant row from that day before mixed-model fitting. The models remain
+  participant-row based; only the weather standardization changes.
 - `date_bin` is derived after date filtering by ordering unique
   `study_days.date_local` values ascending and assigning `1..N`.
 - Do not persist z-scored columns or `date_bin` in the transactional schema.
 - If a selected window has zero variance for a required predictor or outcome,
   return a structured analytics warning and skip model fitting for that outcome.
+- If the source dataset ever contains conflicting weather values for the same
+  `date_local`, surface a structured warning or failure rather than silently
+  averaging them.
 
 ---
 
 ## Planned Model Definitions
 
-Python v1 should reproduce the inferential intent of the R script with two
+The current implementation target should preserve the inferential intent of the R script with two
 mixed-effects models:
 
 ### Outcome 1: Digit Span
@@ -236,6 +255,34 @@ Each model summary should expose:
 - model version string
 - generated timestamp
 
+### Temperature summary metadata
+
+Analytics responses should also expose a day-level temperature summary for the
+active range. This summary is separate from the mixed-model card payloads and is
+intended to answer descriptive questions about temperature frequency and extreme
+days.
+
+Each response should expose `temperature_summary.windows[]` with three fixed
+windows:
+
+- `overall` — the full requested date range
+- `fall_winter` — days from `Sep 22` through `Mar 21`, inclusive, clipped to the
+  requested date range
+- `spring_summer` — days from `Mar 22` through `Sep 21`, inclusive, clipped to
+  the requested date range
+
+Each window should include:
+
+- `window_key`
+- effective `date_from` / `date_to`
+- `day_count`
+- `participant_count`
+- `mean_temperature_c`
+- `sd_temperature_c`
+- `frequency_bins`
+- `cold_group`
+- `hot_group`
+
 ### Dataset metadata
 
 Analytics responses should also include:
@@ -246,6 +293,66 @@ Analytics responses should also include:
 - excluded-row reasons summary
 - native vs imported row counts
 - snapshot freshness metadata
+
+---
+
+## Temperature Frequency And Extreme-Day Contract
+
+The dashboard analytics payload should include a descriptive temperature summary
+that answers the lab's current analysis questions without changing the mixed
+model formulas.
+
+### Frequency vs temperature
+
+- `Freq vs temp` is defined as a day-level histogram over unique daily
+  temperatures for the active window.
+- Histogram counts are by **day**, not by participant row.
+- The initial summary implementation should use **1°C bins**.
+- Each `frequency_bins[]` item should include:
+  - `bin_start_c`
+  - `bin_end_c`
+  - `day_count`
+
+### Hot and cold groups
+
+- A day's temperature z-score is computed within its own summary window
+  (`overall`, `fall_winter`, or `spring_summer`) using unique days only.
+- `cold_group` contains days where `temperature_z < -2`.
+- `hot_group` contains days where `temperature_z > 2`.
+- The threshold is strict (`|z| > 2`), not inclusive of exactly `2`.
+- Group counts should expose both:
+  - number of qualifying days
+  - number of participant rows that occurred on those days
+
+Each group should include:
+
+- `day_count`
+- `participant_count`
+- `participant_ids`
+- `dates`
+- `days[]`, where each item includes:
+  - `date_local`
+  - `temperature_c`
+  - `temperature_z`
+  - `participant_ids`
+  - `participant_count`
+
+If a window has no qualifying hot or cold days, return an empty group object
+with zero counts instead of treating the window as an error.
+
+### Current acceptance oracle (`reference/data_full_1-230.xlsx`)
+
+The current canonical workbook is used to validate the expected outputs for this
+contract. Based on the present workbook contents:
+
+- `overall`: `cold_group.participant_count = 2`
+- `overall`: `hot_group.participant_count = 2`
+- `overall`: cold dates are `2025-03-04` and `2025-03-06`
+- `overall`: hot dates are `2025-07-29` and `2025-08-01`
+- `fall_winter`: `cold_group.participant_count = 2`
+- `fall_winter`: `hot_group.participant_count = 3`
+- `spring_summer`: `cold_group.participant_count = 0`
+- `spring_summer`: `hot_group.participant_count = 0`
 
 ---
 
@@ -338,6 +445,7 @@ Planned high-level response shape:
 ```json
 {
   "status": "ready | stale | recomputing | insufficient_data | failed",
+  "response_version": "dashboard-analytics-v2",
   "dataset": {
     "date_from": "YYYY-MM-DD",
     "date_to": "YYYY-MM-DD",
@@ -371,6 +479,40 @@ Planned high-level response shape:
       ]
     }
   ],
+  "temperature_summary": {
+    "windows": [
+      {
+        "window_key": "overall | fall_winter | spring_summer",
+        "date_from": "YYYY-MM-DD | null",
+        "date_to": "YYYY-MM-DD | null",
+        "day_count": 0,
+        "participant_count": 0,
+        "mean_temperature_c": 0.0,
+        "sd_temperature_c": 0.0,
+        "frequency_bins": [
+          {
+            "bin_start_c": 0.0,
+            "bin_end_c": 1.0,
+            "day_count": 0
+          }
+        ],
+        "cold_group": {
+          "day_count": 0,
+          "participant_count": 0,
+          "participant_ids": [],
+          "dates": [],
+          "days": []
+        },
+        "hot_group": {
+          "day_count": 0,
+          "participant_count": 0,
+          "participant_ids": [],
+          "dates": [],
+          "days": []
+        }
+      }
+    ]
+  },
   "visualizations": {
     "default_selected_term": "temperature_z",
     "effect_plots": [
@@ -407,6 +549,8 @@ Planned high-level response shape:
 
 - The effect plot payload is intended for a separate analysis chart component,
   not for overlay on the weather time-series chart.
+- `temperature_summary` is a descriptive day-level payload and must remain
+  separate from both mixed-model cards and visualization payloads.
 - `weather_annotations` should remain date-based metadata only.
 - Exact plot serialization may evolve, but the separation between weather
   time-series data and model-effect plot data is part of the planned contract.

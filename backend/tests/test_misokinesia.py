@@ -229,7 +229,8 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
 
         with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
              patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
-             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso):
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso), \
+             patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
             result = await start_misokinesia_session(db=db)
 
         self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
@@ -254,7 +255,8 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
 
         with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
              patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
-             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso):
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso), \
+             patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
             result = await start_misokinesia_session(db=db)
 
         expected_url = "https://test.supabase.co/storage/v1/object/public/misokinesia-stimuli/clip_01.mp4"
@@ -291,11 +293,38 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
 
         with patch("app.routers.misokinesia.Participant") as MockParticipant, \
              patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
-             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso):
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso), \
+             patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
             MockParticipant.return_value = fake_participant
             await start_misokinesia_session(db=db)
             # Verify Participant was called with participant_number=6
             MockParticipant.assert_called_once_with(participant_number=6)
+
+    async def test_manifest_clip_order_is_randomized_per_session(self) -> None:
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        stimuli = [
+            _FakeStimulus(stimulus_id=_STIMULUS_ID_1, sort_order=1, storage_path="ankleWagging.mp4"),
+            _FakeStimulus(stimulus_id=_STIMULUS_ID_2, sort_order=2, storage_path="armRubbing.mp4"),
+        ]
+        db = self._db_for_start(stimuli=stimuli)
+
+        fake_participant = _FakeParticipant()
+        fake_session = _FakeSession()
+        fake_miso = _FakeMisoParticipant()
+
+        with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
+             patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso), \
+             patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: list(reversed(xs))):
+            result = await start_misokinesia_session(db=db)
+
+        self.assertEqual(result.clips[0].stimulus_id, _STIMULUS_ID_2)
+        self.assertEqual(result.clips[0].sort_order, 2)
+        self.assertEqual(result.clips[1].stimulus_id, _STIMULUS_ID_1)
+        self.assertEqual(result.clips[1].sort_order, 1)
 
     async def test_start_route_requires_lab_member_auth(self) -> None:
         """The /start route must declare Depends(get_current_lab_member)."""

@@ -157,12 +157,10 @@ export default function MisokinesiaTaskPage() {
 
   if (phase === "playing" && currentClip) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
-        <div className="w-full max-w-2xl space-y-4">
+      <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
+        <div className="w-full max-w-[92rem] space-y-3">
           <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
           <MisokinesiaVideoPlayer
-            stimulusIndex={clipNumber}
-            totalStimuli={totalClips}
             publicUrl={currentClip.public_url}
             onEnded={handleVideoEnded}
           />

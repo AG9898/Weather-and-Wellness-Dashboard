@@ -106,11 +106,11 @@
 ```json
 {
   "status": "ready | stale | recomputing | insufficient_data | failed",
-  "response_version": "dashboard-analytics-v1",
+  "response_version": "dashboard-analytics-v2",
   "snapshot": {
     "mode": "snapshot | live",
-    "response_version": "dashboard-analytics-v1",
-    "model_version": "weather-mlm-v1",
+    "response_version": "dashboard-analytics-v2",
+    "model_version": "weather-mlm-v2",
     "generated_at": "datetime",
     "is_stale": "boolean",
     "recompute_started_at": "datetime | null",
@@ -141,7 +141,7 @@
       "day_count": "integer",
       "converged": "boolean",
       "warnings": ["string"],
-      "model_version": "weather-mlm-v1",
+      "model_version": "weather-mlm-v2",
       "generated_at": "datetime",
       "effects": [
         {
@@ -160,6 +160,56 @@
       ]
     }
   ],
+  "temperature_summary": {
+    "windows": [
+      {
+        "window_key": "overall | fall_winter | spring_summer",
+        "date_from": "YYYY-MM-DD | null",
+        "date_to": "YYYY-MM-DD | null",
+        "day_count": "integer",
+        "participant_count": "integer",
+        "mean_temperature_c": "number | null",
+        "sd_temperature_c": "number | null",
+        "frequency_bins": [
+          {
+            "bin_start_c": "number",
+            "bin_end_c": "number",
+            "day_count": "integer"
+          }
+        ],
+        "cold_group": {
+          "day_count": "integer",
+          "participant_count": "integer",
+          "participant_ids": ["string"],
+          "dates": ["YYYY-MM-DD"],
+          "days": [
+            {
+              "date_local": "YYYY-MM-DD",
+              "temperature_c": "number",
+              "temperature_z": "number",
+              "participant_ids": ["string"],
+              "participant_count": "integer"
+            }
+          ]
+        },
+        "hot_group": {
+          "day_count": "integer",
+          "participant_count": "integer",
+          "participant_ids": ["string"],
+          "dates": ["YYYY-MM-DD"],
+          "days": [
+            {
+              "date_local": "YYYY-MM-DD",
+              "temperature_c": "number",
+              "temperature_z": "number",
+              "participant_ids": ["string"],
+              "participant_count": "integer"
+            }
+          ]
+        }
+      }
+    ]
+  },
   "visualizations": "object | null"
 }
 ```
@@ -170,10 +220,16 @@
   - `dataset` metadata (included sessions/days, native/imported counts, generation time)
   - `models[]` for outcome-level mixed-model summaries
   - `models[].effects[]` for model-card terms (coefficient, standard error, p-value, 95% CI, direction, significance)
+  - `temperature_summary.windows[]` for day-level temperature frequency bins plus `hot` / `cold` groups over the requested range and seasonal subsets
   - `visualizations.effect_plots[]` for separate linked analysis charts
   - `visualizations.weather_annotations` for lightweight date-based weather-chart linking metadata
 - **Notes:**
   - This endpoint surfaces the mixed-effects analysis derived from `reference/Weather_MLM.R` using the backend dataset/modeling/snapshot pipeline implemented in T83–T88.
+  - The v2 analytics contract changes weather standardization semantics: `temperature`, `precipitation`, and `daylight_hours` are standardized across unique `date_local` values in the complete-case model sample, then mapped back to participant rows for mixed-model fitting.
+  - Participant-level predictors and outcomes (`anxiety`, `depression`, `loneliness`, `self_report`, `digit_span_score`) remain standardized across participant rows in the complete-case model sample.
+  - `temperature_summary` is descriptive and day-level. It does not alter the model formulas or the participant-row sample used by the mixed models.
+  - The three temperature-summary windows are `overall` (requested range), `fall_winter` (`Sep 22` through `Mar 21`, inclusive), and `spring_summer` (`Mar 22` through `Sep 21`, inclusive), with the seasonal windows clipped to the requested range.
+  - `hot_group` means `temperature_z > 2`; `cold_group` means `temperature_z < -2`; both are computed within each summary window from unique daily temperatures only.
   - Date bounds are validated as inclusive study-local days in `America/Vancouver`; `date_from > date_to` returns `422`.
   - `mode=snapshot` reads the durable Postgres snapshot for the exact requested range and returns `404` when no snapshot exists yet. The shipped dashboard treats that `404` as a snapshot-miss empty state and does not auto-trigger `mode=live`.
   - `mode=live` now requests a background recompute and returns immediately with the current typed analytics payload for the range. When a prior snapshot exists, the payload will typically be `status="recomputing"` with the last successful snapshot kept visible until the background run finishes.
@@ -186,7 +242,7 @@
   - `visualizations.default_selected_term` is the first main effect term present in the fitted models (typically `temperature_z`).
   - Effect plot `points[]` carry `x` (predictor z-score), `y` (partial residual = model residual + term contribution), and `date_local` for optional annotation linkage. `fitted_line[]` carries `x`/`y` points spanning the predictor range at `coef * x`.
   - Snapshot persistence stores the full visualization payload including effect plots and weather annotations.
-  - Shared analytics version/config constants live in `backend/app/analytics/constants.py` with `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v1"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v1"`.
+  - Shared analytics version/config constants should move to `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v2"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v2"` when this contract lands so old snapshots and same-origin caches are not reused.
   - Browser-owned reads should use the same-origin analytics handler documented in `docs/ARCHITECTURE.md`; do not add direct component calls to this backend endpoint.
 
 ---
@@ -792,7 +848,8 @@
   - Atomically creates an anonymous `participants` row (no demographics), an `active` session, and a `misokinesia_participants` row.
   - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
-  - `clips` are ordered by `sort_order` ascending (all 29 active stimuli for the test set).
+  - `clips` contains all 29 active stimuli for the test set, but the response order is randomized per participant session.
+  - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
   - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
   - Unauthenticated requests return 401.
 

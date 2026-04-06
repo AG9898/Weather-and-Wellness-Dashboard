@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import random
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -35,6 +36,12 @@ def _supabase_url() -> str:
     if not url:
         raise RuntimeError("SUPABASE_URL is not set.")
     return url
+
+
+def _shuffle_stimuli(stimuli: list[MisokinesiaStimulus]) -> list[MisokinesiaStimulus]:
+    shuffled = list(stimuli)
+    random.shuffle(shuffled)
+    return shuffled
 
 
 @router.post(
@@ -99,8 +106,10 @@ async def start_misokinesia_session(
     )
     stimuli = stim_result.scalars().all()
 
-    # 6. Build public URLs
+    # 6. Randomize playback order per participant, but preserve each clip's
+    # canonical sort_order in the returned metadata.
     base_url = _supabase_url()
+    randomized_stimuli = _shuffle_stimuli(stimuli)
     clips = [
         MisokinesiaClipMeta(
             stimulus_id=s.stimulus_id,
@@ -108,7 +117,7 @@ async def start_misokinesia_session(
             sort_order=s.sort_order,
             duration_ms=s.duration_ms,
         )
-        for s in stimuli
+        for s in randomized_stimuli
     ]
 
     return MisokinesiaManifestResponse(
