@@ -1,12 +1,11 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus, RefreshCw, Sparkles } from "lucide-react";
 import {
   type AnalyticsEffectCardResponse,
   type AnalyticsModelSummaryResponse,
   type DashboardAnalyticsResponse,
-  type DashboardAnalyticsRefreshInfo,
 } from "@/lib/api";
 import {
   loadInitialDashboardAnalytics,
@@ -17,6 +16,7 @@ import {
   compareEffectsByStrength,
   formatOutcomeLabel,
   formatPValue,
+  formatTemperatureDateRange,
   formatSigned,
   formatTermLabel,
   formatTermPart,
@@ -29,13 +29,10 @@ import { cn } from "@/lib/utils";
 import AnalyticsEffectPlotCard from "@/lib/components/AnalyticsEffectPlotCard";
 import CloudLoading from "@/lib/components/CloudLoading";
 
-export interface AnalyticsAnnotation {
-  selectedTermLabel: string | null;
-  dateFrom: string;
-  dateTo: string;
-}
-
 type LoadingMode = "snapshot" | "live" | null;
+type AnalyticsRangePreset = "study_start" | "last_7" | "last_30" | "last_90" | "custom";
+
+const STUDY_START = "2025-03-03";
 
 interface FlattenedEffectOption {
   key: string;
@@ -78,6 +75,53 @@ function getDirectionCopy(direction: AnalyticsEffectCardResponse["direction"]): 
     label: "Neutral",
     className: "border-border/70 bg-muted/60 text-muted-foreground",
   };
+}
+
+function shiftDate(iso: string, days: number): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function getAnalyticsPresetRange(
+  preset: AnalyticsRangePreset,
+  anchorDate: string
+): { dateFrom: string; dateTo: string } {
+  if (preset === "study_start") {
+    return { dateFrom: STUDY_START, dateTo: anchorDate };
+  }
+  if (preset === "last_7") {
+    return { dateFrom: shiftDate(anchorDate, -6), dateTo: anchorDate };
+  }
+  if (preset === "last_30") {
+    return { dateFrom: shiftDate(anchorDate, -29), dateTo: anchorDate };
+  }
+  if (preset === "last_90") {
+    return { dateFrom: shiftDate(anchorDate, -89), dateTo: anchorDate };
+  }
+  return { dateFrom: STUDY_START, dateTo: anchorDate };
+}
+
+function normalizeDateRange(dateFrom: string, dateTo: string): { dateFrom: string; dateTo: string } {
+  return dateFrom <= dateTo ? { dateFrom, dateTo } : { dateFrom: dateTo, dateTo: dateFrom };
+}
+
+function DetailsPanel({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className="rounded-2xl border border-border/70 bg-background/55 px-4 py-4">
+      <summary className="cursor-pointer list-none text-sm font-semibold text-foreground marker:hidden">
+        {title}
+      </summary>
+      <div className="mt-4">{children}</div>
+    </details>
+  );
 }
 
 
@@ -182,70 +226,103 @@ function EffectCard({
 }
 
 interface DashboardAnalyticsSectionProps {
-  dateFrom: string;
-  dateTo: string;
-  onAnnotationsChange?: (annotation: AnalyticsAnnotation | null) => void;
+  anchorDate: string;
+  refreshSignal?: number;
 }
 
-export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotationsChange }: DashboardAnalyticsSectionProps) {
+export default function DashboardAnalyticsSection({
+  anchorDate,
+  refreshSignal,
+}: DashboardAnalyticsSectionProps) {
   const [analytics, setAnalytics] = useState<DashboardAnalyticsResponse | null>(null);
-  const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [loadingMode, setLoadingMode] = useState<LoadingMode>("snapshot");
-  const [loadingMessage, setLoadingMessage] = useState("Checking latest stored analytics snapshot…");
+  const [loadingMessage, setLoadingMessage] = useState("Loading analytics snapshot…");
   const [error, setError] = useState<string | null>(null);
   const [snapshotMissing, setSnapshotMissing] = useState(false);
   const [selectedEffectKey, setSelectedEffectKey] = useState<string | null>(null);
-  const [refreshInfo, setRefreshInfo] = useState<DashboardAnalyticsRefreshInfo | null>(null);
+  const [preset, setPreset] = useState<AnalyticsRangePreset>("study_start");
+  const [dateFrom, setDateFrom] = useState(STUDY_START);
+  const [dateTo, setDateTo] = useState(anchorDate);
+  const requestSeqRef = useRef(0);
+  const presetRef = useRef<AnalyticsRangePreset>("study_start");
+  const refreshSignalRef = useRef(refreshSignal);
 
   useEffect(() => {
-    let cancelled = false;
+    presetRef.current = preset;
+  }, [preset]);
 
-    async function loadInitialAnalytics(): Promise<void> {
-      setLoadingMode("snapshot");
-      setLoadingMessage("Checking latest stored analytics snapshot…");
-      setError(null);
-      setSnapshotMissing(false);
-
-      const result = await loadInitialDashboardAnalytics(dateFrom, dateTo);
-      if (cancelled) {
-        return;
-      }
-
-      if (result.kind === "loaded") {
-        startTransition(() => {
-          setAnalytics(result.response.data?.analytics ?? null);
-          setCachedAt(result.response.data?.cached_at ?? null);
-          setSnapshotMissing(false);
-          setRefreshInfo(result.response.refresh);
-        });
-      } else if (result.kind === "missing-snapshot") {
-        startTransition(() => {
-          setAnalytics(null);
-          setCachedAt(null);
-          setSnapshotMissing(true);
-          setRefreshInfo(null);
-        });
-      } else {
-        startTransition(() => {
-          setAnalytics(null);
-          setCachedAt(null);
-          setSnapshotMissing(false);
-          setError(result.message);
-          setRefreshInfo(null);
-        });
-      }
-
-      if (!cancelled) {
-        setLoadingMode(null);
-      }
+  useEffect(() => {
+    if (presetRef.current === "custom") {
+      setDateFrom((current) => (current > anchorDate ? anchorDate : current));
+      setDateTo((current) => (current > anchorDate ? anchorDate : current));
+      return;
     }
 
-    void loadInitialAnalytics();
+    const nextRange = getAnalyticsPresetRange(presetRef.current, anchorDate);
+    setDateFrom(nextRange.dateFrom);
+    setDateTo(nextRange.dateTo);
+  }, [anchorDate]);
 
+  const loadAnalytics = async (mode: LoadingMode): Promise<void> => {
+    const seq = requestSeqRef.current + 1;
+    requestSeqRef.current = seq;
+
+    setLoadingMode(mode);
+    setLoadingMessage(
+      mode === "live"
+        ? "Refreshing analytics…"
+        : "Loading analytics snapshot…"
+    );
+    setError(null);
+    setSnapshotMissing(false);
+
+    const result =
+      mode === "live"
+        ? await refreshDashboardAnalytics(dateFrom, dateTo)
+        : await loadInitialDashboardAnalytics(dateFrom, dateTo);
+
+    if (requestSeqRef.current !== seq) {
+      return;
+    }
+
+    if (result.kind === "loaded") {
+      startTransition(() => {
+        setAnalytics(result.response.data?.analytics ?? null);
+        setSnapshotMissing(false);
+      });
+    } else if (result.kind === "missing-snapshot") {
+      startTransition(() => {
+        setAnalytics(null);
+        setSnapshotMissing(true);
+      });
+    } else {
+      startTransition(() => {
+        setError(result.message);
+      });
+    }
+
+    setLoadingMode(null);
+  };
+
+  useEffect(() => {
+    void loadAnalytics("snapshot");
     return () => {
-      cancelled = true;
+      requestSeqRef.current += 1;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (refreshSignalRef.current === refreshSignal) {
+      return;
+    }
+    refreshSignalRef.current = refreshSignal;
+    if (refreshSignal === undefined) {
+      return;
+    }
+    void loadAnalytics("snapshot");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
 
   useEffect(() => {
     if (analytics?.status !== "recomputing") {
@@ -261,9 +338,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
 
       startTransition(() => {
         setAnalytics(result.response.data?.analytics ?? null);
-        setCachedAt(result.response.data?.cached_at ?? null);
         setSnapshotMissing(false);
-        setRefreshInfo(result.response.refresh);
         setError(null);
       });
     }, 4000);
@@ -275,26 +350,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
   }, [analytics?.status, dateFrom, dateTo]);
 
   async function handleRefresh(): Promise<void> {
-    setLoadingMode("live");
-    setLoadingMessage("Requesting a background analytics recompute…");
-    setError(null);
-    setSnapshotMissing(false);
-
-    const result = await refreshDashboardAnalytics(dateFrom, dateTo);
-    if (result.kind === "loaded") {
-      const data = result.response.data;
-      startTransition(() => {
-        setAnalytics(data?.analytics ?? null);
-        setCachedAt(data?.cached_at ?? null);
-        setSnapshotMissing(false);
-        setRefreshInfo(result.response.refresh);
-      });
-    } else if (result.kind === "empty" || result.kind === "error") {
-      setRefreshInfo(null);
-      setError(result.message);
-    }
-
-    setLoadingMode(null);
+    await loadAnalytics("live");
   }
 
   const statusPanel = analytics ? getStatusPanel(analytics) : null;
@@ -334,6 +390,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
   const selectedModelWarnings = useMemo(() => {
     return selectedEffect ? buildAnalyticsWarningDisplayItems(selectedEffect.model.warnings) : [];
   }, [selectedEffect]);
+  const activeRangeLabel = formatTemperatureDateRange(dateFrom, dateTo);
 
   // Find the effect plot for the currently selected effect term
   const selectedEffectPlot =
@@ -342,21 +399,6 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
           (plot) => plot.outcome === selectedEffect.outcome && plot.term === selectedEffect.effect.term
         ) ?? null
       : null;
-
-  // Notify parent when the analytics window or selected term changes
-  useEffect(() => {
-    if (!onAnnotationsChange) return;
-    if (!analytics?.visualizations?.weather_annotations) {
-      onAnnotationsChange(null);
-      return;
-    }
-    const { date_from, date_to } = analytics.visualizations.weather_annotations;
-    onAnnotationsChange({
-      selectedTermLabel: selectedEffect ? formatTermLabel(selectedEffect.effect.term) : null,
-      dateFrom: date_from,
-      dateTo: date_to,
-    });
-  }, [analytics?.visualizations?.weather_annotations, selectedEffect, onAnnotationsChange]);
 
   return (
     <section
@@ -375,16 +417,16 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-              Statistical Models
+              Model results
             </Badge>
             <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-              {dateFrom} to {dateTo}
+              {activeRangeLabel}
             </Badge>
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Analytics Snapshot</h2>
+            <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Mixed-model cards stay separate from weather. The section serves the latest stored snapshot by default and the refresh button requests a background recompute while the current snapshot stays visible.
+              This section stays separate from weather. Use the study window below to review model results and request a refresh.
             </p>
           </div>
         </div>
@@ -404,7 +446,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
             disabled={loadingMode === "live"}
           >
             <RefreshCw className={cn("mr-2 h-4 w-4", loadingMode === "live" && "animate-spin")} />
-            Refresh In Background
+            Refresh Analytics
           </Button>
         </div>
       </div>
@@ -423,57 +465,161 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
         </div>
       )}
 
-      {refreshInfo && !error && (refreshInfo.requested || refreshInfo.state === "recomputing") && (
-        <div className="relative mt-5 rounded-2xl border border-sky-500/25 bg-sky-500/10 px-4 py-4 text-sm text-sky-900 dark:text-sky-100">
-          {refreshInfo.detail}
-        </div>
-      )}
-
       {snapshotMissing && !error && !analytics && (
         <div className="relative mt-5 rounded-2xl border border-border/70 bg-background/65 px-4 py-4 text-sm text-muted-foreground">
-          No analytics snapshot exists yet for this study window. Use <span className="font-semibold text-foreground">Refresh In Background</span> to request the first recompute when needed.
+          No saved analytics snapshot exists for this study window yet. Use{" "}
+          <span className="font-semibold text-foreground">Refresh Analytics</span> to request one.
         </div>
       )}
 
       {analytics && (
         <div className="relative mt-5 space-y-5">
+          <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  Study window
+                </p>
+                <h3 className="text-lg font-semibold text-foreground">{activeRangeLabel}</h3>
+                <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                  These controls only affect the analytics cards below.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  ["study_start", "Study Start"],
+                  ["last_7", "Last 7"],
+                  ["last_30", "Last 30"],
+                  ["last_90", "Last 90"],
+                  ["custom", "Custom"],
+                ] as const).map(([value, label]) => {
+                  const isActive = preset === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => {
+                        const nextRange = getAnalyticsPresetRange(value, anchorDate);
+                        presetRef.current = value;
+                        setPreset(value);
+                        setDateFrom(nextRange.dateFrom);
+                        setDateTo(nextRange.dateTo);
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition",
+                        isActive
+                          ? "border-primary/35 bg-primary/10 text-primary"
+                          : "border-border/70 bg-background/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+              <label className="space-y-2">
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  From
+                </span>
+                <input
+                  type="date"
+                  min={STUDY_START}
+                  max={anchorDate}
+                  value={dateFrom}
+                  onChange={(event) => {
+                    const next = normalizeDateRange(event.target.value, dateTo);
+                    presetRef.current = "custom";
+                    setPreset("custom");
+                    setDateFrom(next.dateFrom);
+                    setDateTo(next.dateTo);
+                  }}
+                  className="h-11 w-full rounded-2xl border border-border/80 bg-background/75 px-4 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  To
+                </span>
+                <input
+                  type="date"
+                  min={STUDY_START}
+                  max={anchorDate}
+                  value={dateTo}
+                  onChange={(event) => {
+                    const next = normalizeDateRange(dateFrom, event.target.value);
+                    presetRef.current = "custom";
+                    setPreset("custom");
+                    setDateFrom(next.dateFrom);
+                    setDateTo(next.dateTo);
+                  }}
+                  className="h-11 w-full rounded-2xl border border-border/80 bg-background/75 px-4 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+                />
+              </label>
+
+              <div className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Active range
+                </p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{activeRangeLabel}</p>
+              </div>
+            </div>
+          </div>
+
           <div className={cn("rounded-2xl border px-4 py-4", statusPanel?.className)}>
             <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.22em]">{statusPanel?.title}</p>
                 <p className="mt-2 max-w-3xl text-sm leading-relaxed">{statusPanel?.body}</p>
               </div>
-              <div className="space-y-1 text-xs font-medium uppercase tracking-[0.18em]">
-                <p>{analytics.snapshot.mode === "live" ? "Live response" : "Snapshot response"}</p>
-                <p>Generated {formatDateTime(analytics.snapshot.generated_at)}</p>
-                {cachedAt && <p>Route cache checked {timeAgo(cachedAt)}</p>}
-                {analytics.snapshot.recompute_started_at && (
-                  <p>Started {formatDateTime(analytics.snapshot.recompute_started_at)}</p>
-                )}
-                {analytics.snapshot.recompute_finished_at && (
-                  <p>Finished {formatDateTime(analytics.snapshot.recompute_finished_at)}</p>
-                )}
+              <div className="space-y-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <p>Updated {timeAgo(analytics.snapshot.generated_at)}</p>
+                <p>
+                  {analytics.dataset.included_sessions} sessions, {analytics.dataset.included_days} days
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Included Sessions
-              </p>
-              <p className="mt-2 text-2xl font-bold text-foreground">
-                {analytics.dataset.included_sessions}
-              </p>
+          <DetailsPanel title="Snapshot details">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Sessions
+                </p>
+                <p className="mt-2 text-2xl font-bold text-foreground">
+                  {analytics.dataset.included_sessions}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Study days
+                </p>
+                <p className="mt-2 text-2xl font-bold text-foreground">
+                  {analytics.dataset.included_days}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Generated
+                </p>
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {formatDateTime(analytics.snapshot.generated_at)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Excluded rows
+                </p>
+                <p className="mt-2 text-2xl font-bold text-foreground">
+                  {analytics.dataset.excluded_rows}
+                </p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Included Days
-              </p>
-              <p className="mt-2 text-2xl font-bold text-foreground">
-                {analytics.dataset.included_days}
-              </p>
-            </div>
+
             {significantHighlights.map((option, index) => (
               <div
                 key={option?.key ?? `empty-signal-${index}`}
@@ -481,7 +627,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
               >
                 <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>Signal {index + 1}</span>
+                  <span>Key result {index + 1}</span>
                 </div>
                 {option ? (
                   <div className="mt-2 space-y-2">
@@ -509,26 +655,25 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
                 )}
               </div>
             ))}
-          </div>
-
-          {analytics.dataset.exclusion_reasons.length > 0 && (
-            <div className="rounded-2xl border border-border/70 bg-background/65 px-4 py-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                Exclusion Reasons
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {analytics.dataset.exclusion_reasons.map((item) => (
-                  <Badge
-                    key={`${item.reason}-${item.count}`}
-                    variant="outline"
-                    className="border-border/70 bg-background/70 text-foreground"
-                  >
-                    {formatTermPart(item.reason)}: {item.count}
-                  </Badge>
-                ))}
+            {analytics.dataset.exclusion_reasons.length > 0 && (
+              <div className="rounded-2xl border border-border/70 bg-background/65 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  Excluded rows
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {analytics.dataset.exclusion_reasons.map((item) => (
+                    <Badge
+                      key={`${item.reason}-${item.count}`}
+                      variant="outline"
+                      className="border-border/70 bg-background/70 text-foreground"
+                    >
+                      {formatTermPart(item.reason)}: {item.count}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </DetailsPanel>
 
           {hasEffectCards ? (
             <div className="space-y-4">
@@ -546,7 +691,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
                     htmlFor="dashboard-analytics-term"
                     className="block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
                   >
-                    Select modeled term
+                    Choose result
                   </label>
                   <select
                     id="dashboard-analytics-term"
@@ -575,7 +720,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
                       </h3>
                     </div>
                     <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Random effect: {selectedEffect.model.grouping_field}
+                      Grouped by {selectedEffect.model.grouping_field === "date_bin" ? "study day" : selectedEffect.model.grouping_field}
                     </p>
                   </div>
 
@@ -587,8 +732,8 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
           ) : (
             <div className="rounded-2xl border border-border/70 bg-background/65 px-4 py-8 text-center text-sm text-muted-foreground">
               {analytics.status === "ready"
-                ? "No term-level effects were returned for this snapshot."
-                : "Model cards will appear here once a valid analytics snapshot is available."}
+                ? "No model results were returned for this snapshot."
+                : "Model results will appear here once a valid snapshot is available."}
             </div>
           )}
 
@@ -597,10 +742,10 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold marker:hidden">
                 <span className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  Model warnings ({selectedModelWarnings.length})
+                  Model notes ({selectedModelWarnings.length})
                 </span>
                 <span className="text-xs font-medium uppercase tracking-[0.18em] text-amber-800/80 dark:text-amber-200/80">
-                  Expand
+                  Show
                 </span>
               </summary>
 
@@ -614,7 +759,7 @@ export default function DashboardAnalyticsSection({ dateFrom, dateTo, onAnnotati
                     <p className="mt-2 leading-relaxed text-muted-foreground">{warning.plainEnglish}</p>
                     <div className="mt-3 rounded-lg border border-border/60 bg-background/70 px-3 py-3">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Technical details
+                        Raw note
                       </p>
                       <ul className="mt-2 space-y-2 text-xs leading-relaxed text-muted-foreground">
                         {warning.rawWarnings.map((rawWarning) => (

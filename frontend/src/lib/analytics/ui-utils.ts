@@ -5,7 +5,13 @@
  * of analytics state logic without requiring React DOM or component rendering.
  */
 
-import type { AnalyticsEffectCardResponse, DashboardAnalyticsResponse } from "@/lib/api";
+import type {
+  AnalyticsEffectCardResponse,
+  AnalyticsTemperatureSummaryResponse,
+  AnalyticsTemperatureSummaryWindowKey,
+  AnalyticsTemperatureSummaryWindowResponse,
+  DashboardAnalyticsResponse,
+} from "@/lib/api";
 import { ApiError } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -31,6 +37,79 @@ export function formatOutcomeLabel(outcome: string): string {
   if (outcome === "digit_span") return "Backwards Digit Span";
   if (outcome === "self_report") return "Self-Reported Cognition";
   return formatTermPart(outcome);
+}
+
+const TEMPERATURE_WINDOW_LABELS: Record<AnalyticsTemperatureSummaryWindowKey, string> = {
+  overall: "Overall",
+  fall_winter: "Fall / Winter",
+  spring_summer: "Spring / Summer",
+};
+
+function formatTemperatureNumber(value: number): string {
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+}
+
+function formatIsoDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return new Intl.DateTimeFormat("en-CA", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+export function formatTemperatureWindowLabel(
+  windowKey: AnalyticsTemperatureSummaryWindowKey
+): string {
+  return TEMPERATURE_WINDOW_LABELS[windowKey];
+}
+
+export function formatTemperatureValue(value: number | null): string {
+  return value === null ? "—" : `${value.toFixed(1)}°C`;
+}
+
+export function formatTemperatureDateRange(
+  dateFrom: string | null,
+  dateTo: string | null
+): string {
+  if (!dateFrom || !dateTo) {
+    return "No study dates";
+  }
+  if (dateFrom === dateTo) {
+    return formatIsoDate(dateFrom);
+  }
+  return `${formatIsoDate(dateFrom)} to ${formatIsoDate(dateTo)}`;
+}
+
+export function formatTemperatureBinLabel(
+  binStartC: number,
+  binEndC: number
+): string {
+  return `${formatTemperatureNumber(binStartC)} to ${formatTemperatureNumber(binEndC)}°C`;
+}
+
+export function getTemperatureSummaryWindow(
+  summary: AnalyticsTemperatureSummaryResponse | null | undefined,
+  windowKey: AnalyticsTemperatureSummaryWindowKey
+): AnalyticsTemperatureSummaryWindowResponse | null {
+  return summary?.windows.find((window) => window.window_key === windowKey) ?? null;
+}
+
+export interface TemperatureFrequencyBar {
+  label: string;
+  dayCount: number;
+  share: number;
+}
+
+export function buildTemperatureFrequencyBars(
+  window: AnalyticsTemperatureSummaryWindowResponse
+): TemperatureFrequencyBar[] {
+  const maxDayCount = Math.max(...window.frequency_bins.map((bin) => bin.day_count), 0);
+  return window.frequency_bins.map((bin) => ({
+    label: formatTemperatureBinLabel(bin.bin_start_c, bin.bin_end_c),
+    dayCount: bin.day_count,
+    share: maxDayCount > 0 ? bin.day_count / maxDayCount : 0,
+  }));
 }
 
 export function formatSigned(value: number): string {
@@ -65,32 +144,32 @@ export function getStatusPanel(analytics: DashboardAnalyticsResponse): StatusPan
   switch (analytics.status) {
     case "recomputing":
       return {
-        title: "Recompute in progress",
-        body: "Showing the last successful analytics snapshot while a live recompute is running.",
+        title: "Background refresh running",
+        body: "The last saved snapshot stays visible while analytics recompute.",
         className: "border-sky-500/35 bg-sky-500/10 text-sky-800 dark:text-sky-200",
       };
     case "stale":
       return {
-        title: "Snapshot is stale",
-        body: "The latest recompute did not finish cleanly, so the dashboard is keeping the prior successful snapshot visible.",
+        title: "Previous snapshot still shown",
+        body: "A newer refresh did not finish, so the last saved snapshot stays visible.",
         className: "border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-200",
       };
     case "insufficient_data":
       return {
-        title: "Insufficient data",
-        body: "There are not enough complete rows in the current study window to fit the planned mixed models yet.",
+        title: "Not enough data yet",
+        body: "There are not enough complete rows in this window to fit the models.",
         className: "border-border/80 bg-muted/60 text-foreground",
       };
     case "failed":
       return {
-        title: "Analytics recompute failed",
-        body: "The backend could not generate analytics for this window. Operational KPIs and weather remain available.",
+        title: "Analytics refresh failed",
+        body: "The backend could not produce analytics for this window, but weather and dashboard actions still work.",
         className: "border-destructive/35 bg-destructive/10 text-destructive",
       };
     default:
       return {
-        title: "Snapshot ready",
-        body: "Model cards below reflect the latest analytics snapshot for the current study window.",
+        title: "Latest snapshot ready",
+        body: "Model cards reflect the selected study window.",
         className: "border-border/80 bg-muted/50 text-foreground",
       };
   }

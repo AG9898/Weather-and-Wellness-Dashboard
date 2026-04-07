@@ -36,6 +36,7 @@
 - Backend reliability fix history (timeout increases, keep-alive, analytics staleness) is documented in `docs/ROUTING_CLEANUP.md` (completed playbook, preserved for historical reference).
 - Frontend topology regressions are guarded by `frontend/src/app/api/ra/route-topology.test.ts`; do not reintroduce removed paths such as `/api/ra/dashboard/range` without first updating the routing inventory and regression coverage.
 - Current dashboard-related same-origin Route Handlers are:
+  - `GET /api/ra/dashboard/study-window` — latest study-day metadata for dashboard range anchoring
   - `GET /api/ra/dashboard?mode=cached|live` — cached/live weather bundle for default dashboard reads
   - `GET /api/ra/weather/range?mode=cached|live&date_from&date_to` — cached/live weather chart bundle
   - `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from&date_to` — snapshot/live analytics bundle
@@ -47,6 +48,7 @@
 
 | Method | Path | Auth | Status | Implemented by |
 |--------|------|------|--------|----------------|
+| GET    | /dashboard/study-window | RA | implemented | T121 |
 | GET    | /dashboard/analytics | RA | implemented | T88 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
@@ -79,10 +81,30 @@
 
 ## Dashboard
 
-> The dashboard router now serves analytics only. Shipped operational dashboard
-> reads use the weather router primitive documented under `GET /weather/daily`.
+> The dashboard router serves analytics plus the study-window metadata read.
+> Shipped operational dashboard reads still use the weather router primitive
+> documented under `GET /weather/daily`.
 > Statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
 > in `docs/ANALYTICS.md`.
+
+### GET /dashboard/study-window
+- **Auth:** RA required
+- **Status:** implemented (T121)
+- **Classification:** internal-only backend metadata primitive
+- **Current same-origin caller:** `GET /api/ra/dashboard/study-window`
+- **Purpose:** Return the latest available `study_days.date_local` so the dashboard can anchor range presets to actual study activity instead of wall-clock today.
+- **Response:** `LatestStudyDayResponse`
+
+```json
+{
+  "latest_study_day": "YYYY-MM-DD | null"
+}
+```
+
+- **Behavior:**
+  - Returns the maximum available `study_days.date_local` when at least one row exists.
+  - Returns `null` when no `study_days` rows exist yet.
+  - The dashboard page reads this metadata once on mount and uses it to anchor `WeatherUnifiedCard` preset end dates and custom max-date limits; weather interactions no longer drive analytics range changes.
 
 ---
 
@@ -222,7 +244,7 @@
   - `models[].effects[]` for model-card terms (coefficient, standard error, p-value, 95% CI, direction, significance)
   - `temperature_summary.windows[]` for day-level temperature frequency bins plus `hot` / `cold` groups over the requested range and seasonal subsets
   - `visualizations.effect_plots[]` for separate linked analysis charts
-  - `visualizations.weather_annotations` for lightweight date-based weather-chart linking metadata
+  - `visualizations.weather_annotations` for lightweight date-based metadata only
 - **Notes:**
   - This endpoint surfaces the mixed-effects analysis derived from `reference/Weather_MLM.R` using the backend dataset/modeling/snapshot pipeline implemented in T83–T88.
   - The v2 analytics contract changes weather standardization semantics: `temperature`, `precipitation`, and `daylight_hours` are standardized across unique `date_local` values in the complete-case model sample, then mapped back to participant rows for mixed-model fitting.
@@ -242,8 +264,21 @@
   - `visualizations.default_selected_term` is the first main effect term present in the fitted models (typically `temperature_z`).
   - Effect plot `points[]` carry `x` (predictor z-score), `y` (partial residual = model residual + term contribution), and `date_local` for optional annotation linkage. `fitted_line[]` carries `x`/`y` points spanning the predictor range at `coef * x`.
   - Snapshot persistence stores the full visualization payload including effect plots and weather annotations.
-  - Shared analytics version/config constants should move to `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v2"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v2"` when this contract lands so old snapshots and same-origin caches are not reused.
+  - Shared analytics version/config constants now use `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v2"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v2"` so old snapshots and same-origin caches are not reused.
+  - `temperature_summary` is a day-level descriptive payload populated by the backend summary engine and preserved through snapshot/live responses.
+  - The shipped dashboard keeps weather and analytics filter state independent and does not depend on `visualizations.weather_annotations` for weather-chart overlays, even though the field remains serialized for compatibility.
   - Browser-owned reads should use the same-origin analytics handler documented in `docs/ARCHITECTURE.md`; do not add direct component calls to this backend endpoint.
+
+**Verified same-origin dashboard metadata route:**
+- `GET /api/ra/dashboard/study-window` is a same-origin RA-only metadata read used only to anchor dashboard preset ranges.
+- Response shape:
+  ```json
+  {
+    "latest_study_day": "YYYY-MM-DD | null"
+  }
+  ```
+- `latest_study_day` reflects the maximum available `study_days.date_local` for the current lab/study scope.
+- If no `study_days` rows exist yet, it returns `null`.
 
 ---
 

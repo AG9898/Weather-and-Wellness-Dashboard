@@ -48,6 +48,10 @@ class WeatherDailyResponse(BaseModel):
     latest_run: LatestRunInfo | None
 
 
+class LatestStudyDayResponse(BaseModel):
+    latest_study_day: date | None
+
+
 class HistoricalBackfillRequest(BaseModel):
     start_date: date = Field(default=date(2025, 1, 1), description="Start date inclusive (YYYY-MM-DD)")
     end_date: date | None = Field(default=None, description="End date inclusive (YYYY-MM-DD); defaults to today in America/Vancouver")
@@ -66,6 +70,7 @@ __all__ = [
     "WeatherDailyItem",
     "LatestRunInfo",
     "WeatherDailyResponse",
+    "LatestStudyDayResponse",
     "HistoricalBackfillRequest",
     "HistoricalBackfillResponse",
 ]

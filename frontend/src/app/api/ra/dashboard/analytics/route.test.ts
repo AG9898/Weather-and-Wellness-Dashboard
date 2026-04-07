@@ -29,7 +29,7 @@ vi.mock("@/lib/server/route-handler-backend", () => {
 
 vi.mock("@/lib/server/route-handler-cache", () => ({
   ANALYTICS_SNAPSHOT_CACHE_POLICY: {
-    keyPrefix: "ww:ra:analytics:snapshot:v1",
+    keyPrefix: "ww:ra:analytics:snapshot:v2",
     ttlSeconds: 60 * 60 * 24,
     renewal: "fixed-expiry-on-write",
   },
@@ -65,6 +65,39 @@ import {
 } from "@/lib/server/route-handler-cache";
 import { GET } from "./route";
 
+function buildAnalyticsResponse(status: "ready" | "stale" | "recomputing") {
+  const generatedAt = "2026-03-12T00:00:00Z";
+  return {
+    status,
+    response_version: "dashboard-analytics-v2",
+    snapshot: {
+      mode: status === "ready" ? "snapshot" : "live",
+      response_version: "dashboard-analytics-v2",
+      model_version: "weather-mlm-v2",
+      generated_at: generatedAt,
+      is_stale: status !== "ready",
+      recompute_started_at: status === "ready" ? null : generatedAt,
+      recompute_finished_at: status === "stale" ? generatedAt : null,
+    },
+    dataset: {
+      date_from: "2026-03-01",
+      date_to: "2026-03-08",
+      included_sessions: 24,
+      included_days: 8,
+      native_rows: 20,
+      imported_rows: 4,
+      excluded_rows: 2,
+      exclusion_reasons: [],
+      generated_at: generatedAt,
+    },
+    models: [],
+    temperature_summary: {
+      windows: [],
+    },
+    visualizations: null,
+  };
+}
+
 describe("GET /api/ra/dashboard/analytics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -94,7 +127,7 @@ describe("GET /api/ra/dashboard/analytics", () => {
     vi.mocked(readCacheValue).mockResolvedValue({
       state: "hit",
       value: {
-        analytics: { status: "ready" },
+        analytics: buildAnalyticsResponse("ready"),
         cached_at: "2026-03-12T00:00:00.000Z",
       },
     });
@@ -112,6 +145,8 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(response.headers.get("x-ww-cache-ttl")).toBe("86400");
     expect(body.cached).toBe(true);
     expect(body.data.analytics.status).toBe("ready");
+    expect(body.data.analytics.response_version).toBe("dashboard-analytics-v2");
+    expect(body.data.analytics.temperature_summary).toEqual({ windows: [] });
     expect(body.refresh).toEqual({
       requested: false,
       state: "idle",
@@ -126,7 +161,7 @@ describe("GET /api/ra/dashboard/analytics", () => {
       value: null,
     });
     vi.mocked(fetchBackend).mockResolvedValue(
-      Response.json({ status: "ready", metadata: { generated_at: "2026-03-12T00:00:00Z" } })
+      Response.json(buildAnalyticsResponse("ready"))
     );
     vi.mocked(writeCacheValue).mockResolvedValue("refresh");
 
@@ -142,9 +177,13 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(body.cached).toBe(false);
     expect(body.refresh.state).toBe("idle");
     expect(writeCacheValue).toHaveBeenCalledWith(
-      "ww:ra:analytics:snapshot:v1:2026-03-01:2026-03-12",
+      "ww:ra:analytics:snapshot:v2:2026-03-01:2026-03-12",
       expect.objectContaining({
-        analytics: { status: "ready", metadata: { generated_at: "2026-03-12T00:00:00Z" } },
+        analytics: expect.objectContaining({
+          status: "ready",
+          response_version: "dashboard-analytics-v2",
+          temperature_summary: { windows: [] },
+        }),
         cached_at: expect.any(String),
       }),
       86400
@@ -202,7 +241,7 @@ describe("GET /api/ra/dashboard/analytics", () => {
     vi.mocked(readCacheValue).mockResolvedValue({
       state: "hit",
       value: {
-        analytics: { status: "stale" },
+        analytics: buildAnalyticsResponse("stale"),
         cached_at: "2026-03-12T00:00:00.000Z",
       },
     });
@@ -224,9 +263,7 @@ describe("GET /api/ra/dashboard/analytics", () => {
     vi.mocked(requireRaBearerToken).mockResolvedValue({ ok: true, token: "token" });
     vi.mocked(fetchBackend)
       .mockRejectedValueOnce(new Error("Timed out calling backend"))
-      .mockResolvedValueOnce(
-        Response.json({ status: "ready", metadata: { generated_at: "2026-03-12T00:00:00Z" } })
-      );
+      .mockResolvedValueOnce(Response.json(buildAnalyticsResponse("ready")));
     vi.mocked(readCacheValue).mockResolvedValue({
       state: "miss",
       value: null,
@@ -252,12 +289,12 @@ describe("GET /api/ra/dashboard/analytics", () => {
     vi.mocked(readCacheValue).mockResolvedValue({
       state: "hit",
       value: {
-        analytics: { status: "recomputing" },
+        analytics: buildAnalyticsResponse("recomputing"),
         cached_at: "2026-03-12T00:00:00.000Z",
       },
     });
     vi.mocked(fetchBackend).mockResolvedValue(
-      Response.json({ status: "ready", metadata: { generated_at: "2026-03-12T00:05:00Z" } })
+      Response.json(buildAnalyticsResponse("ready"))
     );
     vi.mocked(writeCacheValue).mockResolvedValue("refresh");
 
@@ -272,5 +309,6 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(response.headers.get("x-ww-cache")).toBe("refresh");
     expect(body.cached).toBe(false);
     expect(body.data.analytics.status).toBe("ready");
+    expect(body.data.analytics.response_version).toBe("dashboard-analytics-v2");
   });
 });

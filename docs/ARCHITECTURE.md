@@ -24,6 +24,7 @@
 
 Current shipped dashboard reads are split across these same-origin Vercel Route Handlers:
 
+- `GET /api/ra/dashboard/study-window`
 - `GET /api/ra/dashboard?mode=cached|live`
 - `GET /api/ra/weather/range?mode=cached|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
 - `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
@@ -48,14 +49,16 @@ This section is the single routing inventory for dashboard-related reads across 
 
 | Browser owner / caller | Typed wrapper | Same-origin Route Handler | Backend read(s) | Classification | Notes |
 |---|---|---|---|---|---|
+| RA dashboard page (`/dashboard`) anchor-date bootstrap | `getDashboardStudyWindow()` | `GET /api/ra/dashboard/study-window` | `GET /dashboard/study-window` | `canonical` | Lightweight metadata read that exposes the latest available study day for dashboard range anchoring. |
 | RA dashboard page (`/dashboard`) initial mount and post-undo refresh | `getDashboardWeatherBundle(mode)` | `GET /api/ra/dashboard?mode=cached\|live` | `GET /weather/daily?start=today&end=today&include_forecast_periods=false` | `canonical` | This is the canonical default dashboard read path. The bundle is intentionally weather-only because the current page renders weather but not operational summary KPIs. |
 | `WeatherUnifiedCard` on `/dashboard` | `getWeatherRangeBundle(mode, dateFrom, dateTo)` | `GET /api/ra/weather/range?mode=cached\|live&date_from&date_to` | `GET /weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` | `canonical` | Canonical weather range path for the dashboard trend chart. |
-| `DashboardAnalyticsSection` on `/dashboard` | `getDashboardAnalyticsBundle(mode, dateFrom, dateTo)` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live&date_from&date_to` | `GET /dashboard/analytics?date_from&date_to&mode=snapshot\|live` | `canonical` | Canonical analytics snapshot/live path for dashboard model outputs. |
+| `DashboardAnalyticsSection` on `/dashboard` | `getDashboardAnalyticsBundle(mode, dateFrom, dateTo)` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live&date_from&date_to` | `GET /dashboard/analytics?date_from&date_to&mode=snapshot\|live` | `canonical` | Canonical analytics snapshot/live path for dashboard model outputs. The section owns its own study-window controls; `date_from` / `date_to` come from analytics state, not the weather card. |
 
 ### Backend endpoint inventory
 
 | FastAPI endpoint | Current same-origin caller | Classification | Notes |
 |---|---|---|---|
+| `GET /dashboard/study-window` | `GET /api/ra/dashboard/study-window` | `internal-only` | Canonical backend metadata primitive that returns the latest available `study_days.date_local` for dashboard anchoring. |
 | `GET /weather/daily` | `GET /api/ra/dashboard?mode=live`, `GET /api/ra/weather/range?mode=live` | `internal-only` | Canonical backend operational read primitive used by the shipped same-origin weather handlers. Router validation/auth lives in `backend/app/routers/weather.py`; DB read logic lives in `backend/app/services/weather_read_service.py`. |
 | `GET /dashboard/analytics` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live` | `internal-only` | Canonical backend analytics endpoint behind the same-origin analytics handler. |
 
@@ -96,7 +99,7 @@ All active RA cache keys use fixed expiry on write only:
 |---|---|---|---|
 | `ww:ra:dashboard:v1` | 24 hours | `fixed-expiry-on-write` | Explicit `mode=live` request; the dashboard page currently issues that live refresh only when its cached bundle is older than about 10 minutes or when a supervised action explicitly refreshes it |
 | `ww:ra:weather:range:v1:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Explicit `mode=live` request for the selected date window |
-| `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Snapshot read refreshes, explicit background refresh requests, or snapshot fallback after live failure |
+| `ww:ra:analytics:snapshot:v2:<date_from>:<date_to>` | 24 hours | `fixed-expiry-on-write` | Snapshot read refreshes, explicit background refresh requests, or snapshot fallback after live failure |
 
 Repeated cache reads do not renew TTL. A key survives only until the last successful write plus its configured TTL.
 
@@ -151,7 +154,7 @@ Standardized same-origin diagnostics:
 
 | Mode | Behaviour |
 |---|---|
-| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v1:<date_from>:<date_to>`) when present. If the cached bundle is marked `status="recomputing"`, the handler revalidates against the backend snapshot endpoint before serving it so the UI can pick up the newly finished snapshot promptly. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from the backend service with a 55s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
+| `snapshot` | Reads the cached snapshot bundle from Upstash Redis (`ww:ra:analytics:snapshot:v2:<date_from>:<date_to>`) when present. If the cached bundle is marked `status="recomputing"`, the handler revalidates against the backend snapshot endpoint before serving it so the UI can pick up the newly finished snapshot promptly. On cache miss, fetches `/dashboard/analytics?...&mode=snapshot` from the backend service with a 55s timeout, then caches the response (TTL 24 hours, fixed from the last successful snapshot write). A backend `404` remains a snapshot-miss response; the handler does not escalate that miss into a live recompute. |
 | `live` | Calls `/dashboard/analytics?...&mode=live` on the backend service with a 55s timeout and `cache: "no-store"`. The backend treats this as a background refresh request and returns immediately with the current snapshot state for the range, which the handler writes back into Redis so the dashboard can keep serving the in-progress snapshot state consistently. If the live request fails or times out, the handler falls back to the latest cached snapshot bundle, and if Redis has no copy it tries the backend snapshot mode before returning an error. |
 
 - **Auth:** Verifies the Supabase JWT from `Authorization: Bearer <token>` before reading Redis or calling the backend. No auth bypass via cache.
@@ -183,17 +186,18 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 
 ### Frontend coordination rule
 
-- The weather chart and analytics plots should share date-range/filter state.
-- They should not share a single merged chart payload because they represent
-  different x-axes and different analytical meanings.
-- Any weather-chart linking added for analytics should be limited to date-based
-  annotations or labels derived from the analytics payload.
+- The weather chart no longer drives analytics range changes through the dashboard page.
+- The dashboard page uses `GET /api/ra/dashboard/study-window` once to anchor weather presets to `latest_study_day ?? Vancouver today`.
+- Analytics and weather still render as separate surfaces with separate payloads because they represent different x-axes and different analytical meanings.
+- `DashboardAnalyticsSection` owns its own date-range controls and refresh state; the weather card no longer drives analytics refetches.
+- Any weather-chart linking added for analytics should stay limited to date-based annotations or labels derived from the analytics payload.
 
 ### Cache implications
 
 - Analytics cache keys must be separate from:
   - `ww:ra:dashboard:v1`
   - `ww:ra:weather:range:v1:<date_from>:<date_to>`
+  - `ww:ra:analytics:snapshot:v2:<date_from>:<date_to>`
 - Redis should never be the only analytics store because:
   - snapshots need auditability
   - recompute state needs durability

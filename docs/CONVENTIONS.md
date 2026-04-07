@@ -142,7 +142,7 @@
 - Current cache keys:
   - `ww:ra:dashboard:v1` (TTL 24 hours, fixed expiry on write only) — default dashboard weather bundle
   - `ww:ra:weather:range:v1:<date_from>:<date_to>` (TTL 24 hours, fixed expiry on write only) — weather-only trend bundle
-  - `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` (TTL 24 hours, fixed expiry on write only) — analytics snapshot bundle
+  - `ww:ra:analytics:snapshot:v2:<date_from>:<date_to>` (TTL 24 hours, fixed expiry on write only) — analytics snapshot bundle
 
 ### Styling
 - Tailwind utility classes only

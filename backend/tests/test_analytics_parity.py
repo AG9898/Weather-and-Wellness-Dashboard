@@ -95,9 +95,9 @@ def _make_row(
         date_local=date(2026, 3, day),
         date_bin=day,
         # raw fields must use the same names the R script assigns to ww_data columns
-        temperature=5.0 + day * 0.5 + rep * 0.1,
-        precipitation=(day % 4) * 0.8 + rep * 0.2,
-        daylight_hours=7.0 + day * 0.3 + rep * 0.05,
+        temperature=4.8 + (day * 0.45) + ((day % 3) * 0.17),
+        precipitation=(day % 4) * 0.65 + ((day + 1) % 3) * 0.13,
+        daylight_hours=6.9 + (day * 0.28) + ((day + 2) % 4) * 0.07,
         anxiety=3.0 + ((day * 2 + rep) % 5) * 0.4,
         depression=2.0 + ((day + rep * 3) % 7) * 0.3,
         loneliness=1.5 + ((day * 3 + rep) % 6) * 0.2,

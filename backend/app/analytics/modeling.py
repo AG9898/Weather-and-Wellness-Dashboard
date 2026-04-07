@@ -62,6 +62,9 @@ _COMMON_Z_FIELDS: tuple[tuple[str, str], ...] = (
     ("anxiety", "anxiety_z"),
 )
 
+_DAY_LEVEL_Z_FIELDS: tuple[tuple[str, str], ...] = _COMMON_Z_FIELDS[:3]
+_PARTICIPANT_LEVEL_Z_FIELDS: tuple[tuple[str, str], ...] = _COMMON_Z_FIELDS[3:]
+
 _EFFECT_TERM_ORDER: tuple[str, ...] = (
     "temperature_z",
     "precipitation_z",
@@ -298,10 +301,23 @@ def _z_score_outcome_frame(
 ) -> tuple[pd.DataFrame, list[str]]:
     z_frame = frame.copy()
     warnings_out: list[str] = []
-    z_fields = list(_COMMON_Z_FIELDS)
-    z_fields.append((_OUTCOME_SOURCE_FIELDS[outcome], _OUTCOME_Z_FIELDS[outcome]))
+    for source_field, z_field in _DAY_LEVEL_Z_FIELDS:
+        unique_day_series, field_warnings = _unique_day_series(outcome, z_frame, source_field)
+        if field_warnings:
+            return z_frame, field_warnings
 
-    for source_field, z_field in z_fields:
+        standard_deviation = float(unique_day_series.std(ddof=1))
+        if len(unique_day_series.index) < 2 or not math.isfinite(standard_deviation) or standard_deviation <= 0.0:
+            warnings_out.append(
+                f"{outcome} model skipped: {source_field} has zero variance within the unique study-day sample for the requested analysis window."
+            )
+            continue
+
+        mean_value = float(unique_day_series.mean())
+        day_z_map = ((unique_day_series - mean_value) / standard_deviation).to_dict()
+        z_frame[z_field] = z_frame["date_local"].map(day_z_map)
+
+    for source_field, z_field in _PARTICIPANT_LEVEL_Z_FIELDS:
         series = z_frame[source_field].astype(float)
         standard_deviation = float(series.std(ddof=1))
         if len(series.index) < 2 or not math.isfinite(standard_deviation) or standard_deviation <= 0.0:
@@ -313,7 +329,46 @@ def _z_score_outcome_frame(
         mean_value = float(series.mean())
         z_frame[z_field] = (series - mean_value) / standard_deviation
 
+    outcome_series = z_frame[_OUTCOME_SOURCE_FIELDS[outcome]].astype(float)
+    standard_deviation = float(outcome_series.std(ddof=1))
+    if len(outcome_series.index) < 2 or not math.isfinite(standard_deviation) or standard_deviation <= 0.0:
+        warnings_out.append(
+            f"{outcome} model skipped: {_OUTCOME_SOURCE_FIELDS[outcome]} has zero variance within the requested analysis window."
+        )
+    else:
+        mean_value = float(outcome_series.mean())
+        z_frame[_OUTCOME_Z_FIELDS[outcome]] = (outcome_series - mean_value) / standard_deviation
+
     return z_frame, warnings_out
+
+
+def _unique_day_series(
+    outcome: AnalyticsOutcomeName,
+    frame: pd.DataFrame,
+    source_field: str,
+) -> tuple[pd.Series, tuple[str, ...]]:
+    """Build a day-level series for a weather predictor from the outcome frame.
+
+    Weather predictors are defined at the study-day level, so repeated participant
+    rows for the same `date_local` must not change the standardization sample.
+    """
+
+    unique_day_dates: list[date] = []
+    unique_day_values: list[float] = []
+    for date_local, day_frame in frame.groupby("date_local", sort=False):
+        distinct_values = pd.Series(day_frame[source_field]).dropna().unique()
+        if len(distinct_values) == 0:
+            return pd.Series(dtype=float), (
+                f"{outcome} model skipped: {source_field} is missing for date_local {date_local!r} within the requested analysis window.",
+            )
+        if len(distinct_values) > 1:
+            return pd.Series(dtype=float), (
+                f"{outcome} model skipped: conflicting {source_field} values were found for date_local {date_local!r}.",
+            )
+        unique_day_dates.append(date_local)
+        unique_day_values.append(float(distinct_values[0]))
+
+    return pd.Series(unique_day_values, index=unique_day_dates, dtype=float), ()
 
 
 def _fit_mixed_model(model: object, *, outcome: AnalyticsOutcomeName) -> tuple[object, tuple[str, ...]]:

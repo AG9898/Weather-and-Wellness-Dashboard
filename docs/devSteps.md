@@ -48,7 +48,7 @@ Current TTL policy:
 
 - Dashboard weather key `ww:ra:dashboard:v1` → 24 hours, fixed expiry on write only.
 - Weather range keys `ww:ra:weather:range:v1:<date_from>:<date_to>` → 24 hours, fixed expiry on write only.
-- Analytics snapshot keys `ww:ra:analytics:snapshot:v1:<date_from>:<date_to>` → 24 hours, fixed expiry on write only.
+- Analytics snapshot keys `ww:ra:analytics:snapshot:v2:<date_from>:<date_to>` → 24 hours, fixed expiry on write only.
 
 Repeated cache reads do not renew TTL. A new TTL starts only after a successful cache write.
 

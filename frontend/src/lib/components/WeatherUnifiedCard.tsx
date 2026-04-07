@@ -11,7 +11,6 @@ import {
   type WeatherDailyResponse,
   type WeatherLatestRun,
 } from "@/lib/api";
-import type { AnalyticsAnnotation } from "@/lib/components/DashboardAnalyticsSection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -217,21 +216,31 @@ interface WeatherUnifiedCardProps {
    */
   weather: WeatherDailyResponse | null;
   /**
-   * Called whenever the active chart date range changes (preset applied or custom Applied).
-   * Not called on the initial mount fetch — dashboard should initialize to the same defaults.
+   * Latest available study day. Falls back to Vancouver today when absent.
+   * Used to anchor preset end dates and the custom max date.
    */
-  onDateRangeChange?: (dateFrom: string, dateTo: string) => void;
-  /**
-   * Analytics annotation from the active analytics snapshot.
-   * Adds a subtle plot band on the chart for the analysis window and shows
-   * a badge for the currently selected predictor term.
-   */
-  analyticsAnnotation?: AnalyticsAnnotation | null;
+  anchorDate?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyticsAnnotation }: WeatherUnifiedCardProps) {
+function getPresetRange(
+  preset: Exclude<FilterPreset, "custom">,
+  anchorDate: string
+): { from: string; to: string } {
+  if (preset === "study_start") {
+    return { from: STUDY_START, to: anchorDate };
+  }
+  if (preset === "last_7") {
+    return { from: shiftDate(anchorDate, -6), to: anchorDate };
+  }
+  if (preset === "last_30") {
+    return { from: shiftDate(anchorDate, -29), to: anchorDate };
+  }
+  return { from: shiftDate(anchorDate, -89), to: anchorDate };
+}
+
+export default function WeatherUnifiedCard({ weather, anchorDate }: WeatherUnifiedCardProps) {
   // ── Mount guard (Highcharts needs window) ────────────────────────────────
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -260,9 +269,12 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
 
   // ── Filter state ─────────────────────────────────────────────────────────
   const todayRef = useRef(getStudyToday());
+  const resolvedAnchorDate = anchorDate ?? todayRef.current;
   const [preset, setPreset] = useState<FilterPreset>("study_start");
   const [customFrom, setCustomFrom] = useState(STUDY_START);
-  const [customTo, setCustomTo] = useState(todayRef.current);
+  const [customTo, setCustomTo] = useState(resolvedAnchorDate);
+  const presetRef = useRef<FilterPreset>("study_start");
+  const anchorRef = useRef(resolvedAnchorDate);
 
   // ── Range fetch state ────────────────────────────────────────────────────
   const [rangeItems, setRangeItems] = useState<WeatherDailyItem[]>([]);
@@ -273,8 +285,8 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
 
   // ── Series visibility ────────────────────────────────────────────────────
   const [showTemp, setShowTemp] = useState(true);
-  const [showPrecip, setShowPrecip] = useState(true);
-  const [showSunlight, setShowSunlight] = useState(true);
+  const [showPrecip, setShowPrecip] = useState(false);
+  const [showSunlight, setShowSunlight] = useState(false);
 
   // ── Chart theme state ────────────────────────────────────────────────────
   const [chartColors, setChartColors] = useState<ChartColors>({
@@ -367,45 +379,47 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
     }
   }, []);
 
-  // Initial fetch with default preset (study start → today)
+  // Initial fetch with default preset (study start → anchor date), then re-anchor if the dashboard learns a newer study day.
   useEffect(() => {
-    void fetchRange(STUDY_START, todayRef.current);
-  }, [fetchRange]);
+    if (anchorRef.current !== resolvedAnchorDate) {
+      anchorRef.current = resolvedAnchorDate;
+      if (presetRef.current === "custom") {
+        setCustomTo((current) => (current > resolvedAnchorDate ? resolvedAnchorDate : current));
+        return;
+      }
+
+      const nextRange = getPresetRange(presetRef.current, resolvedAnchorDate);
+      setCustomFrom(nextRange.from);
+      setCustomTo(nextRange.to);
+      void fetchRange(nextRange.from, nextRange.to);
+      return;
+    }
+
+    void fetchRange(STUDY_START, resolvedAnchorDate);
+  }, [fetchRange, resolvedAnchorDate]);
 
   // ── Preset handlers ───────────────────────────────────────────────────────
   function applyPreset(next: FilterPreset): void {
     if (next === "custom") {
+      presetRef.current = next;
       setPreset("custom");
       return;
     }
-    const today = getStudyToday();
-    let from: string;
-    const to = today;
-    if (next === "study_start") {
-      from = STUDY_START;
-    } else if (next === "last_7") {
-      from = shiftDate(today, -6);
-    } else if (next === "last_30") {
-      from = shiftDate(today, -29);
-    } else {
-      // last_90
-      from = shiftDate(today, -89);
-    }
+    const { from, to } = getPresetRange(next, resolvedAnchorDate);
+    presetRef.current = next;
     setPreset(next);
     setCustomFrom(from);
     setCustomTo(to);
     void fetchRange(from, to);
-    onDateRangeChange?.(from, to);
   }
 
   function handleApplyCustom(): void {
     if (!customFrom || !customTo) return;
-    if (customFrom > customTo) {
+    if (customFrom > customTo || customTo > resolvedAnchorDate) {
       setRangeError("Start date must be on or before end date.");
       return;
     }
     void fetchRange(customFrom, customTo);
-    onDateRangeChange?.(customFrom, customTo);
   }
 
   // ── Ingest handler ────────────────────────────────────────────────────────
@@ -426,9 +440,8 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
           ? "Update complete with partial data."
           : "Update ran but no data could be parsed.";
       setUpdateResult({ kind: "success", message: label });
-      const studyToday = getStudyToday();
-      if (customFrom !== STUDY_START || customTo !== studyToday) {
-        void getWeatherRangeBundle("live", STUDY_START, studyToday).catch(() => undefined);
+      if (customFrom !== STUDY_START || customTo !== resolvedAnchorDate) {
+        void getWeatherRangeBundle("live", STUDY_START, resolvedAnchorDate).catch(() => undefined);
       }
       void fetchRange(customFrom, customTo, { forceLive: true });
     } catch (err) {
@@ -444,20 +457,6 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
   // ── Chart options (declarative — data and visibility included) ────────────
   const chartOptions = useMemo<Highcharts.Options>(() => {
     const { chart1, chart2, chart3, border, mutedFg } = chartColors;
-
-    // Build a subtle plot band for the analytics analysis window when available
-    const analyticsPlotBand: Highcharts.XAxisPlotBandsOptions[] = analyticsAnnotation
-      ? [
-          {
-            from: dateToTs(analyticsAnnotation.dateFrom),
-            to: dateToTs(analyticsAnnotation.dateTo) + 86_400_000, // include the end date
-            color: "color-mix(in srgb, var(--ring) 12%, transparent)",
-            borderColor: "color-mix(in srgb, var(--ring) 28%, transparent)",
-            borderWidth: 1,
-            zIndex: 0,
-          },
-        ]
-      : [];
 
     const tempData: [number, number | null][] = rangeItems.map((item) => [
       dateToTs(item.date_local),
@@ -526,7 +525,6 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
           style: { color: mutedFg, fontSize: "11px" },
           y: 18,
         },
-        plotBands: analyticsPlotBand,
       },
       yAxis: [
         {
@@ -629,7 +627,7 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
         },
       ],
     };
-  }, [chartColors, rangeItems, showTemp, showPrecip, showSunlight, analyticsAnnotation]);
+  }, [chartColors, rangeItems, showTemp, showPrecip, showSunlight]);
 
   // CSS clip-path draw-in animation: fires whenever data or visibility changes.
   // HighchartsReact re-renders declaratively from chartOptions; the clip effect
@@ -778,25 +776,6 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
         {/* ── Divider ───────────────────────────────────────────────────── */}
         <div className="mb-4 border-t border-border/60" />
 
-        {/* ── Analytics link badge ──────────────────────────────────────── */}
-        {analyticsAnnotation?.selectedTermLabel && (
-          <div className="mb-3 flex items-center gap-2">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-              style={{
-                borderColor: "color-mix(in srgb, var(--ring) 36%, transparent)",
-                background: "color-mix(in srgb, var(--ring) 12%, transparent)",
-              }}
-            >
-              <span
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: "var(--primary)" }}
-              />
-              Analysis: {analyticsAnnotation.selectedTermLabel}
-            </span>
-          </div>
-        )}
-
         {/* ── Graph controls row ────────────────────────────────────────── */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           {/* Date range preset buttons */}
@@ -870,15 +849,15 @@ export default function WeatherUnifiedCard({ weather, onDateRangeChange, analyti
               <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 To
               </span>
-              <input
-                type="date"
-                value={customTo}
-                min={customFrom}
-                max={getStudyToday()}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="h-8 w-36 rounded-xl border border-border bg-background px-2 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring/60"
-              />
-            </label>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  max={resolvedAnchorDate}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="h-8 w-36 rounded-xl border border-border bg-background px-2 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring/60"
+                />
+              </label>
             <Button
               type="button"
               size="sm"

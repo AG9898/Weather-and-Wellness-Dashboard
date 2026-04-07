@@ -10,8 +10,8 @@
 ## Status
 
 - **Implementation status:** partially implemented
-- **Implemented through:** T83-T92 (response schema, durable storage, canonical dataset builder, mixed-model fitting, snapshot orchestration, backend API endpoint, effect-plot and weather-annotation serialization)
-- **Still pending:** day-level weather standardization parity fix, temperature frequency/extreme-day summary contract, and end-to-end analytics/dashboard verification tasks
+- **Implemented through:** T83-T92 and T118 (response schema, durable storage, canonical dataset builder, mixed-model fitting, snapshot orchestration, backend API endpoint, effect-plot and weather-annotation serialization, temperature-summary engine)
+- **Still pending:** end-to-end analytics/dashboard verification tasks and any later live snapshot/route wiring polish; the dashboard filter split gives analytics its own independent range controls anchored to the latest study day and the weather chart is no longer linked to analytics annotations.
 - **Source reference:** `reference/Weather_MLM.R`
 - **Scope:** analysis dataset construction, mixed-effects model definitions, KPI
   serialization, day-level temperature summaries, snapshot/cache behavior
@@ -95,8 +95,8 @@ It then produces partial-residual plots for selected predictors.
   the current validation oracle for Weather & Wellness outputs, but it is not a
   production analytics input. Runtime analytics stay database-backed.
 - **Keep chart semantics separate.** Weather time-series charts and
-  model-effect plots should be linked by shared filters and interaction state,
-  not overlaid into one ambiguous chart.
+  model-effect plots must remain separate surfaces and must not be collapsed
+  into one ambiguous chart or one coupled filter controller.
 
 ---
 
@@ -283,6 +283,11 @@ Each window should include:
 - `cold_group`
 - `hot_group`
 
+The dashboard renders this payload in a dedicated temperature-summary card
+separate from the effect plot and weather chart. The UI exposes tabs for the
+three fixed windows, a summary strip, a 1°C frequency histogram, and hot/cold
+day panels.
+
 ### Dataset metadata
 
 Analytics responses should also include:
@@ -369,42 +374,48 @@ the existing weather-by-date Highcharts chart.
 
 - Keep the existing weather chart as the **time/context view**.
 - Add a separate analytics visualization surface as the **effect view**.
-- Link the two through shared date filters and selected analytics state.
+- Keep the analytics surface independently filterable; the weather chart should
+  not be the controller for analytics date windows.
 
 ### Planned linked surfaces
 
 1. **Weather chart**
    - remains a date-based view of temperature, precipitation, and sunlight
-   - continues to use the dashboard weather range filters
+   - owns its own weather-range filters
 2. **Model cards**
    - summarize term-level effects from the fitted models
-   - selecting a card or term should update the analysis plot
+   - selecting a card or term should update the analysis plot within the
+     analytics surface
 3. **Effect plot card**
    - renders a separate chart for the selected outcome/predictor term
    - can show scatter data, fitted line, and confidence band if supported by the
      serialized payload
+4. **Temperature summary card**
+   - stays inside the analytics surface
+   - follows the analytics range rather than the weather-chart range
 
-### Shared state
+### Analytics surface state
 
-These surfaces should share:
+The analytics surfaces should share:
 
-- date range
+- analytics date range
 - snapshot/live analytics state
 - selected outcome model
 - selected effect term
 
-### Weather-to-analysis visual linking
+The weather chart should keep its own separate date range and should not
+implicitly change analytics snapshot queries.
 
-To preserve the usefulness of the weather chart without mixing incompatible
-axes, the dashboard may add lightweight weather-chart annotations that still
-live in time space, for example:
+### Planned dashboard revision
 
-- analysis window highlights
-- badges or labels showing which predictor is currently selected in the effect plot
-- subtle markers for dates included/excluded in the active analysis window
-
-Do not place partial residual points or predictor-vs-residual regression lines
-on the date-based weather chart.
+- Add a lightweight metadata read for `latest_study_day` so preset ranges can
+  anchor to the most recent actual study date.
+- Use that anchor for both weather and analytics presets, with a fallback to
+  Vancouver "today" when no study days exist yet.
+- Keep weather and analytics filter state independent; the weather chart should
+  not render analytics-linked badges or plot bands.
+- Continue to avoid placing partial residual points or
+  predictor-vs-residual regression lines on the date-based weather chart.
 
 ---
 
@@ -430,7 +441,7 @@ for analytics results. Durable snapshot state belongs in Postgres.
 
 ## Planned API Shape
 
-The analytics endpoint is planned and not yet implemented:
+The analytics endpoint is implemented with the following high-level response shape:
 
 ### `GET /dashboard/analytics`
 
@@ -440,7 +451,7 @@ Query parameters:
 - `date_to=YYYY-MM-DD`
 - `mode=snapshot|live`
 
-Planned high-level response shape:
+Implemented high-level response shape:
 
 ```json
 {

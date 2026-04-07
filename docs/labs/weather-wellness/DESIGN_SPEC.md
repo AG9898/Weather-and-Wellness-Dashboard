@@ -148,7 +148,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 | `PageContainer` | `src/lib/components/PageContainer.tsx` | Max-width content wrapper for all pages. Use `narrow` prop for survey/task flows. |
 | `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky capsule-style top nav for RA pages (logo mark, icon-first nav links, theme control, sign-out). |
 | `ThemeToggle` | `src/lib/components/ThemeToggle.tsx` | Toggles between `light` and `dark`; startup still resolves from `system` when no preference is stored. |
-| `WeatherUnifiedCard` | `src/lib/components/WeatherUnifiedCard.tsx` | Unified weather display + Highcharts 3-series line chart (Temperature/Precipitation/Sunlight) + internal date range filter (default: study start → today). Replaces the former `WeatherCard` + `WeatherTrendChart` pair (T69–T70). |
+| `WeatherUnifiedCard` | `src/lib/components/WeatherUnifiedCard.tsx` | Unified weather display + Highcharts 3-series line chart (Temperature/Precipitation/Sunlight) + internal date range filter (default: study start → anchor date, usually the latest study day or Vancouver today). Replaces the former `WeatherCard` + `WeatherTrendChart` pair (T69–T70). |
 | `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments with shared progress bar + calm card-shell styling. |
 
 ## Layout Structure
@@ -191,7 +191,8 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 
 1. **Hero action zone** — raised neutral card with a restrained tonal accent glow, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, semantic `primary`) that navigates to `/new-session`.
 2. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
-3. **Analytics snapshot section** — separate statistical surface below the weather card. It reads the dashboard analytics payload via the same-origin analytics Route Handler, defaults to the study window (`2025-03-03` → today, `America/Vancouver`), and does not block weather rendering.
+3. **Temperature summary card** — standalone descriptive analytics surface below the weather card and above the mixed-model section. It loads independently of the analytics snapshot, can be recomputed manually, and remains visible even when the broader analytics payload is missing.
+4. **Analytics snapshot section** — separate statistical surface below the temperature summary card. It reads the dashboard analytics payload via the same-origin analytics Route Handler, owns its own study-window controls, defaults to the study window (`2025-03-03` → latest study day or Vancouver today), and does not block weather rendering.
 
 The KPI cards row has been removed from the shipped dashboard. The “Recent Sessions” panel has also been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
 
@@ -199,11 +200,11 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - The operational KPI row remains unchanged and loads independently from analytics.
 - The analytics section reads the latest stored snapshot by default through
   `/api/ra/dashboard/analytics?mode=snapshot`. If no snapshot exists yet for the
-  selected study window, the UI shows a snapshot-miss empty state and keeps live
+  selected study window, the UI shows a concise empty state and keeps live
   recompute behind the manual **Refresh Analytics** action.
-- The section header shows the active study window, the latest snapshot/live
-  freshness metadata, and a manual **Refresh Analytics** action that requests a
-  live recompute without blocking the rest of the dashboard.
+- The section header shows the active study window and a manual **Refresh
+  Analytics** action that requests a live recompute without blocking the rest
+  of the dashboard.
 - Model results are rendered as per-term cards grouped by outcome. Each card
   shows:
   - outcome
@@ -214,13 +215,13 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
   - direction (`positive` / `negative` / `neutral`)
   - model convergence state
   - sample/day counts and any backend warnings
-- The section also surfaces dataset metadata for the active snapshot:
-  included sessions, included days, native/imported row counts, excluded row
-  count, and structured exclusion reasons when present.
+- The section keeps the most useful snapshot metadata visible in compact form
+  and tucks lower-signal details like row counts and exclusion reasons into a
+  lightweight disclosure panel.
 - Analytics states handled in UI:
-  - `ready` — show cards and freshness metadata
-  - `stale` — keep prior snapshot visible with a warning banner
-  - `recomputing` — keep prior snapshot visible with an in-progress banner
+  - `ready` — show cards with a simple "latest snapshot ready" status
+  - `stale` — keep prior snapshot visible with a short warning
+  - `recomputing` — keep prior snapshot visible while a background refresh runs
   - `insufficient_data` — show an empty-state message instead of cards
   - `failed` — show an error-state message while operational surfaces remain usable
 
@@ -230,10 +231,22 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - Interaction terms are excluded from v1 plots (an empty-state message is shown instead).
 - The effect plot remains semantically distinct from the weather chart: its x-axis is a z-scored predictor value, not a date.
 
-**Weather–analytics visual linking (implemented T94):**
-- `WeatherUnifiedCard` accepts an `analyticsAnnotation` prop from the dashboard page.
-- When an analytics snapshot is loaded, the weather chart shows a small "Analysis: [Term]" badge above the chart controls.
-- A subtle low-opacity plot band highlights the analysis window on the weather chart x-axis.
+**Temperature summary card (implemented T120):**
+- A separate `AnalyticsTemperatureSummaryCard` is rendered below the model/effect plot stack in the analytics section.
+- The card exposes fixed tabs for `overall`, `fall_winter`, and `spring_summer`.
+- The selected window shows day count, participant count, mean temperature, standard deviation, and cold/hot participant counts.
+- A simple 1°C bin histogram summarizes day-level temperature frequency.
+- Cold/hot panels list qualifying dates and participant counts, with a benign empty state when no days cross the threshold.
+- The card uses short RA-facing status labels such as ready, no saved summary, and needs refresh, with a dedicated compute/refresh button.
+
+**Weather chart defaults:**
+- The weather chart loads with the temperature series visible by default.
+- Precipitation and sunlight remain available through the existing toggles, but they start hidden and stay user-controlled across preset and range changes.
+
+**Weather and analytics are separate surfaces (implemented T124):**
+- `WeatherUnifiedCard` keeps only weather summary and weather-range chart state.
+- `DashboardAnalyticsSection` owns the analytics study-window controls and model cards independently.
+- The weather chart does not show analytics-linked badges or plot bands.
 - No predictor values, residuals, or model series are placed on the weather time-series chart.
 - An RA-only **Undo Last Session** control is implemented in the dashboard hero
   card (T98). It appears as a ghost button directly below the Start New Entry
@@ -262,7 +275,7 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
 - Route handlers enforce backend fetch timeouts (15s) and use stale-cache fallback when `mode=live` fails, so dashboard loading does not hang indefinitely on Render outages.
 
-**Analytics loading (implemented through T90):**
+**Analytics loading (implemented through T123):**
 - Statistical dashboard content uses a separate analytics payload and cache key
   from the operational dashboard bundle.
 - Default render path uses the most recent successful analytics snapshot.
@@ -271,19 +284,19 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - Manual analytics refresh requests use live mode, but the UI keeps the prior
   snapshot visible whenever the backend returns `stale` or `recomputing`.
 
-**Shared filter state (implemented T93):**
-- The dashboard page (`/dashboard`) owns one `sharedDateFrom` / `sharedDateTo` state initialized to `STUDY_START → today` (America/Vancouver).
-- `WeatherUnifiedCard` accepts an `onDateRangeChange` callback; it is called whenever the user applies a preset or custom range (not on initial mount).
-- `DashboardAnalyticsSection` receives `dateFrom` / `dateTo` as props and re-fetches analytics whenever those change, keeping the prior analytics visible while loading.
-- The analytics section date-range badge reflects the current shared range.
+**Weather anchor date (implemented T122):**
+- The dashboard page loads `latest_study_day` once via `GET /api/ra/dashboard/study-window` and uses `latest_study_day ?? Vancouver today` as the weather anchor date.
+- `WeatherUnifiedCard` keeps its own internal date-range controls and uses that anchor date for preset end dates plus the custom `To` max date.
+- The weather card no longer emits `onDateRangeChange`; weather interactions do not drive analytics refetches.
+- `DashboardAnalyticsSection` receives the same anchor date, but its own state now owns the analytics study-window controls and fetches snapshot/live analytics for that range independently of the weather card.
+- The temperature summary card remains inside the analytics surface and continues to follow the analytics section's date window.
 
-**Analytics loading now includes weather-linking (T94):**
-- The analytics payload's `weather_annotations` drives the badge and plot band on the weather chart.
+**Analytics loading now stays decoupled from weather (T124):**
+- The analytics payload's `weather_annotations` remains serialized as date-based metadata only.
 - The effect plot renders in its own card (`AnalyticsEffectPlotCard`) and is not overlaid on the weather chart.
 - The backend analytics contract also includes a day-level `temperature_summary`
   payload (`overall`, `fall_winter`, `spring_summer`) for hot/cold day analysis.
-  The shipped dashboard does not yet render a dedicated UI for that summary; it
-  is a backend/API surface first.
+  The shipped dashboard renders that summary inside the analytics section.
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 
@@ -300,7 +313,7 @@ The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx
 7. **Highcharts line chart** (h-72)
 
 **Chart defaults and behavior:**
-- Default filter range: `2025-03-03` (study start) → today (America/Vancouver).
+- Default filter range: `2025-03-03` (study start) → latest study day or Vancouver today.
 - Chart library: Highcharts (`highcharts` + `highcharts-react-official`). Recharts is removed.
 - Chart type: line only (no bars). Three series:
   - **Temperature** — `weather_daily.current_temp_c`, left Y-axis (°C), solid line, `--chart-1` color, full opacity
@@ -312,7 +325,12 @@ The `WeatherUnifiedCard` component at `src/lib/components/WeatherUnifiedCard.tsx
 - Range data is fetched internally via `getWeatherRangeBundle('cached'|'live', dateFrom, dateTo)` (same-origin `/api/ra/weather/range`) — cached-first with live fallback; no bare fetch.
 - Inline loading copy distinguishes cache lookup from live backend fetch (`"Checking cached chart data…"` vs `"Fetching live chart data from backend…"`).
 - On transient live fetch failures (for example a 5xx or timeout during a cold start), the chart retries the live weather-range request once before surfacing an error.
-- After a successful manual weather ingest, the component refreshes the active range and also warms the default `study_start → today` weather-range cache in the background so the next dashboard visit is more likely to render from cache.
+- After a successful manual weather ingest, the component refreshes the active range and also warms the default `study_start → latest study day` weather-range cache in the background so the next dashboard visit is more likely to render from cache.
+
+**Filter anchor behavior (implemented T122):**
+- Preset buttons (`Study Start`, `Last 7 days`, `Last 30 days`, `Last 90 days`) anchor their end date to the most recent available `study_days.date_local`.
+- If there are no `study_days` rows yet, the weather card falls back to Vancouver "today" so the dashboard remains usable before the first session lands.
+- Custom date pickers cap their max date at that same anchor date.
 
 **Chart color assignments:**
 

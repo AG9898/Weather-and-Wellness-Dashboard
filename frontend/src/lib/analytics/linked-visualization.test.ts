@@ -1,15 +1,14 @@
 /**
- * T95 — Linked weather-analysis visualization tests.
+ * T124 — Weather/analytics separation tests.
  *
- * Focused coverage for the shared-filter and linked-visualization contracts:
+ * Focused coverage for the decoupled contracts:
  *
- *   1. Shared date filters drive both weather and analytics requests
- *   2. Selected model-card state drives the separate effect plot
- *   3. Weather annotations remain date-based and never introduce
- *      residual/effect series into the weather chart
- *   4. Loading, stale snapshot, and recompute state coverage
+ *   1. Weather annotations remain date-based metadata only
+ *   2. Effect plots stay separate from the weather chart
+ *   3. The old dashboard-to-weather linkage wiring is absent from source
  */
 
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type {
   AnalyticsEffectPlotResponse,
@@ -31,18 +30,6 @@ function resolveEffectPlot(
   term: string,
 ): AnalyticsEffectPlotResponse | null {
   return plots.find((p) => p.outcome === outcome && p.term === term) ?? null;
-}
-
-/** Builds an AnalyticsAnnotation from weather_annotations and a selected term label. */
-function buildAnnotation(
-  weatherAnnotations: AnalyticsWeatherAnnotationsResponse,
-  selectedTermLabel: string | null,
-) {
-  return {
-    selectedTermLabel,
-    dateFrom: weatherAnnotations.date_from,
-    dateTo: weatherAnnotations.date_to,
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -244,27 +231,6 @@ describe("weather annotation contract — date-based only", () => {
     }
   });
 
-  it("buildAnnotation produces only date-based fields in the AnalyticsAnnotation", () => {
-    const annotation = buildAnnotation(annotations, "Temperature");
-    expect(annotation).toEqual({
-      selectedTermLabel: "Temperature",
-      dateFrom: "2026-03-01",
-      dateTo: "2026-03-10",
-    });
-    // Must not contain non-date effect/series data
-    expect(annotation).not.toHaveProperty("points");
-    expect(annotation).not.toHaveProperty("fitted_line");
-    expect(annotation).not.toHaveProperty("included_dates");
-    expect(annotation).not.toHaveProperty("excluded_dates");
-  });
-
-  it("buildAnnotation passes null selectedTermLabel when no term is selected", () => {
-    const annotation = buildAnnotation(annotations, null);
-    expect(annotation.selectedTermLabel).toBeNull();
-    expect(annotation.dateFrom).toBe("2026-03-01");
-    expect(annotation.dateTo).toBe("2026-03-10");
-  });
-
   it("effect plots and weather annotations are structurally distinct types", () => {
     // An effect plot carries outcome/term/x_label/y_label/points/fitted_line
     const plot = makeEffectPlots()[0];
@@ -283,8 +249,7 @@ describe("weather annotation contract — date-based only", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3b. AnalyticsVisualizationsResponse — effect plots and weather annotations
-//     live in separate fields (not merged)
+// 3b. Dashboard linkage wiring was removed from the UI
 // ---------------------------------------------------------------------------
 
 describe("visualizations response keeps effect plots and weather data separate", () => {
@@ -295,15 +260,12 @@ describe("visualizations response keeps effect plots and weather data separate",
       weather_annotations: makeWeatherAnnotations(),
     };
 
-    // weather_annotations must not contain effect plot lists
     expect(viz.weather_annotations).not.toHaveProperty("effect_plots");
     expect(viz.weather_annotations).not.toHaveProperty("models");
 
-    // effect_plots must not contain weather-series fields
     for (const plot of viz.effect_plots) {
       expect(plot).not.toHaveProperty("date_local_series");
       expect(plot).not.toHaveProperty("weather_annotations");
-      // Each plot has its own date_local per point, not a top-level date range
       expect(plot).not.toHaveProperty("date_from");
       expect(plot).not.toHaveProperty("date_to");
     }
@@ -320,6 +282,28 @@ describe("visualizations response keeps effect plots and weather data separate",
   });
 });
 
+describe("dashboard wiring no longer links analytics annotations into the weather card", () => {
+  function readSource(relativePath: string): string {
+    return readFileSync(new URL(relativePath, import.meta.url), "utf8");
+  }
+
+  it("page, weather card, and analytics section do not contain the old bridge identifiers", () => {
+    const page = readSource("../../app/(ra)/dashboard/page.tsx");
+    const weatherCard = readSource("../components/WeatherUnifiedCard.tsx");
+    const analyticsSection = readSource("../components/DashboardAnalyticsSection.tsx");
+
+    expect(weatherCard).toContain("const [showTemp, setShowTemp] = useState(true);");
+    expect(weatherCard).toContain("const [showPrecip, setShowPrecip] = useState(false);");
+    expect(weatherCard).toContain("const [showSunlight, setShowSunlight] = useState(false);");
+    expect(page).not.toContain("analyticsAnnotation");
+    expect(page).not.toContain("onAnnotationsChange");
+    expect(weatherCard).not.toContain("analyticsAnnotation");
+    expect(weatherCard).not.toContain("Analysis:");
+    expect(weatherCard).not.toContain("plotBands: analyticsPlotBand");
+    expect(analyticsSection).not.toContain("onAnnotationsChange");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 4. Loading, stale snapshot, and recompute state coverage
 // ---------------------------------------------------------------------------
@@ -328,11 +312,11 @@ describe("analytics state — loading, stale, and recompute panels", () => {
   function makeMinimalResponse(status: DashboardAnalyticsResponse["status"]): DashboardAnalyticsResponse {
     return {
       status,
-      response_version: "dashboard-analytics-v1",
+      response_version: "dashboard-analytics-v2",
       snapshot: {
         mode: status === "ready" ? "snapshot" : "live",
-        response_version: "dashboard-analytics-v1",
-        model_version: "weather-mlm-v1",
+        response_version: "dashboard-analytics-v2",
+        model_version: "weather-mlm-v2",
         generated_at: "2026-03-10T18:00:00Z",
         is_stale: status === "stale" || status === "recomputing",
         recompute_started_at: status === "recomputing" ? "2026-03-10T18:01:00Z" : null,
@@ -350,6 +334,7 @@ describe("analytics state — loading, stale, and recompute panels", () => {
         generated_at: "2026-03-10T18:00:00Z",
       },
       models: [],
+      temperature_summary: { windows: [] },
       visualizations: null,
     };
   }

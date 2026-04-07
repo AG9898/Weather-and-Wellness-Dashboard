@@ -22,6 +22,11 @@ AnalyticsStatus: TypeAlias = Literal[
     "insufficient_data",
     "failed",
 ]
+AnalyticsTemperatureSummaryWindowKey: TypeAlias = Literal[
+    "overall",
+    "fall_winter",
+    "spring_summer",
+]
 
 
 class AnalyticsExclusionReasonResponse(BaseModel):
@@ -88,6 +93,63 @@ class AnalyticsModelSummaryResponse(BaseModel):
     effects: list[AnalyticsEffectCardResponse] = Field(default_factory=list)
 
 
+class AnalyticsTemperatureSummaryFrequencyBinResponse(BaseModel):
+    """Histogram bucket for day-level temperature frequency counts."""
+
+    bin_start_c: float
+    bin_end_c: float
+    day_count: int
+
+
+class AnalyticsTemperatureSummaryDayResponse(BaseModel):
+    """A unique study day used by a temperature-summary window."""
+
+    date_local: date
+    temperature_c: float
+    temperature_z: float
+    participant_ids: list[str] = Field(default_factory=list)
+    participant_count: int
+
+
+class AnalyticsTemperatureSummaryGroupResponse(BaseModel):
+    """Cold or hot day grouping for a summary window."""
+
+    day_count: int = 0
+    participant_count: int = 0
+    participant_ids: list[str] = Field(default_factory=list)
+    dates: list[date] = Field(default_factory=list)
+    days: list[AnalyticsTemperatureSummaryDayResponse] = Field(default_factory=list)
+
+
+class AnalyticsTemperatureSummaryWindowResponse(BaseModel):
+    """Per-window descriptive temperature summary metadata."""
+
+    window_key: AnalyticsTemperatureSummaryWindowKey
+    date_from: date | None = None
+    date_to: date | None = None
+    day_count: int = 0
+    participant_count: int = 0
+    mean_temperature_c: float | None = None
+    sd_temperature_c: float | None = None
+    frequency_bins: list[AnalyticsTemperatureSummaryFrequencyBinResponse] = Field(
+        default_factory=list
+    )
+    cold_group: AnalyticsTemperatureSummaryGroupResponse = Field(
+        default_factory=AnalyticsTemperatureSummaryGroupResponse
+    )
+    hot_group: AnalyticsTemperatureSummaryGroupResponse = Field(
+        default_factory=AnalyticsTemperatureSummaryGroupResponse
+    )
+
+
+class AnalyticsTemperatureSummaryResponse(BaseModel):
+    """Container for the fixed temperature-summary windows."""
+
+    windows: list[AnalyticsTemperatureSummaryWindowResponse] = Field(
+        default_factory=list
+    )
+
+
 class AnalyticsEffectPlotPointResponse(BaseModel):
     """Observed point for a separate analytics effect plot."""
 
@@ -140,6 +202,9 @@ class DashboardAnalyticsResponse(BaseModel):
     snapshot: AnalyticsSnapshotMetadataResponse
     dataset: AnalyticsDatasetMetadataResponse
     models: list[AnalyticsModelSummaryResponse] = Field(default_factory=list)
+    temperature_summary: AnalyticsTemperatureSummaryResponse = Field(
+        default_factory=AnalyticsTemperatureSummaryResponse
+    )
     visualizations: AnalyticsVisualizationsResponse | None = None
 
 
@@ -154,6 +219,12 @@ __all__ = [
     "AnalyticsModelSummaryResponse",
     "AnalyticsOutcome",
     "AnalyticsReadMode",
+    "AnalyticsTemperatureSummaryDayResponse",
+    "AnalyticsTemperatureSummaryFrequencyBinResponse",
+    "AnalyticsTemperatureSummaryGroupResponse",
+    "AnalyticsTemperatureSummaryResponse",
+    "AnalyticsTemperatureSummaryWindowKey",
+    "AnalyticsTemperatureSummaryWindowResponse",
     "AnalyticsSnapshotMetadataResponse",
     "AnalyticsStatus",
     "AnalyticsVisualizationsResponse",

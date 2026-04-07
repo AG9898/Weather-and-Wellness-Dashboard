@@ -26,9 +26,9 @@ def _build_dataset_result(
     for day in range(1, 9):
         for rep in range(3):
             index = (day - 1) * 3 + rep
-            temperature = 9.0 if constant_temperature else 5.5 + (day * 0.7) + (rep * 0.15)
-            precipitation = (day % 4) * 0.8 + rep * 0.2 + (index % 3) * 0.05
-            daylight_hours = 7.0 + day * 0.45 + rep * 0.12
+            temperature = 9.0 if constant_temperature else 5.0 + (day * 0.55) + ((day % 3) * 0.18)
+            precipitation = (day % 4) * 0.75 + ((day + 1) % 3) * 0.11
+            daylight_hours = 6.8 + (day * 0.33) + ((day + 2) % 4) * 0.09
             depression = 2.0 + ((index * 2) % 7) * 0.55 + day * 0.04
             loneliness = 1.4 + ((index * 3) % 5) * 0.35 + rep * 0.08
             anxiety = 3.2 + ((index * 5) % 6) * 0.42 + day * 0.03
@@ -82,6 +82,39 @@ def _build_dataset_result(
     return AnalyticsDatasetBuildResult(
         date_from=date(2026, 3, 1),
         date_to=date(2026, 3, 8),
+        generated_at=datetime(2026, 3, 10, 18, 0, tzinfo=timezone.utc),
+        rows=tuple(rows),
+        excluded_rows=(),
+    )
+
+
+def _build_uneven_day_weight_dataset(day_counts: dict[int, int]) -> AnalyticsDatasetBuildResult:
+    rows: list[AnalyticsDatasetRow] = []
+    for day, count in day_counts.items():
+        for rep in range(count):
+            index = (day - 1) * 10 + rep
+            rows.append(
+                AnalyticsDatasetRow(
+                    session_id=uuid.uuid5(uuid.NAMESPACE_URL, f"weighting-session-{day}-{rep}"),
+                    participant_uuid=uuid.uuid5(uuid.NAMESPACE_URL, f"weighting-participant-{day}-{rep}"),
+                    date_local=date(2026, 3, day),
+                    date_bin=day,
+                    temperature=10.0 * day,
+                    precipitation=1.0 * day,
+                    daylight_hours=4.0 + day,
+                    anxiety=2.0 + day * 0.4 + rep * 0.2,
+                    depression=1.5 + day * 0.35 + rep * 0.1,
+                    loneliness=1.0 + day * 0.25 + rep * 0.15,
+                    self_report=3.0 + day * 0.5 + rep * 0.05,
+                    digit_span_score=7 + day + rep,
+                    imported_fields=("self_report",) if index % 2 == 0 else (),
+                )
+            )
+
+    ordered_days = sorted(day_counts)
+    return AnalyticsDatasetBuildResult(
+        date_from=date(2026, 3, ordered_days[0]),
+        date_to=date(2026, 3, ordered_days[-1]),
         generated_at=datetime(2026, 3, 10, 18, 0, tzinfo=timezone.utc),
         rows=tuple(rows),
         excluded_rows=(),
@@ -164,7 +197,63 @@ def test_z_scoring_uses_each_outcome_complete_case_sample() -> None:
     assert self_report_warnings == []
     assert len(digit_z_frame.index) == 23
     assert len(self_report_z_frame.index) == 23
-    assert digit_z_frame.iloc[0]["temperature_z"] != self_report_z_frame.iloc[0]["temperature_z"]
+    shared_filter = (
+        (digit_z_frame["date_local"] == rows[2].date_local)
+        & (digit_z_frame["temperature"] == rows[2].temperature)
+        & (digit_z_frame["precipitation"] == rows[2].precipitation)
+        & (digit_z_frame["daylight_hours"] == rows[2].daylight_hours)
+        & (digit_z_frame["anxiety"] == rows[2].anxiety)
+        & (digit_z_frame["depression"] == rows[2].depression)
+        & (digit_z_frame["loneliness"] == rows[2].loneliness)
+    )
+    digit_shared_row = digit_z_frame.loc[shared_filter].iloc[0]
+    self_report_shared_row = self_report_z_frame.loc[
+        (self_report_z_frame["date_local"] == rows[2].date_local)
+        & (self_report_z_frame["temperature"] == rows[2].temperature)
+        & (self_report_z_frame["precipitation"] == rows[2].precipitation)
+        & (self_report_z_frame["daylight_hours"] == rows[2].daylight_hours)
+        & (self_report_z_frame["anxiety"] == rows[2].anxiety)
+        & (self_report_z_frame["depression"] == rows[2].depression)
+        & (self_report_z_frame["loneliness"] == rows[2].loneliness)
+    ].iloc[0]
+    assert digit_shared_row["anxiety_z"] != self_report_shared_row["anxiety_z"]
+
+
+def test_weather_z_scoring_uses_unique_study_days_not_row_counts() -> None:
+    equal_day_counts = {1: 1, 2: 1, 3: 1}
+    uneven_day_counts = {1: 5, 2: 1, 3: 1}
+
+    equal_result = _build_uneven_day_weight_dataset(equal_day_counts)
+    uneven_result = _build_uneven_day_weight_dataset(uneven_day_counts)
+
+    equal_frame = _build_outcome_frame("digit_span", equal_result.rows)
+    equal_z_frame, equal_warnings = _z_score_outcome_frame("digit_span", equal_frame)
+    uneven_frame = _build_outcome_frame("digit_span", uneven_result.rows)
+    uneven_z_frame, uneven_warnings = _z_score_outcome_frame("digit_span", uneven_frame)
+
+    assert equal_warnings == []
+    assert uneven_warnings == []
+
+    equal_temperature_by_day = {
+        row.date_local: row.temperature_z
+        for row in equal_z_frame.sort_values("date_local").drop_duplicates("date_local").itertuples()
+    }
+    uneven_temperature_by_day = {
+        row.date_local: row.temperature_z
+        for row in uneven_z_frame.sort_values("date_local").drop_duplicates("date_local").itertuples()
+    }
+
+    assert equal_temperature_by_day == uneven_temperature_by_day
+    assert equal_temperature_by_day[date(2026, 3, 1)] == -1.0
+    assert equal_temperature_by_day[date(2026, 3, 2)] == 0.0
+    assert equal_temperature_by_day[date(2026, 3, 3)] == 1.0
+
+    uneven_day_two_values = {
+        round(row.temperature_z, 12)
+        for row in uneven_z_frame.itertuples()
+        if row.date_local == date(2026, 3, 2)
+    }
+    assert uneven_day_two_values == {0.0}
 
 
 def test_mixed_model_fit_uses_reml_for_final_estimation() -> None:

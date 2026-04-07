@@ -13,6 +13,11 @@ from app.schemas.analytics import (
     AnalyticsEffectCardResponse,
     AnalyticsExclusionReasonResponse,
     AnalyticsModelSummaryResponse,
+    AnalyticsTemperatureSummaryDayResponse,
+    AnalyticsTemperatureSummaryFrequencyBinResponse,
+    AnalyticsTemperatureSummaryGroupResponse,
+    AnalyticsTemperatureSummaryResponse,
+    AnalyticsTemperatureSummaryWindowResponse,
     AnalyticsSnapshotMetadataResponse,
     AnalyticsVisualizationsResponse,
     AnalyticsWeatherAnnotationsResponse,
@@ -20,9 +25,9 @@ from app.schemas.analytics import (
 )
 
 
-def test_analytics_constants_define_v1_contract() -> None:
-    assert ANALYTICS_RESPONSE_VERSION == "dashboard-analytics-v1"
-    assert ANALYTICS_MODEL_VERSION == "weather-mlm-v1"
+def test_analytics_constants_define_v2_contract() -> None:
+    assert ANALYTICS_RESPONSE_VERSION == "dashboard-analytics-v2"
+    assert ANALYTICS_MODEL_VERSION == "weather-mlm-v2"
     assert ANALYTICS_RANDOM_EFFECT_GROUPING_FIELD == "date_bin"
     assert set(ANALYTICS_MIXED_MODEL_FORMULAS) == {"digit_span", "self_report"}
 
@@ -78,6 +83,56 @@ def test_dashboard_analytics_response_serializes_scaffolded_payload() -> None:
                 ],
             )
         ],
+        temperature_summary=AnalyticsTemperatureSummaryResponse(
+            windows=[
+                AnalyticsTemperatureSummaryWindowResponse(
+                    window_key="overall",
+                    date_from=date(2026, 1, 1),
+                    date_to=date(2026, 1, 31),
+                    day_count=2,
+                    participant_count=4,
+                    mean_temperature_c=4.5,
+                    sd_temperature_c=1.25,
+                    frequency_bins=[
+                        AnalyticsTemperatureSummaryFrequencyBinResponse(
+                            bin_start_c=4.0,
+                            bin_end_c=5.0,
+                            day_count=1,
+                        )
+                    ],
+                    cold_group=AnalyticsTemperatureSummaryGroupResponse(
+                        day_count=1,
+                        participant_count=2,
+                        participant_ids=["p-1", "p-2"],
+                        dates=[date(2026, 1, 2)],
+                        days=[
+                            AnalyticsTemperatureSummaryDayResponse(
+                                date_local=date(2026, 1, 2),
+                                temperature_c=3.2,
+                                temperature_z=-2.4,
+                                participant_ids=["p-1", "p-2"],
+                                participant_count=2,
+                            )
+                        ],
+                    ),
+                    hot_group=AnalyticsTemperatureSummaryGroupResponse(
+                        day_count=1,
+                        participant_count=2,
+                        participant_ids=["p-3", "p-4"],
+                        dates=[date(2026, 1, 30)],
+                        days=[
+                            AnalyticsTemperatureSummaryDayResponse(
+                                date_local=date(2026, 1, 30),
+                                temperature_c=6.4,
+                                temperature_z=2.6,
+                                participant_ids=["p-3", "p-4"],
+                                participant_count=2,
+                            )
+                        ],
+                    ),
+                )
+            ]
+        ),
         visualizations=AnalyticsVisualizationsResponse(
             default_selected_term="temperature_z",
             weather_annotations=AnalyticsWeatherAnnotationsResponse(
@@ -96,4 +151,9 @@ def test_dashboard_analytics_response_serializes_scaffolded_payload() -> None:
     assert payload["snapshot"]["model_version"] == ANALYTICS_MODEL_VERSION
     assert payload["models"][0]["grouping_field"] == ANALYTICS_RANDOM_EFFECT_GROUPING_FIELD
     assert payload["models"][0]["effects"][0]["direction"] == "positive"
+    assert payload["temperature_summary"]["windows"][0]["window_key"] == "overall"
+    assert payload["temperature_summary"]["windows"][0]["cold_group"]["participant_ids"] == [
+        "p-1",
+        "p-2",
+    ]
     assert payload["dataset"]["exclusion_reasons"][0]["reason"] == "missing_predictor"

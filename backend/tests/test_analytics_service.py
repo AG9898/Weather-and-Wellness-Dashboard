@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
@@ -115,8 +115,8 @@ def _build_snapshot(
         snapshot_id=uuid.uuid4(),
         date_from=date(2026, 3, 1),
         date_to=date(2026, 3, 8),
-        model_version="weather-mlm-v1",
-        response_version="dashboard-analytics-v1",
+        model_version="weather-mlm-v2",
+        response_version="dashboard-analytics-v2",
         status="ready",
         warnings_json=[],
         payload_json=payload,
@@ -134,8 +134,8 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
             run_id=run_id,
             date_from=date(2026, 3, 1),
             date_to=date(2026, 3, 8),
-            model_version="weather-mlm-v1",
-            response_version="dashboard-analytics-v1",
+            model_version="weather-mlm-v2",
+            response_version="dashboard-analytics-v2",
             status="ready",
             started_at=generated_at,
             finished_at=generated_at,
@@ -222,7 +222,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         run = runs[0]
         snapshot = snapshots[0]
         assert run.status == "ready"
-        assert run.model_version == "weather-mlm-v1"
+        assert run.model_version == "weather-mlm-v2"
         assert run.generated_at == generated_at
         assert run.warnings_json == ["optimizer retried"]
         assert run.result_payload_json is not None
@@ -237,18 +237,19 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
     async def test_live_recompute_returns_recomputing_snapshot_while_run_is_in_progress(self) -> None:
         db = _FakeAsyncSession()
         source_run_id = uuid.uuid4()
+        now = datetime.now(timezone.utc)
         snapshot = _build_snapshot(
             source_run_id=source_run_id,
-            generated_at=datetime(2026, 3, 10, 19, 0, tzinfo=timezone.utc),
+            generated_at=now - timedelta(minutes=10),
         )
         recomputing_run = AnalyticsRun(
             run_id=uuid.uuid4(),
             date_from=date(2026, 3, 1),
             date_to=date(2026, 3, 8),
-            model_version="weather-mlm-v1",
-            response_version="dashboard-analytics-v1",
+            model_version="weather-mlm-v2",
+            response_version="dashboard-analytics-v2",
             status="recomputing",
-            started_at=datetime(2026, 3, 10, 19, 30, tzinfo=timezone.utc),
+            started_at=now - timedelta(minutes=1),
             finished_at=None,
         )
 

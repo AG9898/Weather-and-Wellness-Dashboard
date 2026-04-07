@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  getDashboardStudyWindow,
   getDashboardWeatherBundle,
   type WeatherDailyResponse,
 } from "@/lib/api";
-import DashboardAnalyticsSection, { type AnalyticsAnnotation } from "@/lib/components/DashboardAnalyticsSection";
+import DashboardAnalyticsSection from "@/lib/components/DashboardAnalyticsSection";
+import AnalyticsTemperatureSummaryCard from "@/lib/components/AnalyticsTemperatureSummaryCard";
 import PageContainer from "@/lib/components/PageContainer";
 import UndoLastSessionControl from "@/lib/components/UndoLastSessionControl";
 import WeatherUnifiedCard from "@/lib/components/WeatherUnifiedCard";
@@ -14,7 +16,6 @@ import { Button } from "@/components/ui/button";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const STUDY_START = "2025-03-03";
 const STUDY_TIMEZONE = "America/Vancouver";
 
 function getStudyToday(): string {
@@ -28,26 +29,30 @@ export default function DashboardPage() {
 
   const [weatherData, setWeatherData] = useState<WeatherDailyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [latestStudyDay, setLatestStudyDay] = useState<string | null>(null);
   const hasCachedRef = useRef(false);
-
-  // Shared filter state: drives both WeatherUnifiedCard range requests and analytics fetches.
-  // Initialized to the same defaults as WeatherUnifiedCard so both start in sync.
-  const [sharedDateFrom, setSharedDateFrom] = useState(STUDY_START);
-  const [sharedDateTo, setSharedDateTo] = useState(getStudyToday);
-
-  // Analytics annotation passed to the weather card for visual linking
-  const [analyticsAnnotation, setAnalyticsAnnotation] = useState<AnalyticsAnnotation | null>(null);
+  const weatherAnchorDate = latestStudyDay ?? getStudyToday();
 
   // Increment to force analytics section to re-fetch after a destructive operation.
   const [analyticsRefreshKey, setAnalyticsRefreshKey] = useState(0);
 
-  function handleDateRangeChange(from: string, to: string): void {
-    setSharedDateFrom(from);
-    setSharedDateTo(to);
-  }
-
   useEffect(() => {
     let cancelled = false;
+
+    const loadStudyWindow = async () => {
+      try {
+        const response = await getDashboardStudyWindow();
+        if (!cancelled) {
+          setLatestStudyDay(response.latest_study_day);
+        }
+      } catch {
+        if (!cancelled) {
+          setLatestStudyDay(null);
+        }
+      }
+    };
+
+    void loadStudyWindow();
 
     const load = async () => {
       // Fast path: try cache first
@@ -155,17 +160,18 @@ export default function DashboardPage() {
       <div className="mb-8">
         <WeatherUnifiedCard
           weather={weatherData}
-          onDateRangeChange={handleDateRangeChange}
-          analyticsAnnotation={analyticsAnnotation}
+          anchorDate={weatherAnchorDate}
         />
       </div>
 
       <div className="mb-6">
+        <AnalyticsTemperatureSummaryCard anchorDate={weatherAnchorDate} />
+      </div>
+
+      <div className="mb-6">
         <DashboardAnalyticsSection
-          key={analyticsRefreshKey}
-          dateFrom={sharedDateFrom}
-          dateTo={sharedDateTo}
-          onAnnotationsChange={setAnalyticsAnnotation}
+          anchorDate={weatherAnchorDate}
+          refreshSignal={analyticsRefreshKey}
         />
       </div>
     </PageContainer>

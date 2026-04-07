@@ -30,6 +30,7 @@ describe("RA route topology", () => {
     expect(routeFiles).toEqual([
       "dashboard/analytics/route.ts",
       "dashboard/route.ts",
+      "dashboard/study-window/route.ts",
       "weather/range/route.ts",
     ]);
   });
@@ -37,6 +38,7 @@ describe("RA route topology", () => {
   it("exports only the active dashboard route wrappers", () => {
     expect(api).toHaveProperty("getDashboardWeatherBundle");
     expect(api).toHaveProperty("getWeatherRangeBundle");
+    expect(api).toHaveProperty("getDashboardStudyWindow");
     expect(api).toHaveProperty("getDashboardAnalyticsBundle");
     expect(api).not.toHaveProperty("getDashboardRangeBundle");
   });

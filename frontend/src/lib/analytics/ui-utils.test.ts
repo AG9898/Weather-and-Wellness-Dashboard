@@ -9,13 +9,19 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
 import {
   buildAnalyticsWarningDisplayItems,
+  buildTemperatureFrequencyBars,
   compareEffectsByStrength,
   formatOutcomeLabel,
   formatPValue,
   formatSigned,
+  formatTemperatureBinLabel,
+  formatTemperatureDateRange,
+  formatTemperatureValue,
+  formatTemperatureWindowLabel,
   formatTermLabel,
   formatTermPart,
   getAnalyticsErrorMessage,
+  getTemperatureSummaryWindow,
   getStatusPanel,
 } from "./ui-utils";
 import type { DashboardAnalyticsResponse } from "@/lib/api";
@@ -27,11 +33,11 @@ import type { DashboardAnalyticsResponse } from "@/lib/api";
 function makeAnalytics(status: DashboardAnalyticsResponse["status"]): DashboardAnalyticsResponse {
   return {
     status,
-    response_version: "dashboard-analytics-v1",
+    response_version: "dashboard-analytics-v2",
     snapshot: {
       mode: "snapshot",
-      response_version: "dashboard-analytics-v1",
-      model_version: "weather-mlm-v1",
+      response_version: "dashboard-analytics-v2",
+      model_version: "weather-mlm-v2",
       generated_at: "2026-03-10T18:00:00Z",
       is_stale: status === "stale" || status === "recomputing",
       recompute_started_at: null,
@@ -49,6 +55,7 @@ function makeAnalytics(status: DashboardAnalyticsResponse["status"]): DashboardA
       generated_at: "2026-03-10T18:00:00Z",
     },
     models: [],
+    temperature_summary: { windows: [] },
     visualizations: null,
   };
 }
@@ -60,34 +67,34 @@ function makeAnalytics(status: DashboardAnalyticsResponse["status"]): DashboardA
 describe("getStatusPanel", () => {
   it("returns ready panel for status=ready", () => {
     const panel = getStatusPanel(makeAnalytics("ready"));
-    expect(panel.title).toBe("Snapshot ready");
-    expect(panel.body).toContain("latest analytics snapshot");
+    expect(panel.title).toBe("Latest snapshot ready");
+    expect(panel.body).toContain("selected study window");
   });
 
   it("returns stale panel for status=stale", () => {
     const panel = getStatusPanel(makeAnalytics("stale"));
-    expect(panel.title).toBe("Snapshot is stale");
-    expect(panel.body).toContain("prior successful snapshot");
+    expect(panel.title).toBe("Previous snapshot still shown");
+    expect(panel.body).toContain("last saved snapshot stays visible");
     expect(panel.className).toContain("amber");
   });
 
   it("returns recomputing panel for status=recomputing", () => {
     const panel = getStatusPanel(makeAnalytics("recomputing"));
-    expect(panel.title).toBe("Recompute in progress");
-    expect(panel.body).toContain("live recompute is running");
+    expect(panel.title).toBe("Background refresh running");
+    expect(panel.body).toContain("analytics recompute");
     expect(panel.className).toContain("sky");
   });
 
   it("returns insufficient_data panel for status=insufficient_data", () => {
     const panel = getStatusPanel(makeAnalytics("insufficient_data"));
-    expect(panel.title).toBe("Insufficient data");
+    expect(panel.title).toBe("Not enough data yet");
     expect(panel.body).toContain("not enough complete rows");
   });
 
   it("returns failed panel for status=failed", () => {
     const panel = getStatusPanel(makeAnalytics("failed"));
-    expect(panel.title).toBe("Analytics recompute failed");
-    expect(panel.body).toContain("Operational KPIs");
+    expect(panel.title).toBe("Analytics refresh failed");
+    expect(panel.body).toContain("weather and dashboard actions still work");
     expect(panel.className).toContain("destructive");
   });
 
@@ -318,6 +325,83 @@ describe("buildAnalyticsWarningDisplayItems", () => {
     expect(items[1].title).toBe("Technical model warning");
     expect(items[1].rawWarnings).toEqual([
       "The Hessian matrix at the estimated parameter values is not positive definite.",
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// temperature summary helpers
+// ---------------------------------------------------------------------------
+
+describe("temperature summary helpers", () => {
+  const summary: DashboardAnalyticsResponse["temperature_summary"] = {
+    windows: [
+      {
+        window_key: "overall",
+        date_from: "2026-03-01",
+        date_to: "2026-03-10",
+        day_count: 3,
+        participant_count: 6,
+        mean_temperature_c: 8.75,
+        sd_temperature_c: 1.5,
+        frequency_bins: [
+          { bin_start_c: 7, bin_end_c: 8, day_count: 1 },
+          { bin_start_c: 8, bin_end_c: 9, day_count: 3 },
+        ],
+        cold_group: {
+          day_count: 1,
+          participant_count: 2,
+          participant_ids: ["p1", "p2"],
+          dates: ["2026-03-01"],
+          days: [
+            {
+              date_local: "2026-03-01",
+              temperature_c: 7.2,
+              temperature_z: -2.4,
+              participant_ids: ["p1", "p2"],
+              participant_count: 2,
+            },
+          ],
+        },
+        hot_group: {
+          day_count: 0,
+          participant_count: 0,
+          participant_ids: [],
+          dates: [],
+          days: [],
+        },
+      },
+    ],
+  };
+
+  it("formats temperature window labels", () => {
+    expect(formatTemperatureWindowLabel("overall")).toBe("Overall");
+    expect(formatTemperatureWindowLabel("fall_winter")).toBe("Fall / Winter");
+    expect(formatTemperatureWindowLabel("spring_summer")).toBe("Spring / Summer");
+  });
+
+  it("formats temperature values and bin labels", () => {
+    expect(formatTemperatureValue(12.34)).toBe("12.3°C");
+    expect(formatTemperatureValue(null)).toBe("—");
+    expect(formatTemperatureBinLabel(7, 8)).toBe("7 to 8°C");
+  });
+
+  it("formats date ranges for display", () => {
+    expect(formatTemperatureDateRange("2026-03-01", "2026-03-10")).toBe("Mar 1, 2026 to Mar 10, 2026");
+    expect(formatTemperatureDateRange("2026-03-01", "2026-03-01")).toBe("Mar 1, 2026");
+    expect(formatTemperatureDateRange(null, "2026-03-10")).toBe("No study dates");
+  });
+
+  it("resolves summary windows by key", () => {
+    expect(getTemperatureSummaryWindow(summary, "overall")?.day_count).toBe(3);
+    expect(getTemperatureSummaryWindow(summary, "fall_winter")).toBeNull();
+  });
+
+  it("builds normalized frequency bars from day-level bins", () => {
+    const bars = buildTemperatureFrequencyBars(summary.windows[0]);
+    expect(bars).toEqual([
+      { label: "7 to 8°C", dayCount: 1, share: 1 / 3 },
+      { label: "8 to 9°C", dayCount: 3, share: 1 },
     ]);
   });
 });

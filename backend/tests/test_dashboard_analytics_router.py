@@ -5,16 +5,23 @@ from datetime import date, datetime, timezone
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 from fastapi.routing import APIRoute
 
 from app.auth import get_current_lab_member
-from app.routers.dashboard import get_dashboard_analytics_route, router
+from app.routers.dashboard import (
+    get_dashboard_analytics_route,
+    get_dashboard_study_window_route,
+    router,
+)
 from app.schemas.analytics import (
     AnalyticsDatasetMetadataResponse,
     AnalyticsSnapshotMetadataResponse,
     DashboardAnalyticsResponse,
+    AnalyticsTemperatureSummaryResponse,
 )
+from app.schemas.weather import LatestStudyDayResponse
+from app.services.analytics_service import AnalyticsRefreshRequestResult
 
 
 def _build_response(*, status: str = "ready") -> DashboardAnalyticsResponse:
@@ -40,6 +47,7 @@ def _build_response(*, status: str = "ready") -> DashboardAnalyticsResponse:
             generated_at=generated_at,
         ),
         models=[],
+        temperature_summary=AnalyticsTemperatureSummaryResponse(),
     )
 
 
@@ -57,13 +65,28 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
         assert analytics_route.response_model is DashboardAnalyticsResponse
         assert get_current_lab_member in dependency_calls
 
+    def test_study_window_route_is_registered_with_get_and_lab_member_dependency(self) -> None:
+        study_window_route = next(
+            route
+            for route in router.routes
+            if isinstance(route, APIRoute) and route.path == "/dashboard/study-window"
+        )
+
+        dependency_calls = {dependency.call for dependency in study_window_route.dependant.dependencies}
+
+        assert study_window_route.methods == {"GET"}
+        assert study_window_route.response_model is LatestStudyDayResponse
+        assert get_current_lab_member in dependency_calls
+
     async def test_route_rejects_inverted_date_range(self) -> None:
         with patch(
             "app.routers.dashboard.get_dashboard_analytics",
             new=AsyncMock(),
         ) as analytics_mock:
+            background_tasks = BackgroundTasks()
             with self.assertRaises(HTTPException) as exc_info:
                 await get_dashboard_analytics_route(
+                    background_tasks=background_tasks,
                     date_from=date(2026, 3, 9),
                     date_to=date(2026, 3, 8),
                     mode="snapshot",
@@ -78,12 +101,14 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
     async def test_route_returns_snapshot_payload_in_snapshot_mode(self) -> None:
         db = object()
         expected_response = _build_response(status="ready")
+        background_tasks = BackgroundTasks()
 
         with patch(
             "app.routers.dashboard.get_dashboard_analytics",
             new=AsyncMock(return_value=expected_response),
         ) as analytics_mock:
             response = await get_dashboard_analytics_route(
+                background_tasks=background_tasks,
                 date_from=date(2026, 3, 1),
                 date_to=date(2026, 3, 8),
                 mode="snapshot",
@@ -105,8 +130,10 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
             "app.routers.dashboard.get_dashboard_analytics",
             new=AsyncMock(return_value=None),
         ) as analytics_mock:
+            background_tasks = BackgroundTasks()
             with self.assertRaises(HTTPException) as exc_info:
                 await get_dashboard_analytics_route(
+                    background_tasks=background_tasks,
                     date_from=date(2026, 3, 1),
                     date_to=date(2026, 3, 8),
                     mode="snapshot",
@@ -121,12 +148,19 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
     async def test_route_passes_live_mode_to_recompute_service(self) -> None:
         db = object()
         expected_response = _build_response(status="stale")
+        background_tasks = BackgroundTasks()
 
         with patch(
-            "app.routers.dashboard.get_dashboard_analytics",
-            new=AsyncMock(return_value=expected_response),
-        ) as analytics_mock:
+            "app.routers.dashboard.request_dashboard_analytics_refresh",
+            new=AsyncMock(
+                return_value=AnalyticsRefreshRequestResult(
+                    response=expected_response,
+                    run_id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                )
+            ),
+        ) as refresh_mock:
             response = await get_dashboard_analytics_route(
+                background_tasks=background_tasks,
                 date_from=date(2026, 3, 1),
                 date_to=date(2026, 3, 8),
                 mode="live",
@@ -136,13 +170,44 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
 
         assert response.status == "stale"
         assert response.snapshot.mode == "live"
-        analytics_mock.assert_awaited_once_with(
+        assert len(background_tasks.tasks) == 1
+        refresh_mock.assert_awaited_once_with(
             db,
             date_from=date(2026, 3, 1),
             date_to=date(2026, 3, 8),
-            mode="live",
             triggered_by_lab_member_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         )
+
+    async def test_study_window_route_returns_latest_study_day(self) -> None:
+        expected_response = LatestStudyDayResponse(
+            latest_study_day=date(2026, 3, 11)
+        )
+
+        with patch(
+            "app.routers.dashboard.read_latest_study_day",
+            new=AsyncMock(return_value=expected_response),
+        ) as study_window_mock:
+            response = await get_dashboard_study_window_route(
+                _lab_member=_lab_member(),
+                db=object(),
+            )
+
+        assert response == expected_response
+        study_window_mock.assert_awaited_once()
+
+    async def test_study_window_route_propagates_null_latest_day(self) -> None:
+        expected_response = LatestStudyDayResponse(latest_study_day=None)
+
+        with patch(
+            "app.routers.dashboard.read_latest_study_day",
+            new=AsyncMock(return_value=expected_response),
+        ):
+            response = await get_dashboard_study_window_route(
+                _lab_member=_lab_member(),
+                db=object(),
+            )
+
+        assert response.latest_study_day is None
 
 
 def _lab_member() -> object:

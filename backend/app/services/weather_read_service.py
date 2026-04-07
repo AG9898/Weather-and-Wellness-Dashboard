@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from datetime import date as date_type
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.weather import WeatherDaily, WeatherIngestRun
-from app.schemas.weather import LatestRunInfo, WeatherDailyItem, WeatherDailyResponse
+from app.models.weather import StudyDay, WeatherDaily, WeatherIngestRun
+from app.schemas.weather import (
+    LatestRunInfo,
+    LatestStudyDayResponse,
+    WeatherDailyItem,
+    WeatherDailyResponse,
+)
 
 
 async def read_weather_daily(
@@ -96,3 +101,11 @@ async def read_weather_daily(
             else None
         ),
     )
+
+
+async def read_latest_study_day(db: AsyncSession) -> LatestStudyDayResponse:
+    """Return the latest available study day, or null when none exist."""
+
+    result = await db.execute(select(func.max(StudyDay.date_local)))
+    latest_study_day = result.scalar_one_or_none()
+    return LatestStudyDayResponse(latest_study_day=latest_study_day)

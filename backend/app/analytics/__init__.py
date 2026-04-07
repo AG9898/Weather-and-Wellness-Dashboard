@@ -17,6 +17,7 @@ from .modeling import (
     build_analytics_dataset_metadata,
     fit_analytics_models,
 )
+from .temperature_summary import build_temperature_summary
 
 __all__ = [
     "ANALYTICS_DEFAULT_MODE",
@@ -32,4 +33,5 @@ __all__ = [
     "build_analytics_dataset_metadata",
     "build_canonical_analysis_dataset",
     "fit_analytics_models",
+    "build_temperature_summary",
 ]

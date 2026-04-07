@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { WeatherDailyItem, WeatherDailyResponse, WeatherIngestResponse } from "@/lib/api";
-import type { AnalyticsAnnotation } from "@/lib/components/DashboardAnalyticsSection";
 import WeatherUnifiedCard from "@/lib/components/WeatherUnifiedCard";
 
 const latestRun = {
@@ -129,12 +128,6 @@ const weather: WeatherDailyResponse = {
   latest_run: latestRun,
 };
 
-const analyticsAnnotation: AnalyticsAnnotation = {
-  selectedTermLabel: "Sunlight Hours",
-  dateFrom: "2026-03-21",
-  dateTo: "2026-03-26",
-};
-
 const rangeRouteResponse = {
   cached: true,
   data: {
@@ -187,12 +180,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
-export const WithAnalyticsWindow: Story = {
-  args: {
-    analyticsAnnotation,
-  },
-};
 
 export const LoadingState: Story = {
   args: {

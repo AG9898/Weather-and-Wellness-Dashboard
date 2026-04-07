@@ -189,6 +189,10 @@ export type AnalyticsStatus =
   | "recomputing"
   | "insufficient_data"
   | "failed";
+export type AnalyticsTemperatureSummaryWindowKey =
+  | "overall"
+  | "fall_winter"
+  | "spring_summer";
 
 export interface AnalyticsExclusionReasonResponse {
   reason: string;
@@ -244,6 +248,45 @@ export interface AnalyticsModelSummaryResponse {
   effects: AnalyticsEffectCardResponse[];
 }
 
+export interface AnalyticsTemperatureSummaryFrequencyBinResponse {
+  bin_start_c: number;
+  bin_end_c: number;
+  day_count: number;
+}
+
+export interface AnalyticsTemperatureSummaryDayResponse {
+  date_local: string;
+  temperature_c: number;
+  temperature_z: number;
+  participant_ids: string[];
+  participant_count: number;
+}
+
+export interface AnalyticsTemperatureSummaryGroupResponse {
+  day_count: number;
+  participant_count: number;
+  participant_ids: string[];
+  dates: string[];
+  days: AnalyticsTemperatureSummaryDayResponse[];
+}
+
+export interface AnalyticsTemperatureSummaryWindowResponse {
+  window_key: AnalyticsTemperatureSummaryWindowKey;
+  date_from: string | null;
+  date_to: string | null;
+  day_count: number;
+  participant_count: number;
+  mean_temperature_c: number | null;
+  sd_temperature_c: number | null;
+  frequency_bins: AnalyticsTemperatureSummaryFrequencyBinResponse[];
+  cold_group: AnalyticsTemperatureSummaryGroupResponse;
+  hot_group: AnalyticsTemperatureSummaryGroupResponse;
+}
+
+export interface AnalyticsTemperatureSummaryResponse {
+  windows: AnalyticsTemperatureSummaryWindowResponse[];
+}
+
 export interface AnalyticsEffectPlotPointResponse {
   x: number;
   y: number;
@@ -284,6 +327,7 @@ export interface DashboardAnalyticsResponse {
   snapshot: AnalyticsSnapshotMetadataResponse;
   dataset: AnalyticsDatasetMetadataResponse;
   models: AnalyticsModelSummaryResponse[];
+  temperature_summary: AnalyticsTemperatureSummaryResponse;
   visualizations: AnalyticsVisualizationsResponse | null;
 }
 
@@ -337,6 +381,10 @@ export interface WeatherDailyItem {
 export interface WeatherDailyResponse {
   items: WeatherDailyItem[];
   latest_run: WeatherLatestRun | null;
+}
+
+export interface DashboardStudyWindowResponse {
+  latest_study_day: string | null;
 }
 
 export interface StartSessionCreate {
@@ -469,6 +517,22 @@ export async function getWeatherRangeBundle(
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
   return res.json() as Promise<WeatherRangeRouteResponse>;
+}
+
+/**
+ * Fetch the dashboard study-window metadata from the same-origin Route Handler.
+ * Returns the latest available study day so dashboard filters can anchor on actual study activity.
+ */
+export async function getDashboardStudyWindow(): Promise<DashboardStudyWindowResponse> {
+  const res = await fetch("/api/ra/dashboard/study-window", {
+    method: "GET",
+    headers: await buildSameOriginAuthHeaders(),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<DashboardStudyWindowResponse>;
 }
 
 /**

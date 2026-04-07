@@ -9,12 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import LabMember, get_current_lab_member
 from app.analytics.constants import ANALYTICS_DEFAULT_MODE
 from app.db import get_session, get_session_factory
+from app.schemas.weather import LatestStudyDayResponse
 from app.schemas.analytics import AnalyticsReadMode, DashboardAnalyticsResponse
 from app.services import (
     complete_dashboard_analytics_refresh,
     get_dashboard_analytics,
     request_dashboard_analytics_refresh,
 )
+from app.services.weather_read_service import read_latest_study_day
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -22,6 +24,19 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 async def _complete_dashboard_analytics_refresh_task(run_id: UUID) -> None:
     async with get_session_factory()() as db:
         await complete_dashboard_analytics_refresh(db, run_id=run_id)
+
+
+@router.get(
+    "/study-window",
+    response_model=LatestStudyDayResponse,
+)
+async def get_dashboard_study_window_route(
+    _lab_member: LabMember = Depends(get_current_lab_member),
+    db: AsyncSession = Depends(get_session),
+) -> LatestStudyDayResponse:
+    """Return the latest available study day for dashboard range anchoring."""
+
+    return await read_latest_study_day(db)
 
 
 @router.get(

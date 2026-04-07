@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-ANALYTICS_RESPONSE_VERSION = "dashboard-analytics-v1"
-ANALYTICS_MODEL_VERSION = "weather-mlm-v1"
+ANALYTICS_RESPONSE_VERSION = "dashboard-analytics-v2"
+ANALYTICS_MODEL_VERSION = "weather-mlm-v2"
 ANALYTICS_DEFAULT_MODE = "snapshot"
 ANALYTICS_RANDOM_EFFECT_GROUPING_FIELD = "date_bin"
 

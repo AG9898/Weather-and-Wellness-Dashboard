@@ -41,7 +41,7 @@
       "id": "T116",
       "group_id": "ANALYTICS_V2",
       "title": "Analytics v2 - Contract scaffolding and version bump",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Define the backend/frontend analytics v2 contract for day-level temperature summaries before modeling or UI changes land.",
@@ -78,7 +78,7 @@
       "id": "T117",
       "group_id": "ANALYTICS_V2",
       "title": "Analytics v2 - Day-level weather z-score parity",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Refactor mixed-model preparation so day-level weather predictors are standardized by unique study day rather than repeated participant rows.",
@@ -117,7 +117,7 @@
       "id": "T118",
       "group_id": "ANALYTICS_V2",
       "title": "Analytics v2 - Temperature summary engine",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Build a standalone backend helper that computes overall and seasonal day-level temperature summaries, histograms, and hot/cold groups.",
@@ -156,7 +156,7 @@
       "id": "T119",
       "group_id": "ANALYTICS_V2",
       "title": "Analytics v2 - Snapshot and route integration",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Wire the v2 temperature summary into backend snapshot/live responses and the same-origin analytics route/cache layer.",
@@ -203,7 +203,7 @@
       "id": "T120",
       "group_id": "ANALYTICS_V2",
       "title": "Analytics v2 - Minimal dashboard temperature summary UI",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "summary": "Render a minimal RA-facing temperature summary card in the analytics section using the new v2 payload.",
@@ -237,6 +237,304 @@
       ],
       "commands": [
         "cd frontend && npm test -- --runInBand src/lib/analytics/ui-utils.test.ts"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T121",
+      "group_id": "DASHBOARD_RANGE_SPLIT",
+      "title": "Dashboard filters - Latest study day metadata route and wrapper",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Expose the latest available `study_days.date_local` to the RA dashboard so preset ranges can anchor to actual study activity instead of wall-clock today.",
+      "description": "Add a lightweight RA-only metadata read that returns `latest_study_day` as the maximum available `study_days.date_local`, or `null` when no study days exist yet. Surface it through a typed same-origin Next.js Route Handler and frontend API wrapper so dashboard surfaces can consume one shared anchor date without inferring it from weather or analytics payloads.",
+      "acceptance_criteria": [
+        "A backend RA-only read returns `{ \"latest_study_day\": \"YYYY-MM-DD | null\" }` using the maximum available `study_days.date_local`",
+        "If no `study_days` rows exist yet, the backend returns `latest_study_day: null` rather than fabricating a date",
+        "A same-origin RA Route Handler proxies that payload for browser-owned reads",
+        "`frontend/src/lib/api/index.ts` exposes a typed wrapper for the same-origin metadata route",
+        "Backend and route-handler tests cover auth and the null/non-null response cases"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/routers/dashboard.py",
+        "backend/app/services/weather_read_service.py",
+        "backend/app/schemas/weather.py",
+        "backend/tests/test_weather_read_service.py",
+        "backend/tests/test_dashboard_analytics_router.py",
+        "frontend/src/app/api/ra/dashboard/study-window/route.ts",
+        "frontend/src/app/api/ra/dashboard/study-window/route.test.ts",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "notes": [
+        "Keep this task metadata-only; do not refactor weather or analytics range controls yet.",
+        "The frontend fallback to Vancouver today belongs in later UI tasks, not in the backend response."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_weather_read_service.py tests/test_dashboard_analytics_router.py",
+        "cd frontend && npm test -- --runInBand src/app/api/ra/dashboard/study-window/route.test.ts src/app/api/ra/route-topology.test.ts"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T122",
+      "group_id": "DASHBOARD_RANGE_SPLIT",
+      "title": "Dashboard filters - Weather card anchor-date refactor",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Refactor the weather card so its preset and custom date controls anchor to the latest study day while remaining independent from analytics refetches.",
+      "description": "Update the dashboard page to load the new `latest_study_day` metadata and pass an anchor date into `WeatherUnifiedCard`. Refactor the weather card so `Study Start` / `Last 7` / `Last 30` / `Last 90` and the custom max-date input use `latest_study_day` when available and fall back to Vancouver today when it is null. Remove the weather card's `onDateRangeChange` callback so it no longer drives analytics state.",
+      "acceptance_criteria": [
+        "The dashboard page reads `latest_study_day` once and derives a weather anchor date of `latest_study_day ?? today`",
+        "`WeatherUnifiedCard` preset handlers compute their end date from that anchor date instead of wall-clock today",
+        "The weather custom `To` input max date matches the same anchor date",
+        "When no study days exist, the weather card continues to function by falling back to Vancouver today",
+        "`WeatherUnifiedCard` no longer exposes or calls `onDateRangeChange`"
+      ],
+      "depends_on": [
+        "T121"
+      ],
+      "blocked_by": [
+        "T121"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/dashboard/page.tsx",
+        "frontend/src/lib/components/WeatherUnifiedCard.tsx",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "Keep the weather card's data fetching and ingest behavior intact.",
+        "Do not add analytics-side range controls in this task."
+      ],
+      "commands": [
+        "cd frontend && npm test -- --runInBand src/app/api/ra/dashboard/route.test.ts src/app/api/ra/weather/range/route.test.ts",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T123",
+      "group_id": "DASHBOARD_RANGE_SPLIT",
+      "title": "Dashboard filters - Independent analytics range controls",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Give the analytics card its own range state, presets, and custom filter controls anchored to the latest study day.",
+      "description": "Refactor `DashboardAnalyticsSection` so it no longer receives a shared date range from the weather card. The analytics section should own internal range state initialized to `STUDY_START -> anchor_date`, render its own `Study Start` / `Last 7` / `Last 30` / `Last 90` / `Custom` controls, and use those dates for snapshot reads and background recompute requests. The temperature summary card remains inside the analytics surface and follows that same analytics range.",
+      "acceptance_criteria": [
+        "`DashboardAnalyticsSection` owns internal `dateFrom` / `dateTo` state initialized from `study_start` and the provided anchor date",
+        "The analytics card renders preset buttons and custom date controls separate from the weather card",
+        "Changing analytics filters re-fetches only analytics data for the selected analytics range",
+        "Manual analytics refresh uses the analytics card's active range and keeps the previous snapshot visible while recompute is in progress",
+        "The temperature summary card follows the analytics range instead of any weather-card range"
+      ],
+      "depends_on": [
+        "T121",
+        "T122"
+      ],
+      "blocked_by": [
+        "T121",
+        "T122"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/dashboard/page.tsx",
+        "frontend/src/lib/components/DashboardAnalyticsSection.tsx",
+        "frontend/src/lib/analytics/dashboard-analytics-loader.ts",
+        "frontend/src/lib/analytics/dashboard-analytics-loader.test.ts",
+        "frontend/src/lib/analytics/ui-utils.ts",
+        "frontend/src/lib/analytics/ui-utils.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Keep the analytics snapshot/live route contract unchanged in this task.",
+        "Do not remove weather-chart linkage props until the independent analytics controls are in place."
+      ],
+      "commands": [
+        "cd frontend && npm test -- --runInBand src/lib/analytics/dashboard-analytics-loader.test.ts src/lib/analytics/ui-utils.test.ts src/app/api/ra/dashboard/analytics/route.test.ts",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T124",
+      "group_id": "DASHBOARD_RANGE_SPLIT",
+      "title": "Dashboard filters - Remove weather analytics linkage cleanup",
+      "status": "done",
+      "priority": "medium",
+      "type": "implementation",
+      "summary": "Clean up the transitional weather-to-analytics linkage UI once the weather and analytics ranges are independent.",
+      "description": "Remove the dashboard's `analyticsAnnotation` plumbing and the weather chart's analysis badge/plot-band overlay so the decoupled weather and analytics cards do not imply a hidden shared range. Keep the effect plot and temperature summary inside the analytics section and leave backend visualization serialization untouched unless a small cleanup is required for dead code removal.",
+      "acceptance_criteria": [
+        "The dashboard page no longer manages `analyticsAnnotation` state",
+        "`WeatherUnifiedCard` no longer accepts or renders analytics-linked badge/plot-band UI",
+        "The analytics section no longer emits cross-card annotation callbacks solely for weather-chart overlays",
+        "Effect plot and temperature summary behavior inside the analytics surface remain intact",
+        "Regression coverage is updated so the removed linkage UI is not expected anymore"
+      ],
+      "depends_on": [
+        "T123"
+      ],
+      "blocked_by": [
+        "T123"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/dashboard/page.tsx",
+        "frontend/src/lib/components/WeatherUnifiedCard.tsx",
+        "frontend/src/lib/components/DashboardAnalyticsSection.tsx",
+        "frontend/src/lib/analytics/linked-visualization.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "This is a cleanup task after the analytics range split lands.",
+        "Do not remove backend `visualizations.weather_annotations` unless the tests and docs are updated together."
+      ],
+      "commands": [
+        "cd frontend && npm test -- --runInBand src/lib/analytics/linked-visualization.test.ts src/app/api/ra/dashboard/analytics/route.test.ts",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T125",
+      "group_id": "DASHBOARD_POLISH",
+      "title": "Dashboard polish - Standalone temperature summary card with dedicated compute action",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Move the day-level temperature summary into its own always-visible dashboard card and give it a dedicated compute/recompute control.",
+      "description": "Refactor the RA dashboard so the day-level temperature summary is no longer buried inside `DashboardAnalyticsSection`. Render it as its own card-level surface on the dashboard, keep the shell visible even when no analytics snapshot exists yet, and add a dedicated compute/recompute button for that card instead of relying on the analytics section's general refresh button. Preserve the existing summary windows and analytics-backed payload shape unless a small shared-loader refactor is required.",
+      "acceptance_criteria": [
+        "The dashboard renders a standalone temperature summary card outside the current analytics section",
+        "The temperature summary card remains visible when there is no analytics snapshot or no summary payload yet",
+        "The card exposes its own dedicated compute/recompute button with clear RA-facing empty/loading/error states",
+        "The existing `overall`, `fall_winter`, and `spring_summer` summary windows still work once summary data is available",
+        "The analytics section no longer needs to be populated before an RA can see that the temperature summary surface exists"
+      ],
+      "depends_on": [
+        "T120",
+        "T123",
+        "T124"
+      ],
+      "blocked_by": [
+        "T120",
+        "T123",
+        "T124"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/dashboard/page.tsx",
+        "frontend/src/lib/components/DashboardAnalyticsSection.tsx",
+        "frontend/src/lib/components/AnalyticsTemperatureSummaryCard.tsx",
+        "frontend/src/lib/analytics/dashboard-analytics-loader.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Keep this as a frontend behavior/layout task unless a narrowly scoped shared loader change is needed.",
+        "Do not merge the temperature summary into the weather Highcharts card."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T126",
+      "group_id": "DASHBOARD_POLISH",
+      "title": "Dashboard polish - Weather chart defaults to temperature only",
+      "status": "done",
+      "priority": "medium",
+      "type": "implementation",
+      "summary": "Simplify the weather chart's default presentation so only the temperature series is enabled initially.",
+      "description": "Update `WeatherUnifiedCard` so the Highcharts card initially shows only the temperature series as selected, while keeping precipitation, forecast high, and forecast low available as optional toggles. The goal is to reduce first-load clutter without removing the other series from the card.",
+      "acceptance_criteria": [
+        "On first render, only the temperature series is visibly enabled in the weather chart",
+        "Other supported weather series remain available through the existing toggle controls",
+        "Changing presets or custom date ranges does not automatically turn the other series back on",
+        "The weather chart still renders a valid empty/loading state when no range data is available"
+      ],
+      "depends_on": [
+        "T122"
+      ],
+      "blocked_by": [
+        "T122"
+      ],
+      "files": [
+        "frontend/src/lib/components/WeatherUnifiedCard.tsx"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Keep all current weather series available; this task changes only the default selection state."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T127",
+      "group_id": "DASHBOARD_POLISH",
+      "title": "Dashboard polish - RA-focused analytics section cleanup",
+      "status": "done",
+      "priority": "medium",
+      "type": "implementation",
+      "summary": "Trim developer-centric copy and metadata from the analytics section so it reads as a cleaner RA-facing surface.",
+      "description": "Audit the current `DashboardAnalyticsSection` UI from an RA's perspective and remove, demote, or simplify text that is mostly useful to the developer rather than a lab member. Keep the controls and information an RA actually needs to understand the date range, whether analytics are available, the main model outputs, and how to trigger a recompute; reduce or hide status jargon, cache language, internal snapshot lifecycle timestamps, and other low-signal clutter unless they directly help an RA make a decision.",
+      "acceptance_criteria": [
+        "The analytics section retains clear RA-usable controls for date range selection and recompute",
+        "Developer-centric labels and metadata are removed, shortened, or hidden behind lightweight progressive disclosure when they are not useful to an RA",
+        "The section still communicates meaningful empty/loading/error states without relying on internal implementation jargon",
+        "The visible copy is materially shorter and less cluttered than the current version while preserving important analytics outputs"
+      ],
+      "depends_on": [
+        "T123",
+        "T124"
+      ],
+      "blocked_by": [
+        "T123",
+        "T124"
+      ],
+      "files": [
+        "frontend/src/lib/components/DashboardAnalyticsSection.tsx",
+        "frontend/src/lib/components/AnalyticsEffectPlotCard.tsx",
+        "frontend/src/lib/components/AnalyticsTemperatureSummaryCard.tsx"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Make judgement calls in favor of RA clarity over developer diagnostics.",
+        "If technical diagnostics still matter, prefer moving them into a collapsed details affordance rather than the default view."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
       ],
       "estimate": "M"
     }

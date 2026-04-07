@@ -5,8 +5,8 @@ from datetime import date, datetime, timezone
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 
-from app.schemas.weather import WeatherDailyResponse
-from app.services.weather_read_service import read_weather_daily
+from app.schemas.weather import LatestStudyDayResponse, WeatherDailyResponse
+from app.services.weather_read_service import read_latest_study_day, read_weather_daily
 
 
 class _ScalarResult:
@@ -37,6 +37,25 @@ class _MappingListResult:
 
     def all(self) -> list[dict[str, object]]:
         return self._rows
+
+
+class _ScalarDateResult:
+    def __init__(self, value: object) -> None:
+        self._value = value
+
+    def scalar_one_or_none(self) -> object:
+        return self._value
+
+
+class _LatestStudyDaySession:
+    def __init__(self, value: object) -> None:
+        self.value = value
+        self.statements: list[object] = []
+
+    async def execute(self, statement: object, params: object | None = None) -> object:
+        del params
+        self.statements.append(statement)
+        return _ScalarDateResult(self.value)
 
 
 class _FakeReadSession:
@@ -148,3 +167,18 @@ class WeatherReadServiceTests(IsolatedAsyncioTestCase):
         assert response.items[0].forecast_condition_text == "Cloudy"
         assert response.latest_run is None
         assert len(db.statements) == 1
+
+    async def test_read_latest_study_day_returns_the_maximum_date(self) -> None:
+        db = _LatestStudyDaySession(date(2026, 3, 11))
+
+        response = await read_latest_study_day(db)
+
+        assert isinstance(response, LatestStudyDayResponse)
+        assert response.latest_study_day == date(2026, 3, 11)
+
+    async def test_read_latest_study_day_returns_null_when_no_rows_exist(self) -> None:
+        db = _LatestStudyDaySession(None)
+
+        response = await read_latest_study_day(db)
+
+        assert response.latest_study_day is None
