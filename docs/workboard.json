@@ -537,6 +537,89 @@
         "cd frontend && npm run build"
       ],
       "estimate": "M"
+    },
+    {
+      "id": "T128",
+      "group_id": "TEMPERATURE_SUMMARY_REPAIR",
+      "title": "Temperature summary repair - Backend end-to-end payload wiring",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Wire the documented day-level temperature summary helper into the analytics modeling/service pipeline so non-empty summary data actually reaches snapshot/live responses.",
+      "description": "The standalone `build_temperature_summary()` helper exists and has isolated regression tests, but the analytics modeling/service path does not currently carry `temperature_summary` through to the serialized dashboard response and persisted snapshots. Integrate the helper into the canonical analytics response path so snapshot, stale, and recomputing reads preserve the most recent computed summary payload instead of falling back to the schema default empty object. The current `backend/tests/test_analytics_service.py` suite also hangs in this environment during a success-path orchestration test; fix that backend test-path issue as part of this task so the service-level regression suite is usable as the verification gate for the new wiring.",
+      "acceptance_criteria": [
+        "`build_temperature_summary()` is invoked from the canonical analytics response pipeline for the active dataset window",
+        "Ready analytics responses include the computed `temperature_summary` payload rather than the schema default empty object",
+        "Persisted snapshot payloads preserve the computed `temperature_summary` and snapshot/live reads round-trip it correctly",
+        "When a prior snapshot exists, stale/recomputing responses continue to surface that prior computed summary payload",
+        "Backend regression coverage fails if `temperature_summary` is accidentally dropped from future analytics responses",
+        "The targeted backend analytics service/router regression suite completes successfully under pytest in this repo environment"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/analytics/modeling.py",
+        "backend/app/services/analytics_service.py",
+        "backend/tests/test_analytics_service.py",
+        "backend/tests/test_dashboard_analytics_router.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "Keep the summary descriptive-only; do not change mixed-model formulas or sampling rules.",
+        "Prefer adding integration coverage over expanding the isolated helper tests.",
+        "If the existing analytics-service regression suite needs a small repair to stop hanging, treat that as in-scope for this task rather than creating a separate follow-up."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/python -m pytest tests/test_analytics_temperature_summary.py tests/test_analytics_service.py tests/test_dashboard_analytics_router.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T129",
+      "group_id": "TEMPERATURE_SUMMARY_REPAIR",
+      "title": "Temperature summary repair - Standalone section range, state, and recompute UX",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Make the standalone temperature summary section behave as its own end-to-end surface with an independent date range, accurate ready/empty states, and background recompute handling.",
+      "description": "Refactor `AnalyticsTemperatureSummaryCard` so it no longer hard-codes only `study_start -> anchor_date`. The section should own its own preset/custom date range, issue summary reads and recompute requests for that active summary window, treat an empty default payload distinctly from a real saved summary, and keep the last available summary visible while the backend reports `recomputing` until a follow-up snapshot read returns the finished payload.",
+      "acceptance_criteria": [
+        "The standalone temperature summary section owns internal `dateFrom` / `dateTo` state with preset and custom controls independent from both weather and mixed-model analytics",
+        "Compute/recompute actions use the section's active summary range rather than a fixed `study_start -> anchor_date` range",
+        "The section distinguishes a real saved summary from an empty default payload and does not label `{ windows: [] }` as ready",
+        "When live recompute returns `recomputing`, the section keeps the previous summary visible and polls snapshot mode until the refreshed summary is available or an error state is reached",
+        "Frontend regression coverage exercises independent range changes plus ready / missing-snapshot / recomputing summary states"
+      ],
+      "depends_on": [
+        "T128"
+      ],
+      "blocked_by": [
+        "T128"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/dashboard/page.tsx",
+        "frontend/src/lib/components/AnalyticsTemperatureSummaryCard.tsx",
+        "frontend/src/lib/analytics/dashboard-analytics-loader.ts",
+        "frontend/src/lib/analytics/dashboard-analytics-loader.test.ts",
+        "frontend/src/lib/analytics/ui-utils.ts",
+        "frontend/src/lib/analytics/ui-utils.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/ANALYTICS.md"
+      ],
+      "notes": [
+        "Keep the temperature summary section standalone; do not re-couple it to `DashboardAnalyticsSection`.",
+        "Reuse the existing same-origin analytics handler unless backend contract changes become unavoidable."
+      ],
+      "commands": [
+        "cd frontend && npm test -- src/lib/analytics/dashboard-analytics-loader.test.ts src/lib/analytics/ui-utils.test.ts src/app/api/ra/dashboard/analytics/route.test.ts",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
     }
   ]
 }

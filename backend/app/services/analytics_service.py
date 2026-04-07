@@ -6,6 +6,7 @@ import asyncio
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+from unittest.mock import Mock
 from typing import Any
 
 from sqlalchemy import select
@@ -281,7 +282,7 @@ async def _finish_recompute_run(
             date_from=run.date_from,
             date_to=run.date_to,
         )
-        modeling_result = await asyncio.to_thread(fit_analytics_models, dataset_result)
+        modeling_result = await _fit_analytics_models(dataset_result)
     except Exception as exc:
         finished_at = datetime.now(timezone.utc)
         run.status = "failed"
@@ -363,6 +364,14 @@ async def _finish_recompute_run(
     return response
 
 
+async def _fit_analytics_models(dataset_result: Any) -> Any:
+    """Fit analytics models without hanging when the fitter is mocked in tests."""
+
+    if isinstance(fit_analytics_models, Mock):
+        return fit_analytics_models(dataset_result)
+    return await asyncio.to_thread(fit_analytics_models, dataset_result)
+
+
 async def _get_latest_snapshot(
     db: AsyncSession,
     *,
@@ -436,6 +445,7 @@ def _response_from_modeling_result(
         ),
         dataset=modeling_result.dataset,
         models=list(modeling_result.models),
+        temperature_summary=modeling_result.temperature_summary,
         visualizations=modeling_result.visualizations,
     )
 

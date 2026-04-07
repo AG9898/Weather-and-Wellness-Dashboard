@@ -191,7 +191,7 @@ The dashboard at `/dashboard` is the RA home after login. Layout (top to bottom)
 
 1. **Hero action zone** — raised neutral card with a restrained tonal accent glow, headline “Start a New Entry”, description (“Present the consent form, collect participant details, and open a supervised session.”), primary shadcn `Button` (size lg, semantic `primary`) that navigates to `/new-session`.
 2. **WeatherUnifiedCard** — single card combining current-day weather summary, “Update Weather” ingest trigger, and an interactive Highcharts chart with an internal date-range filter. See below for full spec.
-3. **Temperature summary card** — standalone descriptive analytics surface below the weather card and above the mixed-model section. It loads independently of the analytics snapshot, can be recomputed manually, and remains visible even when the broader analytics payload is missing.
+3. **Temperature summary section** — standalone descriptive analytics surface below the weather card and above the mixed-model section. It owns its own date-range controls plus a dedicated compute/recompute action, loads independently of the mixed-model analytics section, and remains visible even when the broader analytics payload is missing.
 4. **Analytics snapshot section** — separate statistical surface below the temperature summary card. It reads the dashboard analytics payload via the same-origin analytics Route Handler, owns its own study-window controls, defaults to the study window (`2025-03-03` → latest study day or Vancouver today), and does not block weather rendering.
 
 The KPI cards row has been removed from the shipped dashboard. The “Recent Sessions” panel has also been removed. The top-level “Dashboard Range” filter section has been removed (T70); date filtering now lives entirely inside `WeatherUnifiedCard`.
@@ -231,13 +231,14 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - Interaction terms are excluded from v1 plots (an empty-state message is shown instead).
 - The effect plot remains semantically distinct from the weather chart: its x-axis is a z-scored predictor value, not a date.
 
-**Temperature summary card (implemented T120):**
-- A separate `AnalyticsTemperatureSummaryCard` is rendered below the model/effect plot stack in the analytics section.
-- The card exposes fixed tabs for `overall`, `fall_winter`, and `spring_summer`.
+**Temperature summary section (canonical target):**
+- A separate `AnalyticsTemperatureSummaryCard` is rendered between `WeatherUnifiedCard` and `DashboardAnalyticsSection`.
+- The section owns its own summary date range initialized to `2025-03-03` → latest study day or Vancouver today.
+- The section exposes fixed tabs for `overall`, `fall_winter`, and `spring_summer` within the currently selected summary range.
 - The selected window shows day count, participant count, mean temperature, standard deviation, and cold/hot participant counts.
 - A simple 1°C bin histogram summarizes day-level temperature frequency.
 - Cold/hot panels list qualifying dates and participant counts, with a benign empty state when no days cross the threshold.
-- The card uses short RA-facing status labels such as ready, no saved summary, and needs refresh, with a dedicated compute/refresh button.
+- The section uses short RA-facing status labels plus a dedicated compute/recompute button, and it keeps the last available summary visible while a background recompute is in progress.
 
 **Weather chart defaults:**
 - The weather chart loads with the temperature series visible by default.
@@ -289,14 +290,14 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - `WeatherUnifiedCard` keeps its own internal date-range controls and uses that anchor date for preset end dates plus the custom `To` max date.
 - The weather card no longer emits `onDateRangeChange`; weather interactions do not drive analytics refetches.
 - `DashboardAnalyticsSection` receives the same anchor date, but its own state now owns the analytics study-window controls and fetches snapshot/live analytics for that range independently of the weather card.
-- The temperature summary card remains inside the analytics surface and continues to follow the analytics section's date window.
+- `AnalyticsTemperatureSummaryCard` also receives the shared anchor date, but owns its own summary `dateFrom` / `dateTo` state and does not follow the analytics section's active range.
 
 **Analytics loading now stays decoupled from weather (T124):**
 - The analytics payload's `weather_annotations` remains serialized as date-based metadata only.
 - The effect plot renders in its own card (`AnalyticsEffectPlotCard`) and is not overlaid on the weather chart.
 - The backend analytics contract also includes a day-level `temperature_summary`
   payload (`overall`, `fall_winter`, `spring_summer`) for hot/cold day analysis.
-  The shipped dashboard renders that summary inside the analytics section.
+  The intended dashboard renders that summary in its own standalone section.
 
 Loading state shows `—` in KPI values. Error state shows an inline destructive banner.
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Any, Literal
 
@@ -17,6 +17,7 @@ from app.analytics.constants import (
     ANALYTICS_MODEL_VERSION,
 )
 from app.analytics.dataset import AnalyticsDatasetBuildResult, AnalyticsDatasetRow
+from app.analytics.temperature_summary import build_temperature_summary
 from app.schemas.analytics import (
     AnalyticsDatasetMetadataResponse,
     AnalyticsEffectCardResponse,
@@ -25,6 +26,7 @@ from app.schemas.analytics import (
     AnalyticsExclusionReasonResponse,
     AnalyticsFittedLinePointResponse,
     AnalyticsModelSummaryResponse,
+    AnalyticsTemperatureSummaryResponse,
     AnalyticsStatus,
     AnalyticsVisualizationsResponse,
     AnalyticsWeatherAnnotationsResponse,
@@ -115,6 +117,9 @@ class AnalyticsModelingResult:
     generated_at: datetime
     dataset: AnalyticsDatasetMetadataResponse
     models: tuple[AnalyticsModelSummaryResponse, ...]
+    temperature_summary: AnalyticsTemperatureSummaryResponse = field(
+        default_factory=AnalyticsTemperatureSummaryResponse
+    )
     warnings: tuple[str, ...] = ()
     visualizations: AnalyticsVisualizationsResponse | None = None
 
@@ -165,6 +170,7 @@ def fit_analytics_models(
             generated_at=fit_generated_at,
             dataset=dataset_metadata,
             models=(),
+            temperature_summary=build_temperature_summary(dataset_result),
             warnings=("No canonical analytics rows are available for the requested window.",),
         )
 
@@ -197,12 +203,14 @@ def fit_analytics_models(
         successful_models=successful_models,
         dataset_result=dataset_result,
     )
+    temperature_summary = build_temperature_summary(dataset_result)
 
     return AnalyticsModelingResult(
         status=status,
         generated_at=fit_generated_at,
         dataset=dataset_metadata,
         models=tuple(model_results),
+        temperature_summary=temperature_summary,
         warnings=tuple(_dedupe_messages(warnings_out)),
         visualizations=visualizations,
     )

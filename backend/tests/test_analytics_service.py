@@ -7,12 +7,15 @@ from datetime import date, datetime, timedelta, timezone
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
+from app.analytics.dataset import AnalyticsDatasetBuildResult, AnalyticsDatasetRow
 from app.analytics.modeling import AnalyticsModelingResult
+from app.analytics.temperature_summary import build_temperature_summary
 from app.models.analytics import AnalyticsRun, AnalyticsSnapshot
 from app.schemas.analytics import (
     AnalyticsDatasetMetadataResponse,
     AnalyticsEffectCardResponse,
     AnalyticsModelSummaryResponse,
+    AnalyticsTemperatureSummaryResponse,
     DashboardAnalyticsResponse,
 )
 from app.services.analytics_service import (
@@ -83,17 +86,69 @@ def _build_model_summary(
     )
 
 
+def _build_temperature_summary() -> AnalyticsTemperatureSummaryResponse:
+    generated_at = datetime(2026, 3, 10, 20, 0, tzinfo=timezone.utc)
+    rows = (
+        AnalyticsDatasetRow(
+            session_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            participant_uuid=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+            date_local=date(2026, 3, 1),
+            date_bin=1,
+            temperature=2.0,
+            precipitation=0.0,
+            daylight_hours=9.0,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+        ),
+        AnalyticsDatasetRow(
+            session_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+            participant_uuid=uuid.UUID("44444444-4444-4444-4444-444444444444"),
+            date_local=date(2026, 3, 2),
+            date_bin=2,
+            temperature=8.0,
+            precipitation=0.0,
+            daylight_hours=9.5,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+        ),
+    )
+    dataset = AnalyticsDatasetBuildResult(
+        date_from=date(2026, 3, 1),
+        date_to=date(2026, 3, 2),
+        generated_at=generated_at,
+        rows=rows,
+        excluded_rows=(),
+    )
+    return build_temperature_summary(dataset)
+
+
 def _build_modeling_result(
     *,
     status: str,
     generated_at: datetime,
     warnings: tuple[str, ...] = (),
+    temperature_summary: AnalyticsTemperatureSummaryResponse | None = None,
 ) -> AnalyticsModelingResult:
+    if temperature_summary is None:
+        temperature_summary = (
+            _build_temperature_summary()
+            if status != "insufficient_data"
+            else AnalyticsTemperatureSummaryResponse()
+        )
     return AnalyticsModelingResult(
         status=status,
         generated_at=generated_at,
         dataset=_build_dataset_metadata(generated_at=generated_at),
         models=(_build_model_summary(generated_at=generated_at),) if status != "insufficient_data" else (),
+        temperature_summary=temperature_summary,
         warnings=warnings,
     )
 
@@ -103,6 +158,7 @@ def _build_snapshot(
     source_run_id: uuid.UUID,
     generated_at: datetime,
 ) -> AnalyticsSnapshot:
+    temperature_summary = _build_temperature_summary()
     payload = DashboardAnalyticsResponse(
         status="ready",
         snapshot={
@@ -110,6 +166,7 @@ def _build_snapshot(
         },
         dataset=_build_dataset_metadata(generated_at=generated_at),
         models=[_build_model_summary(generated_at=generated_at)],
+        temperature_summary=temperature_summary,
     ).model_dump(mode="json")
     return AnalyticsSnapshot(
         snapshot_id=uuid.uuid4(),
@@ -166,6 +223,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.status == "ready"
         assert response.snapshot.mode == "snapshot"
         assert response.snapshot.generated_at == generated_at
+        assert response.temperature_summary.windows[0].day_count == 2
         build_dataset_mock.assert_not_awaited()
 
     async def test_live_recompute_persists_run_metadata_and_snapshot_after_success(self) -> None:
@@ -215,6 +273,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.snapshot.mode == "live"
         assert response.snapshot.recompute_started_at is not None
         assert response.snapshot.recompute_finished_at is not None
+        assert response.temperature_summary.windows[0].day_count == 2
         assert len(runs) == 1
         assert len(snapshots) == 1
         assert db.commit_count == 2
@@ -233,6 +292,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert snapshot.payload_json["status"] == "ready"
         assert snapshot.payload_json["snapshot"]["mode"] == "snapshot"
         assert snapshot.payload_json["snapshot"]["recompute_started_at"] is None
+        assert snapshot.payload_json["temperature_summary"]["windows"][0]["day_count"] == 2
 
     async def test_live_recompute_returns_recomputing_snapshot_while_run_is_in_progress(self) -> None:
         db = _FakeAsyncSession()
@@ -276,6 +336,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.status == "recomputing"
         assert response.snapshot.is_stale is True
         assert response.snapshot.recompute_started_at == recomputing_run.started_at
+        assert response.temperature_summary.windows[0].day_count == 2
         assert db.added == []
         assert db.commit_count == 0
         build_dataset_mock.assert_not_awaited()
@@ -311,6 +372,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert result.response.status == "recomputing"
         assert result.response.snapshot.is_stale is True
         assert result.response.snapshot.mode == "live"
+        assert result.response.temperature_summary.windows[0].day_count == 2
         assert len(runs) == 1
         assert runs[0].run_id == result.run_id
         assert runs[0].status == "recomputing"
@@ -362,6 +424,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.status == "stale"
         assert response.snapshot.mode == "live"
         assert response.snapshot.is_stale is True
+        assert response.temperature_summary.windows[0].day_count == 2
         assert response.dataset.included_sessions == 24
         assert len(runs) == 1
         assert snapshots == []
@@ -416,6 +479,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response is None
         assert live_response.status == "insufficient_data"
         assert live_response.models == []
+        assert live_response.temperature_summary.windows == []
         assert live_response.dataset.included_sessions == 24
         assert len(runs) == 1
         assert snapshots == []

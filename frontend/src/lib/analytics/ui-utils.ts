@@ -14,6 +14,8 @@ import type {
 } from "@/lib/api";
 import { ApiError } from "@/lib/api";
 
+export type TemperatureSummaryRangePreset = "study_start" | "last_7" | "last_30" | "last_90" | "custom";
+
 // ---------------------------------------------------------------------------
 // Formatting helpers
 // ---------------------------------------------------------------------------
@@ -45,6 +47,8 @@ const TEMPERATURE_WINDOW_LABELS: Record<AnalyticsTemperatureSummaryWindowKey, st
   spring_summer: "Spring / Summer",
 };
 
+const STUDY_START = "2025-03-03";
+
 function formatTemperatureNumber(value: number): string {
   return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
 }
@@ -62,6 +66,36 @@ export function formatTemperatureWindowLabel(
   windowKey: AnalyticsTemperatureSummaryWindowKey
 ): string {
   return TEMPERATURE_WINDOW_LABELS[windowKey];
+}
+
+function shiftIsoDate(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+export function getTemperatureSummaryPresetRange(
+  preset: Exclude<TemperatureSummaryRangePreset, "custom">,
+  anchorDate: string
+): { dateFrom: string; dateTo: string } {
+  if (preset === "study_start") {
+    return { dateFrom: STUDY_START, dateTo: anchorDate };
+  }
+  if (preset === "last_7") {
+    return { dateFrom: shiftIsoDate(anchorDate, -6), dateTo: anchorDate };
+  }
+  if (preset === "last_30") {
+    return { dateFrom: shiftIsoDate(anchorDate, -29), dateTo: anchorDate };
+  }
+  return { dateFrom: shiftIsoDate(anchorDate, -89), dateTo: anchorDate };
+}
+
+export function normalizeTemperatureSummaryRange(
+  dateFrom: string,
+  dateTo: string
+): { dateFrom: string; dateTo: string } {
+  return dateFrom <= dateTo ? { dateFrom, dateTo } : { dateFrom: dateTo, dateTo: dateFrom };
 }
 
 export function formatTemperatureValue(value: number | null): string {
@@ -93,6 +127,12 @@ export function getTemperatureSummaryWindow(
   windowKey: AnalyticsTemperatureSummaryWindowKey
 ): AnalyticsTemperatureSummaryWindowResponse | null {
   return summary?.windows.find((window) => window.window_key === windowKey) ?? null;
+}
+
+export function isTemperatureSummaryReady(
+  summary: AnalyticsTemperatureSummaryResponse | null | undefined
+): summary is AnalyticsTemperatureSummaryResponse {
+  return Boolean(summary && summary.windows.length > 0);
 }
 
 export interface TemperatureFrequencyBar {

@@ -226,6 +226,8 @@ describe("dashboard analytics loader", () => {
     );
 
     expect(result.kind).toBe("loaded");
+    expect(result.response.refresh.state).toBe("recomputing");
+    expect(result.response.data?.analytics.temperature_summary).toEqual({ windows: [] });
     expect(fetchBundle).toHaveBeenCalledTimes(1);
     expect(fetchBundle).toHaveBeenCalledWith("live", "2026-03-01", "2026-03-12");
   });

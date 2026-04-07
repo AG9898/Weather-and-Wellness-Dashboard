@@ -21,8 +21,11 @@ import {
   formatTermLabel,
   formatTermPart,
   getAnalyticsErrorMessage,
+  getTemperatureSummaryPresetRange,
   getTemperatureSummaryWindow,
   getStatusPanel,
+  isTemperatureSummaryReady,
+  normalizeTemperatureSummaryRange,
 } from "./ui-utils";
 import type { DashboardAnalyticsResponse } from "@/lib/api";
 
@@ -403,5 +406,34 @@ describe("temperature summary helpers", () => {
       { label: "7 to 8°C", dayCount: 1, share: 1 / 3 },
       { label: "8 to 9°C", dayCount: 3, share: 1 },
     ]);
+  });
+
+  it("treats empty temperature-summary payloads as not ready", () => {
+    expect(isTemperatureSummaryReady(null)).toBe(false);
+    expect(isTemperatureSummaryReady({ windows: [] })).toBe(false);
+    expect(isTemperatureSummaryReady(summary)).toBe(true);
+  });
+
+  it("normalizes summary ranges and preset windows consistently", () => {
+    expect(normalizeTemperatureSummaryRange("2026-03-10", "2026-03-01")).toEqual({
+      dateFrom: "2026-03-01",
+      dateTo: "2026-03-10",
+    });
+    expect(getTemperatureSummaryPresetRange("study_start", "2026-03-10")).toEqual({
+      dateFrom: "2025-03-03",
+      dateTo: "2026-03-10",
+    });
+    expect(getTemperatureSummaryPresetRange("last_7", "2026-03-10")).toEqual({
+      dateFrom: "2026-03-04",
+      dateTo: "2026-03-10",
+    });
+    expect(getTemperatureSummaryPresetRange("last_30", "2026-03-10")).toEqual({
+      dateFrom: "2026-02-09",
+      dateTo: "2026-03-10",
+    });
+    expect(getTemperatureSummaryPresetRange("last_90", "2026-03-10")).toEqual({
+      dateFrom: "2025-12-11",
+      dateTo: "2026-03-10",
+    });
   });
 });

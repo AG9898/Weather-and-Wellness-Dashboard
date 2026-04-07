@@ -283,10 +283,12 @@ Each window should include:
 - `cold_group`
 - `hot_group`
 
-The dashboard renders this payload in a dedicated temperature-summary card
-separate from the effect plot and weather chart. The UI exposes tabs for the
-three fixed windows, a summary strip, a 1°C frequency histogram, and hot/cold
-day panels.
+The dashboard renders this payload in a dedicated standalone
+temperature-summary section separate from both the mixed-model analytics section
+and the weather chart. That section owns its own date range plus a dedicated
+compute/recompute action, and within the selected summary range it exposes tabs
+for the three fixed windows, a summary strip, a 1°C frequency histogram, and
+hot/cold day panels.
 
 ### Dataset metadata
 
@@ -390,18 +392,26 @@ the existing weather-by-date Highcharts chart.
    - renders a separate chart for the selected outcome/predictor term
    - can show scatter data, fitted line, and confidence band if supported by the
      serialized payload
-4. **Temperature summary card**
-   - stays inside the analytics surface
-   - follows the analytics range rather than the weather-chart range
+4. **Temperature summary section**
+   - is a standalone dashboard surface between weather and mixed-model analytics
+   - owns its own summary-range filters and compute/recompute state
+   - renders `overall`, `fall_winter`, and `spring_summer` windows within that
+     selected summary range
 
 ### Analytics surface state
 
-The analytics surfaces should share:
+The mixed-model analytics surface should share:
 
 - analytics date range
 - snapshot/live analytics state
 - selected outcome model
 - selected effect term
+
+The temperature summary surface should separately own:
+
+- summary date range
+- summary snapshot/live state
+- selected temperature-summary window
 
 The weather chart should keep its own separate date range and should not
 implicitly change analytics snapshot queries.

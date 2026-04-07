@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -29,6 +29,10 @@ import {
   formatTemperatureValue,
   formatTemperatureWindowLabel,
   getTemperatureSummaryWindow,
+  getTemperatureSummaryPresetRange,
+  isTemperatureSummaryReady,
+  normalizeTemperatureSummaryRange,
+  type TemperatureSummaryRangePreset,
 } from "@/lib/analytics/ui-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +48,7 @@ const WINDOW_KEYS: AnalyticsTemperatureSummaryWindowKey[] = [
 ];
 
 type LoadingMode = "snapshot" | "live" | null;
+type SummaryRangePreset = TemperatureSummaryRangePreset;
 
 function formatDisplayDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
@@ -74,6 +79,31 @@ function TemperatureSummaryStatCard({
       <p className="mt-2 text-xl font-semibold leading-none text-foreground">{value}</p>
       {helper && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{helper}</p>}
     </div>
+  );
+}
+
+function SummaryPresetButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition",
+        active
+          ? "border-primary/35 bg-primary/10 text-primary"
+          : "border-border/70 bg-background/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -413,12 +443,68 @@ export default function AnalyticsTemperatureSummaryCard({ anchorDate }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [snapshotMissing, setSnapshotMissing] = useState(false);
   const [loadMessage, setLoadMessage] = useState(formatTemperatureSummaryStateLabel("snapshot"));
+  const [preset, setPreset] = useState<SummaryRangePreset>("study_start");
+  const [dateFrom, setDateFrom] = useState(STUDY_START);
+  const [dateTo, setDateTo] = useState(anchorDate);
   const requestSeqRef = useRef(0);
+  const pollTimerRef = useRef<number | null>(null);
+
+  function clearPollTimer(): void {
+    if (pollTimerRef.current !== null) {
+      window.clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }
+
+  function scheduleSnapshotPoll(seq: number, activeDateFrom: string, activeDateTo: string): void {
+    clearPollTimer();
+    pollTimerRef.current = window.setTimeout(async () => {
+      if (requestSeqRef.current !== seq) {
+        return;
+      }
+
+      const result = await loadTemperatureSummary(activeDateFrom, activeDateTo);
+      if (requestSeqRef.current !== seq) {
+        return;
+      }
+
+      if (result.kind !== "loaded") {
+        startTransition(() => {
+          if (result.kind === "missing-snapshot") {
+            setSnapshotMissing(true);
+            if (!isTemperatureSummaryReady(temperatureSummary)) {
+              setTemperatureSummary(null);
+            }
+            setError(null);
+          } else {
+            setError(getSummaryResultMessage(result));
+          }
+        });
+        setLoadingMode(null);
+        setLoadMessage(formatTemperatureSummaryStateLabel(null));
+        return;
+      }
+
+      if (result.response.refresh.state === "recomputing") {
+        scheduleSnapshotPoll(seq, activeDateFrom, activeDateTo);
+        return;
+      }
+
+      startTransition(() => {
+        setTemperatureSummary(result.temperatureSummary);
+        setSnapshotMissing(false);
+        setError(null);
+      });
+      setLoadingMode(null);
+      setLoadMessage(formatTemperatureSummaryStateLabel(null));
+    }, 4000);
+  }
 
   useEffect(() => {
     let cancelled = false;
     const seq = requestSeqRef.current + 1;
     requestSeqRef.current = seq;
+    clearPollTimer();
 
     const load = async () => {
       setLoadingMode("snapshot");
@@ -426,7 +512,7 @@ export default function AnalyticsTemperatureSummaryCard({ anchorDate }: Props) {
       setError(null);
       setSnapshotMissing(false);
 
-      const result = await loadTemperatureSummary(STUDY_START, anchorDate);
+      const result = await loadTemperatureSummary(dateFrom, dateTo);
       if (cancelled || requestSeqRef.current !== seq) {
         return;
       }
@@ -450,19 +536,23 @@ export default function AnalyticsTemperatureSummaryCard({ anchorDate }: Props) {
 
     return () => {
       cancelled = true;
+      clearPollTimer();
       requestSeqRef.current += 1;
     };
-  }, [anchorDate]);
+  }, [dateFrom, dateTo]);
 
   async function handleCompute(): Promise<void> {
     const seq = requestSeqRef.current + 1;
     requestSeqRef.current = seq;
+    clearPollTimer();
     setLoadingMode("live");
     setLoadMessage(formatTemperatureSummaryStateLabel("live"));
     setError(null);
     setSnapshotMissing(false);
 
-    const result = await refreshTemperatureSummary(STUDY_START, anchorDate);
+    const activeDateFrom = dateFrom;
+    const activeDateTo = dateTo;
+    const result = await refreshTemperatureSummary(activeDateFrom, activeDateTo);
     if (requestSeqRef.current !== seq) {
       return;
     }
@@ -470,29 +560,65 @@ export default function AnalyticsTemperatureSummaryCard({ anchorDate }: Props) {
     if (result.kind === "loaded") {
       setTemperatureSummary(result.temperatureSummary);
       setError(null);
+      if (result.response.refresh.state === "recomputing") {
+        scheduleSnapshotPoll(seq, activeDateFrom, activeDateTo);
+        return;
+      }
+      setLoadingMode(null);
+      setLoadMessage(formatTemperatureSummaryStateLabel(null));
     } else if (result.kind === "empty") {
       setTemperatureSummary(null);
       setError(null);
       setSnapshotMissing(false);
       setLoadMessage(result.message);
+      setLoadingMode(null);
     } else if (result.kind === "missing-snapshot") {
       setTemperatureSummary(null);
       setSnapshotMissing(true);
       setError(null);
+      setLoadingMode(null);
+      setLoadMessage(formatTemperatureSummaryStateLabel(null));
     } else {
       setTemperatureSummary(null);
       setError(result.message);
+      setLoadingMode(null);
+      setLoadMessage(formatTemperatureSummaryStateLabel(null));
     }
-
-    setLoadingMode(null);
   }
 
-  const hasSummary = Boolean(temperatureSummary);
+  useEffect(() => {
+    if (preset === "custom") {
+      setDateTo((current) => (current > anchorDate ? anchorDate : current));
+      setDateFrom((current) => (current > anchorDate ? anchorDate : current));
+      return;
+    }
+
+    const nextRange = getTemperatureSummaryPresetRange(preset, anchorDate);
+    setDateFrom(nextRange.dateFrom);
+    setDateTo(nextRange.dateTo);
+  }, [anchorDate, preset]);
+
+  const hasSummary = isTemperatureSummaryReady(temperatureSummary);
+  const hasSummaryPayload = Boolean(temperatureSummary);
+  const activeRangeLabel = formatTemperatureDateRange(dateFrom, dateTo);
   const actionLabel = loadingMode === "live"
     ? "Refreshing..."
     : hasSummary
       ? "Refresh Summary"
       : "Compute Summary";
+  const summaryBadgeLabel = loadingMode === "live"
+    ? "Refreshing"
+    : loadingMode === "snapshot"
+      ? "Loading"
+      : hasSummary
+        ? "Ready"
+        : snapshotMissing
+          ? "No saved summary yet"
+          : error
+            ? "Needs refresh"
+            : hasSummaryPayload
+              ? "Empty summary"
+              : "Independent summary";
 
   return (
     <section
@@ -505,23 +631,12 @@ export default function AnalyticsTemperatureSummaryCard({ anchorDate }: Props) {
             <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
               Temperature Summary
             </Badge>
-            {hasSummary ? (
-              <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-                Ready
-              </Badge>
-            ) : snapshotMissing ? (
-              <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-                No saved summary yet
-              </Badge>
-            ) : error ? (
-              <Badge variant="outline" className="border-destructive/30 bg-destructive/10 text-destructive">
-                Needs refresh
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-                Independent summary
-              </Badge>
-            )}
+            <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
+              {summaryBadgeLabel}
+            </Badge>
+            <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
+              {activeRangeLabel}
+            </Badge>
           </div>
           <div>
             <h3 className="text-xl font-semibold text-foreground">Day-level temperature summary</h3>
@@ -543,13 +658,104 @@ export default function AnalyticsTemperatureSummaryCard({ anchorDate }: Props) {
             {actionLabel}
           </Button>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            {loadingMode === null ? "Anchored to the latest study day" : loadMessage}
+            {loadingMode === null ? `Range: ${activeRangeLabel}` : loadMessage}
           </p>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-border/70 bg-background/65 px-4 py-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Summary window
+            </p>
+            <h4 className="text-lg font-semibold text-foreground">{activeRangeLabel}</h4>
+            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              These controls only affect the standalone temperature summary card.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["study_start", "Study Start"],
+              ["last_7", "Last 7"],
+              ["last_30", "Last 30"],
+              ["last_90", "Last 90"],
+              ["custom", "Custom"],
+            ] as const).map(([value, label]) => (
+              <SummaryPresetButton
+                key={value}
+                active={preset === value}
+                label={label}
+                onClick={() => {
+                  setPreset(value);
+                  if (value !== "custom") {
+                    const nextRange = getTemperatureSummaryPresetRange(value, anchorDate);
+                    setDateFrom(nextRange.dateFrom);
+                    setDateTo(nextRange.dateTo);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+          <label className="space-y-2">
+            <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              From
+            </span>
+            <input
+              type="date"
+              min={STUDY_START}
+              max={anchorDate}
+              value={dateFrom}
+              onChange={(event) => {
+                const next = normalizeTemperatureSummaryRange(event.target.value, dateTo);
+                setPreset("custom");
+                setDateFrom(next.dateFrom);
+                setDateTo(next.dateTo);
+              }}
+              className="h-11 w-full rounded-2xl border border-border/80 bg-background/75 px-4 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </label>
+
+          <label className="space-y-2">
+            <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              To
+            </span>
+            <input
+              type="date"
+              min={STUDY_START}
+              max={anchorDate}
+              value={dateTo}
+              onChange={(event) => {
+                const next = normalizeTemperatureSummaryRange(dateFrom, event.target.value);
+                setPreset("custom");
+                setDateFrom(next.dateFrom);
+                setDateTo(next.dateTo);
+              }}
+              className="h-11 w-full rounded-2xl border border-border/80 bg-background/75 px-4 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </label>
+
+          <div className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Active range
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">{activeRangeLabel}</p>
+          </div>
         </div>
       </div>
 
       {loadingMode !== null && !hasSummary && !error && (
         <div className="relative mt-5 flex items-center gap-3 rounded-2xl border border-border/70 bg-background/65 px-4 py-4 text-sm text-muted-foreground">
+          <CloudLoading size="sm" />
+          <span>{loadMessage}</span>
+        </div>
+      )}
+
+      {loadingMode !== null && hasSummary && !error && (
+        <div className="mt-5 flex items-center gap-3 rounded-2xl border border-border/70 bg-background/65 px-4 py-3 text-sm text-muted-foreground">
           <CloudLoading size="sm" />
           <span>{loadMessage}</span>
         </div>
@@ -566,7 +772,9 @@ export default function AnalyticsTemperatureSummaryCard({ anchorDate }: Props) {
         <div className="mt-5 rounded-2xl border border-dashed border-border/70 bg-background/65 px-4 py-6 text-sm text-muted-foreground">
           {snapshotMissing
             ? "No saved temperature summary exists for this window yet. Use Compute Summary to request one."
-            : "Temperature summary data has not loaded yet. Use Compute Summary to request it."}
+            : hasSummaryPayload
+              ? "The backend returned an empty temperature summary payload for this window."
+              : "Temperature summary data has not loaded yet. Use Compute Summary to request it."}
         </div>
       )}
 

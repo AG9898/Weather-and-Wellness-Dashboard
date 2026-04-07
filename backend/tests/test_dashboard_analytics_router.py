@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.routing import APIRoute
 
+from app.analytics.dataset import AnalyticsDatasetBuildResult, AnalyticsDatasetRow
 from app.auth import get_current_lab_member
 from app.routers.dashboard import (
     get_dashboard_analytics_route,
@@ -18,10 +19,53 @@ from app.schemas.analytics import (
     AnalyticsDatasetMetadataResponse,
     AnalyticsSnapshotMetadataResponse,
     DashboardAnalyticsResponse,
-    AnalyticsTemperatureSummaryResponse,
 )
+from app.analytics.temperature_summary import build_temperature_summary
 from app.schemas.weather import LatestStudyDayResponse
 from app.services.analytics_service import AnalyticsRefreshRequestResult
+
+
+def _build_temperature_summary():
+    generated_at = datetime(2026, 3, 11, 12, 0, tzinfo=timezone.utc)
+    dataset = AnalyticsDatasetBuildResult(
+        date_from=date(2026, 3, 1),
+        date_to=date(2026, 3, 2),
+        generated_at=generated_at,
+        rows=(
+            AnalyticsDatasetRow(
+                session_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                participant_uuid=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+                date_local=date(2026, 3, 1),
+                date_bin=1,
+                temperature=2.0,
+                precipitation=0.0,
+                daylight_hours=9.0,
+                anxiety=1.0,
+                depression=1.0,
+                loneliness=1.0,
+                self_report=1.0,
+                digit_span_score=1,
+                imported_fields=(),
+            ),
+            AnalyticsDatasetRow(
+                session_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+                participant_uuid=uuid.UUID("44444444-4444-4444-4444-444444444444"),
+                date_local=date(2026, 3, 2),
+                date_bin=2,
+                temperature=8.0,
+                precipitation=0.0,
+                daylight_hours=9.5,
+                anxiety=1.0,
+                depression=1.0,
+                loneliness=1.0,
+                self_report=1.0,
+                digit_span_score=1,
+                imported_fields=(),
+            ),
+        ),
+        excluded_rows=(),
+    )
+    return build_temperature_summary(dataset)
 
 
 def _build_response(*, status: str = "ready") -> DashboardAnalyticsResponse:
@@ -47,7 +91,7 @@ def _build_response(*, status: str = "ready") -> DashboardAnalyticsResponse:
             generated_at=generated_at,
         ),
         models=[],
-        temperature_summary=AnalyticsTemperatureSummaryResponse(),
+        temperature_summary=_build_temperature_summary(),
     )
 
 
@@ -124,6 +168,7 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
             mode="snapshot",
             triggered_by_lab_member_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         )
+        assert response.temperature_summary.windows[0].day_count == 2
 
     async def test_route_returns_404_when_snapshot_mode_has_no_saved_snapshot(self) -> None:
         with patch(
@@ -170,6 +215,7 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
 
         assert response.status == "stale"
         assert response.snapshot.mode == "live"
+        assert response.temperature_summary.windows[0].day_count == 2
         assert len(background_tasks.tasks) == 1
         refresh_mock.assert_awaited_once_with(
             db,
