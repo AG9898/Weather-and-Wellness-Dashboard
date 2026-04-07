@@ -278,6 +278,10 @@ export interface AnalyticsTemperatureSummaryWindowResponse {
   participant_count: number;
   mean_temperature_c: number | null;
   sd_temperature_c: number | null;
+  cold_threshold_temperature_c: number | null;
+  hot_threshold_temperature_c: number | null;
+  threshold_method: "window_day_zscore_v1";
+  threshold_z_cutoff: number;
   frequency_bins: AnalyticsTemperatureSummaryFrequencyBinResponse[];
   cold_group: AnalyticsTemperatureSummaryGroupResponse;
   hot_group: AnalyticsTemperatureSummaryGroupResponse;

@@ -152,6 +152,57 @@ export function buildTemperatureFrequencyBars(
   }));
 }
 
+export interface TemperatureHistogramPoint {
+  x: number;
+  y: number;
+  binLabel: string;
+}
+
+export function buildTemperatureHistogramPoints(
+  window: AnalyticsTemperatureSummaryWindowResponse
+): TemperatureHistogramPoint[] {
+  return window.frequency_bins.map((bin) => ({
+    x: bin.bin_start_c + 0.5,
+    y: bin.day_count,
+    binLabel: formatTemperatureBinLabel(bin.bin_start_c, bin.bin_end_c),
+  }));
+}
+
+export interface TemperatureSummaryThresholdOverlay {
+  available: boolean;
+  methodLabel: string;
+  cutoffLabel: string;
+  note: string;
+  coldThresholdTemperatureC: number | null;
+  hotThresholdTemperatureC: number | null;
+}
+
+export function getTemperatureSummaryThresholdOverlay(
+  window: AnalyticsTemperatureSummaryWindowResponse
+): TemperatureSummaryThresholdOverlay {
+  const available =
+    window.day_count >= 2 &&
+    window.mean_temperature_c !== null &&
+    window.sd_temperature_c !== null &&
+    window.sd_temperature_c > 0 &&
+    window.cold_threshold_temperature_c !== null &&
+    window.hot_threshold_temperature_c !== null;
+
+  return {
+    available,
+    methodLabel:
+      window.threshold_method === "window_day_zscore_v1"
+        ? "Window-day z-score v1"
+        : window.threshold_method,
+    cutoffLabel: `|z| > ${window.threshold_z_cutoff}`,
+    note: available
+      ? `Threshold markers show mean ± ${window.threshold_z_cutoff} SD across unique study days.`
+      : "Threshold markers are unavailable because this window has fewer than 2 unique days or zero temperature variance.",
+    coldThresholdTemperatureC: window.cold_threshold_temperature_c,
+    hotThresholdTemperatureC: window.hot_threshold_temperature_c,
+  };
+}
+
 export function formatSigned(value: number): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }

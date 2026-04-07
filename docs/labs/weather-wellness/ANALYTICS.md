@@ -279,6 +279,10 @@ Each window should include:
 - `participant_count`
 - `mean_temperature_c`
 - `sd_temperature_c`
+- `cold_threshold_temperature_c`
+- `hot_threshold_temperature_c`
+- `threshold_method`
+- `threshold_z_cutoff`
 - `frequency_bins`
 - `cold_group`
 - `hot_group`
@@ -287,8 +291,8 @@ The dashboard renders this payload in a dedicated standalone
 temperature-summary section separate from both the mixed-model analytics section
 and the weather chart. That section owns its own date range plus a dedicated
 compute/recompute action, and within the selected summary range it exposes tabs
-for the three fixed windows, a summary strip, a 1°C frequency histogram, and
-hot/cold day panels.
+for the three fixed windows, a summary strip, one conclusive 1°C Highcharts
+histogram with mean and threshold overlays, and hot/cold day panels.
 
 ### Dataset metadata
 
@@ -347,6 +351,25 @@ Each group should include:
 If a window has no qualifying hot or cold days, return an empty group object
 with zero counts instead of treating the window as an error.
 
+### Displayed threshold temperatures
+
+- The dashboard should display the actual temperature cutoffs implied by the
+  current hot/cold z-score rule for the selected summary window.
+- These cutoffs are descriptive window-specific values, not inferential
+  significance thresholds.
+- For a populated window with at least two unique study days and non-zero
+  day-level temperature variance:
+  - `cold_threshold_temperature_c = mean_temperature_c - (2 * sd_temperature_c)`
+  - `hot_threshold_temperature_c = mean_temperature_c + (2 * sd_temperature_c)`
+- `threshold_method` should serialize as `window_day_zscore_v1`.
+- `threshold_z_cutoff` should serialize as `2`.
+- If the window has fewer than two unique study days or zero day-level
+  temperature variance, the threshold temperatures should be `null` and the UI
+  should treat the threshold overlay as unavailable rather than as an error.
+- The display and docs should prefer the term `threshold` or `extreme-day
+  cutoff`; avoid calling these descriptive values "statistically significant
+  temperatures."
+
 ### Current acceptance oracle (`reference/data_full_1-230.xlsx`)
 
 The current canonical workbook is used to validate the expected outputs for this
@@ -397,6 +420,9 @@ the existing weather-by-date Highcharts chart.
    - owns its own summary-range filters and compute/recompute state
    - renders `overall`, `fall_winter`, and `spring_summer` windows within that
      selected summary range
+   - shows one Highcharts histogram for the active window, with mean and
+     hot/cold threshold overlays derived from the same window-specific z-score
+     rule used to populate the summary groups
 
 ### Analytics surface state
 

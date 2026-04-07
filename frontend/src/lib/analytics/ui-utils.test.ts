@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api";
 import {
   buildAnalyticsWarningDisplayItems,
   buildTemperatureFrequencyBars,
+  buildTemperatureHistogramPoints,
   compareEffectsByStrength,
   formatOutcomeLabel,
   formatPValue,
@@ -21,6 +22,7 @@ import {
   formatTermLabel,
   formatTermPart,
   getAnalyticsErrorMessage,
+  getTemperatureSummaryThresholdOverlay,
   getTemperatureSummaryPresetRange,
   getTemperatureSummaryWindow,
   getStatusPanel,
@@ -343,14 +345,18 @@ describe("temperature summary helpers", () => {
         window_key: "overall",
         date_from: "2026-03-01",
         date_to: "2026-03-10",
-        day_count: 3,
-        participant_count: 6,
-        mean_temperature_c: 8.75,
-        sd_temperature_c: 1.5,
-        frequency_bins: [
-          { bin_start_c: 7, bin_end_c: 8, day_count: 1 },
-          { bin_start_c: 8, bin_end_c: 9, day_count: 3 },
-        ],
+      day_count: 3,
+      participant_count: 6,
+      mean_temperature_c: 8.75,
+      sd_temperature_c: 1.5,
+      cold_threshold_temperature_c: 5.75,
+      hot_threshold_temperature_c: 11.75,
+      threshold_method: "window_day_zscore_v1",
+      threshold_z_cutoff: 2,
+      frequency_bins: [
+        { bin_start_c: 7, bin_end_c: 8, day_count: 1 },
+        { bin_start_c: 8, bin_end_c: 9, day_count: 3 },
+      ],
         cold_group: {
           day_count: 1,
           participant_count: 2,
@@ -406,6 +412,24 @@ describe("temperature summary helpers", () => {
       { label: "7 to 8°C", dayCount: 1, share: 1 / 3 },
       { label: "8 to 9°C", dayCount: 3, share: 1 },
     ]);
+  });
+
+  it("builds histogram points and threshold overlay copy", () => {
+    const points = buildTemperatureHistogramPoints(summary.windows[0]);
+    expect(points).toEqual([
+      { x: 7.5, y: 1, binLabel: "7 to 8°C" },
+      { x: 8.5, y: 3, binLabel: "8 to 9°C" },
+    ]);
+
+    const overlay = getTemperatureSummaryThresholdOverlay(summary.windows[0]);
+    expect(overlay).toEqual({
+      available: true,
+      methodLabel: "Window-day z-score v1",
+      cutoffLabel: "|z| > 2",
+      note: "Threshold markers show mean ± 2 SD across unique study days.",
+      coldThresholdTemperatureC: 5.75,
+      hotThresholdTemperatureC: 11.75,
+    });
   });
 
   it("treats empty temperature-summary payloads as not ready", () => {

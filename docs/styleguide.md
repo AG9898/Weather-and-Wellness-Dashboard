@@ -191,6 +191,11 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 | Tick labels | `--muted-foreground` | Axis label text |
 | Chart background | `transparent` | Inherits `var(--card)` from the parent card |
 
+**Temperature summary histogram guidance:**
+- Use a single Highcharts column series for 1°C `frequency_bins` in the active summary window.
+- Overlay the selected window's mean temperature plus cold/hot threshold markers using `plotLines` and, when helpful, restrained `plotBands`.
+- Treat threshold overlays as descriptive metadata from the temperature-summary payload, not as mixed-model outputs or general significance annotations.
+
 **General chart rules:**
 - `chart.backgroundColor: "transparent"` always — let the parent card surface show through.
 - `credits.enabled: false` always.

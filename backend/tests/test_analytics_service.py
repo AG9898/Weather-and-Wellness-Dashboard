@@ -224,6 +224,8 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.snapshot.mode == "snapshot"
         assert response.snapshot.generated_at == generated_at
         assert response.temperature_summary.windows[0].day_count == 2
+        assert response.temperature_summary.windows[0].threshold_method == "window_day_zscore_v1"
+        assert response.temperature_summary.windows[0].threshold_z_cutoff == 2
         build_dataset_mock.assert_not_awaited()
 
     async def test_live_recompute_persists_run_metadata_and_snapshot_after_success(self) -> None:
@@ -274,6 +276,8 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.snapshot.recompute_started_at is not None
         assert response.snapshot.recompute_finished_at is not None
         assert response.temperature_summary.windows[0].day_count == 2
+        assert response.temperature_summary.windows[0].threshold_method == "window_day_zscore_v1"
+        assert response.temperature_summary.windows[0].threshold_z_cutoff == 2
         assert len(runs) == 1
         assert len(snapshots) == 1
         assert db.commit_count == 2
@@ -337,6 +341,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.snapshot.is_stale is True
         assert response.snapshot.recompute_started_at == recomputing_run.started_at
         assert response.temperature_summary.windows[0].day_count == 2
+        assert response.temperature_summary.windows[0].threshold_method == "window_day_zscore_v1"
         assert db.added == []
         assert db.commit_count == 0
         build_dataset_mock.assert_not_awaited()
@@ -373,6 +378,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert result.response.snapshot.is_stale is True
         assert result.response.snapshot.mode == "live"
         assert result.response.temperature_summary.windows[0].day_count == 2
+        assert result.response.temperature_summary.windows[0].threshold_method == "window_day_zscore_v1"
         assert len(runs) == 1
         assert runs[0].run_id == result.run_id
         assert runs[0].status == "recomputing"
@@ -425,6 +431,7 @@ class AnalyticsServiceTests(IsolatedAsyncioTestCase):
         assert response.snapshot.mode == "live"
         assert response.snapshot.is_stale is True
         assert response.temperature_summary.windows[0].day_count == 2
+        assert response.temperature_summary.windows[0].threshold_method == "window_day_zscore_v1"
         assert response.dataset.included_sessions == 24
         assert len(runs) == 1
         assert snapshots == []

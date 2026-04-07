@@ -93,6 +93,10 @@ def test_dashboard_analytics_response_serializes_scaffolded_payload() -> None:
                     participant_count=4,
                     mean_temperature_c=4.5,
                     sd_temperature_c=1.25,
+                    cold_threshold_temperature_c=2.0,
+                    hot_threshold_temperature_c=7.0,
+                    threshold_method="window_day_zscore_v1",
+                    threshold_z_cutoff=2,
                     frequency_bins=[
                         AnalyticsTemperatureSummaryFrequencyBinResponse(
                             bin_start_c=4.0,
@@ -152,6 +156,10 @@ def test_dashboard_analytics_response_serializes_scaffolded_payload() -> None:
     assert payload["models"][0]["grouping_field"] == ANALYTICS_RANDOM_EFFECT_GROUPING_FIELD
     assert payload["models"][0]["effects"][0]["direction"] == "positive"
     assert payload["temperature_summary"]["windows"][0]["window_key"] == "overall"
+    assert payload["temperature_summary"]["windows"][0]["cold_threshold_temperature_c"] == 2.0
+    assert payload["temperature_summary"]["windows"][0]["hot_threshold_temperature_c"] == 7.0
+    assert payload["temperature_summary"]["windows"][0]["threshold_method"] == "window_day_zscore_v1"
+    assert payload["temperature_summary"]["windows"][0]["threshold_z_cutoff"] == 2
     assert payload["temperature_summary"]["windows"][0]["cold_group"]["participant_ids"] == [
         "p-1",
         "p-2",

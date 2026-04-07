@@ -192,6 +192,10 @@
         "participant_count": "integer",
         "mean_temperature_c": "number | null",
         "sd_temperature_c": "number | null",
+        "cold_threshold_temperature_c": "number | null",
+        "hot_threshold_temperature_c": "number | null",
+        "threshold_method": "\"window_day_zscore_v1\"",
+        "threshold_z_cutoff": "number",
         "frequency_bins": [
           {
             "bin_start_c": "number",
@@ -252,6 +256,9 @@
   - `temperature_summary` is descriptive and day-level. It does not alter the model formulas or the participant-row sample used by the mixed models.
   - The three temperature-summary windows are `overall` (requested range), `fall_winter` (`Sep 22` through `Mar 21`, inclusive), and `spring_summer` (`Mar 22` through `Sep 21`, inclusive), with the seasonal windows clipped to the requested range.
   - `hot_group` means `temperature_z > 2`; `cold_group` means `temperature_z < -2`; both are computed within each summary window from unique daily temperatures only.
+  - `cold_threshold_temperature_c` and `hot_threshold_temperature_c` are the descriptive temperature cutoffs implied by the same window-specific day-level z-score rule: `mean_temperature_c ± (2 * sd_temperature_c)`.
+  - `threshold_method="window_day_zscore_v1"` and `threshold_z_cutoff=2` document that the displayed threshold overlay is descriptive only and matches the current extreme-day grouping rule.
+  - Threshold temperatures are `null` when a window has fewer than 2 unique study days or zero day-level temperature variance.
   - Date bounds are validated as inclusive study-local days in `America/Vancouver`; `date_from > date_to` returns `422`.
   - `mode=snapshot` reads the durable Postgres snapshot for the exact requested range and returns `404` when no snapshot exists yet. The shipped dashboard treats that `404` as a snapshot-miss empty state and does not auto-trigger `mode=live`.
   - `mode=live` now requests a background recompute and returns immediately with the current typed analytics payload for the range. When a prior snapshot exists, the payload will typically be `status="recomputing"` with the last successful snapshot kept visible until the background run finishes.
@@ -266,6 +273,7 @@
   - Snapshot persistence stores the full visualization payload including effect plots and weather annotations.
   - Shared analytics version/config constants now use `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v2"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v2"` so old snapshots and same-origin caches are not reused.
   - `temperature_summary` is a day-level descriptive payload populated by the backend summary engine and preserved through snapshot/live responses.
+  - The planned standalone temperature-summary chart is a single Highcharts histogram for the active summary window, with mean and threshold overlays drawn from these temperature-summary fields rather than from the mixed-model visualization payload.
   - The shipped dashboard keeps weather and analytics filter state independent and does not depend on `visualizations.weather_annotations` for weather-chart overlays, even though the field remains serialized for compatibility.
   - Browser-owned reads should use the same-origin analytics handler documented in `docs/ARCHITECTURE.md`; do not add direct component calls to this backend endpoint.
 

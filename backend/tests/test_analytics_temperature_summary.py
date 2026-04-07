@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import uuid
 from datetime import date, datetime, timezone
 
@@ -92,16 +93,46 @@ def test_temperature_summary_matches_documented_oracle_counts_and_dates() -> Non
     assert overall.hot_group.day_count == 2
     assert overall.hot_group.participant_count == 2
     assert overall.hot_group.dates == [date(2025, 7, 29), date(2025, 8, 1)]
+    assert overall.threshold_method == "window_day_zscore_v1"
+    assert overall.threshold_z_cutoff == 2
+    assert math.isclose(
+        overall.cold_threshold_temperature_c,
+        overall.mean_temperature_c - (2 * overall.sd_temperature_c),
+    )
+    assert math.isclose(
+        overall.hot_threshold_temperature_c,
+        overall.mean_temperature_c + (2 * overall.sd_temperature_c),
+    )
 
     assert fall_winter.cold_group.day_count == 2
     assert fall_winter.cold_group.participant_count == 2
     assert fall_winter.hot_group.day_count == 1
     assert fall_winter.hot_group.participant_count == 3
+    assert fall_winter.threshold_method == "window_day_zscore_v1"
+    assert fall_winter.threshold_z_cutoff == 2
+    assert math.isclose(
+        fall_winter.cold_threshold_temperature_c,
+        fall_winter.mean_temperature_c - (2 * fall_winter.sd_temperature_c),
+    )
+    assert math.isclose(
+        fall_winter.hot_threshold_temperature_c,
+        fall_winter.mean_temperature_c + (2 * fall_winter.sd_temperature_c),
+    )
 
     assert spring_summer.cold_group.day_count == 0
     assert spring_summer.cold_group.participant_count == 0
     assert spring_summer.hot_group.day_count == 0
     assert spring_summer.hot_group.participant_count == 0
+    assert spring_summer.threshold_method == "window_day_zscore_v1"
+    assert spring_summer.threshold_z_cutoff == 2
+    assert math.isclose(
+        spring_summer.cold_threshold_temperature_c,
+        spring_summer.mean_temperature_c - (2 * spring_summer.sd_temperature_c),
+    )
+    assert math.isclose(
+        spring_summer.hot_threshold_temperature_c,
+        spring_summer.mean_temperature_c + (2 * spring_summer.sd_temperature_c),
+    )
 
 
 def test_temperature_summary_frequency_bins_count_unique_days_not_rows() -> None:
@@ -151,3 +182,42 @@ def test_temperature_summary_returns_zero_payload_for_empty_seasonal_window() ->
     assert fall_winter.hot_group.participant_ids == []
     assert fall_winter.hot_group.dates == []
     assert fall_winter.hot_group.days == []
+
+
+def test_temperature_summary_nulls_thresholds_for_single_day_window() -> None:
+    dataset = _build_dataset(
+        [
+            (date(2025, 1, 1), 10.0, 3),
+        ]
+    )
+
+    summary = build_temperature_summary(dataset)
+    overall = _window_by_key(summary, "overall")
+
+    assert overall.day_count == 1
+    assert overall.mean_temperature_c == 10.0
+    assert overall.sd_temperature_c == 0.0
+    assert overall.cold_threshold_temperature_c is None
+    assert overall.hot_threshold_temperature_c is None
+    assert overall.threshold_method == "window_day_zscore_v1"
+    assert overall.threshold_z_cutoff == 2
+
+
+def test_temperature_summary_nulls_thresholds_for_zero_variance_window() -> None:
+    dataset = _build_dataset(
+        [
+            (date(2025, 1, 1), 10.0, 1),
+            (date(2025, 1, 2), 10.0, 1),
+        ]
+    )
+
+    summary = build_temperature_summary(dataset)
+    overall = _window_by_key(summary, "overall")
+
+    assert overall.day_count == 2
+    assert overall.mean_temperature_c == 10.0
+    assert overall.sd_temperature_c == 0.0
+    assert overall.cold_threshold_temperature_c is None
+    assert overall.hot_threshold_temperature_c is None
+    assert overall.threshold_method == "window_day_zscore_v1"
+    assert overall.threshold_z_cutoff == 2

@@ -10,6 +10,8 @@ from app.analytics.constants import (
     ANALYTICS_MODEL_VERSION,
     ANALYTICS_RANDOM_EFFECT_GROUPING_FIELD,
     ANALYTICS_RESPONSE_VERSION,
+    ANALYTICS_TEMPERATURE_THRESHOLD_METHOD,
+    ANALYTICS_TEMPERATURE_THRESHOLD_Z_CUTOFF,
 )
 
 AnalyticsDirection: TypeAlias = Literal["positive", "negative", "neutral"]
@@ -26,6 +28,9 @@ AnalyticsTemperatureSummaryWindowKey: TypeAlias = Literal[
     "overall",
     "fall_winter",
     "spring_summer",
+]
+AnalyticsTemperatureSummaryThresholdMethod: TypeAlias = Literal[
+    "window_day_zscore_v1"
 ]
 
 
@@ -131,6 +136,12 @@ class AnalyticsTemperatureSummaryWindowResponse(BaseModel):
     participant_count: int = 0
     mean_temperature_c: float | None = None
     sd_temperature_c: float | None = None
+    cold_threshold_temperature_c: float | None = None
+    hot_threshold_temperature_c: float | None = None
+    threshold_method: AnalyticsTemperatureSummaryThresholdMethod = (
+        ANALYTICS_TEMPERATURE_THRESHOLD_METHOD
+    )
+    threshold_z_cutoff: int = ANALYTICS_TEMPERATURE_THRESHOLD_Z_CUTOFF
     frequency_bins: list[AnalyticsTemperatureSummaryFrequencyBinResponse] = Field(
         default_factory=list
     )
@@ -224,6 +235,7 @@ __all__ = [
     "AnalyticsTemperatureSummaryGroupResponse",
     "AnalyticsTemperatureSummaryResponse",
     "AnalyticsTemperatureSummaryWindowKey",
+    "AnalyticsTemperatureSummaryThresholdMethod",
     "AnalyticsTemperatureSummaryWindowResponse",
     "AnalyticsSnapshotMetadataResponse",
     "AnalyticsStatus",

@@ -169,6 +169,7 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
             triggered_by_lab_member_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         )
         assert response.temperature_summary.windows[0].day_count == 2
+        assert response.temperature_summary.windows[0].threshold_method == "window_day_zscore_v1"
 
     async def test_route_returns_404_when_snapshot_mode_has_no_saved_snapshot(self) -> None:
         with patch(
@@ -216,6 +217,7 @@ class DashboardAnalyticsRouterTests(IsolatedAsyncioTestCase):
         assert response.status == "stale"
         assert response.snapshot.mode == "live"
         assert response.temperature_summary.windows[0].day_count == 2
+        assert response.temperature_summary.windows[0].threshold_method == "window_day_zscore_v1"
         assert len(background_tasks.tasks) == 1
         refresh_mock.assert_awaited_once_with(
             db,

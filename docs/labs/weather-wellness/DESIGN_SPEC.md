@@ -236,7 +236,9 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - The section owns its own summary date range initialized to `2025-03-03` → latest study day or Vancouver today.
 - The section exposes fixed tabs for `overall`, `fall_winter`, and `spring_summer` within the currently selected summary range.
 - The selected window shows day count, participant count, mean temperature, standard deviation, and cold/hot participant counts.
-- A simple 1°C bin histogram summarizes day-level temperature frequency.
+- One conclusive Highcharts 1°C histogram summarizes day-level temperature frequency for the active window.
+- The histogram overlays the selected window's mean temperature plus descriptive cold/hot threshold markers derived from the same window-specific day-level z-score rule used for the summary groups.
+- When threshold values are unavailable because the selected window has too few unique days or zero variance, the chart falls back to frequency-plus-mean only and the UI explains that the threshold overlay is unavailable.
 - Cold/hot panels list qualifying dates and participant counts, with a benign empty state when no days cross the threshold.
 - The section uses short RA-facing status labels plus a dedicated compute/recompute button, and it keeps the last available summary visible while a background recompute is in progress.
 

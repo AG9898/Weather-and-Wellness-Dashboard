@@ -620,6 +620,92 @@
         "cd frontend && npm run build"
       ],
       "estimate": "M"
+    },
+    {
+      "id": "T130",
+      "group_id": "TEMPERATURE_SUMMARY_CHART",
+      "title": "Temperature summary chart - Threshold contract and backend payload wiring",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Extend the temperature summary contract so each window exposes the descriptive cold/hot threshold temperatures implied by the existing day-level z-score rule.",
+      "description": "Update the temperature summary schema and backend helper so each summary window serializes `cold_threshold_temperature_c`, `hot_threshold_temperature_c`, `threshold_method`, and `threshold_z_cutoff` alongside the existing mean, SD, bins, and hot/cold groups. The new fields must stay aligned with the current window-specific day-level z-score method used for `temperature_z < -2` / `temperature_z > 2`, return `null` thresholds when the window has fewer than two unique days or zero variance, and round-trip through snapshot/live analytics responses without changing mixed-model formulas or extreme-day membership.",
+      "acceptance_criteria": [
+        "Each populated `temperature_summary.windows[]` item includes `cold_threshold_temperature_c`, `hot_threshold_temperature_c`, `threshold_method`, and `threshold_z_cutoff` in the backend schema and frontend typed response models",
+        "Threshold temperatures are computed from the selected window's descriptive day-level summary stats using `mean_temperature_c ± (2 * sd_temperature_c)`",
+        "`threshold_method` serializes as `window_day_zscore_v1` and `threshold_z_cutoff` serializes as `2`",
+        "Threshold temperatures are `null` when the window has fewer than 2 unique days or zero day-level temperature variance",
+        "Existing `cold_group` / `hot_group` membership remains strict (`temperature_z < -2`, `temperature_z > 2`) and regression coverage fails if that behavior changes",
+        "Snapshot/live analytics reads preserve the new threshold fields end to end"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/schemas/analytics.py",
+        "backend/app/analytics/temperature_summary.py",
+        "backend/app/services/analytics_service.py",
+        "backend/tests/test_analytics_temperature_summary.py",
+        "backend/tests/test_analytics_service.py",
+        "backend/tests/test_dashboard_analytics_router.py",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Keep the new threshold fields descriptive-only; do not introduce a new inferential significance method in this task.",
+        "Do not recompute alternative threshold methods or change the existing hot/cold grouping rule."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/python -m pytest tests/test_analytics_temperature_summary.py tests/test_analytics_service.py tests/test_dashboard_analytics_router.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T131",
+      "group_id": "TEMPERATURE_SUMMARY_CHART",
+      "title": "Temperature summary chart - Conclusive Highcharts histogram with threshold overlays",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Replace the current temperature-bin grid with one Highcharts histogram per active summary window, including mean and descriptive threshold overlays.",
+      "description": "Refactor `AnalyticsTemperatureSummaryCard` so the selected window renders a single Highcharts column histogram from `frequency_bins` instead of the current CSS bar grid. The chart should stay scoped to the active summary tab, overlay the selected window's mean temperature and descriptive cold/hot thresholds from the analytics payload, include concise RA-facing explainer copy about the threshold method, and gracefully fall back to frequency-plus-mean only when threshold temperatures are unavailable. Preserve the card's existing standalone range controls, compute/recompute behavior, empty states, and hot/cold day panels.",
+      "acceptance_criteria": [
+        "The standalone temperature summary card renders one Highcharts histogram for the active window using the existing `frequency_bins` payload",
+        "The chart overlays the selected window's mean temperature plus cold/hot threshold markers sourced from the serialized threshold fields rather than recomputed alternate logic",
+        "When threshold temperatures are `null`, the chart omits threshold overlays and shows a concise explanatory fallback message instead of failing",
+        "The chart remains scoped to the selected summary tab and updates correctly when the user switches between `overall`, `fall_winter`, and `spring_summer`",
+        "The card keeps the existing summary stats, hot/cold day panels, and standalone compute/recompute UX intact",
+        "Frontend regression coverage and build checks pass with the new Highcharts temperature summary visualization"
+      ],
+      "depends_on": [
+        "T130"
+      ],
+      "blocked_by": [
+        "T130"
+      ],
+      "files": [
+        "frontend/src/lib/components/AnalyticsTemperatureSummaryCard.tsx",
+        "frontend/src/lib/analytics/ui-utils.ts",
+        "frontend/src/lib/analytics/ui-utils.test.ts",
+        "frontend/src/lib/analytics/dashboard-analytics-loader.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/styleguide.md"
+      ],
+      "notes": [
+        "Keep the temperature summary card separate from `WeatherUnifiedCard`; do not merge this histogram into the weather time-series chart.",
+        "Follow the repo Highcharts conventions for mounted rendering, CSS-variable theming, and declarative chart options."
+      ],
+      "commands": [
+        "cd frontend && npm test -- src/lib/analytics/dashboard-analytics-loader.test.ts src/lib/analytics/ui-utils.test.ts src/app/api/ra/dashboard/analytics/route.test.ts",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
     }
   ]
 }

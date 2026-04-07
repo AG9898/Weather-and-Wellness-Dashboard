@@ -1,6 +1,8 @@
 "use client";
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import Highcharts from "highcharts";
+import HighchartsReact from "highcharts-react-official";
 import {
   AlertTriangle,
   CalendarDays,
@@ -23,11 +25,12 @@ import {
   type TemperatureSummaryLoadResult,
 } from "@/lib/analytics/dashboard-analytics-loader";
 import {
-  buildTemperatureFrequencyBars,
+  buildTemperatureHistogramPoints,
   formatSigned,
   formatTemperatureDateRange,
   formatTemperatureValue,
   formatTemperatureWindowLabel,
+  getTemperatureSummaryThresholdOverlay,
   getTemperatureSummaryWindow,
   getTemperatureSummaryPresetRange,
   isTemperatureSummaryReady,
@@ -49,6 +52,30 @@ const WINDOW_KEYS: AnalyticsTemperatureSummaryWindowKey[] = [
 
 type LoadingMode = "snapshot" | "live" | null;
 type SummaryRangePreset = TemperatureSummaryRangePreset;
+
+interface ChartColors {
+  bars: string;
+  mean: string;
+  cold: string;
+  hot: string;
+  border: string;
+  mutedFg: string;
+}
+
+function getCssVar(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function readChartColors(): ChartColors {
+  return {
+    bars: getCssVar("--chart-1") || "#28455d",
+    mean: getCssVar("--chart-4") || "#b8c2cb",
+    cold: getCssVar("--chart-3") || "#8a9bab",
+    hot: getCssVar("--chart-5") || "#878343",
+    border: getCssVar("--border") || "rgba(0,19,40,0.12)",
+    mutedFg: getCssVar("--muted-foreground") || "#6e7c95",
+  };
+}
 
 function formatDisplayDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
@@ -107,59 +134,256 @@ function SummaryPresetButton({
   );
 }
 
-function TemperatureFrequencyChart({
-  window,
+function TemperatureHistogramChart({
+  summaryWindow,
 }: {
-  window: AnalyticsTemperatureSummaryWindowResponse;
+  summaryWindow: AnalyticsTemperatureSummaryWindowResponse;
 }) {
-  const bars = buildTemperatureFrequencyBars(window);
+  const [mounted, setMounted] = useState(false);
+  const [chartColors, setChartColors] = useState<ChartColors>({
+    bars: "#28455d",
+    mean: "#b8c2cb",
+    cold: "#8a9bab",
+    hot: "#878343",
+    border: "rgba(0,19,40,0.12)",
+    mutedFg: "#6e7c95",
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    setChartColors(readChartColors());
+
+    const observer = new MutationObserver(() => {
+      setChartColors(readChartColors());
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const histogramPoints = useMemo(
+    () => buildTemperatureHistogramPoints(summaryWindow),
+    [summaryWindow]
+  );
+  const thresholdOverlay = useMemo(
+    () => getTemperatureSummaryThresholdOverlay(summaryWindow),
+    [summaryWindow]
+  );
+
+  const chartOptions = useMemo<Highcharts.Options>(() => {
+    const { bars, mean, cold, hot, border, mutedFg } = chartColors;
+
+    const minX = histogramPoints.length
+      ? Math.min(...histogramPoints.map((point) => point.x)) - 0.5
+      : undefined;
+    const maxX = histogramPoints.length
+      ? Math.max(...histogramPoints.map((point) => point.x)) + 0.5
+      : undefined;
+    const dataMax = Math.max(...histogramPoints.map((point) => point.y), 0);
+    const plotLines: Highcharts.XAxisPlotLinesOptions[] = [];
+
+    if (summaryWindow.mean_temperature_c !== null) {
+      plotLines.push({
+        value: summaryWindow.mean_temperature_c,
+        color: mean,
+        width: 2,
+        dashStyle: "Solid",
+        zIndex: 5,
+        label: {
+          text: `Mean ${formatTemperatureValue(summaryWindow.mean_temperature_c)}`,
+          rotation: 0,
+          align: "left",
+          x: 4,
+          y: -8,
+          style: { color: mean, fontSize: "11px", fontWeight: "600" },
+        },
+      });
+    }
+
+    if (thresholdOverlay.available && thresholdOverlay.coldThresholdTemperatureC !== null) {
+      plotLines.push({
+        value: thresholdOverlay.coldThresholdTemperatureC,
+        color: cold,
+        width: 1.5,
+        dashStyle: "Dash",
+        zIndex: 5,
+        label: {
+          text: `Cold cutoff ${formatTemperatureValue(
+            thresholdOverlay.coldThresholdTemperatureC
+          )}`,
+          rotation: 0,
+          align: "left",
+          x: 4,
+          y: -8,
+          style: { color: cold, fontSize: "11px", fontWeight: "600" },
+        },
+      });
+    }
+
+    if (thresholdOverlay.available && thresholdOverlay.hotThresholdTemperatureC !== null) {
+      plotLines.push({
+        value: thresholdOverlay.hotThresholdTemperatureC,
+        color: hot,
+        width: 1.5,
+        dashStyle: "Dash",
+        zIndex: 5,
+        label: {
+          text: `Hot cutoff ${formatTemperatureValue(
+            thresholdOverlay.hotThresholdTemperatureC
+          )}`,
+          rotation: 0,
+          align: "left",
+          x: 4,
+          y: -8,
+          style: { color: hot, fontSize: "11px", fontWeight: "600" },
+        },
+      });
+    }
+
+    return {
+      chart: {
+        backgroundColor: "transparent",
+        height: 300,
+        animation: false,
+        style: { fontFamily: "inherit" },
+        marginTop: 12,
+        marginRight: 20,
+      },
+      title: { text: undefined },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      tooltip: {
+        shared: false,
+        useHTML: true,
+        backgroundColor: "var(--card)",
+        borderColor: border,
+        borderRadius: 10,
+        padding: 10,
+        shadow: false,
+        style: { color: mutedFg, fontSize: "12px", lineHeight: "1.6" },
+        formatter: function (): string {
+          const ctx = this as unknown as {
+            point?: { custom?: { binLabel?: string } };
+            y?: number;
+          };
+
+          return `
+            <span style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">${ctx.point?.custom?.binLabel ?? "Temperature bin"}</span><br/>
+            ${ctx.y ?? 0} day${ctx.y === 1 ? "" : "s"}
+          `;
+        },
+      },
+      xAxis: {
+        title: {
+          text: "Temperature (°C)",
+          style: { color: mutedFg, fontSize: "11px" },
+          margin: 8,
+        },
+        lineColor: border,
+        tickColor: "transparent",
+        gridLineWidth: 1,
+        gridLineColor: border,
+        gridLineDashStyle: "Dash" as const,
+        labels: {
+          style: { color: mutedFg, fontSize: "11px" },
+          formatter: function () {
+            const value = typeof this.value === "number" ? this.value : Number(this.value);
+            return Number.isFinite(value) ? `${value.toFixed(0)}°` : "";
+          },
+        },
+        min: minX,
+        max: maxX,
+        tickInterval: 1,
+        plotLines,
+      },
+      yAxis: {
+        title: {
+          text: "Days",
+          style: { color: mutedFg, fontSize: "11px" },
+          margin: 8,
+        },
+        gridLineColor: border,
+        gridLineDashStyle: "Dash" as const,
+        labels: { style: { color: mutedFg, fontSize: "11px" } },
+        allowDecimals: false,
+        min: 0,
+        max: dataMax > 0 ? undefined : 1,
+      },
+      plotOptions: {
+        series: {
+          animation: false,
+          borderWidth: 0,
+        },
+        column: {
+          color: bars,
+          borderRadius: 4,
+          groupPadding: 0.06,
+          pointPadding: 0.02,
+          pointRange: 1,
+        },
+      },
+      series: [
+        {
+          type: "column" as const,
+          name: "Days",
+          data: histogramPoints.map((point) => ({
+            x: point.x,
+            y: point.y,
+            custom: { binLabel: point.binLabel },
+          })),
+          color: bars,
+        },
+      ],
+    };
+  }, [chartColors, histogramPoints, thresholdOverlay.available, summaryWindow.mean_temperature_c]);
 
   return (
     <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            Temperature bins
+            Temperature histogram
           </p>
           <h4 className="mt-1 text-sm font-semibold text-foreground">
-            Temperature distribution by 1°C bin
+            1°C frequency bins for the active window
           </h4>
         </div>
-        <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-          1°C bins
-        </Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
+            1°C bins
+          </Badge>
+          <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
+            {thresholdOverlay.methodLabel} · {thresholdOverlay.cutoffLabel}
+          </Badge>
+        </div>
       </div>
 
-      {bars.length > 0 ? (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {bars.map((bar) => (
-            <div key={bar.label} className="rounded-xl border border-border/70 bg-background/60 p-3">
-              <div className="flex h-36 items-end rounded-lg border border-border/50 bg-muted/20 p-2">
-                <div
-                  className="w-full rounded-md"
-                  style={{
-                    height: `${Math.max(bar.share * 100, bar.dayCount > 0 ? 12 : 4)}%`,
-                    background:
-                      "linear-gradient(180deg, color-mix(in srgb, var(--chart-1) 86%, transparent) 0%, color-mix(in srgb, var(--chart-2) 72%, transparent) 100%)",
-                  }}
-                  aria-label={`${bar.label}: ${bar.dayCount} day${bar.dayCount === 1 ? "" : "s"}`}
-                  title={`${bar.label}: ${bar.dayCount} day${bar.dayCount === 1 ? "" : "s"}`}
-                />
-              </div>
-              <p className="mt-3 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                {bar.label}
-              </p>
-              <p className="mt-1 text-center text-sm font-semibold text-foreground">
-                {bar.dayCount} day{bar.dayCount === 1 ? "" : "s"}
-              </p>
+      <div className="mt-4 h-[300px] w-full">
+        {histogramPoints.length > 0 ? (
+          mounted ? (
+            <HighchartsReact
+              highcharts={Highcharts}
+              options={chartOptions}
+              containerProps={{ style: { width: "100%", height: "100%" } }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+              Rendering the histogram…
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-4 rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-          No bins were returned for this window.
-        </div>
-      )}
+          )
+        ) : (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+            No bins were returned for this window.
+          </div>
+        )}
+      </div>
+
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+        {thresholdOverlay.note}
+      </p>
     </div>
   );
 }
@@ -384,7 +608,7 @@ function TemperatureSummaryContent({ temperatureSummary }: TemperatureSummaryCon
             ))}
           </div>
 
-          <TemperatureFrequencyChart window={selectedWindow} />
+          <TemperatureHistogramChart summaryWindow={selectedWindow} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <TemperatureGroupPanel

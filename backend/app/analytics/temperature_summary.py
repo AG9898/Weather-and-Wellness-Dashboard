@@ -8,6 +8,10 @@ from dataclasses import dataclass
 from datetime import date
 
 from app.analytics.dataset import AnalyticsDatasetBuildResult, AnalyticsDatasetRow
+from app.analytics.constants import (
+    ANALYTICS_TEMPERATURE_THRESHOLD_METHOD,
+    ANALYTICS_TEMPERATURE_THRESHOLD_Z_CUTOFF,
+)
 from app.schemas.analytics import (
     AnalyticsTemperatureSummaryDayResponse,
     AnalyticsTemperatureSummaryFrequencyBinResponse,
@@ -95,6 +99,11 @@ def _build_temperature_window(
     temperatures = [day.temperature_c for day in day_aggregates]
     mean_temperature_c = sum(temperatures) / len(temperatures)
     sd_temperature_c = _sample_standard_deviation(temperatures)
+    cold_threshold_temperature_c, hot_threshold_temperature_c = _temperature_thresholds(
+        mean_temperature_c=mean_temperature_c,
+        sd_temperature_c=sd_temperature_c,
+        day_count=len(day_aggregates),
+    )
     z_scores = _temperature_z_scores(
         day_aggregates,
         mean_temperature_c=mean_temperature_c,
@@ -120,6 +129,10 @@ def _build_temperature_window(
         participant_count=sum(day.participant_count for day in day_aggregates),
         mean_temperature_c=mean_temperature_c,
         sd_temperature_c=sd_temperature_c,
+        cold_threshold_temperature_c=cold_threshold_temperature_c,
+        hot_threshold_temperature_c=hot_threshold_temperature_c,
+        threshold_method=ANALYTICS_TEMPERATURE_THRESHOLD_METHOD,
+        threshold_z_cutoff=ANALYTICS_TEMPERATURE_THRESHOLD_Z_CUTOFF,
         frequency_bins=_build_frequency_bins(day_aggregates),
         cold_group=_build_temperature_group(
             [day for day in day_responses if day.temperature_z < -2]
@@ -188,6 +201,22 @@ def _sample_standard_deviation(values: list[float]) -> float:
     mean_value = sum(values) / len(values)
     variance = sum((value - mean_value) ** 2 for value in values) / (len(values) - 1)
     return math.sqrt(variance)
+
+
+def _temperature_thresholds(
+    *,
+    mean_temperature_c: float,
+    sd_temperature_c: float,
+    day_count: int,
+) -> tuple[float | None, float | None]:
+    if day_count < 2 or sd_temperature_c <= 0:
+        return None, None
+
+    cutoff = float(ANALYTICS_TEMPERATURE_THRESHOLD_Z_CUTOFF)
+    return (
+        mean_temperature_c - (cutoff * sd_temperature_c),
+        mean_temperature_c + (cutoff * sd_temperature_c),
+    )
 
 
 def _is_fall_winter(date_local: date) -> bool:
