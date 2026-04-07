@@ -45,7 +45,7 @@ export const WEATHER_RANGE_CACHE_POLICY: RouteCachePolicy = {
 };
 
 export const ANALYTICS_SNAPSHOT_CACHE_POLICY: RouteCachePolicy = {
-  keyPrefix: "ww:ra:analytics:snapshot:v2",
+  keyPrefix: "ww:ra:analytics:snapshot:v3",
   ttlSeconds: 60 * 60 * 24,
   renewal: "fixed-expiry-on-write",
 };

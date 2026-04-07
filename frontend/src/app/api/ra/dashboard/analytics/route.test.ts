@@ -29,7 +29,7 @@ vi.mock("@/lib/server/route-handler-backend", () => {
 
 vi.mock("@/lib/server/route-handler-cache", () => ({
   ANALYTICS_SNAPSHOT_CACHE_POLICY: {
-    keyPrefix: "ww:ra:analytics:snapshot:v2",
+    keyPrefix: "ww:ra:analytics:snapshot:v3",
     ttlSeconds: 60 * 60 * 24,
     renewal: "fixed-expiry-on-write",
   },
@@ -177,7 +177,7 @@ describe("GET /api/ra/dashboard/analytics", () => {
     expect(body.cached).toBe(false);
     expect(body.refresh.state).toBe("idle");
     expect(writeCacheValue).toHaveBeenCalledWith(
-      "ww:ra:analytics:snapshot:v2:2026-03-01:2026-03-12",
+      "ww:ra:analytics:snapshot:v3:2026-03-01:2026-03-12",
       expect.objectContaining({
         analytics: expect.objectContaining({
           status: "ready",

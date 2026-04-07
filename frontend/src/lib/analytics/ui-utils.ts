@@ -98,8 +98,8 @@ export function normalizeTemperatureSummaryRange(
   return dateFrom <= dateTo ? { dateFrom, dateTo } : { dateFrom: dateTo, dateTo: dateFrom };
 }
 
-export function formatTemperatureValue(value: number | null): string {
-  return value === null ? "—" : `${value.toFixed(1)}°C`;
+export function formatTemperatureValue(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(1)}°C` : "—";
 }
 
 export function formatTemperatureDateRange(
@@ -180,26 +180,43 @@ export interface TemperatureSummaryThresholdOverlay {
 export function getTemperatureSummaryThresholdOverlay(
   window: AnalyticsTemperatureSummaryWindowResponse
 ): TemperatureSummaryThresholdOverlay {
+  const coldThresholdTemperatureC =
+    typeof window.cold_threshold_temperature_c === "number" &&
+    Number.isFinite(window.cold_threshold_temperature_c)
+      ? window.cold_threshold_temperature_c
+      : null;
+  const hotThresholdTemperatureC =
+    typeof window.hot_threshold_temperature_c === "number" &&
+    Number.isFinite(window.hot_threshold_temperature_c)
+      ? window.hot_threshold_temperature_c
+      : null;
+  const thresholdZCutoff =
+    typeof window.threshold_z_cutoff === "number" && Number.isFinite(window.threshold_z_cutoff)
+      ? window.threshold_z_cutoff
+      : null;
+  const thresholdMethod = window.threshold_method ?? null;
   const available =
     window.day_count >= 2 &&
     window.mean_temperature_c !== null &&
     window.sd_temperature_c !== null &&
     window.sd_temperature_c > 0 &&
-    window.cold_threshold_temperature_c !== null &&
-    window.hot_threshold_temperature_c !== null;
+    coldThresholdTemperatureC !== null &&
+    hotThresholdTemperatureC !== null &&
+    thresholdZCutoff !== null &&
+    thresholdMethod !== null;
 
   return {
     available,
     methodLabel:
-      window.threshold_method === "window_day_zscore_v1"
+      thresholdMethod === "window_day_zscore_v1"
         ? "Window-day z-score v1"
-        : window.threshold_method,
-    cutoffLabel: `|z| > ${window.threshold_z_cutoff}`,
+        : "Threshold unavailable",
+    cutoffLabel: thresholdZCutoff === null ? "Legacy snapshot" : `|z| > ${thresholdZCutoff}`,
     note: available
-      ? `Threshold markers show mean ± ${window.threshold_z_cutoff} SD across unique study days.`
-      : "Threshold markers are unavailable because this window has fewer than 2 unique days or zero temperature variance.",
-    coldThresholdTemperatureC: window.cold_threshold_temperature_c,
-    hotThresholdTemperatureC: window.hot_threshold_temperature_c,
+      ? `Threshold markers show mean ± ${thresholdZCutoff} SD across unique study days.`
+      : "Threshold markers are unavailable because this window has fewer than 2 unique days, zero temperature variance, or a legacy cached snapshot without threshold metadata.",
+    coldThresholdTemperatureC,
+    hotThresholdTemperatureC,
   };
 }
 

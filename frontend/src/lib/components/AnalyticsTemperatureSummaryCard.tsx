@@ -338,7 +338,14 @@ function TemperatureHistogramChart({
         },
       ],
     };
-  }, [chartColors, histogramPoints, thresholdOverlay.available, summaryWindow.mean_temperature_c]);
+  }, [
+    chartColors,
+    histogramPoints,
+    summaryWindow.mean_temperature_c,
+    thresholdOverlay.available,
+    thresholdOverlay.coldThresholdTemperatureC,
+    thresholdOverlay.hotThresholdTemperatureC,
+  ]);
 
   return (
     <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
