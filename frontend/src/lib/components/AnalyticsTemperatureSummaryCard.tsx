@@ -172,6 +172,35 @@ function TemperatureHistogramChart({
     () => getTemperatureSummaryThresholdOverlay(summaryWindow),
     [summaryWindow]
   );
+  const cutoffCards = useMemo(
+    () => [
+      {
+        label: "Mean",
+        value: formatTemperatureValue(summaryWindow.mean_temperature_c),
+        toneClassName: "border-border/70 bg-background/65 text-foreground",
+      },
+      {
+        label: "Cold cutoff",
+        value: thresholdOverlay.available
+          ? formatTemperatureValue(thresholdOverlay.coldThresholdTemperatureC)
+          : "Unavailable",
+        toneClassName: "border-sky-500/20 bg-sky-500/8 text-foreground",
+      },
+      {
+        label: "Hot cutoff",
+        value: thresholdOverlay.available
+          ? formatTemperatureValue(thresholdOverlay.hotThresholdTemperatureC)
+          : "Unavailable",
+        toneClassName: "border-amber-500/20 bg-amber-500/8 text-foreground",
+      },
+    ],
+    [
+      summaryWindow.mean_temperature_c,
+      thresholdOverlay.available,
+      thresholdOverlay.coldThresholdTemperatureC,
+      thresholdOverlay.hotThresholdTemperatureC,
+    ]
+  );
 
   const chartOptions = useMemo<Highcharts.Options>(() => {
     const { bars, mean, cold, hot, border, mutedFg } = chartColors;
@@ -193,11 +222,11 @@ function TemperatureHistogramChart({
         dashStyle: "Solid",
         zIndex: 5,
         label: {
-          text: `Mean ${formatTemperatureValue(summaryWindow.mean_temperature_c)}`,
+          text: "Mean",
           rotation: 0,
-          align: "left",
-          x: 4,
-          y: -8,
+          align: "center",
+          x: 0,
+          y: 14,
           style: { color: mean, fontSize: "11px", fontWeight: "600" },
         },
       });
@@ -211,13 +240,11 @@ function TemperatureHistogramChart({
         dashStyle: "Dash",
         zIndex: 5,
         label: {
-          text: `Cold cutoff ${formatTemperatureValue(
-            thresholdOverlay.coldThresholdTemperatureC
-          )}`,
+          text: "Cold",
           rotation: 0,
-          align: "left",
-          x: 4,
-          y: -8,
+          align: "center",
+          x: 0,
+          y: 30,
           style: { color: cold, fontSize: "11px", fontWeight: "600" },
         },
       });
@@ -231,13 +258,11 @@ function TemperatureHistogramChart({
         dashStyle: "Dash",
         zIndex: 5,
         label: {
-          text: `Hot cutoff ${formatTemperatureValue(
-            thresholdOverlay.hotThresholdTemperatureC
-          )}`,
+          text: "Hot",
           rotation: 0,
-          align: "left",
-          x: 4,
-          y: -8,
+          align: "center",
+          x: 0,
+          y: 30,
           style: { color: hot, fontSize: "11px", fontWeight: "600" },
         },
       });
@@ -249,7 +274,7 @@ function TemperatureHistogramChart({
         height: 300,
         animation: false,
         style: { fontFamily: "inherit" },
-        marginTop: 12,
+        marginTop: 44,
         marginRight: 20,
       },
       title: { text: undefined },
@@ -368,6 +393,17 @@ function TemperatureHistogramChart({
         </div>
       </div>
 
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {cutoffCards.map((card) => (
+          <div key={card.label} className={cn("rounded-xl border px-3 py-3", card.toneClassName)}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {card.label}
+            </p>
+            <p className="mt-1 text-sm font-semibold">{card.value}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="mt-4 h-[300px] w-full">
         {histogramPoints.length > 0 ? (
           mounted ? (
@@ -389,10 +425,24 @@ function TemperatureHistogramChart({
       </div>
 
       <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-        {thresholdOverlay.note}
+        {thresholdOverlay.available
+          ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. ${thresholdOverlay.note}`
+          : thresholdOverlay.note}
       </p>
     </div>
   );
+}
+
+function formatTemperatureCutoffLabel(
+  kind: "cold" | "hot",
+  temperatureC: number | null
+): string {
+  if (temperatureC === null) {
+    return kind === "cold" ? "Cold cutoff unavailable" : "Hot cutoff unavailable";
+  }
+  return kind === "cold"
+    ? `Below ${formatTemperatureValue(temperatureC)}`
+    : `Above ${formatTemperatureValue(temperatureC)}`;
 }
 
 function TemperatureGroupPanel({
@@ -494,9 +544,13 @@ function TemperatureSummaryContent({ temperatureSummary }: TemperatureSummaryCon
   const selectedWindow =
     getTemperatureSummaryWindow(temperatureSummary, selectedWindowKey) ??
     getTemperatureSummaryWindow(temperatureSummary, availableWindowKeys[0] ?? "overall");
+  const selectedWindowThresholdOverlay = useMemo(
+    () => (selectedWindow ? getTemperatureSummaryThresholdOverlay(selectedWindow) : null),
+    [selectedWindow]
+  );
 
   const summaryStats = useMemo(() => {
-    if (!selectedWindow) {
+    if (!selectedWindow || !selectedWindowThresholdOverlay) {
       return null;
     }
 
@@ -529,16 +583,24 @@ function TemperatureSummaryContent({ temperatureSummary }: TemperatureSummaryCon
         icon: Snowflake,
         label: "Cold participants",
         value: selectedWindow.cold_group.participant_count.toString(),
-        helper: "Days with temperature z < -2.",
+        helper: selectedWindowThresholdOverlay.available
+          ? `Participant rows on days below ${formatTemperatureValue(
+              selectedWindowThresholdOverlay.coldThresholdTemperatureC
+            )}.`
+          : "Participant rows on cold extreme days for this window.",
       },
       {
         icon: Flame,
         label: "Hot participants",
         value: selectedWindow.hot_group.participant_count.toString(),
-        helper: "Days with temperature z > 2.",
+        helper: selectedWindowThresholdOverlay.available
+          ? `Participant rows on days above ${formatTemperatureValue(
+              selectedWindowThresholdOverlay.hotThresholdTemperatureC
+            )}.`
+          : "Participant rows on hot extreme days for this window.",
       },
     ];
-  }, [selectedWindow]);
+  }, [selectedWindow, selectedWindowThresholdOverlay]);
 
   if (!temperatureSummary) {
     return null;
@@ -622,14 +684,20 @@ function TemperatureSummaryContent({ temperatureSummary }: TemperatureSummaryCon
               title="Cold group"
               icon={Snowflake}
               toneClassName="border-sky-500/20 bg-sky-500/8"
-              thresholdLabel="temperature_z < -2"
+              thresholdLabel={formatTemperatureCutoffLabel(
+                "cold",
+                selectedWindowThresholdOverlay?.coldThresholdTemperatureC ?? null
+              )}
               group={selectedWindow.cold_group}
             />
             <TemperatureGroupPanel
               title="Hot group"
               icon={Flame}
               toneClassName="border-amber-500/20 bg-amber-500/8"
-              thresholdLabel="temperature_z > 2"
+              thresholdLabel={formatTemperatureCutoffLabel(
+                "hot",
+                selectedWindowThresholdOverlay?.hotThresholdTemperatureC ?? null
+              )}
               group={selectedWindow.hot_group}
             />
           </div>

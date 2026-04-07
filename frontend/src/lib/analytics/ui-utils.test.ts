@@ -427,13 +427,14 @@ describe("temperature summary helpers", () => {
       available: true,
       methodLabel: "Window-day z-score v1",
       cutoffLabel: "|z| > 2",
-      note: "Threshold markers show mean ± 2 SD across unique study days.",
+      note:
+        "Extreme-day cutoffs are descriptive window-specific thresholds derived from mean ± 2 SD across unique study days.",
       coldThresholdTemperatureC: 5.75,
       hotThresholdTemperatureC: 11.75,
     });
   });
 
-  it("treats missing threshold metadata as unavailable for legacy cached snapshots", () => {
+  it("derives threshold metadata for legacy cached snapshots from mean and sd", () => {
     const legacyWindow = {
       ...summary.windows[0],
       cold_threshold_temperature_c: undefined,
@@ -444,13 +445,13 @@ describe("temperature summary helpers", () => {
 
     const overlay = getTemperatureSummaryThresholdOverlay(legacyWindow);
     expect(overlay).toEqual({
-      available: false,
-      methodLabel: "Threshold unavailable",
-      cutoffLabel: "Legacy snapshot",
+      available: true,
+      methodLabel: "Window-day z-score v1",
+      cutoffLabel: "|z| > 2",
       note:
-        "Threshold markers are unavailable because this window has fewer than 2 unique days, zero temperature variance, or a legacy cached snapshot without threshold metadata.",
-      coldThresholdTemperatureC: null,
-      hotThresholdTemperatureC: null,
+        "Extreme-day cutoffs are descriptive window-specific thresholds derived from mean ± 2 SD across unique study days.",
+      coldThresholdTemperatureC: 5.75,
+      hotThresholdTemperatureC: 11.75,
     });
   });
 

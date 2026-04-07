@@ -180,30 +180,36 @@ export interface TemperatureSummaryThresholdOverlay {
 export function getTemperatureSummaryThresholdOverlay(
   window: AnalyticsTemperatureSummaryWindowResponse
 ): TemperatureSummaryThresholdOverlay {
+  const thresholdZCutoff =
+    typeof window.threshold_z_cutoff === "number" && Number.isFinite(window.threshold_z_cutoff)
+      ? window.threshold_z_cutoff
+      : 2;
+  const thresholdMethod = window.threshold_method ?? "window_day_zscore_v1";
+  const meanTemperatureC = window.mean_temperature_c;
+  const sdTemperatureC = window.sd_temperature_c;
+  const canDeriveThresholds =
+    window.day_count >= 2 &&
+    meanTemperatureC !== null &&
+    sdTemperatureC !== null &&
+    sdTemperatureC > 0;
   const coldThresholdTemperatureC =
     typeof window.cold_threshold_temperature_c === "number" &&
     Number.isFinite(window.cold_threshold_temperature_c)
       ? window.cold_threshold_temperature_c
-      : null;
+      : canDeriveThresholds
+        ? meanTemperatureC - thresholdZCutoff * sdTemperatureC
+        : null;
   const hotThresholdTemperatureC =
     typeof window.hot_threshold_temperature_c === "number" &&
     Number.isFinite(window.hot_threshold_temperature_c)
       ? window.hot_threshold_temperature_c
-      : null;
-  const thresholdZCutoff =
-    typeof window.threshold_z_cutoff === "number" && Number.isFinite(window.threshold_z_cutoff)
-      ? window.threshold_z_cutoff
-      : null;
-  const thresholdMethod = window.threshold_method ?? null;
+      : canDeriveThresholds
+        ? meanTemperatureC + thresholdZCutoff * sdTemperatureC
+        : null;
   const available =
-    window.day_count >= 2 &&
-    window.mean_temperature_c !== null &&
-    window.sd_temperature_c !== null &&
-    window.sd_temperature_c > 0 &&
+    canDeriveThresholds &&
     coldThresholdTemperatureC !== null &&
-    hotThresholdTemperatureC !== null &&
-    thresholdZCutoff !== null &&
-    thresholdMethod !== null;
+    hotThresholdTemperatureC !== null;
 
   return {
     available,
@@ -211,10 +217,10 @@ export function getTemperatureSummaryThresholdOverlay(
       thresholdMethod === "window_day_zscore_v1"
         ? "Window-day z-score v1"
         : "Threshold unavailable",
-    cutoffLabel: thresholdZCutoff === null ? "Legacy snapshot" : `|z| > ${thresholdZCutoff}`,
+    cutoffLabel: `|z| > ${thresholdZCutoff}`,
     note: available
-      ? `Threshold markers show mean ± ${thresholdZCutoff} SD across unique study days.`
-      : "Threshold markers are unavailable because this window has fewer than 2 unique days, zero temperature variance, or a legacy cached snapshot without threshold metadata.",
+      ? `Extreme-day cutoffs are descriptive window-specific thresholds derived from mean ± ${thresholdZCutoff} SD across unique study days.`
+      : "Extreme-day cutoffs are unavailable for this window because it has fewer than 2 unique study days or no day-level temperature variation.",
     coldThresholdTemperatureC,
     hotThresholdTemperatureC,
   };
