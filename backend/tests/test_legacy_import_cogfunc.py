@@ -118,6 +118,7 @@ def _parsed_result(
         depression_mean=None,
         digit_span_legacy_score=digit_span_legacy_score,
         self_report=self_report,
+        supplemental_attributes_json={"month": 3, "season_bin": 2},
         source_row_json={"participant ID": participant_number},
     )
     return ParseResult(
@@ -325,6 +326,45 @@ class LegacyCogFuncImportTests(IsolatedAsyncioTestCase):
         self.assertIn(9, digitspan_compiled.params.values())
         self.assertIn("imported", digitspan_compiled.params.values())
         self.assertIn(None, digitspan_compiled.params.values())
+
+        imported_measures_stmt = _find_insert(db, "imported_session_measures")
+        imported_measures_compiled = imported_measures_stmt.compile(
+            dialect=postgresql.dialect()
+        )
+        self.assertIn(
+            {"month": 3, "season_bin": 2},
+            imported_measures_compiled.params.values(),
+        )
+
+    def test_parse_rows_preserves_complete_sheet_supplemental_attributes(self) -> None:
+        raw_rows = [
+            [
+                "Participant ID",
+                "Date",
+                "commute",
+                "daylight",
+                "month",
+                "season_bin",
+                "anxiety_z",
+            ],
+            [101, "2026-03-01", "Walk", 9.25, 3, 2, 1.5],
+        ]
+
+        parsed = import_service._parse_rows_from_raw(raw_rows, "xlsx")
+
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(len(parsed.rows), 1)
+        row = parsed.rows[0]
+        self.assertEqual(row.commute_method, "Walk")
+        self.assertEqual(
+            row.supplemental_attributes_json,
+            {
+                "daylight": 9.25,
+                "month": 3,
+                "season_bin": 2,
+                "anxiety_z": 1.5,
+            },
+        )
 
     async def test_phase4_backfill_upserts_imported_cogfunc_rows_from_self_report(self) -> None:
         session_id = uuid.uuid4()

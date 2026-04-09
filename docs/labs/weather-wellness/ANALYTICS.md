@@ -91,9 +91,13 @@ It then produces partial-residual plots for selected predictors.
 - **Day-level weather weighting.** Weather predictors are day-level variables and
   must be standardized across unique study days, not over-weighted by dates that
   happen to have more participant rows.
-- **Workbook as acceptance oracle only.** `reference/data_full_1-230.xlsx` is
-  the current validation oracle for Weather & Wellness outputs, but it is not a
-  production analytics input. Runtime analytics stay database-backed.
+- **Workbook as acceptance oracle only.** `reference/data_complete.xlsx` is the
+  current authoritative import workbook for Weather & Wellness outputs, but it
+  is not a production analytics input. Runtime analytics stay database-backed.
+- **Study window vs. effective model sample.** The dashboard may anchor to the
+  latest available `study_days.date_local` after weather backfill, but the MLM
+  sample still ends at the latest completed participant session included by the
+  requested range. Extending weather-only days does not extend the model sample.
 - **Keep chart semantics separate.** Weather time-series charts and
   model-effect plots must remain separate surfaces and must not be collapsed
   into one ambiguous chart or one coupled filter controller.
@@ -370,19 +374,22 @@ with zero counts instead of treating the window as an error.
   cutoff`; avoid calling these descriptive values "statistically significant
   temperatures."
 
-### Current acceptance oracle (`reference/data_full_1-230.xlsx`)
+### Current acceptance oracle (`reference/data_complete.xlsx`)
 
-The current canonical workbook is used to validate the expected outputs for this
-contract. Based on the present workbook contents:
+The current authoritative workbook is used as a legacy reference source for
+import validation and secondary analytics spot-checks. It supersedes
+`reference/data_full_1-230.xlsx`, which remains a historical pre-extension
+snapshot.
 
-- `overall`: `cold_group.participant_count = 2`
-- `overall`: `hot_group.participant_count = 2`
-- `overall`: cold dates are `2025-03-04` and `2025-03-06`
-- `overall`: hot dates are `2025-07-29` and `2025-08-01`
-- `fall_winter`: `cold_group.participant_count = 2`
-- `fall_winter`: `hot_group.participant_count = 3`
-- `spring_summer`: `cold_group.participant_count = 0`
-- `spring_summer`: `hot_group.participant_count = 0`
+- `reference/data_complete.xlsx` extends imported participant-session coverage
+  through `2026-03-04`.
+- Workbook `_z` columns are useful as a validation reference only. Participant-
+  level `_z` columns match straightforward row-level sample z-scores, while the
+  backend analytics pipeline intentionally uses unique-day weather
+  standardization semantics for weather predictors.
+- Exact cross-check automation against the authoritative workbook is a separate
+  verification task; runtime analytics remain database-backed and should not
+  read workbook `_z` columns directly.
 
 ---
 

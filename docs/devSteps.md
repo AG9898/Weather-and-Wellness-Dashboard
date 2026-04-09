@@ -200,11 +200,13 @@ Verification after the selective wipe:
 
 ### Restore (from the legacy reference XLSX/CSV)
 
-1) Run a preview-first import using the unchanged reference file, then commit
+1) Run a preview-first import using the authoritative workbook, then commit
 only if preview returns no blocking validation errors.
 
 - Use the RA Import/Export page or `POST /admin/import/preview` first.
 - Then proceed to `POST /admin/import/commit`.
+- Current authoritative workbook: `reference/data_complete.xlsx`
+- Historical predecessor only: `reference/data_full_1-230.xlsx`
 
 2) Run `POST /admin/backfill/legacy-weather` after the import.
 
@@ -244,7 +246,10 @@ Optional safety step before wiping:
 
 ### Restore (from the legacy reference XLSX/CSV)
 
-1) Re-import via the RA Import/Export page (or `POST /admin/import/commit`) using the unchanged reference file.
+1) Re-import via the RA Import/Export page (or `POST /admin/import/commit`) using the authoritative workbook.
+
+- Current authoritative workbook: `reference/data_complete.xlsx`
+- Historical predecessor only: `reference/data_full_1-230.xlsx`
 
 2) Restore derived weather rows (if you want weather_daily populated for imported days):
 

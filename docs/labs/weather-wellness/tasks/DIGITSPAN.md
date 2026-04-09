@@ -137,8 +137,10 @@ Computed by `backend/app/scoring/digitspan.py` — not on the client.
 
 ## Legacy Import Note
 
-The legacy reference workbook `reference/data_full_1-230.xlsx` does **not** use this same fixed
-14-trial protocol for its stored `digit_span_score`.
+The authoritative legacy workbook `reference/data_complete.xlsx` does **not**
+use this same fixed 14-trial protocol for its stored `digit_span_score`. The
+older `reference/data_full_1-230.xlsx` file remains a historical pre-extension
+snapshot.
 
 - Legacy scoring tallies correct responses until the participant records two incorrect trials at
   the same span length.

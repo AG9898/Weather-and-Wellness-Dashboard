@@ -403,11 +403,12 @@ All four surveys use the shared `SurveyForm` component with:
 
 The Import/Export page at `/import-export` is RA-only and contains two sections:
 
-1. **Import (drag + drop)** — accepts `.csv` or `.xlsx` files (reference mapping: `reference/data_full_1-230.xlsx`). Upload flow is preview-first:
+1. **Import (drag + drop)** — accepts `.csv` or `.xlsx` files (authoritative workbook: `reference/data_complete.xlsx`; historical predecessor: `reference/data_full_1-230.xlsx`). Upload flow is preview-first:
    - On file selection, the backend returns a preview (counts + row-level validation issues).
    - UI shows a confirmation panel including the number of participants/sessions that will be created/updated.
    - A single explicit "Confirm import" action performs the write.
    - The reference workbook carries aggregate legacy outcome values only: `anxiety`, `loneliness`, `depression`, `self_report`, and `digit_span_score`. Import does not reconstruct raw survey item rows or Digit Span trials.
+   - Extra workbook-only derived columns such as `day`, `daylight`, `age_simple`, `*_z`, `month`, and `season_bin` are retained for audit/reference only and do not change the current analytics formulas.
 2. **Export** — two download buttons:
    - Export XLSX: one workbook with a README sheet plus one sheet per DB table. Filename: `Weather and wellness - YYYY-MM-DD.xlsx`
    - Export CSV: a zip containing one CSV per DB table. Filename: `Weather and wellness - YYYY-MM-DD.zip`

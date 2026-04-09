@@ -7,6 +7,8 @@ Parse rules (API.md Admin Data section):
 - Demographic strings: whitespace-trimmed; canonical variants normalised conservatively
 - origin / commute_method prefixed with "Other": main field="Other", detail→*_other_text
 - Numeric measures: floats; blanks → None; digit_span_score → int
+- Sheet-specific extra columns (e.g. *_z, month, season_bin) are preserved in
+  imported_session_measures.supplemental_attributes_json when present.
 
 Upsert rules (commit):
 - Participant upsert key: participant_number (demographics overwrite)
@@ -81,6 +83,26 @@ _C_SELF_REPORT = "self_report"
 
 _REQUIRED_COLS = {_C_PARTICIPANT_ID, _C_DATE}
 
+_COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
+    _C_COMMUTE_METHOD: ("commute",),
+}
+
+_SUPPLEMENTAL_ATTRIBUTE_COLS: tuple[str, ...] = (
+    "day",
+    "daylight",
+    "age_simple",
+    "precipitation_z",
+    "temperature_z",
+    "daylight_z",
+    "anxiety_z",
+    "depression_z",
+    "loneliness_z",
+    "self_report_z",
+    "digit_span_z",
+    "month",
+    "season_bin",
+)
+
 # ── Demographic normalization maps (lowercase key → canonical value) ───────────
 
 _AGE_BAND_NORM: dict[str, str] = {
@@ -125,6 +147,7 @@ class ParsedRow:
     depression_mean: float | None
     digit_span_legacy_score: int | None
     self_report: float | None
+    supplemental_attributes_json: dict[str, Any]
     source_row_json: dict[str, Any]
 
 
@@ -412,6 +435,11 @@ def _parse_rows_from_raw(raw_rows: list[list[Any]], file_type: str) -> ParseResu
 
     def _get(row: list[Any], col: str) -> Any:
         idx = headers.get(col)
+        if idx is None:
+            for alias in _COLUMN_ALIASES.get(col, ()):
+                idx = headers.get(alias)
+                if idx is not None:
+                    break
         if idx is None or idx >= len(row):
             return None
         return row[idx]
@@ -500,6 +528,18 @@ def _parse_rows_from_raw(raw_rows: list[list[Any]], file_type: str) -> ParseResu
         digit_span_legacy_score = _parse_int(_get(raw_row, _C_DIGIT_SPAN_SCORE))
         self_report = _parse_float(_get(raw_row, _C_SELF_REPORT))
 
+        supplemental_attributes_json: dict[str, Any] = {}
+        for col in _SUPPLEMENTAL_ATTRIBUTE_COLS:
+            idx = headers.get(col)
+            if idx is None or idx >= len(raw_row):
+                continue
+            value = _to_json_serializable(raw_row[idx])
+            if value is None:
+                continue
+            if isinstance(value, str) and not value.strip():
+                continue
+            supplemental_attributes_json[col] = value
+
         # ── source_row_json (full audit payload) ───────────────────────────
         source_row_json: dict[str, Any] = {
             col: _to_json_serializable(raw_row[idx] if idx < len(raw_row) else None)
@@ -525,6 +565,7 @@ def _parse_rows_from_raw(raw_rows: list[list[Any]], file_type: str) -> ParseResu
             depression_mean=depression_mean,
             digit_span_legacy_score=digit_span_legacy_score,
             self_report=self_report,
+            supplemental_attributes_json=supplemental_attributes_json,
             source_row_json=source_row_json,
         ))
 
@@ -933,6 +974,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
                 depression_mean=row.depression_mean,
                 digit_span_max_span=row.digit_span_legacy_score,
                 self_report=row.self_report,
+                supplemental_attributes_json=row.supplemental_attributes_json,
                 source_row_json=row.source_row_json,
             )
             .on_conflict_do_update(
@@ -946,6 +988,7 @@ async def commit_import(result: ParseResult, db: AsyncSession) -> ImportCommitRe
                     "depression_mean": row.depression_mean,
                     "digit_span_max_span": row.digit_span_legacy_score,
                     "self_report": row.self_report,
+                    "supplemental_attributes_json": row.supplemental_attributes_json,
                     "source_row_json": row.source_row_json,
                 },
             )

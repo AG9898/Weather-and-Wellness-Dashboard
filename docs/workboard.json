@@ -706,6 +706,120 @@
         "cd frontend && npm run build"
       ],
       "estimate": "M"
+    },
+    {
+      "id": "T132",
+      "group_id": "IMPORT_AUTHORITY",
+      "title": "Legacy import authority - Reconcile imported-only rows against the authoritative workbook",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add a dry-run/apply reconciliation path that removes imported-only DB rows no longer present in `reference/data_complete.xlsx` while protecting native data.",
+      "description": "Implement a backend reconciliation CLI/service that compares the current imported participant/session graph in the database against the authoritative workbook `reference/data_complete.xlsx`. The tool should report missing workbook participant IDs and shifted-date cases in dry-run mode, then optionally delete only imported-only participant/session/outcome rows that are absent from the workbook. Native rows must remain a hard stop, not a delete target. This task closes the full-authority import gap left by the upsert-only commit path.",
+      "acceptance_criteria": [
+        "A backend CLI supports both dry-run and apply modes for authoritative workbook reconciliation",
+        "Dry-run output identifies imported-only participants/sessions present in the DB but absent from `reference/data_complete.xlsx`",
+        "Apply mode deletes only imported-only rows and refuses to remove any participant/session graph that has native survey or digit span data",
+        "The current known old-only imported participant (`142`) is removed by the reconciliation flow when present and still workbook-absent",
+        "Regression coverage verifies that imported-only rows are deleted and native rows are protected",
+        "Operational docs describe when to run reconciliation after an authoritative workbook refresh"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/scripts/legacy_import.py",
+        "backend/app/services/import_service.py",
+        "backend/tests/test_legacy_import_cogfunc.py"
+      ],
+      "docs": [
+        "docs/devSteps.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/SCHEMA.md"
+      ],
+      "notes": [
+        "Prefer a dedicated reconciliation entrypoint rather than folding delete behavior into the normal import commit path.",
+        "The reconciliation tool should emit a machine-readable summary so operators can archive the authority diff."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_legacy_import_cogfunc.py",
+        "cd backend && PYTHONPATH=. .venv/bin/python -m app.scripts.legacy_import --file ../reference/data_complete.xlsx"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T133",
+      "group_id": "IMPORT_VERIFICATION",
+      "title": "Legacy import verification - Workbook z-score and overlap cross-check CLI",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Build a read-only verification CLI that compares the authoritative workbook against current import semantics and documents expected z-score parity versus divergence.",
+      "description": "Add a backend verification script that reads `reference/data_complete.xlsx` and optionally `reference/data_full_1-230.xlsx`, normalizes both to the import schema, reports added/shifted/removed participant-date keys, and recomputes workbook z-scores for comparison. Participant-level `_z` columns (`anxiety_z`, `depression_z`, `loneliness_z`, `self_report_z`, `digit_span_z`) should be checked for exact row-level sample-z parity. Weather `_z` columns should be reported as informational because the backend analytics pipeline intentionally uses unique-day weather standardization rather than workbook row-level weather z-scores.",
+      "acceptance_criteria": [
+        "The verification CLI is read-only and does not require schema changes or DB writes",
+        "The CLI reports key-level overlap/add/remove/shift differences between `data_complete.xlsx` and `data_full_1-230.xlsx` after canonical column normalization",
+        "Participant-level workbook `_z` columns are recomputed and verified against exact row-level sample z-scores",
+        "Weather `_z` columns are reported with an explicit informational note that workbook row-level z-scores are not expected to match backend unique-day weather z-score semantics",
+        "The output is concise enough for operator review and stable enough for future regression checks",
+        "Regression coverage validates the normalization and participant-level z-score parity logic"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/scripts/legacy_import.py",
+        "backend/tests/test_legacy_import_cogfunc.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/README.md"
+      ],
+      "notes": [
+        "Keep workbook `_z` columns as a verification surface only; do not feed them into runtime analytics.",
+        "The CLI should call out expected weather-z divergence as informational, not as a hard failure."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/python -m app.scripts.legacy_import --file ../reference/data_complete.xlsx",
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_legacy_import_cogfunc.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T134",
+      "group_id": "ANALYTICS_V2",
+      "title": "Analytics v2 - Repair visualization contract regression coverage",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Restore a green backend analytics regression suite by fixing the visualization-contract tests to respect the day-level weather uniqueness invariant.",
+      "description": "Investigate the current failures in `backend/tests/test_analytics_visualization_contract.py`, where the varied fixture produces conflicting per-day temperatures that violate the temperature-summary contract. Update the fixture and/or supporting helper expectations so visualization-contract tests exercise the intended API shape without fabricating multiple weather values for a single `date_local`. Keep the MLM formulas, import semantics, and backend visualization payload structure unchanged.",
+      "acceptance_criteria": [
+        "`backend/tests/test_analytics_visualization_contract.py` passes again under the current analytics v2 contract",
+        "The full backend analytics regression suite passes after the fix",
+        "No changes are made to mixed-model formulas, imported workbook handling, or the separation between effect plots and weather annotations",
+        "If fixture data changes are required, each `date_local` in the visualization-contract fixtures has exactly one weather value per day",
+        "Docs remain aligned with the existing visualization contract and temperature-summary semantics"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/tests/test_analytics_visualization_contract.py",
+        "backend/app/analytics/temperature_summary.py",
+        "backend/app/analytics/modeling.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "The current failures were reproduced after the authoritative import refresh and are test-layer regressions, not evidence that the live import path broke.",
+        "Prefer a fixture correction over broadening the production contract unless a real backend bug is confirmed."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_visualization_contract.py",
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_dataset.py tests/test_analytics_modeling.py tests/test_analytics_parity.py tests/test_analytics_schema.py tests/test_analytics_service.py tests/test_dashboard_analytics_router.py tests/test_analytics_temperature_summary.py tests/test_analytics_visualization_contract.py tests/test_analytics_storage_models.py"
+      ],
+      "estimate": "M"
     }
   ]
 }

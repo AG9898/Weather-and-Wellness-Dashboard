@@ -264,6 +264,7 @@
   - `mode=live` now requests a background recompute and returns immediately with the current typed analytics payload for the range. When a prior snapshot exists, the payload will typically be `status="recomputing"` with the last successful snapshot kept visible until the background run finishes.
   - The shipped dashboard uses `mode=live` only for explicit RA actions such as manual analytics refresh.
   - Live recompute calls are tagged with the authenticated LabMember UUID in `analytics_runs.triggered_by_lab_member_id`.
+  - The dashboard anchor date comes from `latest_study_day = MAX(study_days.date_local)`. After historical weather backfill this can extend beyond the latest completed participant session date; in that case the selected analytics window may end later than the effective MLM sample, and the models still fit only the participant rows that actually exist in the requested range.
   - Existing scoring logic and stored score semantics remain unchanged.
   - RC08 added partial `sessions` indexes for the canonical analytics dataset source query and rewrote that source query to select candidate complete sessions via unioned `study_days.date_local` and `sessions.completed_at` range paths instead of a single cross-table `OR`.
   - Query-plan verification on 2026-03-13 confirmed the `completed_at` range branch uses `ix_sessions_complete_completed_at`; the `study_day` branch continues to use `uq_study_days_date_local` and is currently a justified sequential scan on `sessions` because the live table is still very small.
@@ -675,7 +676,8 @@
 > These endpoints are RA-only and are intended for internal lab administration. They are not participant-facing.
 > Imports must be preview-first (no writes on preview), then explicit commit.
 >
-> Legacy reference file: `reference/data_full_1-230.xlsx` (single-sheet workbook).
+> Authoritative legacy reference file: `reference/data_complete.xlsx` (single-sheet workbook).
+> Historical predecessor: `reference/data_full_1-230.xlsx`.
 > Expected header columns (exact, case-insensitive, whitespace-trimmed):
 > `participant ID`, `date`, `age`, `gender`, `origin`, `commute_method`, `time_outside`, `precipitation`,
 > `temperature`, `daytime`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
@@ -719,6 +721,7 @@
       - Accept either Excel time fraction (`0.0–1.0`) meaning fraction of a day, or `HH:MM` / `HH:MM:SS` strings.
       - Parse to a local clock time (`session_start_local_time`).
       - Compute `daylight_exposure_minutes = max(0, minutes_between(DAYLIGHT_START_LOCAL_TIME, session_start_local_time))`.
+    - `commute_method` may also be supplied as `commute`; both map to the same participant field.
     - String demographic fields are whitespace-trimmed and normalized to a canonical label set where obvious variants exist
       (e.g. `"Man "` → `"Man"`, `"Nonbinary person"` → `"Non-binary"`).
     - If `origin` / `commute_method` is an “Other” category and includes a free-text detail, store it in `origin_other_text` / `commute_method_other_text` (length-limited; avoid PII).
@@ -732,6 +735,10 @@
   - Storage mapping (commit):
     - Participant demographics are stored on `participants` (nullable columns planned in T47).
     - Imported aggregates are stored in `imported_session_measures` (applied in T47) with a full `source_row_json` audit payload.
+    - Workbook-only fields that are not part of the transactional import contract
+      (for example `day`, `daylight`, `age_simple`, `*_z`, `month`, `season_bin`)
+      are preserved in `imported_session_measures.supplemental_attributes_json`
+      when present. They are stored for reference only and do not change current analytics behavior.
 
 **Phase 4 (T55, implemented):** commit also upserts “imported” rows into:
 - `digitspan_runs` — `data_source='imported'`, `total_correct` = legacy `digit_span_score`; `max_span` remains null; no trials reconstructed. This imported value is a legacy workbook score, not a native fixed-protocol `max_span`.
@@ -843,7 +850,7 @@
     - existing `ubc-eos-v1` row → no-op
   - Writes one `weather_ingest_runs` audit row per inserted or updated day with `parser_version="legacy-import-v1"` and `requested_via="legacy_backfill"`.
   - Idempotent: safe to call multiple times.
-- **Verified:** 2026-03-01 — backfilled 109 days from reference XLSX data. Current overwrite semantics are defined in `backend/app/services/weather_backfill_service.py`.
+- **Verified:** 2026-04-07 — after the authoritative `reference/data_complete.xlsx` import refresh, the legacy-weather pass overwrote 31 existing `open-meteo-v1` days with workbook temperature/precipitation values and skipped 1 `ubc-eos-v1` day. Current overwrite semantics are defined in `backend/app/services/weather_backfill_service.py`.
 
 ---
 

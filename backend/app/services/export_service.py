@@ -194,6 +194,7 @@ _TABLE_SPECS: list[_TableSpec] = [
             "precipitation_mm", "temperature_c",
             "anxiety_mean", "loneliness_mean", "depression_mean",
             "digit_span_max_span", "self_report",
+            "supplemental_attributes_json",
             "source_row_json", "created_at",
         ],
         order_by=["created_at"],

@@ -175,7 +175,8 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 - `age_band`, `gender`, `origin`, `origin_other_text`, `commute_method`, `commute_method_other_text`, `time_outside` stored directly from validated preset values.
 - `daylight_exposure_minutes` computed at request time via `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
 
-**Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
+**Legacy import mapping (Phase 3):** `reference/data_complete.xlsx`
+- Historical predecessor only: `reference/data_full_1-230.xlsx`
 - `participant ID` → `participants.participant_number` (upsert key)
 - `age` → `participants.age_band` (whitespace-trimmed; canonicalize obvious variants like `Over 38` → `>38`)
 - `gender` → `participants.gender` (trim; canonicalize obvious variants like `Man ` → `Man`)
@@ -256,18 +257,23 @@ audit-logged in `admin_session_undo_log` instead of introducing soft-delete colu
 | depression_mean    | DOUBLE PRECISION | NULLABLE    | Legacy import column `depression` (aggregate/mean) |
 | digit_span_max_span| INT         | NULLABLE          | Legacy import column `digit_span_score` stored as provided (0–14). Phase 4 treats this as Digit Span run outcome (total correct), not max span. |
 | self_report        | DOUBLE PRECISION | NULLABLE    | Legacy import column `self_report` (stored as provided) |
+| supplemental_attributes_json | JSONB | NOT NULL | Structured storage for extra workbook-only fields such as `daylight`, `*_z`, `month`, and `season_bin` when present |
 | source_row_json    | JSONB       | NOT NULL          | Full raw row payload for audit/future remapping |
 | created_at         | TIMESTAMPTZ | DEFAULT NOW()     | |
 
-**Scoring semantics note:** In the reference workbook `reference/data_full_1-230.xlsx`, `anxiety`,
-`loneliness`, `depression`, and `self_report` are imported aggregate scores, not raw item
-responses. `self_report` is the legacy aggregate for CogFunc / PROMIS Cognitive Function 8a.
-The column name `digit_span_max_span` is retained for compatibility, but the stored
-`digit_span_score` value reflects the legacy stop-after-two-errors-at-the-same-span rule and is
-not a reconstructed native `max_span`.
+**Scoring semantics note:** In the authoritative workbook
+`reference/data_complete.xlsx`, `anxiety`, `loneliness`, `depression`, and
+`self_report` are imported aggregate scores, not raw item responses.
+`self_report` is the legacy aggregate for CogFunc / PROMIS Cognitive Function
+8a. The older `reference/data_full_1-230.xlsx` file remains a historical
+pre-extension snapshot. The column name `digit_span_max_span` is retained for
+compatibility, but the stored `digit_span_score` value reflects the legacy
+stop-after-two-errors-at-the-same-span rule and is not a reconstructed native
+`max_span`.
 
-**Legacy import mapping (Phase 3):** `reference/data_full_1-230.xlsx`
+**Legacy import mapping (Phase 3):** `reference/data_complete.xlsx`
 - Measures map 1:1 from columns `precipitation`, `temperature`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
+- Workbook-only derived fields such as `day`, `daylight`, `age_simple`, `*_z`, `month`, and `season_bin` are preserved in `supplemental_attributes_json` when present, but are not used by the current transactional import or analytics pipeline.
 - `source_row_json` stores the complete row (including demographic fields and the original `date`) to preserve auditability and enable future remapping without re-uploading the original file.
 
 ---
@@ -610,8 +616,9 @@ Constraints/indexes:
 | 2026-03-11 | T96 | Add append-only `admin_session_undo_log` table for RA-triggered undo-last-session audit |
 | 2026-03-13 | RC08 | Add partial `sessions` indexes for analytics date-range reads on `completed_at` and `study_day_id` |
 | 2026-03-17 | T104 | Add misokinesia_test_sets, misokinesia_stimuli, misokinesia_participants, misokinesia_trial_responses tables |
+| 2026-04-07 | Import authority prep | Add `imported_session_measures.supplemental_attributes_json` for structured storage of workbook-only legacy fields |
 
-As of 2026-03-17, migration `20260317_000001` (T104) is the current head revision.
+As of 2026-04-07, migration `20260407_000001` is the current head revision.
 
 ---
 

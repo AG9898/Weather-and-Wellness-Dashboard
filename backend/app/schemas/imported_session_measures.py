@@ -19,6 +19,7 @@ class ImportedSessionMeasuresResponse(BaseModel):
     depression_mean: float | None = None
     digit_span_max_span: int | None = None
     self_report: float | None = None
+    supplemental_attributes_json: dict[str, Any]
     source_row_json: dict[str, Any]
     created_at: datetime
 

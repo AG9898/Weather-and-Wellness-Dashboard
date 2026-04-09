@@ -43,3 +43,18 @@ in the database.
 ## Reference Materials
 
 Research instruments and analysis scripts are in `reference/labs/weather-wellness/`.
+
+## Authoritative Legacy Workbook
+
+The current authoritative legacy import workbook is
+`reference/data_complete.xlsx`.
+
+- It supersedes `reference/data_full_1-230.xlsx`, which remains a historical
+  pre-extension workbook snapshot.
+- `data_complete.xlsx` is the workbook used for the 2026-04-07 authoritative
+  import refresh and extends imported participant-session coverage through
+  `2026-03-04`.
+- Workbook-only derived columns such as `day`, `daylight`, `age_simple`,
+  `*_z`, `month`, and `season_bin` are retained for reference in
+  `imported_session_measures.supplemental_attributes_json` but are not part of
+  the current transactional analytics pipeline.

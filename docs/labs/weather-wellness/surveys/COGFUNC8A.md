@@ -72,8 +72,10 @@ scoring direction).
 
 ## Legacy Import Note
 
-The reference legacy workbook `reference/data_full_1-230.xlsx` stores the imported CogFunc /
-PROMIS aggregate in column `self_report`.
+The authoritative legacy workbook `reference/data_complete.xlsx` stores the
+imported CogFunc / PROMIS aggregate in column `self_report`. The older
+`reference/data_full_1-230.xlsx` file remains a historical pre-extension
+snapshot.
 
 - `self_report` is a derived participant-level mean after the legacy scoring conversions have
   already been applied.

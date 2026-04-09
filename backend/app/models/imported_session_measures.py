@@ -41,6 +41,13 @@ class ImportedSessionMeasures(Base):
     digit_span_max_span: Mapped[int | None] = mapped_column(Integer, nullable=True)
     self_report: Mapped[float | None] = mapped_column(Double, nullable=True)
 
+    # Structured extra workbook fields retained for future analysis/reference.
+    supplemental_attributes_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+    )
+
     # Full raw source row stored for audit / future remapping
     source_row_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 

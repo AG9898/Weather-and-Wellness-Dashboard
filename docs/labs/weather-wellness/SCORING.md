@@ -33,8 +33,10 @@ All lab forms use present-tense wording ("Right now...") and uniform scales:
 
 ## Legacy XLSX Import Notes
 
-The reference legacy workbook `reference/data_full_1-230.xlsx` stores aggregate scores, not raw
-survey item responses.
+The authoritative legacy workbook `reference/data_complete.xlsx` stores
+aggregate scores, not raw survey item responses. The older
+`reference/data_full_1-230.xlsx` file remains a historical pre-extension
+snapshot only.
 
 - `anxiety`, `loneliness`, `depression`, and `self_report` are participant-level derived means
   after each instrument's reverse scoring / conversions have already been applied where needed.
@@ -43,6 +45,9 @@ survey item responses.
   `imported_session_measures.self_report` for audit/source fidelity and also
   remaps it into `survey_cogfunc8a.legacy_mean_1_5` with
   `data_source='imported'`.
+- Workbook-only derived columns such as `day`, `daylight`, `age_simple`,
+  `*_z`, `month`, and `season_bin` are preserved in
+  `imported_session_measures.supplemental_attributes_json` when present.
 - Legacy `digit_span_score` is not produced by the native fixed 14-trial web protocol. It is a
   legacy score tallied until the participant records two incorrect trials at the same span
   length.
