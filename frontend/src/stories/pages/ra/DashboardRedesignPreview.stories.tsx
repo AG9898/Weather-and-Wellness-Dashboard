@@ -7,17 +7,25 @@ import {
 } from "./DashboardPageStorySupport";
 
 const meta = {
-  title: "Pages/RA/Dashboard",
+  title: "Concepts/RA/Dashboard 2026",
   component: DashboardStoryShell,
   tags: ["autodocs"],
-  parameters: buildDashboardStoryParameters("replica"),
+  parameters: {
+    ...buildDashboardStoryParameters("replica"),
+    docs: {
+      description: {
+        component:
+          "Preview surface for the proposed 2026 dashboard redesign. This scaffold intentionally renders the current dashboard replica until redesign-specific layout changes are applied.",
+      },
+    },
+  },
 } satisfies Meta<typeof DashboardStoryShell>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Replica: Story = {};
+export const Scaffold: Story = {};
 
 export const Loading: Story = {
   parameters: {
