@@ -77,12 +77,18 @@ function AppShellDecorator({
   Story,
   theme,
   routes,
+  layout,
 }: {
   Story: Parameters<Decorator>[0];
   theme: ThemePreference;
   routes: MockFetchRoute[];
+  layout?: string;
 }) {
   const originalFetchRef = useRef<typeof fetch | null>(null);
+  const shellClassName =
+    layout === "fullscreen"
+      ? "min-h-screen bg-background text-foreground"
+      : "min-h-screen bg-background px-4 py-6 text-foreground sm:px-6";
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -107,7 +113,7 @@ function AppShellDecorator({
     { key: theme },
     createElement(
       "div",
-      { className: "min-h-screen bg-background px-4 py-6 text-foreground sm:px-6" },
+      { className: shellClassName },
       createElement(Story)
     )
   );
@@ -116,8 +122,9 @@ function AppShellDecorator({
 const withAppShell: Decorator = (Story, context) => {
   const theme = (context.globals.theme as ThemePreference | undefined) ?? "light";
   const routes = (context.parameters.mockFetch as MockFetchRoute[] | undefined) ?? [];
+  const layout = context.parameters.layout as string | undefined;
 
-  return createElement(AppShellDecorator, { Story, theme, routes });
+  return createElement(AppShellDecorator, { Story, theme, routes, layout });
 };
 
 const preview: Preview = {

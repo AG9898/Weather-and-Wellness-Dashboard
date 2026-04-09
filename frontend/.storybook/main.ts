@@ -5,10 +5,7 @@ import type { StorybookConfig } from "@storybook/nextjs-vite";
 const storybookDir = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
-  stories: [
-    "../src/components/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-    "../src/lib/components/**/*.stories.@(js|jsx|mjs|ts|tsx)",
-  ],
+  stories: ["../src/stories/pages/ra/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   addons: [
     "@chromatic-com/storybook",
     "@storybook/addon-vitest",
