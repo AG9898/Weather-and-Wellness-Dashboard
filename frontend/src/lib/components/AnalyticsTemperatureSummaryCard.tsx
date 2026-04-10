@@ -142,19 +142,35 @@ function BinHoverCard({
   binLabel,
   sessions,
   onSelectParticipant,
+  onClose,
 }: {
   binLabel: string;
   sessions: AnalyticsTemperatureSummaryParticipantSessionResponse[];
   onSelectParticipant: (uuid: string) => void;
+  onClose?: () => void;
 }) {
   return (
     <div className="rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        {binLabel}
-      </p>
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        {sessions.length} session{sessions.length === 1 ? "" : "s"}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {binLabel}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {sessions.length} session{sessions.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            aria-label="Close histogram details"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
       {sessions.length > 0 ? (
         <ul className="mt-2 max-h-[240px] space-y-0.5 overflow-y-auto">
           {sessions.map((session) => (
@@ -279,6 +295,7 @@ function TemperatureHistogramChart({
 
   // Drilldown state
   const [hoveredBinIndex, setHoveredBinIndex] = useState<number | null>(null);
+  const [lockedBinIndex, setLockedBinIndex] = useState<number | null>(null);
   const [pinnedUuid, setPinnedUuid] = useState<string | null>(null);
   const [demographics, setDemographics] = useState<ParticipantResponse | null>(null);
   const [demographicsLoading, setDemographicsLoading] = useState(false);
@@ -295,10 +312,13 @@ function TemperatureHistogramChart({
 
   const scheduleHide = useCallback(() => {
     cancelHide();
+    if (lockedBinIndex !== null || pinnedUuid !== null) {
+      return;
+    }
     hideTimerRef.current = window.setTimeout(() => {
       setHoveredBinIndex(null);
     }, 200);
-  }, [cancelHide]);
+  }, [cancelHide, lockedBinIndex, pinnedUuid]);
 
   // Clear hide timer on unmount
   useEffect(() => () => { cancelHide(); }, [cancelHide]);
@@ -306,8 +326,10 @@ function TemperatureHistogramChart({
   // Reset drilldown when the summary window changes (tab switch)
   useEffect(() => {
     setHoveredBinIndex(null);
+    setLockedBinIndex(null);
     setPinnedUuid(null);
     setDemographics(null);
+    setDemographicsLoading(false);
     setDemographicsError(null);
     cancelHide();
   }, [summaryWindow, cancelHide]);
@@ -316,6 +338,7 @@ function TemperatureHistogramChart({
   useEffect(() => {
     if (!pinnedUuid) {
       setDemographics(null);
+      setDemographicsLoading(false);
       setDemographicsError(null);
       return;
     }
@@ -528,7 +551,9 @@ function TemperatureHistogramChart({
               mouseOver() {
                 const point = this as unknown as { index: number };
                 cancelHide();
-                setHoveredBinIndex(point.index);
+                if (lockedBinIndex === null && pinnedUuid === null) {
+                  setHoveredBinIndex(point.index);
+                }
               },
               mouseOut() {
                 scheduleHide();
@@ -537,6 +562,8 @@ function TemperatureHistogramChart({
                 const point = this as unknown as { index: number };
                 cancelHide();
                 setHoveredBinIndex(point.index);
+                setLockedBinIndex(point.index);
+                setPinnedUuid(null);
               },
             },
           },
@@ -563,54 +590,60 @@ function TemperatureHistogramChart({
     thresholdOverlay.coldThresholdTemperatureC,
     thresholdOverlay.hotThresholdTemperatureC,
     cancelHide,
+    lockedBinIndex,
+    pinnedUuid,
     scheduleHide,
   ]);
 
-  const hoveredBin = hoveredBinIndex !== null ? (histogramPoints[hoveredBinIndex] ?? null) : null;
-  const showPanel = pinnedUuid !== null || hoveredBin !== null;
+  const activeBinIndex = lockedBinIndex ?? hoveredBinIndex;
+  const activeBin = activeBinIndex !== null ? (histogramPoints[activeBinIndex] ?? null) : null;
+  const showPanel = pinnedUuid !== null || activeBin !== null;
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            Temperature histogram
-          </p>
-          <h4 className="mt-1 text-sm font-semibold text-foreground">
-            1°C frequency bins for the active window
-          </h4>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-            1°C bins
-          </Badge>
-          <Badge variant="outline" className="border-border/70 bg-background/70 text-muted-foreground">
-            {thresholdOverlay.methodLabel} · {thresholdOverlay.cutoffLabel}
-          </Badge>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        {cutoffCards.map((card) => (
-          <div key={card.label} className={cn("rounded-xl border px-3 py-3", card.toneClassName)}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {card.label}
+    <div
+      className={cn(
+        "grid items-start gap-4",
+        showPanel && "lg:grid-cols-[minmax(0,1fr)_280px]"
+      )}
+    >
+      <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Temperature histogram
             </p>
-            <p className="mt-1 text-sm font-semibold">{card.value}</p>
+            <h4 className="mt-1 text-sm font-semibold text-foreground">
+              1°C frequency bins for the active window
+            </h4>
           </div>
-        ))}
-      </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge
+              variant="outline"
+              className="border-border/70 bg-background/70 text-muted-foreground"
+            >
+              1°C bins
+            </Badge>
+            <Badge
+              variant="outline"
+              className="border-border/70 bg-background/70 text-muted-foreground"
+            >
+              {thresholdOverlay.methodLabel} · {thresholdOverlay.cutoffLabel}
+            </Badge>
+          </div>
+        </div>
 
-      {/* Chart + drilldown panel */}
-      <div className={cn(
-        "mt-4",
-        showPanel && "lg:grid lg:grid-cols-[1fr_260px] lg:gap-4"
-      )}>
-        {/* Chart column */}
-        <div
-          className="h-[300px] w-full"
-          onMouseLeave={() => scheduleHide()}
-        >
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          {cutoffCards.map((card) => (
+            <div key={card.label} className={cn("rounded-xl border px-3 py-3", card.toneClassName)}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {card.label}
+              </p>
+              <p className="mt-1 text-sm font-semibold">{card.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 h-[300px] w-full" onMouseLeave={() => scheduleHide()}>
           {histogramPoints.length > 0 ? (
             mounted ? (
               <HighchartsReact
@@ -630,43 +663,52 @@ function TemperatureHistogramChart({
           )}
         </div>
 
-        {/* Drilldown panel: hover card or pinned demographics */}
-        {showPanel && (
-          <div
-            className="mt-4 lg:mt-0"
-            onMouseEnter={() => cancelHide()}
-            onMouseLeave={() => scheduleHide()}
-          >
-            {pinnedUuid ? (
-              <PinnedDemographicsPanel
-                demographics={demographics}
-                loading={demographicsLoading}
-                error={demographicsError}
-                onClose={() => {
-                  setPinnedUuid(null);
-                  setDemographics(null);
-                }}
-              />
-            ) : hoveredBin ? (
-              <BinHoverCard
-                binLabel={hoveredBin.binLabel}
-                sessions={hoveredBin.participantSessions}
-                onSelectParticipant={(uuid) => {
-                  cancelHide();
-                  setHoveredBinIndex(null);
-                  setPinnedUuid(uuid);
-                }}
-              />
-            ) : null}
-          </div>
-        )}
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          {thresholdOverlay.available
+            ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. Hover or tap a bar to preview participant sessions, click a bar to lock the side pane, and use the close button to dismiss it. Click a participant row to pin participant details. ${thresholdOverlay.note}`
+            : thresholdOverlay.note}
+        </p>
       </div>
 
-      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-        {thresholdOverlay.available
-          ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. Hover or tap a bar to see participant sessions for that bin; click a row to pin participant details. ${thresholdOverlay.note}`
-          : thresholdOverlay.note}
-      </p>
+      {showPanel && (
+        <div
+          className="lg:sticky lg:top-4"
+          onMouseEnter={() => cancelHide()}
+          onMouseLeave={() => scheduleHide()}
+        >
+          {pinnedUuid ? (
+            <PinnedDemographicsPanel
+              demographics={demographics}
+              loading={demographicsLoading}
+              error={demographicsError}
+              onClose={() => {
+                setPinnedUuid(null);
+                setDemographics(null);
+              }}
+            />
+          ) : activeBin ? (
+            <BinHoverCard
+              binLabel={activeBin.binLabel}
+              sessions={activeBin.participantSessions}
+              onClose={lockedBinIndex !== null
+                ? () => {
+                    cancelHide();
+                    setHoveredBinIndex(null);
+                    setLockedBinIndex(null);
+                  }
+                : undefined}
+              onSelectParticipant={(uuid) => {
+                cancelHide();
+                if (activeBinIndex !== null) {
+                  setLockedBinIndex(activeBinIndex);
+                }
+                setHoveredBinIndex(null);
+                setPinnedUuid(uuid);
+              }}
+            />
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
