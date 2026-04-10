@@ -71,13 +71,19 @@ def _build_varied_dataset(
     reps_per_day: int = 3,
 ) -> AnalyticsDatasetBuildResult:
     """Build a varied dataset that mirrors the proven fixture in test_analytics_modeling.py."""
+    # Day-keyed weather look-ups: one value per date_local (invariant), non-collinear
+    _TEMP_BY_DAY =    {1: 6.2, 2: 9.1, 3: 7.5, 4: 11.3, 5: 8.0, 6: 10.4, 7: 6.8, 8: 12.1}
+    _PRECIP_BY_DAY =  {1: 0.0, 2: 2.4, 3: 1.1, 4: 0.5,  5: 3.2, 6: 0.0,  7: 1.8, 8: 0.9}
+    _DAYLIT_BY_DAY =  {1: 7.5, 2: 8.2, 3: 9.0, 4: 8.7,  5: 7.8, 6: 9.5,  7: 8.0, 8: 9.2}
+
     rows: list[AnalyticsDatasetRow] = []
     for day in range(1, n_days + 1):
+        # Weather variables must be constant per day (one value per date_local invariant)
+        temperature = _TEMP_BY_DAY[day]
+        precipitation = _PRECIP_BY_DAY[day]
+        daylight_hours = _DAYLIT_BY_DAY[day]
         for rep in range(reps_per_day):
             index = (day - 1) * reps_per_day + rep
-            temperature = 5.5 + (day * 0.7) + (rep * 0.15)
-            precipitation = (day % 4) * 0.8 + rep * 0.2 + (index % 3) * 0.05
-            daylight_hours = 7.0 + day * 0.45 + rep * 0.12
             depression = 2.0 + ((index * 2) % 7) * 0.55 + day * 0.04
             loneliness = 1.4 + ((index * 3) % 5) * 0.35 + rep * 0.08
             anxiety = 3.2 + ((index * 5) % 6) * 0.42 + day * 0.03
@@ -405,8 +411,9 @@ class TestAnalyticsStatusStates:
                         day=day,
                         rep=rep,
                         # Constant temperature → zero variance → model skipped
+                        # Precipitation must not vary by rep (day-level uniqueness invariant)
                         temperature=9.0,
-                        precipitation=(day % 4) * 0.8 + rep * 0.2,
+                        precipitation=(day % 4) * 0.8,
                         daylight_hours=7.0 + day * 0.45,
                         depression=2.0 + day * 0.3,
                         loneliness=1.5 + rep * 0.1,

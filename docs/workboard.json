@@ -788,7 +788,7 @@
       "id": "T134",
       "group_id": "ANALYTICS_V2",
       "title": "Analytics v2 - Repair visualization contract regression coverage",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Restore a green backend analytics regression suite by fixing the visualization-contract tests to respect the day-level weather uniqueness invariant.",
