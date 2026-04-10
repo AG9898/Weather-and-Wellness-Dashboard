@@ -66,6 +66,11 @@ interface ChartColors {
   mutedFg: string;
 }
 
+interface HoverPreviewPosition {
+  left: number;
+  top: number;
+}
+
 function getCssVar(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -143,14 +148,18 @@ function BinHoverCard({
   sessions,
   onSelectParticipant,
   onClose,
+  interactive = true,
+  className,
 }: {
   binLabel: string;
   sessions: AnalyticsTemperatureSummaryParticipantSessionResponse[];
-  onSelectParticipant: (uuid: string) => void;
+  onSelectParticipant?: (uuid: string) => void;
   onClose?: () => void;
+  interactive?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm">
+    <div className={cn("flex h-full flex-col rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm", className)}>
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -172,16 +181,22 @@ function BinHoverCard({
         ) : null}
       </div>
       {sessions.length > 0 ? (
-        <ul className="mt-2 max-h-[240px] space-y-0.5 overflow-y-auto">
+        <ul className="mt-2 flex-1 space-y-0.5 overflow-y-auto">
           {sessions.map((session) => (
             <li key={session.session_id}>
-              <button
-                type="button"
-                onClick={() => onSelectParticipant(session.participant_uuid)}
-                className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                Participant #{session.participant_number} · {formatDisplayDate(session.date_local)}
-              </button>
+              {interactive && onSelectParticipant ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectParticipant(session.participant_uuid)}
+                  className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  Participant #{session.participant_number} · {formatDisplayDate(session.date_local)}
+                </button>
+              ) : (
+                <div className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-foreground/90">
+                  Participant #{session.participant_number} · {formatDisplayDate(session.date_local)}
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -229,7 +244,7 @@ function PinnedDemographicsPanel({
     : [];
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm">
+    <div className="flex h-full flex-col rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -295,6 +310,7 @@ function TemperatureHistogramChart({
 
   // Drilldown state
   const [hoveredBinIndex, setHoveredBinIndex] = useState<number | null>(null);
+  const [hoverPreviewPosition, setHoverPreviewPosition] = useState<HoverPreviewPosition | null>(null);
   const [lockedBinIndex, setLockedBinIndex] = useState<number | null>(null);
   const [pinnedUuid, setPinnedUuid] = useState<string | null>(null);
   const [demographics, setDemographics] = useState<ParticipantResponse | null>(null);
@@ -302,6 +318,7 @@ function TemperatureHistogramChart({
   const [demographicsError, setDemographicsError] = useState<string | null>(null);
 
   const hideTimerRef = useRef<number | null>(null);
+  const chartAreaRef = useRef<HTMLDivElement | null>(null);
 
   const cancelHide = useCallback(() => {
     if (hideTimerRef.current !== null) {
@@ -317,6 +334,7 @@ function TemperatureHistogramChart({
     }
     hideTimerRef.current = window.setTimeout(() => {
       setHoveredBinIndex(null);
+      setHoverPreviewPosition(null);
     }, 200);
   }, [cancelHide, lockedBinIndex, pinnedUuid]);
 
@@ -326,6 +344,7 @@ function TemperatureHistogramChart({
   // Reset drilldown when the summary window changes (tab switch)
   useEffect(() => {
     setHoveredBinIndex(null);
+    setHoverPreviewPosition(null);
     setLockedBinIndex(null);
     setPinnedUuid(null);
     setDemographics(null);
@@ -428,6 +447,8 @@ function TemperatureHistogramChart({
       ? Math.max(...histogramPoints.map((point) => point.x)) + 0.5
       : undefined;
     const dataMax = Math.max(...histogramPoints.map((point) => point.y), 0);
+    const previewWidth = 272;
+    const previewHeight = 244;
     const plotLines: Highcharts.XAxisPlotLinesOptions[] = [];
 
     if (summaryWindow.mean_temperature_c !== null) {
@@ -549,10 +570,36 @@ function TemperatureHistogramChart({
           point: {
             events: {
               mouseOver() {
-                const point = this as unknown as { index: number };
+                const point = this as unknown as {
+                  index: number;
+                  plotX: number;
+                  plotY: number;
+                  series: {
+                    chart: {
+                      plotLeft: number;
+                      plotTop: number;
+                      plotWidth: number;
+                      plotHeight: number;
+                    };
+                  };
+                };
                 cancelHide();
                 if (lockedBinIndex === null && pinnedUuid === null) {
+                  const chartArea = chartAreaRef.current;
+                  const fallbackWidth = chartArea?.clientWidth ?? point.series.chart.plotWidth;
+                  const fallbackHeight = chartArea?.clientHeight ?? point.series.chart.plotHeight;
+                  const preferredLeft = point.series.chart.plotLeft + point.plotX + 18;
+                  const preferredTop = point.series.chart.plotTop + point.plotY - 18;
+                  const nextLeft = Math.max(
+                    12,
+                    Math.min(preferredLeft, Math.max(12, fallbackWidth - previewWidth - 12))
+                  );
+                  const nextTop = Math.max(
+                    12,
+                    Math.min(preferredTop, Math.max(12, fallbackHeight - previewHeight - 12))
+                  );
                   setHoveredBinIndex(point.index);
+                  setHoverPreviewPosition({ left: nextLeft, top: nextTop });
                 }
               },
               mouseOut() {
@@ -561,7 +608,8 @@ function TemperatureHistogramChart({
               click() {
                 const point = this as unknown as { index: number };
                 cancelHide();
-                setHoveredBinIndex(point.index);
+                setHoveredBinIndex(null);
+                setHoverPreviewPosition(null);
                 setLockedBinIndex(point.index);
                 setPinnedUuid(null);
               },
@@ -595,14 +643,15 @@ function TemperatureHistogramChart({
     scheduleHide,
   ]);
 
-  const activeBinIndex = lockedBinIndex ?? hoveredBinIndex;
+  const previewBin = hoveredBinIndex !== null ? (histogramPoints[hoveredBinIndex] ?? null) : null;
+  const activeBinIndex = lockedBinIndex;
   const activeBin = activeBinIndex !== null ? (histogramPoints[activeBinIndex] ?? null) : null;
   const showPanel = pinnedUuid !== null || activeBin !== null;
 
   return (
     <div
       className={cn(
-        "grid items-start gap-4",
+        "grid items-stretch gap-4 transition-[grid-template-columns] duration-300 ease-out",
         showPanel && "lg:grid-cols-[minmax(0,1fr)_280px]"
       )}
     >
@@ -643,7 +692,11 @@ function TemperatureHistogramChart({
           ))}
         </div>
 
-        <div className="mt-4 h-[300px] w-full" onMouseLeave={() => scheduleHide()}>
+        <div
+          ref={chartAreaRef}
+          className="relative mt-4 h-[300px] w-full"
+          onMouseLeave={() => scheduleHide()}
+        >
           {histogramPoints.length > 0 ? (
             mounted ? (
               <HighchartsReact
@@ -661,18 +714,35 @@ function TemperatureHistogramChart({
               No bins were returned for this window.
             </div>
           )}
+
+          {previewBin && hoverPreviewPosition && !showPanel ? (
+            <div
+              className="pointer-events-none absolute z-10 hidden w-[272px] transition-[opacity,transform] duration-150 ease-out lg:block"
+              style={{
+                left: `${hoverPreviewPosition.left}px`,
+                top: `${hoverPreviewPosition.top}px`,
+              }}
+            >
+              <BinHoverCard
+                binLabel={previewBin.binLabel}
+                sessions={previewBin.participantSessions}
+                interactive={false}
+                className="max-h-[244px] border-border/80 bg-background/96 shadow-[0_20px_40px_-26px_rgb(0_19_40/0.55)] backdrop-blur"
+              />
+            </div>
+          ) : null}
         </div>
 
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
           {thresholdOverlay.available
-            ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. Hover or tap a bar to preview participant sessions, click a bar to lock the side pane, and use the close button to dismiss it. Click a participant row to pin participant details. ${thresholdOverlay.note}`
+            ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. Hover a bar to preview participant sessions without resizing the chart, click a bar to open the pinned side pane, and use the close button to dismiss it. Click a participant row in the side pane to pin participant details. ${thresholdOverlay.note}`
             : thresholdOverlay.note}
         </p>
       </div>
 
       {showPanel && (
         <div
-          className="lg:sticky lg:top-4"
+          className="h-full self-stretch overflow-hidden rounded-2xl transition-[opacity,transform] duration-200 ease-out"
           onMouseEnter={() => cancelHide()}
           onMouseLeave={() => scheduleHide()}
         >
@@ -682,6 +752,9 @@ function TemperatureHistogramChart({
               loading={demographicsLoading}
               error={demographicsError}
               onClose={() => {
+                setHoveredBinIndex(null);
+                setHoverPreviewPosition(null);
+                setLockedBinIndex(null);
                 setPinnedUuid(null);
                 setDemographics(null);
               }}
@@ -694,6 +767,7 @@ function TemperatureHistogramChart({
                 ? () => {
                     cancelHide();
                     setHoveredBinIndex(null);
+                    setHoverPreviewPosition(null);
                     setLockedBinIndex(null);
                   }
                 : undefined}
