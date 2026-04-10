@@ -711,7 +711,7 @@
       "id": "T132",
       "group_id": "IMPORT_AUTHORITY",
       "title": "Legacy import authority - Reconcile imported-only rows against the authoritative workbook",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add a dry-run/apply reconciliation path that removes imported-only DB rows no longer present in `reference/data_complete.xlsx` while protecting native data.",
@@ -818,6 +818,138 @@
       "commands": [
         "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_visualization_contract.py",
         "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_analytics_dataset.py tests/test_analytics_modeling.py tests/test_analytics_parity.py tests/test_analytics_schema.py tests/test_analytics_service.py tests/test_dashboard_analytics_router.py tests/test_analytics_temperature_summary.py tests/test_analytics_visualization_contract.py tests/test_analytics_storage_models.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T135",
+      "group_id": "TEMPERATURE_SUMMARY_DRILLDOWN",
+      "title": "Temperature summary drilldown - Backend bin participant-session contract",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Extend histogram bins with participant-session metadata so the temperature summary chart can support hover drilldown without changing its day-level counting semantics.",
+      "description": "Update the analytics dataset and temperature summary backend contract so each `temperature_summary.windows[].frequency_bins[]` item carries additive `participant_sessions[]` metadata for the participant-session rows that fall into that 1°C bin. Each row should include `participant_uuid`, RA-facing `participant_number`, `session_id`, and `date_local`. Preserve existing `day_count` behavior as a unique-day measure, keep hot/cold grouping logic unchanged, and round-trip the expanded payload through snapshot/live analytics responses.",
+      "acceptance_criteria": [
+        "Each populated `frequency_bins[]` item includes `participant_sessions[]` in the backend analytics schema and serialized dashboard analytics response",
+        "Each `participant_sessions[]` entry includes `participant_uuid`, `participant_number`, `session_id`, and `date_local`",
+        "Bin `day_count` remains a day-level count and does not change to participant-row counting",
+        "Participant-session rows are assigned to the same 1°C floor-based binning rule already used for `day_count` aggregation",
+        "Existing hot/cold groups, threshold fields, and overall temperature-summary window stats remain unchanged",
+        "Backend regression coverage verifies the new bin metadata and snapshot/live response serialization"
+      ],
+      "depends_on": [
+        "T131",
+        "T134"
+      ],
+      "blocked_by": [
+        "T131",
+        "T134"
+      ],
+      "files": [
+        "backend/app/schemas/analytics.py",
+        "backend/app/analytics/dataset.py",
+        "backend/app/analytics/temperature_summary.py",
+        "backend/tests/test_analytics_temperature_summary.py",
+        "backend/tests/test_analytics_service.py",
+        "backend/tests/test_dashboard_analytics_router.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Treat `participant_sessions[]` as additive drilldown metadata only; do not redefine the histogram as participant-row frequency.",
+        "Use RA-facing `participant_number` for drilldown display support, but keep `participant_uuid` and `session_id` in the payload for stable lookup keys."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/python -m pytest tests/test_analytics_temperature_summary.py tests/test_analytics_service.py tests/test_dashboard_analytics_router.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T136",
+      "group_id": "TEMPERATURE_SUMMARY_DRILLDOWN",
+      "title": "Temperature summary drilldown - Same-origin participant demographics read",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add the RA-facing same-origin participant demographics read needed by the histogram drilldown panel and align the frontend participant types with the backend schema.",
+      "description": "Create a same-origin RA route handler for `GET /api/ra/participants/[participantUuid]` that proxies the existing backend participant read, expand the frontend `ParticipantResponse` typing so it includes the demographic/exposure fields already returned by the backend, and add a typed frontend helper for loading participant demographics from the dashboard. Keep this task scoped to participant demographics only; do not add session timing or score aggregation endpoints here.",
+      "acceptance_criteria": [
+        "A same-origin RA route exists for `GET /api/ra/participants/[participantUuid]` and proxies the backend participant read",
+        "Frontend `ParticipantResponse` typing includes the demographic/exposure fields already present in the backend participant schema",
+        "A typed frontend helper loads participant demographics from the same-origin route for dashboard use",
+        "RA route-topology coverage is updated for the new participant route and any new route test coverage passes",
+        "No new backend aggregation endpoint for session timing or scores is introduced in this task"
+      ],
+      "depends_on": [
+        "T135"
+      ],
+      "blocked_by": [
+        "T135"
+      ],
+      "files": [
+        "frontend/src/app/api/ra/participants/[participantUuid]/route.ts",
+        "frontend/src/app/api/ra/route-topology.test.ts",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Reuse the existing backend `/participants/{participant_uuid}` endpoint rather than creating a dashboard-specific backend route.",
+        "Keep the response demographics-only in this first pass; session timing and score drilldown are deferred."
+      ],
+      "commands": [
+        "cd frontend && npm test -- src/app/api/ra/route-topology.test.ts",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T137",
+      "group_id": "TEMPERATURE_SUMMARY_DRILLDOWN",
+      "title": "Temperature summary drilldown - Histogram hover list and pinned demographics panel",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Use Highcharts point events to drive a React hover list for each histogram bin and a pinned participant demographics panel.",
+      "description": "Refactor `AnalyticsTemperatureSummaryCard` so hovering or tapping a histogram bin reveals a React-rendered hover card listing that bin's `participant_sessions[]` rows as `Participant #<number> · <date>`. Clicking a row should load participant demographics through the same-origin helper and render a pinned detail panel next to the chart on desktop and below it on mobile. Keep the current summary stats, threshold overlays, compute/recompute flow, and hot/cold day panels intact, and do not implement session timing or score detail in this first version.",
+      "acceptance_criteria": [
+        "Hovering a histogram bin reveals the participant-session rows for that bin using the new `participant_sessions[]` payload",
+        "Each interactive row displays `Participant #<participant_number> · <date_local>` and is clickable",
+        "The hover surface remains usable while the pointer stays over the active bar or the hover card itself, with a touch-friendly tap path on mobile",
+        "Clicking a row loads and renders a pinned participant demographics panel, side-by-side on desktop and stacked below on smaller screens",
+        "The implementation uses Highcharts point events plus React state rather than relying on a clickable native chart tooltip",
+        "Frontend regression coverage and build checks pass with the new histogram drilldown UI"
+      ],
+      "depends_on": [
+        "T136"
+      ],
+      "blocked_by": [
+        "T136"
+      ],
+      "files": [
+        "frontend/src/lib/components/AnalyticsTemperatureSummaryCard.tsx",
+        "frontend/src/lib/analytics/ui-utils.ts",
+        "frontend/src/lib/analytics/ui-utils.test.ts",
+        "frontend/src/lib/analytics/dashboard-analytics-loader.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/styleguide.md"
+      ],
+      "notes": [
+        "Render the interactive hover card in React outside the native Highcharts tooltip.",
+        "Keep the first version demographics-only; do not add session timing or score breakdowns in this task."
+      ],
+      "commands": [
+        "cd frontend && npm test -- src/lib/analytics/dashboard-analytics-loader.test.ts src/lib/analytics/ui-utils.test.ts src/app/api/ra/route-topology.test.ts",
+        "cd frontend && npm run build"
       ],
       "estimate": "M"
     }

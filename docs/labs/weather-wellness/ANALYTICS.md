@@ -296,7 +296,10 @@ temperature-summary section separate from both the mixed-model analytics section
 and the weather chart. That section owns its own date range plus a dedicated
 compute/recompute action, and within the selected summary range it exposes tabs
 for the three fixed windows, a summary strip, one conclusive 1°C Highcharts
-histogram with mean and threshold overlays, and hot/cold day panels.
+histogram with mean and threshold overlays, and hot/cold day panels. The next
+planned interaction layer keeps Highcharts as the hover/click event source but
+renders the participant-session list and selected participant details in React
+outside the native chart tooltip.
 
 ### Dataset metadata
 
@@ -327,6 +330,16 @@ model formulas.
   - `bin_start_c`
   - `bin_end_c`
   - `day_count`
+- The planned histogram drilldown extension should also expose additive
+  `participant_sessions[]` metadata per bin for UI interaction without changing
+  the bin's day-level counting semantics.
+- Each `participant_sessions[]` item should include:
+  - `participant_uuid`
+  - `participant_number`
+  - `session_id`
+  - `date_local`
+- These entries represent participant-session rows in the hovered temperature
+  bin, not de-duplicated participants.
 
 ### Hot and cold groups
 
@@ -354,6 +367,21 @@ Each group should include:
 
 If a window has no qualifying hot or cold days, return an empty group object
 with zero counts instead of treating the window as an error.
+
+### Planned histogram drilldown UI
+
+- The histogram remains a single conclusive Highcharts column chart for the
+  selected summary window.
+- Hovering a bin should show a React-rendered hover card listing
+  participant-session rows for that bin as `Participant #<number> · <date>`.
+- Clicking a row should open a pinned side panel with demographics for the
+  selected participant.
+- The first shipped detail panel should be demographics-only; session timing and
+  score drilldown are explicitly deferred.
+- The chart should not depend on a fully interactive Highcharts HTML tooltip for
+  this flow. Point hover/click events should drive React state, and the hover
+  card should stay open while the pointer remains over either the active bar or
+  the card itself.
 
 ### Displayed threshold temperatures
 

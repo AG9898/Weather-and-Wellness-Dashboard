@@ -238,6 +238,9 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - The selected window shows day count, participant count, mean temperature, standard deviation, and cold/hot participant counts.
 - One conclusive Highcharts 1°C histogram summarizes day-level temperature frequency for the active window.
 - The histogram overlays the selected window's mean temperature plus descriptive cold/hot threshold markers derived from the same window-specific day-level z-score rule used for the summary groups.
+- A planned histogram drilldown layer adds bin-level participant-session hover cards rendered in React from chart point events rather than via an interactive Highcharts tooltip.
+- Hovered bins list participant-session rows as `Participant #<number> · <session date>` using additive metadata on each `frequency_bins[]` item.
+- Clicking a participant row opens a pinned side panel with participant demographics only in the first version.
 - When threshold values are unavailable because the selected window has too few unique days or zero variance, the chart falls back to frequency-plus-mean only and the UI explains that the threshold overlay is unavailable.
 - Cold/hot panels list qualifying dates and participant counts, with a benign empty state when no days cross the threshold.
 - The section uses short RA-facing status labels plus a dedicated compute/recompute button, and it keeps the last available summary visible while a background recompute is in progress.

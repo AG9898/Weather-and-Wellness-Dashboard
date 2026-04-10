@@ -48,7 +48,7 @@ class _FakeAsyncSession:
         self.added: list[object] = []
         self.committed = False
 
-    async def execute(self, stmt: object) -> _FakeResult:
+    async def execute(self, stmt: object, *args: object, **kwargs: object) -> _FakeResult:
         self.executed.append(stmt)
         if self.execute_results:
             return self.execute_results.pop(0)
@@ -421,3 +421,209 @@ class LegacyCogFuncImportTests(IsolatedAsyncioTestCase):
         self.assertIn("ON CONFLICT (session_id) DO UPDATE", sql)
         self.assertIn("WHERE survey_cogfunc8a.data_source =", sql)
         self.assertIn(3.75, compiled.params.values())
+
+
+# ── Workbook reconciliation tests ──────────────────────────────────────────────
+
+from unittest.mock import MagicMock  # noqa: E402
+
+from app.scripts import reconcile_workbook  # noqa: E402
+
+
+def _make_workbook_parse_result(participant_numbers: list[int]) -> ParseResult:
+    """Return a ParseResult whose rows cover the given participant numbers."""
+    rows = [
+        ParsedRow(
+            row_num=i + 2,
+            participant_number=pnum,
+            date_local=date(2026, 1, 15),  # fixed date — value not significant here
+            age_band=None,
+            gender=None,
+            origin=None,
+            origin_other_text=None,
+            commute_method=None,
+            commute_method_other_text=None,
+            time_outside=None,
+            daylight_exposure_minutes=None,
+            precipitation_mm=None,
+            temperature_c=None,
+            anxiety_mean=None,
+            loneliness_mean=None,
+            depression_mean=None,
+            digit_span_legacy_score=None,
+            self_report=None,
+            supplemental_attributes_json={},
+            source_row_json={"participant ID": pnum},
+        )
+        for i, pnum in enumerate(participant_numbers)
+    ]
+    return ParseResult(
+        file_type="xlsx",
+        rows=rows,
+        errors=[],
+        warnings=[],
+        rows_attempted=len(rows),
+    )
+
+
+def _fake_path(name: str = "data_complete.xlsx") -> MagicMock:
+    """Return a MagicMock that stands in for a Path object in reconciliation tests."""
+    p = MagicMock()
+    p.read_bytes.return_value = b""
+    p.name = name
+    p.__str__ = lambda self: f"/fake/{name}"
+    return p
+
+
+class ReconcileWorkbookTests(IsolatedAsyncioTestCase):
+    """Tests for the workbook reconciliation script."""
+
+    async def _run(
+        self,
+        *,
+        workbook_pnums: list[int],
+        db_participants: dict[int, uuid.UUID],
+        db_sessions: list[SimpleNamespace],
+        native_session_ids: set[uuid.UUID],
+        apply: bool,
+    ) -> reconcile_workbook.ReconciliationResult:
+        """Helper: run reconciliation with mocked parse_file and DB."""
+        parse_result = _make_workbook_parse_result(workbook_pnums)
+
+        # Build fake execute results:
+        #   [0] = all participants query
+        #   [1] = sessions for absent participants
+        all_p_rows = [
+            SimpleNamespace(participant_number=pnum, participant_uuid=puuid)
+            for pnum, puuid in db_participants.items()
+        ]
+        execute_results = [
+            _FakeResult(rows=all_p_rows),
+            _FakeResult(rows=db_sessions),
+        ]
+        db = _FakeAsyncSession(execute_results=execute_results)
+        session_context = _SessionContext(db)
+
+        def fake_factory() -> _SessionContext:
+            return session_context
+
+        with patch.object(
+            reconcile_workbook,
+            "parse_file",
+            return_value=parse_result,
+        ), patch.object(
+            reconcile_workbook,
+            "_get_sessions_with_native_rows",
+            new=AsyncMock(return_value=native_session_ids),
+        ):
+            return await reconcile_workbook.run_reconciliation(
+                file_path=_fake_path(),
+                apply=apply,
+                session_factory=fake_factory,
+            )
+
+    async def test_dry_run_identifies_imported_only_absent_participant(self) -> None:
+        """Dry-run reports imported-only absent participant in would_delete_pnums."""
+        p101_uuid = uuid.uuid4()
+        p142_uuid = uuid.uuid4()
+        session_142 = uuid.uuid4()
+
+        result = await self._run(
+            workbook_pnums=[101],
+            db_participants={101: p101_uuid, 142: p142_uuid},
+            db_sessions=[
+                SimpleNamespace(session_id=session_142, participant_uuid=p142_uuid)
+            ],
+            native_session_ids=set(),  # 142 has only imported data
+            apply=False,
+        )
+
+        self.assertEqual(result.mode, "dry-run")
+        self.assertEqual(result.absent_from_workbook, [142])
+        self.assertEqual(result.would_delete_pnums, [142])
+        self.assertEqual(result.protected_pnums, [])
+        self.assertEqual(result.deleted_pnums, [])
+        self.assertEqual(result.sessions_deleted, 0)
+        self.assertEqual(result.participants_deleted, 0)
+
+    async def test_apply_deletes_imported_only_absent_participant(self) -> None:
+        """Apply mode deletes imported-only participant absent from workbook."""
+        p101_uuid = uuid.uuid4()
+        p142_uuid = uuid.uuid4()
+        session_142 = uuid.uuid4()
+
+        result = await self._run(
+            workbook_pnums=[101],
+            db_participants={101: p101_uuid, 142: p142_uuid},
+            db_sessions=[
+                SimpleNamespace(session_id=session_142, participant_uuid=p142_uuid)
+            ],
+            native_session_ids=set(),  # 142 has only imported data
+            apply=True,
+        )
+
+        self.assertEqual(result.mode, "apply")
+        self.assertEqual(result.absent_from_workbook, [142])
+        self.assertEqual(result.deleted_pnums, [142])
+        self.assertEqual(result.protected_pnums, [])
+        self.assertEqual(result.would_delete_pnums, [])
+        self.assertEqual(result.sessions_deleted, 1)
+        self.assertEqual(result.participants_deleted, 1)
+
+    async def test_apply_protects_participant_with_native_data(self) -> None:
+        """Participant absent from workbook but with native rows is protected."""
+        p101_uuid = uuid.uuid4()
+        p200_uuid = uuid.uuid4()
+        session_200 = uuid.uuid4()
+
+        result = await self._run(
+            workbook_pnums=[101],
+            db_participants={101: p101_uuid, 200: p200_uuid},
+            db_sessions=[
+                SimpleNamespace(session_id=session_200, participant_uuid=p200_uuid)
+            ],
+            native_session_ids={session_200},  # 200 has native data
+            apply=True,
+        )
+
+        self.assertEqual(result.mode, "apply")
+        self.assertIn(200, result.protected_pnums)
+        self.assertEqual(result.deleted_pnums, [])
+        self.assertEqual(result.participants_deleted, 0)
+
+    async def test_dry_run_consistent_db_returns_no_deletions(self) -> None:
+        """When DB exactly matches workbook, no deletions are reported."""
+        p101_uuid = uuid.uuid4()
+
+        result = await self._run(
+            workbook_pnums=[101],
+            db_participants={101: p101_uuid},
+            db_sessions=[],
+            native_session_ids=set(),
+            apply=False,
+        )
+
+        self.assertEqual(result.absent_from_workbook, [])
+        self.assertEqual(result.would_delete_pnums, [])
+        self.assertEqual(result.deleted_pnums, [])
+
+    async def test_participant_142_pattern_is_removed_when_workbook_absent(self) -> None:
+        """Participant 142 (known old-only orphan) is deleted by reconciliation."""
+        p_uuids = {pnum: uuid.uuid4() for pnum in range(101, 143)}
+        workbook_pnums = list(range(101, 142))  # 142 missing from workbook
+        session_142 = uuid.uuid4()
+        p142_uuid = p_uuids[142]
+
+        result = await self._run(
+            workbook_pnums=workbook_pnums,
+            db_participants=p_uuids,
+            db_sessions=[
+                SimpleNamespace(session_id=session_142, participant_uuid=p142_uuid)
+            ],
+            native_session_ids=set(),
+            apply=True,
+        )
+
+        self.assertIn(142, result.deleted_pnums)
+        self.assertNotIn(142, result.protected_pnums)
+        self.assertEqual(result.participants_deleted, 1)

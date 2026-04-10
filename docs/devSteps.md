@@ -165,6 +165,58 @@ Verification checklist:
 
 ---
 
+## Workbook Reconciliation Runbook (T132)
+
+Use this runbook after refreshing `reference/data_complete.xlsx` to remove imported-only
+participant/session rows that are no longer present in the authoritative workbook.
+
+### When to run
+
+Run reconciliation any time:
+- The authoritative workbook (`reference/data_complete.xlsx`) is updated and a participant has
+  been removed from the source data.
+- You suspect DB drift from the workbook (e.g. after a selective wipe + re-import).
+
+**Do not run reconciliation as a substitute for a full wipe+re-import.** It only removes
+rows; it does not update existing imported data.
+
+### Reconciliation steps
+
+```bash
+cd backend
+
+# 1. Preview: identify imported-only rows absent from the workbook (no DB writes)
+PYTHONPATH=. .venv/bin/python -m app.scripts.reconcile_workbook \
+    --file ../reference/data_complete.xlsx --dry-run
+
+# 2. Apply: delete the identified rows (IRREVERSIBLE)
+PYTHONPATH=. .venv/bin/python -m app.scripts.reconcile_workbook \
+    --file ../reference/data_complete.xlsx --apply
+```
+
+Both modes print a machine-readable JSON summary to stdout:
+
+| Field | Description |
+|---|---|
+| `workbook_participant_count` | Total unique participants parsed from workbook |
+| `db_participant_count` | Total participants in DB at run time |
+| `absent_from_workbook` | Participant numbers in DB but not in workbook |
+| `protected_pnums` | Absent participants with native data (not deleted) |
+| `would_delete_pnums` | (dry-run) Participants that would be deleted |
+| `deleted_pnums` | (apply) Participants actually deleted |
+| `sessions_deleted` | Count of sessions removed |
+| `participants_deleted` | Count of participants removed |
+
+### Guarantees
+
+- **Native rows are always protected.** Any participant whose graph contains a native survey or
+  digit span row is listed under `protected_pnums` and never deleted.
+- **Idempotent on a clean DB.** Re-running after a successful apply reports no further deletions.
+- The deletion is ordered to respect FK constraints (trials → runs → surveys →
+  imported_session_measures → sessions → participants).
+
+---
+
 ## Demo Runbook — Selective Participant Wipe + Restore from Reference Import
 
 This runbook is for resetting participant/session outcome data before a fresh

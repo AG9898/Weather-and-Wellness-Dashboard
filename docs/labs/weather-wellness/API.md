@@ -275,6 +275,8 @@
   - Shared analytics version/config constants now use `ANALYTICS_RESPONSE_VERSION="dashboard-analytics-v2"` and `ANALYTICS_MODEL_VERSION="weather-mlm-v2"` so old snapshots and same-origin caches are not reused.
   - `temperature_summary` is a day-level descriptive payload populated by the backend summary engine and preserved through snapshot/live responses.
   - The planned standalone temperature-summary chart is a single Highcharts histogram for the active summary window, with mean and threshold overlays drawn from these temperature-summary fields rather than from the mixed-model visualization payload.
+  - Planned next extension: each `temperature_summary.windows[].frequency_bins[]` item will add `participant_sessions[]` entries carrying `participant_uuid`, RA-facing `participant_number`, `session_id`, and `date_local` so the histogram can drive participant-session hover drilldown without changing the existing day-count bin semantics.
+  - Planned next extension: the RA dashboard will use a same-origin participant read wrapper to fetch demographics for a clicked participant and render them in a pinned side panel next to the histogram. The first version is demographics-only and does not include test timing or score detail.
   - The shipped dashboard keeps weather and analytics filter state independent and does not depend on `visualizations.weather_annotations` for weather-chart overlays, even though the field remains serialized for compatibility.
   - Browser-owned reads should use the same-origin analytics handler documented in `docs/ARCHITECTURE.md`; do not add direct component calls to this backend endpoint.
 

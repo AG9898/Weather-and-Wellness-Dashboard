@@ -195,6 +195,8 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 - Use a single Highcharts column series for 1°C `frequency_bins` in the active summary window.
 - Overlay the selected window's mean temperature plus cold/hot threshold markers using `plotLines` and, when helpful, restrained `plotBands`.
 - Treat threshold overlays as descriptive metadata from the temperature-summary payload, not as mixed-model outputs or general significance annotations.
+- For histogram drilldown, use Highcharts point hover/click events to drive React state and render the interactive hover card or side panel outside the native tooltip.
+- Do not rely on a clickable Highcharts HTML tooltip as the primary interaction surface for participant drilldown. Keep the tooltip informational or omit it when a richer React hover card is present.
 
 **General chart rules:**
 - `chart.backgroundColor: "transparent"` always — let the parent card surface show through.
