@@ -141,6 +141,15 @@ export interface ParticipantResponse {
   participant_uuid: string;
   participant_number: number;
   created_at: string;
+  // Phase 3 demographic / exposure fields (nullable)
+  age_band: string | null;
+  gender: string | null;
+  origin: string | null;
+  origin_other_text: string | null;
+  commute_method: string | null;
+  commute_method_other_text: string | null;
+  time_outside: string | null;
+  daylight_exposure_minutes: number | null;
 }
 
 export interface SessionResponse {
@@ -564,6 +573,28 @@ export async function getDashboardAnalyticsBundle(
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
   return res.json() as Promise<DashboardAnalyticsRouteResponse>;
+}
+
+/**
+ * Fetch a single participant's demographics from the same-origin Route Handler.
+ * Returns the full ParticipantResponse including demographic/exposure fields.
+ * Throws ApiError with status 404 if the participant is not found.
+ */
+export async function getParticipantDemographics(
+  participantUuid: string
+): Promise<ParticipantResponse> {
+  const res = await fetch(
+    `/api/ra/participants/${encodeURIComponent(participantUuid)}`,
+    {
+      method: "GET",
+      headers: await buildSameOriginAuthHeaders(),
+    }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<ParticipantResponse>;
 }
 
 /** Trigger manual weather ingestion via LabMember JWT (RA-only). */

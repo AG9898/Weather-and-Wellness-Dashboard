@@ -35,11 +35,26 @@ describe("RA route topology", () => {
     ]);
   });
 
+  it("ships the participant demographics route handler under /api/ra/participants", () => {
+    const raApiRoot = resolve(process.cwd(), "src/app/api/ra");
+    const routeFiles = collectRouteFiles(raApiRoot).filter((file) =>
+      file.startsWith("participants/")
+    );
+
+    expect(routeFiles).toEqual([
+      "participants/[participantUuid]/route.ts",
+    ]);
+  });
+
   it("exports only the active dashboard route wrappers", () => {
     expect(api).toHaveProperty("getDashboardWeatherBundle");
     expect(api).toHaveProperty("getWeatherRangeBundle");
     expect(api).toHaveProperty("getDashboardStudyWindow");
     expect(api).toHaveProperty("getDashboardAnalyticsBundle");
     expect(api).not.toHaveProperty("getDashboardRangeBundle");
+  });
+
+  it("exports the participant demographics helper", () => {
+    expect(api).toHaveProperty("getParticipantDemographics");
   });
 });

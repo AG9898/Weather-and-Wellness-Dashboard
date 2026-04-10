@@ -872,7 +872,7 @@
       "id": "T136",
       "group_id": "TEMPERATURE_SUMMARY_DRILLDOWN",
       "title": "Temperature summary drilldown - Same-origin participant demographics read",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add the RA-facing same-origin participant demographics read needed by the histogram drilldown panel and align the frontend participant types with the backend schema.",
