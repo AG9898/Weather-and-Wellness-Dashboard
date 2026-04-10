@@ -5,6 +5,7 @@ import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import {
   AlertTriangle,
+  ArrowLeft,
   CalendarDays,
   Flame,
   RefreshCw,
@@ -213,11 +214,15 @@ function PinnedDemographicsPanel({
   demographics,
   loading,
   error,
+  binLabel,
+  onBack,
   onClose,
 }: {
   demographics: ParticipantResponse | null;
   loading: boolean;
   error: string | null;
+  binLabel?: string;
+  onBack?: () => void;
   onClose: () => void;
 }) {
   const fields: { label: string; value: string | null }[] = demographics
@@ -246,7 +251,17 @@ function PinnedDemographicsPanel({
   return (
     <div className="flex h-full flex-col rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-1 rounded-lg px-1 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to bin</span>
+            </button>
+          ) : null}
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Participant
           </p>
@@ -255,6 +270,9 @@ function PinnedDemographicsPanel({
               #{demographics.participant_number}
             </p>
           )}
+          {binLabel ? (
+            <p className="mt-1 truncate text-[11px] text-muted-foreground">{binLabel}</p>
+          ) : null}
         </div>
         <button
           type="button"
@@ -275,7 +293,7 @@ function PinnedDemographicsPanel({
       )}
 
       {!loading && !error && demographics && (
-        <div className="mt-3 grid grid-cols-2 gap-1.5">
+        <div className="mt-3 grid flex-1 auto-rows-min grid-cols-2 gap-1.5 overflow-y-auto pr-1">
           {fields.map(({ label, value }) => (
             <div
               key={label}
@@ -649,52 +667,52 @@ function TemperatureHistogramChart({
   const showPanel = pinnedUuid !== null || activeBin !== null;
 
   return (
-    <div
-      className={cn(
-        "grid items-stretch gap-4 transition-[grid-template-columns] duration-300 ease-out",
-        showPanel && "lg:grid-cols-[minmax(0,1fr)_280px]"
-      )}
-    >
-      <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Temperature histogram
+    <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            Temperature histogram
+          </p>
+          <h4 className="mt-1 text-sm font-semibold text-foreground">
+            1°C frequency bins for the active window
+          </h4>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge
+            variant="outline"
+            className="border-border/70 bg-background/70 text-muted-foreground"
+          >
+            1°C bins
+          </Badge>
+          <Badge
+            variant="outline"
+            className="border-border/70 bg-background/70 text-muted-foreground"
+          >
+            {thresholdOverlay.methodLabel} · {thresholdOverlay.cutoffLabel}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {cutoffCards.map((card) => (
+          <div key={card.label} className={cn("rounded-xl border px-3 py-3", card.toneClassName)}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {card.label}
             </p>
-            <h4 className="mt-1 text-sm font-semibold text-foreground">
-              1°C frequency bins for the active window
-            </h4>
+            <p className="mt-1 text-sm font-semibold">{card.value}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge
-              variant="outline"
-              className="border-border/70 bg-background/70 text-muted-foreground"
-            >
-              1°C bins
-            </Badge>
-            <Badge
-              variant="outline"
-              className="border-border/70 bg-background/70 text-muted-foreground"
-            >
-              {thresholdOverlay.methodLabel} · {thresholdOverlay.cutoffLabel}
-            </Badge>
-          </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          {cutoffCards.map((card) => (
-            <div key={card.label} className={cn("rounded-xl border px-3 py-3", card.toneClassName)}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {card.label}
-              </p>
-              <p className="mt-1 text-sm font-semibold">{card.value}</p>
-            </div>
-          ))}
-        </div>
-
+      <div
+        className={cn(
+          "mt-4 grid items-stretch gap-4 transition-[grid-template-columns] duration-300 ease-out",
+          showPanel && "lg:grid-cols-[minmax(0,1fr)_280px]"
+        )}
+      >
         <div
           ref={chartAreaRef}
-          className="relative mt-4 h-[300px] w-full"
+          className="relative h-[300px] w-full"
           onMouseLeave={() => scheduleHide()}
         >
           {histogramPoints.length > 0 ? (
@@ -733,56 +751,66 @@ function TemperatureHistogramChart({
           ) : null}
         </div>
 
-        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-          {thresholdOverlay.available
-            ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. Hover a bar to preview participant sessions without resizing the chart, click a bar to open the pinned side pane, and use the close button to dismiss it. Click a participant row in the side pane to pin participant details. ${thresholdOverlay.note}`
-            : thresholdOverlay.note}
-        </p>
+        {showPanel ? (
+          <div
+            className="h-[300px] self-stretch overflow-hidden rounded-2xl transition-[opacity,transform] duration-200 ease-out"
+            onMouseEnter={() => cancelHide()}
+            onMouseLeave={() => scheduleHide()}
+          >
+            {pinnedUuid ? (
+              <PinnedDemographicsPanel
+                demographics={demographics}
+                loading={demographicsLoading}
+                error={demographicsError}
+                binLabel={activeBin?.binLabel}
+                onBack={() => {
+                  cancelHide();
+                  setPinnedUuid(null);
+                  setDemographics(null);
+                  setDemographicsLoading(false);
+                  setDemographicsError(null);
+                }}
+                onClose={() => {
+                  setHoveredBinIndex(null);
+                  setHoverPreviewPosition(null);
+                  setLockedBinIndex(null);
+                  setPinnedUuid(null);
+                  setDemographics(null);
+                  setDemographicsLoading(false);
+                  setDemographicsError(null);
+                }}
+              />
+            ) : activeBin ? (
+              <BinHoverCard
+                binLabel={activeBin.binLabel}
+                sessions={activeBin.participantSessions}
+                onClose={lockedBinIndex !== null
+                  ? () => {
+                      cancelHide();
+                      setHoveredBinIndex(null);
+                      setHoverPreviewPosition(null);
+                      setLockedBinIndex(null);
+                    }
+                  : undefined}
+                onSelectParticipant={(uuid) => {
+                  cancelHide();
+                  if (activeBinIndex !== null) {
+                    setLockedBinIndex(activeBinIndex);
+                  }
+                  setHoveredBinIndex(null);
+                  setPinnedUuid(uuid);
+                }}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      {showPanel && (
-        <div
-          className="h-full self-stretch overflow-hidden rounded-2xl transition-[opacity,transform] duration-200 ease-out"
-          onMouseEnter={() => cancelHide()}
-          onMouseLeave={() => scheduleHide()}
-        >
-          {pinnedUuid ? (
-            <PinnedDemographicsPanel
-              demographics={demographics}
-              loading={demographicsLoading}
-              error={demographicsError}
-              onClose={() => {
-                setHoveredBinIndex(null);
-                setHoverPreviewPosition(null);
-                setLockedBinIndex(null);
-                setPinnedUuid(null);
-                setDemographics(null);
-              }}
-            />
-          ) : activeBin ? (
-            <BinHoverCard
-              binLabel={activeBin.binLabel}
-              sessions={activeBin.participantSessions}
-              onClose={lockedBinIndex !== null
-                ? () => {
-                    cancelHide();
-                    setHoveredBinIndex(null);
-                    setHoverPreviewPosition(null);
-                    setLockedBinIndex(null);
-                  }
-                : undefined}
-              onSelectParticipant={(uuid) => {
-                cancelHide();
-                if (activeBinIndex !== null) {
-                  setLockedBinIndex(activeBinIndex);
-                }
-                setHoveredBinIndex(null);
-                setPinnedUuid(uuid);
-              }}
-            />
-          ) : null}
-        </div>
-      )}
+      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+        {thresholdOverlay.available
+          ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. Hover a bar to preview participant sessions without resizing the chart, click a bar to open the pinned side pane, use Back to return to the selected bin after opening a participant, and use the close button to dismiss it. ${thresholdOverlay.note}`
+          : thresholdOverlay.note}
+      </p>
     </div>
   );
 }
