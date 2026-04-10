@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
 import {
@@ -11,14 +11,18 @@ import {
   Snowflake,
   Thermometer,
   Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import type {
   AnalyticsTemperatureSummaryGroupResponse,
+  AnalyticsTemperatureSummaryParticipantSessionResponse,
   AnalyticsTemperatureSummaryResponse,
   AnalyticsTemperatureSummaryWindowKey,
   AnalyticsTemperatureSummaryWindowResponse,
+  ParticipantResponse,
 } from "@/lib/api";
+import { getParticipantDemographics } from "@/lib/api";
 import {
   loadTemperatureSummary,
   refreshTemperatureSummary,
@@ -134,6 +138,130 @@ function SummaryPresetButton({
   );
 }
 
+function BinHoverCard({
+  binLabel,
+  sessions,
+  onSelectParticipant,
+}: {
+  binLabel: string;
+  sessions: AnalyticsTemperatureSummaryParticipantSessionResponse[];
+  onSelectParticipant: (uuid: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {binLabel}
+      </p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {sessions.length} session{sessions.length === 1 ? "" : "s"}
+      </p>
+      {sessions.length > 0 ? (
+        <ul className="mt-2 max-h-[240px] space-y-0.5 overflow-y-auto">
+          {sessions.map((session) => (
+            <li key={session.session_id}>
+              <button
+                type="button"
+                onClick={() => onSelectParticipant(session.participant_uuid)}
+                className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                Participant #{session.participant_number} · {formatDisplayDate(session.date_local)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-xs text-muted-foreground">
+          No session data available for this bin.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PinnedDemographicsPanel({
+  demographics,
+  loading,
+  error,
+  onClose,
+}: {
+  demographics: ParticipantResponse | null;
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  const fields: { label: string; value: string | null }[] = demographics
+    ? [
+        { label: "Age Band", value: demographics.age_band },
+        { label: "Gender", value: demographics.gender },
+        {
+          label: "Origin",
+          value: demographics.origin_other_text || demographics.origin,
+        },
+        {
+          label: "Commute",
+          value: demographics.commute_method_other_text || demographics.commute_method,
+        },
+        { label: "Time Outside", value: demographics.time_outside },
+        {
+          label: "Daylight Exp.",
+          value:
+            demographics.daylight_exposure_minutes != null
+              ? `${demographics.daylight_exposure_minutes} min`
+              : null,
+        },
+      ]
+    : [];
+
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background/90 p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Participant
+          </p>
+          {demographics && (
+            <p className="mt-0.5 text-sm font-semibold text-foreground">
+              #{demographics.participant_number}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-1 text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          aria-label="Close participant details"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {loading && (
+        <p className="mt-3 text-xs text-muted-foreground">Loading details…</p>
+      )}
+
+      {error && (
+        <p className="mt-2 text-xs text-destructive">{error}</p>
+      )}
+
+      {!loading && !error && demographics && (
+        <div className="mt-3 grid grid-cols-2 gap-1.5">
+          {fields.map(({ label, value }) => (
+            <div
+              key={label}
+              className="rounded-lg border border-border/60 bg-background/70 px-2 py-2"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                {label}
+              </p>
+              <p className="mt-0.5 text-xs font-medium text-foreground">{value ?? "—"}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TemperatureHistogramChart({
   summaryWindow,
 }: {
@@ -148,6 +276,71 @@ function TemperatureHistogramChart({
     border: "rgba(0,19,40,0.12)",
     mutedFg: "#6e7c95",
   });
+
+  // Drilldown state
+  const [hoveredBinIndex, setHoveredBinIndex] = useState<number | null>(null);
+  const [pinnedUuid, setPinnedUuid] = useState<string | null>(null);
+  const [demographics, setDemographics] = useState<ParticipantResponse | null>(null);
+  const [demographicsLoading, setDemographicsLoading] = useState(false);
+  const [demographicsError, setDemographicsError] = useState<string | null>(null);
+
+  const hideTimerRef = useRef<number | null>(null);
+
+  const cancelHide = useCallback(() => {
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleHide = useCallback(() => {
+    cancelHide();
+    hideTimerRef.current = window.setTimeout(() => {
+      setHoveredBinIndex(null);
+    }, 200);
+  }, [cancelHide]);
+
+  // Clear hide timer on unmount
+  useEffect(() => () => { cancelHide(); }, [cancelHide]);
+
+  // Reset drilldown when the summary window changes (tab switch)
+  useEffect(() => {
+    setHoveredBinIndex(null);
+    setPinnedUuid(null);
+    setDemographics(null);
+    setDemographicsError(null);
+    cancelHide();
+  }, [summaryWindow, cancelHide]);
+
+  // Load demographics when a participant row is clicked
+  useEffect(() => {
+    if (!pinnedUuid) {
+      setDemographics(null);
+      setDemographicsError(null);
+      return;
+    }
+    let cancelled = false;
+    setDemographicsLoading(true);
+    setDemographicsError(null);
+
+    getParticipantDemographics(pinnedUuid)
+      .then((data) => {
+        if (!cancelled) {
+          setDemographics(data);
+          setDemographicsLoading(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setDemographicsError(
+            err instanceof Error ? err.message : "Failed to load participant details."
+          );
+          setDemographicsLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [pinnedUuid]);
 
   useEffect(() => {
     setMounted(true);
@@ -280,27 +473,8 @@ function TemperatureHistogramChart({
       title: { text: undefined },
       credits: { enabled: false },
       legend: { enabled: false },
-      tooltip: {
-        shared: false,
-        useHTML: true,
-        backgroundColor: "var(--card)",
-        borderColor: border,
-        borderRadius: 10,
-        padding: 10,
-        shadow: false,
-        style: { color: mutedFg, fontSize: "12px", lineHeight: "1.6" },
-        formatter: function (): string {
-          const ctx = this as unknown as {
-            point?: { custom?: { binLabel?: string } };
-            y?: number;
-          };
-
-          return `
-            <span style="font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.05em">${ctx.point?.custom?.binLabel ?? "Temperature bin"}</span><br/>
-            ${ctx.y ?? 0} day${ctx.y === 1 ? "" : "s"}
-          `;
-        },
-      },
+      // Native tooltip is disabled — hover state is driven by React
+      tooltip: { enabled: false },
       xAxis: {
         title: {
           text: "Temperature (°C)",
@@ -348,6 +522,24 @@ function TemperatureHistogramChart({
           groupPadding: 0.06,
           pointPadding: 0.02,
           pointRange: 1,
+          cursor: "pointer",
+          point: {
+            events: {
+              mouseOver() {
+                const point = this as unknown as { index: number };
+                cancelHide();
+                setHoveredBinIndex(point.index);
+              },
+              mouseOut() {
+                scheduleHide();
+              },
+              click() {
+                const point = this as unknown as { index: number };
+                cancelHide();
+                setHoveredBinIndex(point.index);
+              },
+            },
+          },
         },
       },
       series: [
@@ -370,7 +562,12 @@ function TemperatureHistogramChart({
     thresholdOverlay.available,
     thresholdOverlay.coldThresholdTemperatureC,
     thresholdOverlay.hotThresholdTemperatureC,
+    cancelHide,
+    scheduleHide,
   ]);
+
+  const hoveredBin = hoveredBinIndex !== null ? (histogramPoints[hoveredBinIndex] ?? null) : null;
+  const showPanel = pinnedUuid !== null || hoveredBin !== null;
 
   return (
     <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
@@ -404,29 +601,70 @@ function TemperatureHistogramChart({
         ))}
       </div>
 
-      <div className="mt-4 h-[300px] w-full">
-        {histogramPoints.length > 0 ? (
-          mounted ? (
-            <HighchartsReact
-              highcharts={Highcharts}
-              options={chartOptions}
-              containerProps={{ style: { width: "100%", height: "100%" } }}
-            />
+      {/* Chart + drilldown panel */}
+      <div className={cn(
+        "mt-4",
+        showPanel && "lg:grid lg:grid-cols-[1fr_260px] lg:gap-4"
+      )}>
+        {/* Chart column */}
+        <div
+          className="h-[300px] w-full"
+          onMouseLeave={() => scheduleHide()}
+        >
+          {histogramPoints.length > 0 ? (
+            mounted ? (
+              <HighchartsReact
+                highcharts={Highcharts}
+                options={chartOptions}
+                containerProps={{ style: { width: "100%", height: "100%" } }}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                Rendering the histogram…
+              </div>
+            )
           ) : (
             <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-              Rendering the histogram…
+              No bins were returned for this window.
             </div>
-          )
-        ) : (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border/70 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
-            No bins were returned for this window.
+          )}
+        </div>
+
+        {/* Drilldown panel: hover card or pinned demographics */}
+        {showPanel && (
+          <div
+            className="mt-4 lg:mt-0"
+            onMouseEnter={() => cancelHide()}
+            onMouseLeave={() => scheduleHide()}
+          >
+            {pinnedUuid ? (
+              <PinnedDemographicsPanel
+                demographics={demographics}
+                loading={demographicsLoading}
+                error={demographicsError}
+                onClose={() => {
+                  setPinnedUuid(null);
+                  setDemographics(null);
+                }}
+              />
+            ) : hoveredBin ? (
+              <BinHoverCard
+                binLabel={hoveredBin.binLabel}
+                sessions={hoveredBin.participantSessions}
+                onSelectParticipant={(uuid) => {
+                  cancelHide();
+                  setHoveredBinIndex(null);
+                  setPinnedUuid(uuid);
+                }}
+              />
+            ) : null}
           </div>
         )}
       </div>
 
       <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
         {thresholdOverlay.available
-          ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. ${thresholdOverlay.note}`
+          ? `Extreme-day cutoffs for this window are shown above and on the chart. Cold-group days fall below the cold cutoff line, and hot-group days rise above the hot cutoff line. Hover or tap a bar to see participant sessions for that bin; click a row to pin participant details. ${thresholdOverlay.note}`
           : thresholdOverlay.note}
       </p>
     </div>

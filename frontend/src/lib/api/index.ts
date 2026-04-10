@@ -257,10 +257,18 @@ export interface AnalyticsModelSummaryResponse {
   effects: AnalyticsEffectCardResponse[];
 }
 
+export interface AnalyticsTemperatureSummaryParticipantSessionResponse {
+  participant_uuid: string;
+  participant_number: number;
+  session_id: string;
+  date_local: string;
+}
+
 export interface AnalyticsTemperatureSummaryFrequencyBinResponse {
   bin_start_c: number;
   bin_end_c: number;
   day_count: number;
+  participant_sessions?: AnalyticsTemperatureSummaryParticipantSessionResponse[];
 }
 
 export interface AnalyticsTemperatureSummaryDayResponse {

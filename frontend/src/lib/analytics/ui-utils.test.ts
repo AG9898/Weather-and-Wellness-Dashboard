@@ -418,8 +418,8 @@ describe("temperature summary helpers", () => {
   it("builds histogram points and threshold overlay copy", () => {
     const points = buildTemperatureHistogramPoints(summary.windows[0]);
     expect(points).toEqual([
-      { x: 7.5, y: 1, binLabel: "7 to 8°C" },
-      { x: 8.5, y: 3, binLabel: "8 to 9°C" },
+      { x: 7.5, y: 1, binLabel: "7 to 8°C", participantSessions: [] },
+      { x: 8.5, y: 3, binLabel: "8 to 9°C", participantSessions: [] },
     ]);
 
     const overlay = getTemperatureSummaryThresholdOverlay(summary.windows[0]);
@@ -453,6 +453,38 @@ describe("temperature summary helpers", () => {
       coldThresholdTemperatureC: 5.75,
       hotThresholdTemperatureC: 11.75,
     });
+  });
+
+  it("populates participantSessions from bin payload and defaults to [] when absent", () => {
+    const windowWithSessions: DashboardAnalyticsResponse["temperature_summary"]["windows"][0] = {
+      ...summary.windows[0],
+      frequency_bins: [
+        {
+          bin_start_c: 7,
+          bin_end_c: 8,
+          day_count: 1,
+          participant_sessions: [
+            {
+              participant_uuid: "uuid-001",
+              participant_number: 1,
+              session_id: "sess-001",
+              date_local: "2026-03-01",
+            },
+          ],
+        },
+        { bin_start_c: 8, bin_end_c: 9, day_count: 3 },
+      ],
+    };
+
+    const points = buildTemperatureHistogramPoints(windowWithSessions);
+    expect(points[0].participantSessions).toHaveLength(1);
+    expect(points[0].participantSessions[0]).toEqual({
+      participant_uuid: "uuid-001",
+      participant_number: 1,
+      session_id: "sess-001",
+      date_local: "2026-03-01",
+    });
+    expect(points[1].participantSessions).toEqual([]);
   });
 
   it("treats empty temperature-summary payloads as not ready", () => {

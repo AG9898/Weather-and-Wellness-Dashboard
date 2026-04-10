@@ -7,6 +7,7 @@
 
 import type {
   AnalyticsEffectCardResponse,
+  AnalyticsTemperatureSummaryParticipantSessionResponse,
   AnalyticsTemperatureSummaryResponse,
   AnalyticsTemperatureSummaryWindowKey,
   AnalyticsTemperatureSummaryWindowResponse,
@@ -156,6 +157,7 @@ export interface TemperatureHistogramPoint {
   x: number;
   y: number;
   binLabel: string;
+  participantSessions: AnalyticsTemperatureSummaryParticipantSessionResponse[];
 }
 
 export function buildTemperatureHistogramPoints(
@@ -165,6 +167,7 @@ export function buildTemperatureHistogramPoints(
     x: bin.bin_start_c + 0.5,
     y: bin.day_count,
     binLabel: formatTemperatureBinLabel(bin.bin_start_c, bin.bin_end_c),
+    participantSessions: bin.participant_sessions ?? [],
   }));
 }
 
