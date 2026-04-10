@@ -627,3 +627,213 @@ class ReconcileWorkbookTests(IsolatedAsyncioTestCase):
         self.assertIn(142, result.deleted_pnums)
         self.assertNotIn(142, result.protected_pnums)
         self.assertEqual(result.participants_deleted, 1)
+
+
+# ── Cross-check tests ───────────────────────────────────────────────────────────
+
+import io  # noqa: E402
+import unittest  # noqa: E402
+from contextlib import redirect_stdout  # noqa: E402
+
+from app.scripts.legacy_import import _sample_z_scores, run_cross_check  # noqa: E402
+
+
+def _make_cross_check_result(
+    *,
+    participant_numbers: list[int],
+    dates: list[date],
+    anxiety_means: list[float | None],
+    anxiety_z_wb: list[float | None],
+) -> ParseResult:
+    """Build a minimal ParseResult suitable for cross-check tests."""
+    rows = []
+    for i, (pnum, d, anx, z_wb) in enumerate(
+        zip(participant_numbers, dates, anxiety_means, anxiety_z_wb)
+    ):
+        suppl: dict = {}
+        if z_wb is not None:
+            suppl["anxiety_z"] = z_wb
+        rows.append(
+            ParsedRow(
+                row_num=i + 2,
+                participant_number=pnum,
+                date_local=d,
+                age_band=None,
+                gender=None,
+                origin=None,
+                origin_other_text=None,
+                commute_method=None,
+                commute_method_other_text=None,
+                time_outside=None,
+                daylight_exposure_minutes=None,
+                precipitation_mm=None,
+                temperature_c=None,
+                anxiety_mean=anx,
+                loneliness_mean=None,
+                depression_mean=None,
+                digit_span_legacy_score=None,
+                self_report=None,
+                supplemental_attributes_json=suppl,
+                source_row_json={"participant ID": pnum},
+            )
+        )
+    return ParseResult(
+        file_type="xlsx",
+        rows=rows,
+        errors=[],
+        warnings=[],
+        rows_attempted=len(rows),
+    )
+
+
+class SampleZScoreTests(unittest.TestCase):
+    def test_two_equal_values_return_zero(self) -> None:
+        result = _sample_z_scores([5.0, 5.0])
+        self.assertEqual(result, [0.0, 0.0])
+
+    def test_single_value_returns_zero(self) -> None:
+        result = _sample_z_scores([3.14])
+        self.assertEqual(result, [0.0])
+
+    def test_known_values(self) -> None:
+        # [1, 2, 3]: mean=2, std=1 (sample), z=[-1, 0, 1]
+        z = _sample_z_scores([1.0, 2.0, 3.0])
+        self.assertAlmostEqual(z[0], -1.0, places=10)
+        self.assertAlmostEqual(z[1], 0.0, places=10)
+        self.assertAlmostEqual(z[2], 1.0, places=10)
+
+    def test_returns_float_list_of_same_length(self) -> None:
+        vals = [10.0, 20.0, 30.0, 40.0]
+        result = _sample_z_scores(vals)
+        self.assertEqual(len(result), len(vals))
+
+    def test_empty_list_returns_empty(self) -> None:
+        result = _sample_z_scores([])
+        self.assertEqual(result, [])
+
+
+class CrossCheckReportTests(unittest.TestCase):
+    def _capture_cross_check(
+        self,
+        primary: ParseResult,
+        reference: ParseResult | None = None,
+        *,
+        primary_name: str = "primary.xlsx",
+        reference_name: str | None = None,
+    ) -> tuple[int, str]:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = run_cross_check(
+                primary,
+                reference,
+                primary_name=primary_name,
+                reference_name=reference_name,
+            )
+        return code, buf.getvalue()
+
+    def test_perfect_z_parity_returns_0(self) -> None:
+        """When workbook z-scores exactly match recomputed z-scores, exit code is 0."""
+        # [1, 2, 3]: sample z = [-1, 0, 1]
+        result = _make_cross_check_result(
+            participant_numbers=[1, 2, 3],
+            dates=[date(2026, 1, 1), date(2026, 1, 2), date(2026, 1, 3)],
+            anxiety_means=[1.0, 2.0, 3.0],
+            anxiety_z_wb=[-1.0, 0.0, 1.0],
+        )
+        code, output = self._capture_cross_check(result)
+        self.assertEqual(code, 0)
+        self.assertIn("OK", output)
+        self.assertIn("PASS", output)
+
+    def test_z_mismatch_returns_1(self) -> None:
+        """When workbook z-scores diverge from recomputed z-scores, exit code is 1."""
+        result = _make_cross_check_result(
+            participant_numbers=[1, 2, 3],
+            dates=[date(2026, 1, 1), date(2026, 1, 2), date(2026, 1, 3)],
+            anxiety_means=[1.0, 2.0, 3.0],
+            anxiety_z_wb=[99.0, 0.0, 1.0],  # first value is wrong
+        )
+        code, output = self._capture_cross_check(result)
+        self.assertEqual(code, 1)
+        self.assertIn("MISMATCH", output)
+
+    def test_missing_workbook_z_does_not_fail(self) -> None:
+        """Rows with no workbook z column are counted as missing_wb, not a failure."""
+        result = _make_cross_check_result(
+            participant_numbers=[1, 2, 3],
+            dates=[date(2026, 1, 1), date(2026, 1, 2), date(2026, 1, 3)],
+            anxiety_means=[1.0, 2.0, 3.0],
+            anxiety_z_wb=[None, None, None],  # z col absent from workbook
+        )
+        code, output = self._capture_cross_check(result)
+        self.assertEqual(code, 0)
+        self.assertNotIn("MISMATCH", output)
+
+    def test_key_overlap_reports_only_primary_keys(self) -> None:
+        """Primary-only keys are reported when a reference is provided."""
+        primary = _make_cross_check_result(
+            participant_numbers=[1, 2, 3],
+            dates=[date(2026, 1, 1)] * 3,
+            anxiety_means=[None, None, None],
+            anxiety_z_wb=[None, None, None],
+        )
+        reference = _make_cross_check_result(
+            participant_numbers=[1, 2],
+            dates=[date(2026, 1, 1)] * 2,
+            anxiety_means=[None, None],
+            anxiety_z_wb=[None, None],
+        )
+        code, output = self._capture_cross_check(
+            primary,
+            reference,
+            primary_name="primary.xlsx",
+            reference_name="reference.xlsx",
+        )
+        self.assertIn("Only in primary:   1", output)
+        self.assertIn("Only in reference: 0", output)
+        self.assertIn("In both:           2", output)
+
+    def test_key_overlap_reports_only_reference_keys(self) -> None:
+        """Reference-only keys are reported when reference has more rows."""
+        primary = _make_cross_check_result(
+            participant_numbers=[1],
+            dates=[date(2026, 1, 1)],
+            anxiety_means=[None],
+            anxiety_z_wb=[None],
+        )
+        reference = _make_cross_check_result(
+            participant_numbers=[1, 2],
+            dates=[date(2026, 1, 1)] * 2,
+            anxiety_means=[None, None],
+            anxiety_z_wb=[None, None],
+        )
+        code, output = self._capture_cross_check(
+            primary,
+            reference,
+            primary_name="primary.xlsx",
+            reference_name="reference.xlsx",
+        )
+        self.assertIn("Only in reference: 1", output)
+
+    def test_weather_z_informational_note_always_present(self) -> None:
+        """The weather z-score informational note appears in every report."""
+        result = _make_cross_check_result(
+            participant_numbers=[1],
+            dates=[date(2026, 1, 1)],
+            anxiety_means=[None],
+            anxiety_z_wb=[None],
+        )
+        _, output = self._capture_cross_check(result)
+        self.assertIn("Weather z-scores (informational)", output)
+        self.assertIn("NOT expected to match", output)
+
+    def test_no_reference_skips_key_overlap_section(self) -> None:
+        """Without a reference file, the key overlap section is not printed."""
+        result = _make_cross_check_result(
+            participant_numbers=[1],
+            dates=[date(2026, 1, 1)],
+            anxiety_means=[None],
+            anxiety_z_wb=[None],
+        )
+        _, output = self._capture_cross_check(result)
+        self.assertNotIn("Key overlap", output)
