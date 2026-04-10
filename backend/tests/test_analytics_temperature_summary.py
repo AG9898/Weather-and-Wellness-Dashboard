@@ -10,13 +10,18 @@ from app.analytics.dataset import AnalyticsDatasetBuildResult, AnalyticsDatasetR
 from app.analytics.temperature_summary import build_temperature_summary
 
 
+_GLOBAL_PARTICIPANT_COUNTER = 0
+
+
 def _build_dataset(
     entries: list[tuple[date, float, int]],
 ) -> AnalyticsDatasetBuildResult:
+    global _GLOBAL_PARTICIPANT_COUNTER
     rows: list[AnalyticsDatasetRow] = []
     for day_index, (date_local, temperature_c, participant_count) in enumerate(entries):
         for participant_index in range(participant_count):
             seed = f"{date_local.isoformat()}-{participant_index}"
+            _GLOBAL_PARTICIPANT_COUNTER += 1
             rows.append(
                 AnalyticsDatasetRow(
                     session_id=uuid.uuid5(uuid.NAMESPACE_URL, f"session-{seed}"),
@@ -32,6 +37,7 @@ def _build_dataset(
                     self_report=1.0,
                     digit_span_score=1,
                     imported_fields=(),
+                    participant_number=_GLOBAL_PARTICIPANT_COUNTER,
                 )
             )
 
@@ -221,3 +227,212 @@ def test_temperature_summary_nulls_thresholds_for_zero_variance_window() -> None
     assert overall.hot_threshold_temperature_c is None
     assert overall.threshold_method == "window_day_zscore_v1"
     assert overall.threshold_z_cutoff == 2
+
+
+def test_frequency_bins_participant_sessions_assigned_to_correct_bin() -> None:
+    """Each bin's participant_sessions should list the session rows that fall into that bin."""
+    # Two days in the same 1°C bin (floor 10), one day in a different bin (floor 11)
+    p1_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "p1")
+    p2_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "p2")
+    p3_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "p3")
+    s1_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "s1")
+    s2_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "s2")
+    s3_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "s3")
+
+    rows = (
+        AnalyticsDatasetRow(
+            session_id=s1_uuid,
+            participant_uuid=p1_uuid,
+            date_local=date(2025, 1, 1),
+            date_bin=1,
+            temperature=10.3,
+            precipitation=0.0,
+            daylight_hours=8.0,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+            participant_number=101,
+        ),
+        AnalyticsDatasetRow(
+            session_id=s2_uuid,
+            participant_uuid=p2_uuid,
+            date_local=date(2025, 1, 2),
+            date_bin=2,
+            temperature=10.9,
+            precipitation=0.0,
+            daylight_hours=8.0,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+            participant_number=102,
+        ),
+        AnalyticsDatasetRow(
+            session_id=s3_uuid,
+            participant_uuid=p3_uuid,
+            date_local=date(2025, 1, 3),
+            date_bin=3,
+            temperature=11.5,
+            precipitation=0.0,
+            daylight_hours=8.0,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+            participant_number=103,
+        ),
+    )
+    dataset = AnalyticsDatasetBuildResult(
+        date_from=date(2025, 1, 1),
+        date_to=date(2025, 1, 3),
+        generated_at=datetime(2025, 8, 2, 12, 0, tzinfo=timezone.utc),
+        rows=rows,
+        excluded_rows=(),
+    )
+
+    summary = build_temperature_summary(dataset)
+    overall = _window_by_key(summary, "overall")
+
+    # Two bins: [10, 11) and [11, 12)
+    assert len(overall.frequency_bins) == 2
+    bin_10 = next(b for b in overall.frequency_bins if b.bin_start_c == 10.0)
+    bin_11 = next(b for b in overall.frequency_bins if b.bin_start_c == 11.0)
+
+    assert bin_10.day_count == 2
+    assert len(bin_10.participant_sessions) == 2
+    session_ids_in_10 = {ps.session_id for ps in bin_10.participant_sessions}
+    assert s1_uuid in session_ids_in_10
+    assert s2_uuid in session_ids_in_10
+
+    participant_numbers_in_10 = {ps.participant_number for ps in bin_10.participant_sessions}
+    assert participant_numbers_in_10 == {101, 102}
+
+    assert bin_11.day_count == 1
+    assert len(bin_11.participant_sessions) == 1
+    assert bin_11.participant_sessions[0].session_id == s3_uuid
+    assert bin_11.participant_sessions[0].participant_number == 103
+    assert bin_11.participant_sessions[0].participant_uuid == p3_uuid
+    assert bin_11.participant_sessions[0].date_local == date(2025, 1, 3)
+
+
+def test_frequency_bins_participant_sessions_respect_day_count_semantics() -> None:
+    """Bin day_count remains day-level; participant_sessions list can be longer."""
+    # One day with 3 participants: day_count=1, but 3 participant_sessions entries
+    p_uuids = [uuid.uuid5(uuid.NAMESPACE_URL, f"p{i}") for i in range(3)]
+    s_uuids = [uuid.uuid5(uuid.NAMESPACE_URL, f"s{i}") for i in range(3)]
+
+    rows = tuple(
+        AnalyticsDatasetRow(
+            session_id=s_uuids[i],
+            participant_uuid=p_uuids[i],
+            date_local=date(2025, 6, 15),
+            date_bin=1,
+            temperature=22.7,
+            precipitation=0.0,
+            daylight_hours=15.0,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+            participant_number=200 + i,
+        )
+        for i in range(3)
+    )
+    dataset = AnalyticsDatasetBuildResult(
+        date_from=date(2025, 6, 15),
+        date_to=date(2025, 6, 15),
+        generated_at=datetime(2025, 8, 2, 12, 0, tzinfo=timezone.utc),
+        rows=rows,
+        excluded_rows=(),
+    )
+
+    summary = build_temperature_summary(dataset)
+    overall = _window_by_key(summary, "overall")
+
+    assert len(overall.frequency_bins) == 1
+    the_bin = overall.frequency_bins[0]
+    assert the_bin.bin_start_c == 22.0
+    assert the_bin.bin_end_c == 23.0
+    # Day count is still 1 (one unique study day)
+    assert the_bin.day_count == 1
+    # But participant_sessions has 3 entries
+    assert len(the_bin.participant_sessions) == 3
+    nums = {ps.participant_number for ps in the_bin.participant_sessions}
+    assert nums == {200, 201, 202}
+
+
+def test_frequency_bins_participant_sessions_respect_seasonal_window_split() -> None:
+    """Seasonal windows only include sessions from days in that window."""
+    p1_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "fw-p1")
+    s1_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "fw-s1")
+    p2_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "ss-p2")
+    s2_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "ss-s2")
+
+    rows = (
+        AnalyticsDatasetRow(
+            session_id=s1_uuid,
+            participant_uuid=p1_uuid,
+            date_local=date(2025, 1, 15),  # fall/winter
+            date_bin=1,
+            temperature=5.0,
+            precipitation=0.0,
+            daylight_hours=8.0,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+            participant_number=301,
+        ),
+        AnalyticsDatasetRow(
+            session_id=s2_uuid,
+            participant_uuid=p2_uuid,
+            date_local=date(2025, 6, 15),  # spring/summer
+            date_bin=2,
+            temperature=20.0,
+            precipitation=0.0,
+            daylight_hours=15.0,
+            anxiety=1.0,
+            depression=1.0,
+            loneliness=1.0,
+            self_report=1.0,
+            digit_span_score=1,
+            imported_fields=(),
+            participant_number=302,
+        ),
+    )
+    dataset = AnalyticsDatasetBuildResult(
+        date_from=date(2025, 1, 15),
+        date_to=date(2025, 6, 15),
+        generated_at=datetime(2025, 8, 2, 12, 0, tzinfo=timezone.utc),
+        rows=rows,
+        excluded_rows=(),
+    )
+
+    summary = build_temperature_summary(dataset)
+    fall_winter = _window_by_key(summary, "fall_winter")
+    spring_summer = _window_by_key(summary, "spring_summer")
+
+    assert len(fall_winter.frequency_bins) == 1
+    fw_bin = fall_winter.frequency_bins[0]
+    assert fw_bin.bin_start_c == 5.0
+    assert len(fw_bin.participant_sessions) == 1
+    assert fw_bin.participant_sessions[0].session_id == s1_uuid
+    assert fw_bin.participant_sessions[0].participant_number == 301
+
+    assert len(spring_summer.frequency_bins) == 1
+    ss_bin = spring_summer.frequency_bins[0]
+    assert ss_bin.bin_start_c == 20.0
+    assert len(ss_bin.participant_sessions) == 1
+    assert ss_bin.participant_sessions[0].session_id == s2_uuid
+    assert ss_bin.participant_sessions[0].participant_number == 302

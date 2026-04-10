@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import date, datetime
 from typing import Literal, TypeAlias
 
@@ -98,12 +99,24 @@ class AnalyticsModelSummaryResponse(BaseModel):
     effects: list[AnalyticsEffectCardResponse] = Field(default_factory=list)
 
 
+class AnalyticsTemperatureSummaryParticipantSessionResponse(BaseModel):
+    """Participant-session entry for temperature bin drilldown metadata."""
+
+    participant_uuid: uuid.UUID
+    participant_number: int
+    session_id: uuid.UUID
+    date_local: date
+
+
 class AnalyticsTemperatureSummaryFrequencyBinResponse(BaseModel):
     """Histogram bucket for day-level temperature frequency counts."""
 
     bin_start_c: float
     bin_end_c: float
     day_count: int
+    participant_sessions: list[AnalyticsTemperatureSummaryParticipantSessionResponse] = Field(
+        default_factory=list
+    )
 
 
 class AnalyticsTemperatureSummaryDayResponse(BaseModel):
@@ -233,6 +246,7 @@ __all__ = [
     "AnalyticsTemperatureSummaryDayResponse",
     "AnalyticsTemperatureSummaryFrequencyBinResponse",
     "AnalyticsTemperatureSummaryGroupResponse",
+    "AnalyticsTemperatureSummaryParticipantSessionResponse",
     "AnalyticsTemperatureSummaryResponse",
     "AnalyticsTemperatureSummaryWindowKey",
     "AnalyticsTemperatureSummaryThresholdMethod",

@@ -16,6 +16,7 @@ from app.schemas.analytics import (
     AnalyticsTemperatureSummaryDayResponse,
     AnalyticsTemperatureSummaryFrequencyBinResponse,
     AnalyticsTemperatureSummaryGroupResponse,
+    AnalyticsTemperatureSummaryParticipantSessionResponse,
     AnalyticsTemperatureSummaryResponse,
     AnalyticsTemperatureSummaryWindowResponse,
 )
@@ -41,16 +42,19 @@ def build_temperature_summary(
 ) -> AnalyticsTemperatureSummaryResponse:
     """Build the descriptive temperature summary for the active analytics window."""
 
-    day_aggregates = _aggregate_temperature_days(dataset_result.rows)
+    rows = dataset_result.rows
+    day_aggregates = _aggregate_temperature_days(rows)
     windows = [
-        _build_temperature_window("overall", day_aggregates),
+        _build_temperature_window("overall", day_aggregates, rows),
         _build_temperature_window(
             "fall_winter",
             tuple(day for day in day_aggregates if _is_fall_winter(day.date_local)),
+            tuple(row for row in rows if _is_fall_winter(row.date_local)),
         ),
         _build_temperature_window(
             "spring_summer",
             tuple(day for day in day_aggregates if _is_spring_summer(day.date_local)),
+            tuple(row for row in rows if _is_spring_summer(row.date_local)),
         ),
     ]
     return AnalyticsTemperatureSummaryResponse(windows=windows)
@@ -92,6 +96,7 @@ def _aggregate_temperature_days(
 def _build_temperature_window(
     window_key: str,
     day_aggregates: tuple[_TemperatureDayAggregate, ...],
+    rows: tuple[AnalyticsDatasetRow, ...],
 ) -> AnalyticsTemperatureSummaryWindowResponse:
     if not day_aggregates:
         return AnalyticsTemperatureSummaryWindowResponse(window_key=window_key)
@@ -133,7 +138,7 @@ def _build_temperature_window(
         hot_threshold_temperature_c=hot_threshold_temperature_c,
         threshold_method=ANALYTICS_TEMPERATURE_THRESHOLD_METHOD,
         threshold_z_cutoff=ANALYTICS_TEMPERATURE_THRESHOLD_Z_CUTOFF,
-        frequency_bins=_build_frequency_bins(day_aggregates),
+        frequency_bins=_build_frequency_bins(day_aggregates, rows),
         cold_group=_build_temperature_group(
             [day for day in day_responses if day.temperature_z < -2]
         ),
@@ -145,18 +150,45 @@ def _build_temperature_window(
 
 def _build_frequency_bins(
     day_aggregates: tuple[_TemperatureDayAggregate, ...],
+    rows: tuple[AnalyticsDatasetRow, ...],
 ) -> list[AnalyticsTemperatureSummaryFrequencyBinResponse]:
     min_bin_start = math.floor(min(day.temperature_c for day in day_aggregates))
     max_bin_start = math.floor(max(day.temperature_c for day in day_aggregates))
+
+    # day_count per bin (unique-day semantics)
     bin_counts = {bin_start: 0 for bin_start in range(min_bin_start, max_bin_start + 1)}
     for day in day_aggregates:
         bin_counts[math.floor(day.temperature_c)] += 1
+
+    # day temperature lookup for bin assignment of session rows
+    day_temperature: dict[date, float] = {day.date_local: day.temperature_c for day in day_aggregates}
+
+    # participant-session entries per bin
+    bin_sessions: dict[int, list[AnalyticsTemperatureSummaryParticipantSessionResponse]] = {
+        bin_start: [] for bin_start in range(min_bin_start, max_bin_start + 1)
+    }
+    for row in rows:
+        temp = day_temperature.get(row.date_local)
+        if temp is None:
+            continue
+        bin_key = math.floor(temp)
+        if bin_key not in bin_sessions:
+            continue
+        bin_sessions[bin_key].append(
+            AnalyticsTemperatureSummaryParticipantSessionResponse(
+                participant_uuid=row.participant_uuid,
+                participant_number=row.participant_number,
+                session_id=row.session_id,
+                date_local=row.date_local,
+            )
+        )
 
     return [
         AnalyticsTemperatureSummaryFrequencyBinResponse(
             bin_start_c=float(bin_start),
             bin_end_c=float(bin_start + 1),
             day_count=bin_counts[bin_start],
+            participant_sessions=bin_sessions[bin_start],
         )
         for bin_start in range(min_bin_start, max_bin_start + 1)
     ]

@@ -825,7 +825,7 @@
       "id": "T135",
       "group_id": "TEMPERATURE_SUMMARY_DRILLDOWN",
       "title": "Temperature summary drilldown - Backend bin participant-session contract",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Extend histogram bins with participant-session metadata so the temperature summary chart can support hover drilldown without changing its day-level counting semantics.",

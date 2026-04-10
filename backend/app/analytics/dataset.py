@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import STUDY_TIMEZONE
 from app.models.digitspan import DigitSpanRun
 from app.models.imported_session_measures import ImportedSessionMeasures
+from app.models.participants import Participant
 from app.models.sessions import Session
 from app.models.surveys import (
     SurveyCESD10,
@@ -54,6 +55,7 @@ class AnalyticsDatasetRow:
     self_report: float | None
     digit_span_score: int | None
     imported_fields: tuple[AnalyticsFieldName, ...] = ()
+    participant_number: int = 0
 
 
 @dataclass(frozen=True)
@@ -129,6 +131,7 @@ class _PendingAnalyticsDatasetRow:
     self_report: float | None
     digit_span_score: int | None
     imported_fields: tuple[AnalyticsFieldName, ...]
+    participant_number: int
 
 
 def _local_date_to_utc_range(date_from: date, date_to: date) -> tuple[datetime, datetime]:
@@ -225,6 +228,7 @@ def _build_dataset_source_query(
             Session.session_id.label("session_id"),
             Session.participant_uuid.label("participant_uuid"),
             StudyDay.date_local.label("date_local"),
+            Participant.participant_number.label("participant_number"),
             WeatherDaily.current_temp_c.label("weather_temperature"),
             WeatherDaily.current_precip_today_mm.label("weather_precipitation"),
             WeatherDaily.sunshine_duration_hours.label("weather_daylight_hours"),
@@ -262,6 +266,10 @@ def _build_dataset_source_query(
         .outerjoin(
             ImportedSessionMeasures,
             ImportedSessionMeasures.session_id == Session.session_id,
+        )
+        .outerjoin(
+            Participant,
+            Participant.participant_uuid == Session.participant_uuid,
         )
         .order_by(
             StudyDay.date_local.asc(),
@@ -381,6 +389,8 @@ def _build_pending_row(raw_row: object) -> _PendingAnalyticsDatasetRow | Analyti
     if self_report is None and digit_span_score is None:
         reasons.append("missing_modeled_outcome")
 
+    participant_number = _to_int(getattr(raw_row, "participant_number", None)) or 0
+
     unique_reasons = tuple(sorted(set(reasons)))
     if unique_reasons:
         return AnalyticsExcludedRow(
@@ -403,6 +413,7 @@ def _build_pending_row(raw_row: object) -> _PendingAnalyticsDatasetRow | Analyti
         self_report=self_report,
         digit_span_score=digit_span_score,
         imported_fields=tuple(sorted(set(imported_fields))),
+        participant_number=participant_number,
     )
 
 
@@ -452,6 +463,7 @@ async def build_canonical_analysis_dataset(
             self_report=row.self_report,
             digit_span_score=row.digit_span_score,
             imported_fields=row.imported_fields,
+            participant_number=row.participant_number,
         )
         for row in pending_rows
     )
