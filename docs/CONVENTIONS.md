@@ -62,6 +62,8 @@
 - `Depends(get_current_lab_member)` on all RA-only endpoints
 - Participant-facing endpoints (submit digit span, submit survey): validate `session_id` exists and `status == "active"` before accepting data — return 400 or 409 otherwise
 - All Supabase Auth SDK calls isolated in `backend/app/auth.py`
+- **Frontend:** RA routes are gated at the edge by `src/middleware.ts` (primary, server-side) and by the `(ra)` layout client guard (secondary, handles mid-session state). Do not rely on the layout guard alone — the middleware is required for real security.
+- **Supabase browser client:** use `createBrowserClient` from `@supabase/ssr` (not `createClient` from `@supabase/supabase-js`) so the session is cookie-persisted and readable by the middleware.
 
 ### DB access
 - Alembic autogenerate from SQLAlchemy models; **always review** generated migration before committing

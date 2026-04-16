@@ -37,7 +37,7 @@ Participant.
 - **No bare fetch.** All frontend API calls go through typed wrappers in `src/lib/api/`. Never call `fetch` directly from a component.
 - **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.
 - **Active task board.** Use `docs/workboard.json` as the canonical active task queue. `docs/progress/PROGRESS_LOG.md` is archive history only.
-- **Repo-local task skills.** Use the repo-local task workflow skills under `.codex/skills/` (`query-workboard`, `start-task`, `ralphloop`) when working from the board or loop. `ralph_loop.sh` is CLI fallback only.
+- **Repo-local task skills.** Use the repo-local workflow skills under `.codex/skills/` (`project-plan`, `query-workboard`, `start-task`, `ralphloop`) for planning, board execution, or delegated loops. `ralph_loop.sh` is CLI fallback only.
 - **Workboard schema.** Active tasks in this repo use the lean `tasks[]` schema in `docs/workboard.json`, with `docs`, `files`, `commands`, and `acceptance_criteria` fields. Do not expect older `read_docs` or `updates_docs` fields from other repos.
 
 ---

@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function LoginDialogForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,7 +51,8 @@ export default function LoginDialogForm() {
       return;
     }
 
-    router.replace("/dashboard");
+    const next = searchParams.get("next") ?? "/dashboard";
+    router.replace(next);
   };
 
   return (

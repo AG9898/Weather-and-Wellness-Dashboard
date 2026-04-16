@@ -222,6 +222,11 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 - When using the Vercel cache Route Handler for RA dashboard reads, the Route Handler must also validate the Supabase JWT before returning cached data (no auth bypass via cache).
 - Participant endpoints remain unauthenticated and are validated by `session_id` + status.
 - **Role + lab scoping:** `role` (`admin` | `ra`) and `lab_name` are stored in Supabase `app_metadata` (admin-only writable). FastAPI extracts both from the JWT; `get_current_admin` enforces `role == 'admin'` on admin-only routes. The frontend reads these from the session and gates UI links/pages accordingly (see RESOLVED-15 in `docs/DECISIONS.md`).
+- **Frontend auth gate (two layers):**
+  1. `src/middleware.ts` — Next.js edge middleware using `@supabase/ssr` `createServerClient`. Runs before any page rendering; redirects unauthenticated requests to `/login?next=<path>` for all RA routes (`/dashboard`, `/new-session`, `/import-export`, `/misokinesia`). This is the primary server-side gate.
+  2. `src/app/(ra)/layout.tsx` — client-side secondary guard. Handles mid-session sign-outs and populates `RAUserContext` (`role`, `lab_name`) from `app_metadata` after hydration.
+- **Cookie-based session:** The browser Supabase client uses `createBrowserClient` from `@supabase/ssr` (`src/lib/supabase.ts`), which persists the session in cookies in addition to `localStorage`. This is required for the edge middleware to read the session server-side.
+- **Post-login redirect:** After successful login, `LoginDialogForm` reads the `?next=` search param and redirects there, falling back to `/dashboard`.
 - **Inviting users:** use `backend/admin_cli/invite_user.py` to invite new lab members and assign their role and lab. Requires `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SITE_URL` in the root `.env`. Run from the repo root:
   ```
   python backend/admin_cli/invite_user.py --email user@example.com --role ra --lab-name ww

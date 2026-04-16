@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { animate, stagger } from "animejs";
 
@@ -167,7 +167,9 @@ export default function LoginPage() {
         <DialogContent
           className="max-w-[calc(100%-2rem)] border-white/12 bg-[linear-gradient(180deg,rgba(22,28,34,0.96),rgba(16,20,25,0.92))] p-0 text-white shadow-[0_30px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl sm:max-w-md"
         >
-          <LoginDialogForm />
+          <Suspense>
+            <LoginDialogForm />
+          </Suspense>
         </DialogContent>
       </Dialog>
     </div>

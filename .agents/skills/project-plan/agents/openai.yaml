@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Plan"
+  short_description: "Plan docs-first changes and workboard tasks"
+  default_prompt: "Use $project-plan to assess this change, ask at least one clarification question, draft the documentation proposal, and then break accepted direction into workboard-ready tasks."
