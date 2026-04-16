@@ -952,6 +952,227 @@
         "cd frontend && npm run build"
       ],
       "estimate": "M"
+    },
+    {
+      "id": "T138",
+      "group_id": "TRIAL_RUN_MODE",
+      "title": "Trial run mode - Shared frontend mode plumbing and participant watermark",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Introduce a shared frontend trial-mode signal and a reusable centered top-screen Trial Run watermark for participant flows.",
+      "description": "Add a frontend-only trial-mode plumbing layer that can be toggled from RA launch pages and read consistently by participant flow pages. The shared layer should define fake-id generation helpers, mode propagation strategy, and a reusable UI primitive that renders a centered top-screen 'Trial Run' watermark whenever trial mode is active. Keep this task strictly to shared mode/watermark infrastructure and avoid wiring specific WW or Misokinesia submit behavior here.",
+      "acceptance_criteria": [
+        "A shared trial-mode mechanism exists that can be set on RA launch pages and consumed by participant flow pages",
+        "Frontend helpers generate clearly fake local-only ids for trial mode without colliding with backend-issued ids",
+        "A reusable participant overlay/watermark component renders centered at the top of the screen with the text 'Trial Run'",
+        "The shared trial-mode plumbing is documented in code comments/types well enough for WW and Misokinesia flows to consume without duplicate state logic"
+      ],
+      "depends_on": [
+        "T142"
+      ],
+      "blocked_by": [
+        "T142",
+        "MANUAL_TRIAL_RUN_MOCK_APPROVAL"
+      ],
+      "files": [
+        "frontend/src/lib/components/TrialRunWatermark.tsx",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/app/session/[session_id]/layout.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "docs": [
+        "docs/CONVENTIONS.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Use frontend-local state only; do not add backend endpoints or schema changes.",
+        "Do not start this task until T142 Storybook mocks are reviewed and approved.",
+        "Preserve existing production flow behavior while adding trial-mode support."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T139",
+      "group_id": "TRIAL_RUN_MODE",
+      "title": "Trial run mode - WW launch and survey plus digitspan local submit flow",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add a Run Test Trial option to the WW launch path and run the full survey plus digitspan participant flow with local-only submit progression.",
+      "description": "Update the `/new-session` flow so Step 2 offers both production start and Run Test Trial after consent is shown. In trial mode, navigate into the existing WW participant pages with fake session identifiers, keep screen order unchanged, advance each survey via local simulated success, and complete Digit Span with local simulated submit plus completion transition. Ensure production mode still calls the typed API wrappers exactly as before.",
+      "acceptance_criteria": [
+        "The `/new-session` demographics step exposes a Run Test Trial action alongside the production start action",
+        "Trial mode keeps consent visible and runs the full WW participant flow end-to-end to completion",
+        "In trial mode, survey and digitspan submit handlers do not call backend endpoints",
+        "Run Test Trial launch controls match the approved Storybook mock",
+        "The Trial Run watermark is visible on WW participant trial-mode screens",
+        "Production WW mode remains unchanged and still posts to canonical FastAPI endpoints"
+      ],
+      "depends_on": [
+        "T138",
+        "T142"
+      ],
+      "blocked_by": [
+        "T138",
+        "T142"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/new-session/page.tsx",
+        "frontend/src/app/session/[session_id]/uls8/page.tsx",
+        "frontend/src/app/session/[session_id]/cesd10/page.tsx",
+        "frontend/src/app/session/[session_id]/gad7/page.tsx",
+        "frontend/src/app/session/[session_id]/cogfunc/page.tsx",
+        "frontend/src/app/session/[session_id]/digitspan/page.tsx",
+        "frontend/src/app/session/[session_id]/complete/page.tsx"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/tasks/DIGITSPAN.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "Do not skip the consent view in trial mode.",
+        "Trial-mode fake ids should be obvious non-production values for debugging."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T140",
+      "group_id": "TRIAL_RUN_MODE",
+      "title": "Trial run mode - Misokinesia launch and local questionnaire progression",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add a Run Test Trial option to Misokinesia launch and execute the participant state machine locally without backend calls.",
+      "description": "Extend the `/misokinesia` launch experience so RAs can choose Run Test Trial. In trial mode, construct a local fake manifest and ids, run intro to clip playback to questionnaire loop and end-of-task flow, and finalize at completion without calling backend start/response/end-of-task endpoints. Keep the current production Misokinesia launch and submit behavior unchanged.",
+      "acceptance_criteria": [
+        "The `/misokinesia` launch page includes a Run Test Trial option in addition to Start Misokinesia Session",
+        "Trial mode runs the full Misokinesia participant flow to completion using local fake manifest data",
+        "No Misokinesia backend endpoints are called in trial mode (`/misokinesia/start`, `/responses`, `/end-of-task`)",
+        "Run Test Trial launch controls match the approved Storybook mock",
+        "The Trial Run watermark is visible throughout Misokinesia participant trial-mode screens",
+        "Production Misokinesia mode remains unchanged and still uses canonical backend calls"
+      ],
+      "depends_on": [
+        "T138",
+        "T142"
+      ],
+      "blocked_by": [
+        "T138",
+        "T142"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/misokinesia/page.tsx",
+        "frontend/src/lib/components/MisokinesiaLaunchPage.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/MisokinesiaQuestionnaire.tsx",
+        "frontend/src/lib/components/MisokinesiaEndOfTaskForm.tsx"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "Use deterministic local test clips for trial mode to keep UX stable during rehearsal.",
+        "Do not alter seeded-stimulus backend behavior in this task."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T142",
+      "group_id": "TRIAL_RUN_MODE",
+      "title": "Trial run mode - Storybook launch-button mocks for WW and Misokinesia",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Draft Storybook mockups for the new Run Test Trial launch controls on both RA pages before wiring the real UI.",
+      "description": "Add or update Storybook page-replica stories so `/new-session` and `/misokinesia` each show the proposed launch-control layout with both production start and Run Test Trial actions. Keep this task mock-only: no route implementation changes to production pages. Publish the mock state variants needed for developer review, then stop for manual inspection.",
+      "acceptance_criteria": [
+        "Storybook contains a mock for WW `/new-session` launch controls showing both Start Session and Run Test Trial actions",
+        "Storybook contains a mock for Misokinesia launch controls showing both Start Misokinesia Session and Run Test Trial actions",
+        "Mocks include Replica plus Dark and Mobile review states for both pages",
+        "No production route behavior is changed as part of this task",
+        "Task output is ready for manual project-owner inspection before T139/T140 proceed"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/stories/pages/ra/NewSessionPage.stories.tsx",
+        "frontend/src/stories/pages/ra/NewSessionPageStorySupport.tsx",
+        "frontend/src/stories/pages/ra/MisokinesiaPage.stories.tsx",
+        "frontend/src/stories/pages/ra/MisokinesiaPageStorySupport.tsx"
+      ],
+      "docs": [
+        "docs/storybook.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Manual gate token for downstream implementation tasks: `MANUAL_TRIAL_RUN_MOCK_APPROVAL`.",
+        "After review approval, clear that token from `blocked_by` on T138."
+      ],
+      "commands": [
+        "cd frontend && npm run build-storybook"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T141",
+      "group_id": "TRIAL_RUN_MODE",
+      "title": "Trial run mode - Frontend regression coverage for no-backend rehearsal paths",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add focused frontend tests proving trial mode avoids API calls and still reaches completion across both WW and Misokinesia flows.",
+      "description": "Add or extend frontend test coverage for trial-mode branching logic and launch controls, including assertions that trial mode does not invoke typed API wrappers for participant submissions while production mode continues to do so. Include checks for Trial Run watermark visibility in trial-mode states and keep test scope to utility/state transitions and route-handler topology-friendly surfaces supported by the current Node test environment.",
+      "acceptance_criteria": [
+        "Frontend tests assert Run Test Trial launch controls exist for WW and Misokinesia launch paths",
+        "Trial-mode branch tests verify no API wrapper calls occur for survey, digitspan, or misokinesia submissions",
+        "Production-mode branch tests verify canonical API wrapper calls remain intact",
+        "Tests cover Trial Run watermark visibility for trial-mode participant screens",
+        "Frontend test suite and build pass after adding trial-mode coverage"
+      ],
+      "depends_on": [
+        "T139",
+        "T140"
+      ],
+      "blocked_by": [
+        "T139",
+        "T140"
+      ],
+      "files": [
+        "frontend/src/lib/trial-mode.test.ts",
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/app/api/ra/route-topology.test.ts",
+        "frontend/src/lib/server/route-handler-validation.test.ts"
+      ],
+      "docs": [
+        "docs/TESTING.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "notes": [
+        "Current frontend tests run in Node and do not render React components directly.",
+        "If component rendering tests are required, include the necessary test-environment update in the same task."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
     }
   ]
 }

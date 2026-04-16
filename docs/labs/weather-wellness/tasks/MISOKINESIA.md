@@ -28,6 +28,17 @@ The Misokinesia module presents a participant with 29 short video clips (each ap
 
 State machine: `intro → playing → questionnaire → (loop × 29) → end_of_task → complete`
 
+## Trial mode (Run Test Trial)
+
+Misokinesia also supports an RA-invoked local rehearsal mode:
+
+- Launch from `/misokinesia` via "Run Test Trial" (instead of "Start Misokinesia Session").
+- Frontend generates fake `misokinesia_participant_id` and `session_id` values plus a local clip manifest.
+- Per-clip questionnaire submits and end-of-task submit use local simulated success transitions.
+- No calls are made to `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, or `/misokinesia/participants/{id}/end-of-task`.
+- No rows are written to `participants`, `sessions`, `misokinesia_participants`, or `misokinesia_trial_responses`.
+- A centered top-screen `"Trial Run"` watermark is shown throughout the participant trial-mode flow.
+
 ## RA Flow
 
 Navigate to `/misokinesia` via the floating dock present on all RA pages. Click "Start Misokinesia Session". The backend creates the anonymous participant and session and returns the manifest. The app navigates to `/misokinesia/[id]` on the same device — no external URL or participant handoff.

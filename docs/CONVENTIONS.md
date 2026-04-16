@@ -100,6 +100,14 @@
 - Never call `fetch` directly from a component or page file
 - Wrapper functions handle headers (including auth tokens) and type the response
 
+### Trial run mode
+- Trial mode is an RA-invoked rehearsal path only; it is not a production data path.
+- Trial mode must preserve the participant UX order but run without backend dependency.
+- Trial mode must never write participant/session/result rows.
+- Trial mode should use clearly fake frontend-only ids and must not reuse real ids.
+- Keep trial mode logic explicit in the same typed flow handlers (for example, a `mode` branch), rather than duplicating near-identical page components.
+- Show a visible centered top-screen `"Trial Run"` watermark on participant pages while trial mode is active.
+
 ### Routing governance
 
 - `docs/API.md` is the canonical reference for **FastAPI endpoints**. `docs/ARCHITECTURE.md` is the canonical reference for **Next.js same-origin Route Handlers**. Do not mix these responsibilities in one doc section.

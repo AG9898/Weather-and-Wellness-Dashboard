@@ -26,6 +26,14 @@
 - **Participant endpoints:** No auth. Validated by `session_id` existence + `status == "active"`.
 - **Roles:** `admin` (full access) and `ra` (RA; dashboard access only). Lab membership is tracked via `lab_name` (e.g. `ww` for Weather-Wellness + Misokinesia). Default role when `app_metadata` is absent: `ra`.
 
+## Trial Run Mode (Frontend-only)
+
+- "Run Test Trial" is an RA-facing frontend rehearsal mode for WW and Misokinesia.
+- Trial mode is not a FastAPI API surface and has no backend contract.
+- In trial mode, frontend uses fake ids and local simulated submit success transitions.
+- Trial mode must not call `/sessions/start`, survey submit endpoints, `/digitspan/runs`, `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, or `/misokinesia/participants/{id}/end-of-task`.
+- Trial mode must not create or update database rows.
+
 ---
 
 ## Routing Surfaces
@@ -508,6 +516,7 @@
   - `start_path` is always `/session/<session_id>/uls8`. Consent is collected at `(ra)/new-session` before session creation; there is no `/consent` page within the session flow.
   - No consent record is stored in Supabase (UI-only gating).
   - Demographics are stored on `participants` only (never on `sessions`).
+  - Trial mode bypasses this endpoint entirely.
 
 ---
 
@@ -540,6 +549,7 @@
   }
   ```
 - **Notes:** Returns 400/409 if session is not in `"active"` status. Expects exactly 14 trials.
+  - Trial mode bypasses this endpoint and performs no server-side scoring/write.
 
 ---
 
@@ -580,6 +590,8 @@
 - **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r8": 1–5 each }`
 - **Response:** `{ "response_id": "uuid", "total_sum": integer, "mean_score": "decimal" }`
+
+> Trial mode note for surveys: all four survey submit endpoints are bypassed during "Run Test Trial"; routing advances via local simulated success only.
 
 ---
 
@@ -904,6 +916,7 @@
   - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
   - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
   - Unauthenticated requests return 401.
+  - Trial mode bypasses this endpoint and uses a frontend-local manifest with fake ids.
 
 ### POST /misokinesia/participants/{participant_id}/responses
 - **Auth:** None (participant-facing)
@@ -938,6 +951,7 @@
   - After the final response, `misokinesia_participants.completed_at` is set server-side automatically.
   - `is_complete: true` signals to the frontend to transition to the end-of-task state.
   - `session_id` is included so the frontend can call `PATCH /sessions/{session_id}/status` after the end-of-task step.
+  - Trial mode bypasses this endpoint and performs local-only progression.
 
 ---
 
@@ -971,6 +985,7 @@
   - Returns 404 if `participant_id` not found.
   - Returns 409 if `misokinesia_participants.completed_at` is null (not all per-clip responses submitted yet).
   - After success, frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'`.
+  - Trial mode bypasses this endpoint and performs no backend writes.
 
 ---
 

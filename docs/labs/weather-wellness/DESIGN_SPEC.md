@@ -11,11 +11,15 @@ Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation libra
 1. Login
 2. Click "Start New Entry" → navigates to `/new-session`
 3. **Step 1 (consent):** Participant reads the official consent PDF; clicks "I Consent" to proceed or "I Do Not Consent" to cancel and return to dashboard (no DB record in either case)
-4. **Step 2 (demographics):** RA fills required participant details; submits → backend creates anonymous participant + active session atomically
-5. RA is navigated directly into the participant survey flow (`/session/<id>/uls8`)
-6. After completion, return to RA dashboard; KPIs reflect the new complete session
+4. **Step 2 (demographics):** RA fills required participant details and chooses either production start or rehearsal start:
+   - **Start Session:** backend creates anonymous participant + active session atomically
+   - **Run Test Trial:** frontend enters local-only trial mode with a fake session id and no backend calls
+5. RA is navigated directly into the participant survey flow (`/session/<id>/uls8`) for either mode
+6. After completion, return to RA dashboard:
+   - production mode: KPIs reflect the new complete session
+   - trial mode: no KPI/data changes (no writes)
 7. View data via Supabase Studio
-8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click "Start Misokinesia Session" → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Flow](#misokinesia-flow) below.
+8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click either "Start Misokinesia Session" (backend-backed) or "Run Test Trial" (local-only) → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Flow](#misokinesia-flow) below.
 
 ## Participant Flow
 1. ULS-8 survey
@@ -27,6 +31,22 @@ Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation libra
 
 > **Note:** Consent is obtained at `/new-session` (Step 1 of the RA flow) before the participant session is created. There is no consent page within the `/session/[id]/` route tree.
 
+## Trial Run Mode (offline rehearsal)
+
+Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It demonstrates the full participant interaction flow without backend connectivity.
+
+- Launch points:
+  - WW: `/new-session` (after consent + demographics view)
+  - Misokinesia: `/misokinesia`
+- Data behavior:
+  - Uses frontend-generated fake ids (`session_id`, and for misokinesia also fake `misokinesia_participant_id`)
+  - Never calls FastAPI participant submission/start endpoints
+  - Never writes rows to `participants`, `sessions`, survey tables, digit span tables, or misokinesia tables
+- UX behavior:
+  - Preserves the same end-to-end screen order as production flow
+  - Shows a centered top-screen "Trial Run" watermark on all participant trial-mode screens
+  - Ends on the standard completion screens
+
 ---
 
 ## Misokinesia Flow
@@ -35,7 +55,9 @@ Full specification: [docs/MISOKINESIA.md](MISOKINESIA.md)
 
 **RA steps:**
 1. Navigate to `/misokinesia` via floating dock
-2. Click "Start Misokinesia Session" — backend atomically creates anonymous participant + session
+2. Choose launch mode:
+   - **Start Misokinesia Session** — backend atomically creates anonymous participant + session
+   - **Run Test Trial** — frontend creates fake ids and a local manifest (no backend start call)
 3. App navigates to `/misokinesia/[id]` participant task page (same device, no login required)
 
 **Participant task:**
@@ -57,7 +79,9 @@ Full specification: [docs/DIGITSPAN.md](DIGITSPAN.md)
 3. **Practice trial** — show digits one at a time (1000ms each, 100ms gap), then input screen with "Type the sequence in backwards order:" prompt; after submit show green "Correct" or red "Incorrect" for 2000ms
 4. **Main trials intro** — "We will now begin the main trials...", advance on spacebar/button
 5. **14 scored trials** — same digit display + input flow as practice, but NO feedback after each trial
-6. **End of task** — "End of task", then POST trial data to backend and route to first survey on 2xx
+6. **End of task**:
+   - production mode: POST trial data to backend and route to first survey on 2xx
+   - trial mode: run local simulated submit success and route to first survey with no API call
 
 **Input behavior:**
 - Show digits entered in real time as participant types
@@ -72,7 +96,8 @@ Full specification: [docs/DIGITSPAN.md](DIGITSPAN.md)
 All four surveys share:
 - **Time frame:** "Right now..." (present tense)
 - **All items required** — form cannot submit until every item has a response
-- **POST to backend on submit** — route to next survey only after 2xx response
+- **Production mode:** POST to backend on submit — route to next survey only after 2xx response
+- **Trial mode:** local simulated submit success — route to next survey with no backend request
 - **No back navigation** — participant cannot return to a previous survey
 
 ### Response scales by instrument
@@ -363,7 +388,9 @@ This is an RA-only two-step page (`src/app/(ra)/new-session/page.tsx`) that runs
 **Step 2 — Participant Details:**
 - Same demographics form fields as the former dashboard dialog (age band, gender, origin, commute method, time outside).
 - **"Back"** → returns to Step 1 (form state is reset).
-- On submit → `POST /sessions/start` (creates participant + session atomically) → navigates to `result.start_path` (`/session/<id>/uls8`).
+- Launch actions:
+  - **Start Session** → `POST /sessions/start` (creates participant + session atomically) → navigates to `result.start_path` (`/session/<id>/uls8`).
+  - **Run Test Trial** → skips `POST /sessions/start`, creates a fake frontend-only session id, and navigates to `/session/<fake-id>/uls8`.
 - Error states preserved on failure; spinner + "Starting…" while in flight.
 
 > There is no `/session/[id]/consent` page. Consent happens before session creation.

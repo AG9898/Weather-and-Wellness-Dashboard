@@ -148,6 +148,11 @@ Pure utility modules that hold logic extracted from components for testability:
 - Any function that branches on analytics status, API error codes, or model data fields
 - Next.js Route Handlers in `src/app/api/` by mocking shared server helpers and asserting `401`, success, and failure/fallback behavior
 - Route-topology guard tests whenever routing cleanup removes or deprecates a same-origin handler/wrapper, so deleted paths do not silently reappear
+- Trial-mode flow branching for participant pages (`production` vs `trial`) including:
+  - launch controls for "Run Test Trial" on WW and Misokinesia launch pages
+  - no API wrapper calls when trial mode is active
+  - expected local progression to completion in trial mode
+  - visible centered top-screen `"Trial Run"` watermark rendering during trial mode screens
 
 **What not to test here (yet)**
 - React component rendering — this requires `@testing-library/react` + jsdom, which is not
