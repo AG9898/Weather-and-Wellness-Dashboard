@@ -129,6 +129,7 @@ Config: `frontend/vitest.config.ts`
 | `src/lib/server/route-handler-auth.test.ts` | Route Handler infra | Bearer-token extraction and missing-header auth rejection |
 | `src/lib/server/route-handler-cache.test.ts` | Route Handler infra | Cache-key composition and `x-ww-cache` response helper behavior |
 | `src/lib/server/route-handler-validation.test.ts` | Route Handler infra | Shared `date_from` / `date_to` validation branches |
+| `src/lib/trial-mode.test.ts` | Trial mode | Launch-control source guards, fake-id/manifest helpers, trial-vs-production submit branching, and Trial Run watermark state |
 
 ### Testable utility modules
 
@@ -140,6 +141,7 @@ Pure utility modules that hold logic extracted from components for testability:
 | `src/lib/server/route-handler-auth.ts` | `extractBearerToken`, `requireRaBearerToken`, `verifySupabaseJWT` |
 | `src/lib/server/route-handler-cache.ts` | `getRedisClient`, `buildCacheKey`, `readCacheValue`, `writeCacheValue`, `jsonWithCacheState` |
 | `src/lib/server/route-handler-validation.ts` | `isIsoDate`, `readRequiredDateRange` |
+| `src/lib/trial-mode.ts` | `createTrialRunState`, `createTrialRunMisokinesiaManifest`, `getWeatherWellnessSubmitMode`, `getMisokinesiaSubmitMode`, `runTrialAwareSubmit`, `getTrialRunWatermarkLabel` |
 
 ### Conventions
 

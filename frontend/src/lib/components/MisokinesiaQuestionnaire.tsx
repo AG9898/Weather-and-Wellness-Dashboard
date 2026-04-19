@@ -7,11 +7,17 @@ import {
   submitMisokinesiaTrialResponse,
   type MisokinesiaTrialResponseResult,
 } from "@/lib/api";
+import {
+  getMisokinesiaSubmitMode,
+  runTrialAwareSubmit,
+} from "@/lib/trial-mode";
 
 interface MisokinesiaQuestionnaireProps {
   misokinesiaParticipantId: string;
   stimulusId: string;
   displayOrder: number;
+  trialMode?: boolean;
+  isFinalClip?: boolean;
   onComplete: (result: MisokinesiaTrialResponseResult) => void;
 }
 
@@ -34,6 +40,8 @@ export default function MisokinesiaQuestionnaire({
   misokinesiaParticipantId,
   stimulusId,
   displayOrder,
+  trialMode = false,
+  isFinalClip = false,
   onComplete,
 }: MisokinesiaQuestionnaireProps) {
   const [responses, setResponses] = useState<Partial<Record<"q1" | "q2" | "q3" | "q4", number>>>({});
@@ -58,15 +66,26 @@ export default function MisokinesiaQuestionnaire({
     setSubmitting(true);
     setError(null);
     try {
-      const result = await submitMisokinesiaTrialResponse(misokinesiaParticipantId, {
-        stimulus_id: stimulusId,
-        display_order: displayOrder,
-        q1: responses.q1!,
-        q2: responses.q2!,
-        q3: responses.q3!,
-        q4: responses.q4!,
+      await runTrialAwareSubmit(getMisokinesiaSubmitMode(trialMode), {
+        trial: () => {
+          onComplete({
+            response_id: `trial-local-misokinesia-response-${displayOrder}`,
+            is_complete: isFinalClip,
+            session_id: `trial-local-misokinesia-session`,
+          });
+        },
+        production: async () => {
+          const result = await submitMisokinesiaTrialResponse(misokinesiaParticipantId, {
+            stimulus_id: stimulusId,
+            display_order: displayOrder,
+            q1: responses.q1!,
+            q2: responses.q2!,
+            q3: responses.q3!,
+            q4: responses.q4!,
+          });
+          onComplete(result);
+        },
       });
-      onComplete(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed. Please try again.");
       setSubmitting(false);

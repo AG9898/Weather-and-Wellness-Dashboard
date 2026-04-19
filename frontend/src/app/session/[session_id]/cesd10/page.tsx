@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiPost, getParticipantErrorMessage, type CESD10Response } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
+import {
+  buildTrialRunPath,
+  getWeatherWellnessSubmitMode,
+  runTrialAwareSubmit,
+} from "@/lib/trial-mode";
 
 const SCALE: ScaleOption[] = [
   { value: 1, label: "Never" },
@@ -37,11 +42,18 @@ export default function CESD10Page() {
     setSubmitting(true);
     setError(null);
     try {
-      await apiPost<CESD10Response>("/surveys/cesd10", {
-        session_id: sessionId,
-        ...responses,
+      await runTrialAwareSubmit(getWeatherWellnessSubmitMode(sessionId), {
+        trial: () => {
+          router.push(buildTrialRunPath(`/session/${sessionId}/gad7`));
+        },
+        production: async () => {
+          await apiPost<CESD10Response>("/surveys/cesd10", {
+            session_id: sessionId,
+            ...responses,
+          });
+          router.push(`/session/${sessionId}/gad7`);
+        },
       });
-      router.push(`/session/${sessionId}/gad7`);
     } catch (err) {
       setError(getParticipantErrorMessage(err));
     } finally {

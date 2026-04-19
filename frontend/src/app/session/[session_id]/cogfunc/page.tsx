@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiPost, getParticipantErrorMessage, type CogFunc8aResponse } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
+import {
+  buildTrialRunPath,
+  getWeatherWellnessSubmitMode,
+  runTrialAwareSubmit,
+} from "@/lib/trial-mode";
 
 const SCALE: ScaleOption[] = [
   { value: 1, label: "Never" },
@@ -36,12 +41,18 @@ export default function CogFuncPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await apiPost<CogFunc8aResponse>("/surveys/cogfunc8a", {
-        session_id: sessionId,
-        ...responses,
+      await runTrialAwareSubmit(getWeatherWellnessSubmitMode(sessionId), {
+        trial: () => {
+          router.push(buildTrialRunPath(`/session/${sessionId}/digitspan`));
+        },
+        production: async () => {
+          await apiPost<CogFunc8aResponse>("/surveys/cogfunc8a", {
+            session_id: sessionId,
+            ...responses,
+          });
+          router.push(`/session/${sessionId}/digitspan`);
+        },
       });
-
-      router.push(`/session/${sessionId}/digitspan`);
     } catch (err) {
       setError(getParticipantErrorMessage(err));
     } finally {

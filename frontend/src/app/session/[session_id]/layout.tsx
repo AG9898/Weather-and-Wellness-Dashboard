@@ -1,3 +1,5 @@
+import TrialRunWatermark from "@/lib/components/TrialRunWatermark";
+
 /**
  * Layout for participant-facing session pages.
  * No auth required — participants access these pages via a shared URL.
@@ -10,6 +12,7 @@ export default function SessionLayout({
 }) {
   return (
     <div className="min-h-screen bg-background">
+      <TrialRunWatermark />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         {children}
       </div>

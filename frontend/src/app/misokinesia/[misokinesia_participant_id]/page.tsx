@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import TrialRunWatermark from "@/lib/components/TrialRunWatermark";
 import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
@@ -12,6 +13,10 @@ import {
   type MisokinesiaManifest,
   type MisokinesiaTrialResponseResult,
 } from "@/lib/api";
+import {
+  adoptTrialRunStateFromLocation,
+  createTrialRunMisokinesiaManifest,
+} from "@/lib/trial-mode";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 
@@ -30,6 +35,7 @@ export default function MisokinesiaTaskPage() {
   const participantId = params.misokinesia_participant_id as string;
 
   const [manifest, setManifest] = useState<MisokinesiaManifest | null>(null);
+  const [trialMode, setTrialMode] = useState(false);
   const [phase, setPhase] = useState<Phase>("loading");
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -41,12 +47,21 @@ export default function MisokinesiaTaskPage() {
 
   // ── Load manifest from sessionStorage on mount ──
   useEffect(() => {
+    const trialState = adoptTrialRunStateFromLocation({
+      pathname: window.location.pathname,
+      search: window.location.search,
+    });
+    const activeTrial =
+      trialState?.flow === "misokinesia" &&
+      trialState.misokinesia_participant_id === participantId;
+
     const raw = sessionStorage.getItem(MANIFEST_STORAGE_KEY);
     if (raw) {
       try {
         const m = JSON.parse(raw) as MisokinesiaManifest;
         if (m.misokinesia_participant_id === participantId) {
           setManifest(m);
+          setTrialMode(Boolean(activeTrial));
           setPhase("intro");
           return;
         }
@@ -54,6 +69,20 @@ export default function MisokinesiaTaskPage() {
         // fall through to error
       }
     }
+
+    if (activeTrial) {
+      try {
+        const manifest = createTrialRunMisokinesiaManifest(trialState);
+        sessionStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(manifest));
+        setManifest(manifest);
+        setTrialMode(true);
+        setPhase("intro");
+        return;
+      } catch {
+        // fall through to error
+      }
+    }
+
     setLoadError(
       "Session data not found. Please ask the research assistant to restart the session."
     );
@@ -62,7 +91,7 @@ export default function MisokinesiaTaskPage() {
 
   // ── Patch session status when entering complete phase ──
   useEffect(() => {
-    if (sessionPatchAttempt === 0 || !manifest) return;
+    if (sessionPatchAttempt === 0 || !manifest || trialMode) return;
     let cancelled = false;
 
     async function run() {
@@ -81,7 +110,7 @@ export default function MisokinesiaTaskPage() {
     return () => {
       cancelled = true;
     };
-  }, [sessionPatchAttempt, manifest]);
+  }, [sessionPatchAttempt, manifest, trialMode]);
 
   const totalClips = manifest?.clips.length ?? 0;
   const currentClip = manifest?.clips[currentClipIndex];
@@ -103,8 +132,15 @@ export default function MisokinesiaTaskPage() {
   }
 
   function handleEndOfTaskComplete() {
-    setCompleting(true);
     setPhase("complete");
+    if (trialMode) {
+      setCompleting(false);
+      setSessionPatchAttempt(0);
+      setCompleteError(null);
+      return;
+    }
+
+    setCompleting(true);
     setSessionPatchAttempt(1);
   }
 
@@ -118,6 +154,7 @@ export default function MisokinesiaTaskPage() {
   if (phase === "loading") {
     return (
       <Screen>
+        <TrialRunWatermark />
         <p className="text-sm text-muted-foreground">Loading session…</p>
       </Screen>
     );
@@ -126,6 +163,7 @@ export default function MisokinesiaTaskPage() {
   if (phase === "error") {
     return (
       <Screen>
+        <TrialRunWatermark />
         <p className="text-sm text-destructive">{loadError}</p>
       </Screen>
     );
@@ -134,6 +172,7 @@ export default function MisokinesiaTaskPage() {
   if (phase === "intro") {
     return (
       <Screen>
+        <TrialRunWatermark />
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
           Misokinesia Task
         </p>
@@ -156,8 +195,19 @@ export default function MisokinesiaTaskPage() {
   }
 
   if (phase === "playing" && currentClip) {
+    if (trialMode) {
+      return (
+        <TrialClipPlayback
+          clipNumber={clipNumber}
+          totalClips={totalClips}
+          onEnded={handleVideoEnded}
+        />
+      );
+    }
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
+        <TrialRunWatermark />
         <div className="w-full max-w-[92rem] space-y-3">
           <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
           <MisokinesiaVideoPlayer
@@ -172,6 +222,7 @@ export default function MisokinesiaTaskPage() {
   if (phase === "questionnaire" && currentClip) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
+        <TrialRunWatermark />
         <div className="w-full max-w-2xl">
           <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
         </div>
@@ -179,6 +230,8 @@ export default function MisokinesiaTaskPage() {
           misokinesiaParticipantId={participantId}
           stimulusId={currentClip.stimulus_id}
           displayOrder={clipNumber}
+          trialMode={trialMode}
+          isFinalClip={clipNumber === totalClips}
           onComplete={handleQuestionnaireComplete}
         />
       </div>
@@ -188,8 +241,10 @@ export default function MisokinesiaTaskPage() {
   if (phase === "end_of_task") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
+        <TrialRunWatermark />
         <MisokinesiaEndOfTaskForm
           misokinesiaParticipantId={participantId}
+          trialMode={trialMode}
           onComplete={handleEndOfTaskComplete}
         />
       </div>
@@ -200,6 +255,7 @@ export default function MisokinesiaTaskPage() {
     if (completing) {
       return (
         <Screen>
+          <TrialRunWatermark />
           <p className="text-sm text-muted-foreground">Saving your results…</p>
         </Screen>
       );
@@ -208,6 +264,7 @@ export default function MisokinesiaTaskPage() {
     if (completeError) {
       return (
         <Screen>
+          <TrialRunWatermark />
           <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
             {completeError}
           </div>
@@ -223,6 +280,7 @@ export default function MisokinesiaTaskPage() {
 
     return (
       <Screen>
+        <TrialRunWatermark />
         <div
           className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary"
         >
@@ -279,5 +337,54 @@ function ProgressIndicator({
     <p className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
       Clip {clipNumber} of {totalClips}
     </p>
+  );
+}
+
+function TrialClipPlayback({
+  clipNumber,
+  totalClips,
+  onEnded,
+}: {
+  clipNumber: number;
+  totalClips: number;
+  onEnded: () => void;
+}) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
+      <TrialRunWatermark />
+      <div className="w-full max-w-[92rem] space-y-3">
+        <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
+        <div
+          className="relative flex w-full items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-card/60 text-center backdrop-blur-sm"
+          style={{ aspectRatio: "16 / 9" }}
+        >
+          <div
+            className="pointer-events-none absolute inset-0 opacity-25"
+            style={{
+              background:
+                "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, var(--ring) 72%, transparent), transparent)",
+            }}
+          />
+          <div className="relative max-w-md space-y-4 px-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Trial clip
+            </p>
+            <h1 className="text-2xl font-bold text-foreground">
+              Local rehearsal clip {clipNumber}
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Continue when the rehearsal clip has finished.
+            </p>
+            <Button
+              type="button"
+              onClick={onEnded}
+              className="rounded-xl px-8 text-primary-foreground"
+            >
+              Continue to Questions
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

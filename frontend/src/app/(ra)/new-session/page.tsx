@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FlaskConical, Play, RotateCcw } from "lucide-react";
 import {
   startSession,
   ApiError,
@@ -19,6 +20,11 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  buildTrialRunPath,
+  createTrialRunState,
+  persistTrialRunState,
+} from "@/lib/trial-mode";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -122,6 +128,16 @@ export default function NewSessionPage() {
       }
       setStarting(false);
     }
+  };
+
+  const handleRunTestTrial = () => {
+    if (!isFormComplete(demoForm) || starting) return;
+
+    setStarting(true);
+    setStartError(null);
+    const trialState = createTrialRunState("weather-wellness");
+    persistTrialRunState(trialState);
+    router.push(buildTrialRunPath(`/session/${trialState.session_id}/uls8`));
   };
 
   // ── Step 1: Consent ───────────────────────────────────────────────────────
@@ -345,21 +361,22 @@ export default function NewSessionPage() {
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-1">
+            <div className="flex flex-wrap gap-3 pt-1">
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
-                className="flex-1 rounded-xl font-semibold"
+                className="rounded-xl px-6 font-semibold"
                 onClick={handleBackToConsent}
                 disabled={starting}
               >
+                <RotateCcw className="mr-2 size-4" />
                 Back
               </Button>
               <Button
                 type="submit"
                 size="lg"
-                className="flex-1 rounded-xl font-semibold text-primary-foreground"
+                className="rounded-xl px-6 font-semibold text-primary-foreground"
                 disabled={!isFormComplete(demoForm) || starting}
               >
                 {starting ? (
@@ -368,10 +385,29 @@ export default function NewSessionPage() {
                     Starting…
                   </>
                 ) : (
-                  "Start Session"
+                  <>
+                    <Play className="mr-2 size-4" />
+                    Start Session
+                  </>
                 )}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="rounded-xl px-6 font-semibold"
+                disabled={!isFormComplete(demoForm) || starting}
+                onClick={handleRunTestTrial}
+              >
+                <FlaskConical className="mr-2 size-4" />
+                Run Test Trial
+              </Button>
             </div>
+
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Test trials use fake local-only session ids and do not create participant,
+              session, survey, or digit span records.
+            </p>
 
           </form>
         </div>

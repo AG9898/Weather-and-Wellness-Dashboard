@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiPost, getParticipantErrorMessage, type ULS8Response } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
+import {
+  buildTrialRunPath,
+  getWeatherWellnessSubmitMode,
+  runTrialAwareSubmit,
+} from "@/lib/trial-mode";
 
 const SCALE: ScaleOption[] = [
   { value: 1, label: "Never" },
@@ -35,11 +40,18 @@ export default function ULS8Page() {
     setSubmitting(true);
     setError(null);
     try {
-      await apiPost<ULS8Response>("/surveys/uls8", {
-        session_id: sessionId,
-        ...responses,
+      await runTrialAwareSubmit(getWeatherWellnessSubmitMode(sessionId), {
+        trial: () => {
+          router.push(buildTrialRunPath(`/session/${sessionId}/cesd10`));
+        },
+        production: async () => {
+          await apiPost<ULS8Response>("/surveys/uls8", {
+            session_id: sessionId,
+            ...responses,
+          });
+          router.push(`/session/${sessionId}/cesd10`);
+        },
       });
-      router.push(`/session/${sessionId}/cesd10`);
     } catch (err) {
       setError(getParticipantErrorMessage(err));
     } finally {

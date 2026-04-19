@@ -262,12 +262,12 @@ export function getStatusPanel(analytics: DashboardAnalyticsResponse): StatusPan
     case "recomputing":
       return {
         title: "Background refresh running",
-        body: "The last saved snapshot stays visible while analytics recompute.",
+        body: "The last saved snapshot stays visible while live recompute runs.",
         className: "border-sky-500/35 bg-sky-500/10 text-sky-800 dark:text-sky-200",
       };
     case "stale":
       return {
-        title: "Previous snapshot still shown",
+        title: "Previous stale snapshot still shown",
         body: "A newer refresh did not finish, so the last saved snapshot stays visible.",
         className: "border-amber-500/35 bg-amber-500/10 text-amber-800 dark:text-amber-200",
       };

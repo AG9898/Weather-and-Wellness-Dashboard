@@ -957,7 +957,7 @@
       "id": "T138",
       "group_id": "TRIAL_RUN_MODE",
       "title": "Trial run mode - Shared frontend mode plumbing and participant watermark",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Introduce a shared frontend trial-mode signal and a reusable centered top-screen Trial Run watermark for participant flows.",
@@ -971,10 +971,7 @@
       "depends_on": [
         "T142"
       ],
-      "blocked_by": [
-        "T142",
-        "MANUAL_TRIAL_RUN_MOCK_APPROVAL"
-      ],
+      "blocked_by": [],
       "files": [
         "frontend/src/lib/components/TrialRunWatermark.tsx",
         "frontend/src/lib/trial-mode.ts",
@@ -1001,7 +998,7 @@
       "id": "T139",
       "group_id": "TRIAL_RUN_MODE",
       "title": "Trial run mode - WW launch and survey plus digitspan local submit flow",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add a Run Test Trial option to the WW launch path and run the full survey plus digitspan participant flow with local-only submit progression.",
@@ -1050,7 +1047,7 @@
       "id": "T140",
       "group_id": "TRIAL_RUN_MODE",
       "title": "Trial run mode - Misokinesia launch and local questionnaire progression",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add a Run Test Trial option to Misokinesia launch and execute the participant state machine locally without backend calls.",
@@ -1097,7 +1094,7 @@
       "id": "T142",
       "group_id": "TRIAL_RUN_MODE",
       "title": "Trial run mode - Storybook launch-button mocks for WW and Misokinesia",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Draft Storybook mockups for the new Run Test Trial launch controls on both RA pages before wiring the real UI.",
@@ -1134,7 +1131,7 @@
       "id": "T141",
       "group_id": "TRIAL_RUN_MODE",
       "title": "Trial run mode - Frontend regression coverage for no-backend rehearsal paths",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add focused frontend tests proving trial mode avoids API calls and still reaches completion across both WW and Misokinesia flows.",

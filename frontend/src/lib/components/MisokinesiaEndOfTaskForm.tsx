@@ -7,9 +7,14 @@ import {
   submitMisokinesiaEndOfTask,
   type MisokinesiaEndOfTaskPayload,
 } from "@/lib/api";
+import {
+  getMisokinesiaSubmitMode,
+  runTrialAwareSubmit,
+} from "@/lib/trial-mode";
 
 interface MisokinesiaEndOfTaskFormProps {
   misokinesiaParticipantId: string;
+  trialMode?: boolean;
   onComplete: () => void;
 }
 
@@ -22,6 +27,7 @@ const TIMING_OPTIONS = [
 
 export default function MisokinesiaEndOfTaskForm({
   misokinesiaParticipantId,
+  trialMode = false,
   onComplete,
 }: MisokinesiaEndOfTaskFormProps) {
   const [fidgetingText, setFidgetingText] = useState("");
@@ -50,8 +56,15 @@ export default function MisokinesiaEndOfTaskForm({
     }
 
     try {
-      await submitMisokinesiaEndOfTask(misokinesiaParticipantId, payload);
-      onComplete();
+      await runTrialAwareSubmit(getMisokinesiaSubmitMode(trialMode), {
+        trial: () => {
+          onComplete();
+        },
+        production: async () => {
+          await submitMisokinesiaEndOfTask(misokinesiaParticipantId, payload);
+          onComplete();
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed. Please try again.");
       setSubmitting(false);

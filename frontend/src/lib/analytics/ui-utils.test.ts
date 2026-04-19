@@ -78,7 +78,7 @@ describe("getStatusPanel", () => {
 
   it("returns stale panel for status=stale", () => {
     const panel = getStatusPanel(makeAnalytics("stale"));
-    expect(panel.title).toBe("Previous snapshot still shown");
+    expect(panel.title).toBe("Previous stale snapshot still shown");
     expect(panel.body).toContain("last saved snapshot stays visible");
     expect(panel.className).toContain("amber");
   });
@@ -86,7 +86,7 @@ describe("getStatusPanel", () => {
   it("returns recomputing panel for status=recomputing", () => {
     const panel = getStatusPanel(makeAnalytics("recomputing"));
     expect(panel.title).toBe("Background refresh running");
-    expect(panel.body).toContain("analytics recompute");
+    expect(panel.body).toContain("live recompute");
     expect(panel.className).toContain("sky");
   });
 

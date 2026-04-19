@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiPost, getParticipantErrorMessage, type GAD7Response } from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
+import {
+  buildTrialRunPath,
+  getWeatherWellnessSubmitMode,
+  runTrialAwareSubmit,
+} from "@/lib/trial-mode";
 
 const SCALE: ScaleOption[] = [
   { value: 1, label: "Never" },
@@ -34,11 +39,18 @@ export default function GAD7Page() {
     setSubmitting(true);
     setError(null);
     try {
-      await apiPost<GAD7Response>("/surveys/gad7", {
-        session_id: sessionId,
-        ...responses,
+      await runTrialAwareSubmit(getWeatherWellnessSubmitMode(sessionId), {
+        trial: () => {
+          router.push(buildTrialRunPath(`/session/${sessionId}/cogfunc`));
+        },
+        production: async () => {
+          await apiPost<GAD7Response>("/surveys/gad7", {
+            session_id: sessionId,
+            ...responses,
+          });
+          router.push(`/session/${sessionId}/cogfunc`);
+        },
       });
-      router.push(`/session/${sessionId}/cogfunc`);
     } catch (err) {
       setError(getParticipantErrorMessage(err));
     } finally {

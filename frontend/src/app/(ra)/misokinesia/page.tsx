@@ -8,12 +8,19 @@ import {
   type MisokinesiaManifest,
   ApiError,
 } from "@/lib/api";
+import {
+  buildTrialRunPath,
+  createTrialRunMisokinesiaManifest,
+  createTrialRunState,
+  persistTrialRunState,
+} from "@/lib/trial-mode";
 
 const MISOKINESIA_MANIFEST_KEY = "misokinesia_manifest";
 
 export default function MisokinesiaPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [trialLoading, setTrialLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleStart() {
@@ -33,5 +40,26 @@ export default function MisokinesiaPage() {
     }
   }
 
-  return <MisokinesiaLaunchPage loading={loading} error={error} onStart={handleStart} />;
+  function handleStartTrial() {
+    setTrialLoading(true);
+    setError(null);
+
+    const trialState = createTrialRunState("misokinesia");
+    const manifest = createTrialRunMisokinesiaManifest(trialState);
+    persistTrialRunState(trialState);
+    sessionStorage.setItem(MISOKINESIA_MANIFEST_KEY, JSON.stringify(manifest));
+    router.push(
+      buildTrialRunPath(`/misokinesia/${trialState.misokinesia_participant_id}`)
+    );
+  }
+
+  return (
+    <MisokinesiaLaunchPage
+      loading={loading}
+      trialLoading={trialLoading}
+      error={error}
+      onStart={handleStart}
+      onStartTrial={handleStartTrial}
+    />
+  );
 }

@@ -4,6 +4,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { apiPost, apiPatch, getParticipantErrorMessage, type DigitSpanRunResponse, type SessionResponse } from "@/lib/api";
+import {
+  buildTrialRunPath,
+  getWeatherWellnessSubmitMode,
+  runTrialAwareSubmit,
+} from "@/lib/trial-mode";
 
 // ── Constants ──
 
@@ -207,12 +212,19 @@ export default function DigitSpanPage() {
     setPhase("submitting");
     setError(null);
     try {
-      await apiPost<DigitSpanRunResponse>("/digitspan/runs", {
-        session_id: sessionId,
-        trials: results,
+      await runTrialAwareSubmit(getWeatherWellnessSubmitMode(sessionId), {
+        trial: () => {
+          router.push(buildTrialRunPath(`/session/${sessionId}/complete`));
+        },
+        production: async () => {
+          await apiPost<DigitSpanRunResponse>("/digitspan/runs", {
+            session_id: sessionId,
+            trials: results,
+          });
+          await apiPatch<SessionResponse>(`/sessions/${sessionId}/status`, { status: "complete" });
+          router.push(`/session/${sessionId}/complete`);
+        },
       });
-      await apiPatch<SessionResponse>(`/sessions/${sessionId}/status`, { status: "complete" });
-      router.push(`/session/${sessionId}/complete`);
     } catch (err) {
       setError(getParticipantErrorMessage(err));
       setPhase("instruction4");
