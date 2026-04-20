@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ralph Free-Prompt Loop"
+  short_description: "Delegated loop for free-form prompts with iteration count — no workboard dependency"
+  default_prompt: '/ralph-freeprompt "tackle the next item in doc audit/doc-cleanup-action-plan.md" iterations:6'
+policy:
+  allow_implicit_invocation: false
