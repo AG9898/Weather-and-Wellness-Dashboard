@@ -7,7 +7,7 @@ it requires — before marking it done.
 
 ---
 
-## TASK-01 — Fix root entry-point hierarchy (README.md + CLAUDE.md symlink note)
+## [DONE] TASK-01 — Fix root entry-point hierarchy (README.md + CLAUDE.md symlink note)
 
 **Why grouped:** README.md duplicates content from AGENTS.md and needs trimming. The CLAUDE.md
 symlink is intentional and should stay — the Claude CLI auto-injects CLAUDE.md on startup, so
@@ -41,7 +41,7 @@ needed is making the relationship explicit.
 
 ---
 
-## TASK-02 — Fix all broken relative links in DESIGN_SPEC.md + SCORING.md
+## [DONE] TASK-02 — Fix all broken relative links in DESIGN_SPEC.md + SCORING.md
 
 **Why grouped:** Both files live in the same directory and share the same class of bug — wrong
 relative path prefixes. Fixing them in a single pass avoids revisiting the same directory twice.
@@ -68,7 +68,7 @@ After fixing, verify all targets exist on disk before considering the task done.
 
 ---
 
-## TASK-03 — Fix stale alembic head revision + PYTHONPATH clarity
+## [DONE] TASK-03 — Fix stale alembic head revision + PYTHONPATH clarity
 
 **Why grouped:** Two files share the same stale revision string, and the adjacent PYTHONPATH
 ambiguity lives in the same devSteps.md section. One agent, one focused pass on version accuracy.
@@ -94,7 +94,7 @@ ambiguity lives in the same devSteps.md section. One agent, one focused pass on 
 
 ---
 
-## TASK-04 — Fix AGENTS.md setup/workflow accuracy
+## [DONE] TASK-04 — Fix AGENTS.md setup/workflow accuracy
 
 **Why grouped:** All three issues are in or directly adjacent to the same "Dev Workflow" section
 of AGENTS.md. Single agent, surgical edits, no risk of touching unrelated content.
@@ -125,7 +125,7 @@ of AGENTS.md. Single agent, surgical edits, no risk of touching unrelated conten
 
 ---
 
-## TASK-05 — Resolve canonical path mismatches (root-level doc references)
+## [DONE] TASK-05 — Resolve canonical path mismatches (root-level doc references)
 
 **Why grouped:** Four separate canonical docs point to root-level paths that don't exist; the
 fix is the same mechanical operation repeated four times. Grouping avoids four separate agents
@@ -166,7 +166,7 @@ entry pre-dates the stub.
 
 ---
 
-## TASK-06 — Create docs/ENV_VARS.md (NEW FILE) and de-duplicate env var docs
+## [DONE] TASK-06 — Create docs/ENV_VARS.md (NEW FILE) and de-duplicate env var docs
 
 **Why a new file:** Env var documentation currently appears in four separate files with
 contradictions (SUPABASE_JWT_SECRET conditional vs. unconditional; SUPABASE_ANON_KEY missing

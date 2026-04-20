@@ -202,22 +202,8 @@ Follow this sequence when adding any new instrument in future phases:
 
 ## Environment Variables
 
-| Variable             | Description                                |
-|----------------------|--------------------------------------------|
-| `DATABASE_URL`       | Supabase PostgreSQL connection string (backend) |
-| `SUPABASE_URL`       | Supabase project URL (server-side use) |
-| `SUPABASE_ANON_KEY`  | Supabase anonymous/public key (server-side use) |
-| `SUPABASE_JWT_SECRET`| Used by FastAPI to validate Supabase JWTs (only if auth enabled) |
-| `ALLOWED_ORIGINS`    | Comma-separated CORS allowed origins for FastAPI (backend). Defaults to localhost dev origins when unset. Set to Vercel URL(s) in production. |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (frontend auth; only if auth enabled) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key (frontend auth; only if auth enabled) |
-| `KV_REST_API_URL` | Vercel KV / Upstash integration REST URL alias accepted by the same-origin cache helpers. |
-| `KV_REST_API_TOKEN` | Vercel KV / Upstash integration REST token alias accepted by the same-origin cache helpers. |
-| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (server-side only; provided by Vercel integration or set for local dev). |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (server-side only; provided by Vercel integration or set for local dev). |
-| `DAYLIGHT_START_LOCAL_TIME` | Local clock time `HH:MM` used to compute `participants.daylight_exposure_minutes` (default `06:00` in `America/Vancouver`). |
-| `WEATHER_INGEST_SHARED_SECRETS` | Comma-separated shared secrets accepted by `POST /weather/ingest/ubc-eos` (GitHub Actions path). |
-| `WEATHER_INGEST_COOLDOWN_SECONDS` | Cooldown window (seconds) for per-station ingestion (default 600). |
+Canonical variable definitions live in `docs/ENV_VARS.md`.
+Do not duplicate env var requirements here; update the canonical table instead.
 
 ---
 

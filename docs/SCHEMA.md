@@ -15,6 +15,10 @@
 - **Lab read access:** Supabase Studio (no read API endpoints in Phase 1)
 - **FKs:** Enforced at DB level, not just application level
 
+> Migration head check: `alembic current -v` should report
+> `Rev: 20260407_000001 (head)`.
+> Keep this value in sync after every new migration.
+
 > Planned statistical analysis rules derived from `reference/Weather_MLM.R` are
 > documented in `docs/ANALYTICS.md`. That analytics dataset is currently a
 > logical query-layer construct, not an existing transactional table.
@@ -653,7 +657,7 @@ Constraints/indexes:
 | 2026-02-26 | T29 | Add study_days + weather_ingest_runs + weather_daily tables; add study_day_id FK to sessions |
 | 2026-02-27 | T35 | Drop participants.first_name and participants.last_name (anonymous participants) |
 | 2026-02-28 | T47 | Add participant demographic/exposure columns (age_band, gender, origin, origin_other_text, commute_method, commute_method_other_text, time_outside, daylight_exposure_minutes); add imported_session_measures table |
-| 2026-02-28 | T47a | Fix study_days.tz_name server_default and existing rows from America/Edmonton to America/Vancouver |
+| 2026-02-28 | T47a | Migration `20260228_000008`: fix study_days.tz_name server_default and existing rows from America/Edmonton to America/Vancouver |
 | 2026-03-01 | T54 | Add data_source, legacy columns, nullable relaxation, and UNIQUE session_id constraints to digitspan_runs, survey_uls8, survey_cesd10, survey_gad7 |
 | 2026-03-03 | T64 | Add `sunshine_duration_hours DOUBLE PRECISION NULL` to `weather_daily` (Open-Meteo historical backfill) |
 | 2026-03-10 | T77 | Extend `survey_cogfunc8a` with imported-row schema support (`data_source`, `legacy_mean_1_5`, nullable raw/computed columns, UNIQUE session_id) |

@@ -393,7 +393,7 @@ secure user metadata.
 
 **Why:** Keeps video delivery on Supabase CDN (avoiding Render cold-start on media paths), uses existing participant/session model, and matches the existing per-instrument column schema style.
 
-**Affects:** `docs/MISOKINESIA.md`, `docs/SCHEMA.md`, `docs/API.md`, `docs/ARCHITECTURE.md`.
+**Affects:** `docs/labs/weather-wellness/tasks/MISOKINESIA.md`, `docs/SCHEMA.md`, `docs/API.md`, `docs/ARCHITECTURE.md`.
 
 ---
 

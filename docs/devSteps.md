@@ -16,7 +16,8 @@
 ## Verification Checklist
 
 - `alembic upgrade head` completes without errors against your Supabase DB. (T02–T05)
-- `alembic current -v` reports `Rev: 20260313_000001 (head)` after applying all migrations. (T02–T05, T29, T47, T47a, RC08)
+- `alembic current -v` reports `Rev: 20260407_000001 (head)` after applying all migrations. (T02–T05, T29, T47, T47a, RC08)
+- `PYTHONPATH=.` is for `pytest` commands only; do not prepend it to `alembic` commands.
 - Backend starts cleanly and exposes `/health`. (T01)
 - Frontend dev server starts without Next.js compile errors. (T01)
 - Participant/session endpoints return expected status codes once T07/T08 are fixed. (T07–T08)
@@ -29,14 +30,8 @@ This runbook covers the optional Redis cache layer used to reduce perceived cold
 
 ### 1) Vercel environment variables
 
-The cache Route Handlers are server-only and require one of the following env var pairs to exist in Vercel:
-
-- **Preferred (Vercel KV / Upstash integration):** `KV_REST_API_URL`, `KV_REST_API_TOKEN`
-- **Fallback (direct Upstash REST):** `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
-
-JWT verification in Route Handlers requires one of:
-- `SUPABASE_URL` (server-only), or
-- `NEXT_PUBLIC_SUPABASE_URL` (already needed by the frontend auth client)
+See `docs/ENV_VARS.md` for the canonical Vercel/Route Handler env var requirements
+and fallback options.
 
 ### 2) What is cached
 
@@ -98,13 +93,8 @@ Use this runbook when re-deploying or reconfiguring the backend service.
 
 ### 2) Required backend environment variables
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DATABASE_URL` | Always | Supabase session pooler URL; must include `ssl=require` |
-| `ALLOWED_ORIGINS` | Always | Comma-separated Vercel frontend URL(s) for CORS. Without this only localhost origins are allowed. |
-| `SUPABASE_JWT_SECRET` | When RA JWT auth enabled | Used by FastAPI to validate Supabase JWTs |
-| `SUPABASE_URL` | When backend uses Supabase SDK | Supabase project URL |
-| `SUPABASE_ANON_KEY` | When backend uses Supabase SDK | Supabase anonymous key |
+See `docs/ENV_VARS.md` for canonical backend variable requirements, defaults, and
+deployment ownership.
 
 > Keep all secret values in deployment env settings only — never commit values to the repo.
 
@@ -127,11 +117,8 @@ pip install -r requirements.txt
 
 ### 1b) Backend environment variables (Phase 3)
 
-Optional env vars (deployed service and local dev):
-
-| Variable | Default | Notes |
-|---|---:|---|
-| `DAYLIGHT_START_LOCAL_TIME` | `06:00` | Local clock time used to compute `participants.daylight_exposure_minutes` at session start (study TZ: `America/Vancouver`). |
+Optional variable behavior (including `DAYLIGHT_START_LOCAL_TIME`) is documented in
+`docs/ENV_VARS.md`.
 
 ## Pooler Note
 

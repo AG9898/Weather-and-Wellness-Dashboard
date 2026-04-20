@@ -1,3 +1,4 @@
+<!-- CLAUDE.md is a symlink to this file. Claude CLI injects it on startup; AGENTS.md is the canonical source. Edit AGENTS.md only. -->
 # AGENTS.md — UBC Psychology Lab Research Platform
 
 Internal research platform for UBC Psychology labs. Each lab uses the platform to administer
@@ -37,7 +38,7 @@ Participant.
 - **No bare fetch.** All frontend API calls go through typed wrappers in `src/lib/api/`. Never call `fetch` directly from a component.
 - **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.
 - **Active task board.** Use `docs/workboard.json` as the canonical active task queue. `docs/progress/PROGRESS_LOG.md` is archive history only.
-- **Repo-local task skills.** Use the repo-local workflow skills under `.codex/skills/` (`project-plan`, `query-workboard`, `start-task`, `ralphloop`) for planning, board execution, or delegated loops. `ralph_loop.sh` is CLI fallback only.
+- **Repo-local task skills.** Use the repo-local workflow skills under `.codex/skills/` (`project-plan`, `query-workboard`, `start-task`, `ralphloop`) for planning, board execution, or delegated loops. These are symlinked from `.agents/skills/`, where the canonical implementations live. `ralph_loop.sh` is CLI fallback only.
 - **Workboard schema.** Active tasks in this repo use the lean `tasks[]` schema in `docs/workboard.json`, with `docs`, `files`, `commands`, and `acceptance_criteria` fields. Do not expect older `read_docs` or `updates_docs` fields from other repos.
 
 ---
@@ -52,6 +53,7 @@ Participant.
 - For shadcn component usage and CLI patterns, follow `docs/shadcn.md`.
 - For Storybook-driven isolated UI review, story scope, and story authoring expectations, follow `docs/storybook.md`.
 - For the multi-lab data model and onboarding new labs, see `docs/MULTI_LAB.md`.
+- For environment and secret configuration, see `docs/ENV_VARS.md`.
 - For active task metadata and current work queue, use `docs/workboard.json`.
 - For repo-local task automation prompts and loop guidance, use `.codex/skills/`.
 
@@ -61,25 +63,56 @@ Participant.
 
 - Start from `AGENTS.md`, then `docs/workboard.json`, then the selected task’s `docs` and `files` entries.
 - Treat a task’s `commands` array as its preferred verification checklist.
-- When task commands are missing or incomplete, choose validation from this repo’s actual setup:
-  - backend: `cd backend && PYTHONPATH=. .venv/bin/pytest ...`
-  - frontend: `cd frontend && npm test`
-  - broader frontend route/config/build work: add `cd frontend && npm run build` when build coverage matters
+- If a task `commands` array is empty or absent, add unit tests for changed modules plus a build check.
+- If `commands` exist but omit a coverage type clearly required by the changed code (for example, a new API endpoint with no route test), add only that missing coverage.
+- Never run the full test suite as a substitute for targeted coverage.
 - Update canonical docs when behavior, contracts, schema, or workflow guidance changes.
 - Do not append to `docs/progress/PROGRESS_LOG.md`; it is archive-only.
 - Mark the task done only by updating `docs/workboard.json` after verification passes.
 
 ---
 
+## Documentation Maintenance
+
+Every agent session is responsible for leaving documentation in a better state than it found.
+These rules are not optional and apply to every task, not just doc-specific tasks.
+
+- **Update docs when you change behaviour.** If a task changes an API contract, scoring rule,
+  env var, route, schema, or workflow, you must update the relevant canonical doc in the same
+  commit. Do not defer doc updates to a follow-on task.
+
+- **Maintain navigation links.** If you create a new file under `docs/`, add a link to it from
+  its nearest parent index (`docs/labs/<lab>/README.md`, `AGENTS.md` Docs section, or
+  `docs/labs/README.md` as appropriate). An unreachable file is as bad as a missing file.
+
+- **Fix broken links you encounter.** If you open a doc and find a broken relative link, fix it
+  before you close the file — even if it is outside your task scope. Record the fix in your
+  commit message.
+
+- **Do not create planning or working-draft docs.** Use workboard.json task notes for in-flight
+  design decisions. Do not create `working-*.md` or `*_DRAFT.md` files in the docs tree.
+
+- **One source of truth per topic.** Before creating a new doc, check whether the topic is
+  already covered. If it is, extend the existing doc. Duplication is a bug.
+
+- **Path format.** All doc references use paths relative to the repo root
+  (e.g. `docs/labs/weather-wellness/API.md`). Never use bare filenames or leading slashes.
+
+---
+
 ## Dev Workflow
 
 ```bash
-cd backend && uvicorn app.main:app --reload   # start backend
+cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
 cd frontend && npm run dev                    # start frontend
-cd backend && alembic upgrade head            # apply migrations
+cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
 ```
 
-Copy `.env.example` → `.env`. Variables: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET`. Never commit `.env`.
+All backend commands must be run from the repo root using the `cd backend && PYTHONPATH=.` prefix pattern shown above.
+Copy `backend/.env.example` → `backend/.env`.
+See `docs/ENV_VARS.md` for the full variable reference (including conditional requirements).
+If `backend/.env.example` is missing, derive required variables from the Railway Setup section in `docs/ARCHITECTURE.md`.
+Never commit `backend/.env`.
 
 ---
 

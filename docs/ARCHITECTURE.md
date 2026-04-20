@@ -296,11 +296,10 @@ Two scheduled jobs are active.
 
 ### Secrets ownership
 
-- GitHub repository secrets (used by Actions):
-  - `WEATHER_INGEST_BASE_URL` (backend base URL; Railway after cutover)
-  - `WEATHER_INGEST_SHARED_SECRET` (shared secret header value)
-- Backend environment:
-  - `WEATHER_INGEST_SHARED_SECRETS` (comma-separated to allow rotation)
+Environment variable and secret definitions are centralized in `docs/ENV_VARS.md`.
+For this workflow, GitHub Actions uses `WEATHER_INGEST_BASE_URL` and
+`WEATHER_INGEST_SHARED_SECRET`, while backend runtime validation uses
+`WEATHER_INGEST_SHARED_SECRETS`.
 
 ---
 
@@ -313,14 +312,8 @@ Two scheduled jobs are active.
 
 ### Required Railway Environment Variables
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DATABASE_URL` | Always | Supabase Postgres URL; include `ssl=require` / `sslmode=require` as required by the driver |
-| `ALLOWED_ORIGINS` | Always | Comma-separated Vercel frontend URL(s) for CORS |
-| `SUPABASE_JWT_SECRET` | When RA JWT auth enabled | Used by FastAPI to validate Supabase JWTs |
-| `SUPABASE_URL` | When backend uses Supabase SDK | Supabase project URL |
-| `SUPABASE_ANON_KEY` | When backend uses Supabase SDK | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | When admin tooling runs in this environment | Supabase admin API access |
+See `docs/ENV_VARS.md` for the canonical required/conditional variable table,
+defaults, and ownership by environment.
 
 > Do not commit secret values to the repo. Set them only in deployment environment settings.
 

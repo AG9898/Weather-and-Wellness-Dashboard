@@ -1,6 +1,6 @@
 # Design Spec — Phase 1 + Phase 2 + Phase 3 + Phase 4
 
-Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation library: [docs/animejs.md](animejs.md)
+Visual language baseline: [docs/styleguide.md](../../styleguide.md) · Animation library: [docs/animejs.md](../../animejs.md)
 
 ## UX Goals
 - Guided, simple flow — one screen per step, no back navigation during session
@@ -57,7 +57,7 @@ Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It d
 
 ## Misokinesia Flow
 
-Full specification: [docs/MISOKINESIA.md](MISOKINESIA.md)
+Full specification: [docs/labs/weather-wellness/tasks/MISOKINESIA.md](tasks/MISOKINESIA.md)
 
 **RA steps:**
 1. Navigate to `/misokinesia` via floating dock
@@ -89,7 +89,7 @@ Key differences from survey/digit-span flow: fully anonymous (no demographics), 
 
 ## Digit Span UI Flow
 
-Full specification: [docs/DIGITSPAN.md](DIGITSPAN.md)
+Full specification: [docs/labs/weather-wellness/tasks/DIGITSPAN.md](tasks/DIGITSPAN.md)
 
 1. **Instruction screen** — title, explanation, example (Sequence: 1 2 3 4 5 → Correct: 5 4 3 2 1), advance on spacebar/button
 2. **Practice intro** — "We will begin with a practice trial...", advance on spacebar/button
@@ -121,10 +121,10 @@ All four surveys share:
 
 | Survey     | Scale | Labels                                           | Details doc |
 |------------|-------|--------------------------------------------------|-------------|
-| ULS-8      | 1-4   | Never / Rarely / Sometimes / Often               | [ULS8.md](ULS8.md) |
-| CES-D 10   | 1-4   | Never / Rarely / Sometimes / Often               | [CESD10.md](CESD10.md) |
-| GAD-7      | 1-4   | Never / Rarely / Sometimes / Often               | [GAD7.md](GAD7.md) |
-| CogFunc 8a | 1-5   | Never / Rarely / Sometimes / Often / Very Often   | [COGFUNC8A.md](COGFUNC8A.md) |
+| ULS-8      | 1-4   | Never / Rarely / Sometimes / Often               | [ULS8.md](surveys/ULS8.md) |
+| CES-D 10   | 1-4   | Never / Rarely / Sometimes / Often               | [CESD10.md](surveys/CESD10.md) |
+| GAD-7      | 1-4   | Never / Rarely / Sometimes / Often               | [GAD7.md](surveys/GAD7.md) |
+| CogFunc 8a | 1-5   | Never / Rarely / Sometimes / Often / Very Often   | [COGFUNC8A.md](surveys/COGFUNC8A.md) |
 
 ---
 

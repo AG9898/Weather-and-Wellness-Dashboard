@@ -35,6 +35,7 @@ PYTHONPATH=. .venv/bin/pytest tests/test_analytics_modeling.py -v  # single file
 
 `PYTHONPATH=.` is required because tests import from `app.*` and the project does not
 install itself as a package. Always set it when running pytest directly.
+This is pytest-only and does not apply to `alembic` commands.
 
 ### Framework
 
