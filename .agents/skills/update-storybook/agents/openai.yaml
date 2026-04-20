@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Storybook"
+  short_description: "Sync existing page stories with live app changes"
+  default_prompt: "Use $update-storybook to update an existing Storybook page story from current frontend code, enforce all exported story states, then log into SITE_URL and visually compare the matching deployed page."

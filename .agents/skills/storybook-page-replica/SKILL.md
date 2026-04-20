@@ -7,6 +7,16 @@ description: Recreate or refine a chosen page in Storybook as a UI-only visual r
 
 Use this skill when the task is to recreate a page in Storybook so it visually matches the deployed UI.
 
+## Deployed Visual Inspection Defaults
+
+- Deployed base URL: `SITE_URL` from repo root `.env`.
+- Auth flow for deployed checks:
+  - Visit base `SITE_URL` first.
+  - Log in with:
+    - Email: `aden219898@gmail.com`
+    - Password: `Aden9898`
+  - After successful login, navigate to the deployed route that corresponds to the target page.
+
 ## Purpose
 
 - Prefer **full-page replica stories** over isolated component stories.
@@ -21,17 +31,18 @@ Use this skill when the task is to recreate a page in Storybook so it visually m
 2. Identify the target page and its real route/component structure in the repo.
 3. Start the full app for visual inspection with `./scripts/dev.sh`.
 4. Inspect the page in the browser at `http://localhost:3000/` and then use the page-specific localhost route so you spend time on the target screen instead of the sign-in flow.
-5. If needed, capture screenshots or compare against the deployed UI before editing.
-6. Break the page into sections or elements and delegate those pieces to sub-agents.
-7. Have sub-agents build or refine the individual UI pieces only.
-8. Keep the **main agent** responsible for:
+5. For deployed visual inspection, open base `SITE_URL`, complete login, then navigate to the target deployed route before comparing visuals.
+6. If needed, capture screenshots or compare against the deployed UI before editing.
+7. Break the page into sections or elements and delegate those pieces to sub-agents.
+8. Have sub-agents build or refine the individual UI pieces only.
+9. Keep the **main agent** responsible for:
    - final assembly
    - layout ordering
    - spacing and alignment
    - cleanup and polish
    - matching the deployed page visually
-9. Build the Storybook page story as the primary artifact.
-10. Verify the final story in Storybook and re-check the same page in the browser.
+10. Build the Storybook page story as the primary artifact.
+11. Verify the final story in Storybook and re-check the same page in the browser.
 
 ## Story Rules
 
@@ -60,12 +71,12 @@ The `Replica` story should match the deployed UI as closely as possible.
 
 Use this order of truth:
 
-1. deployed UI
-2. screenshots / browser inspection
-3. repo components and page structure
-4. Storybook rendering
+1. repo components and page structure
+2. Storybook rendering
+3. deployed UI (after auth-gated login flow)
+4. screenshots / browser inspection
 
-If the deployed UI and repo code differ, match the deployed UI unless the user says otherwise.
+If the deployed UI and repo code differ, match repo code unless the user explicitly requests deployed-first behavior.
 
 ## Guardrails
 
