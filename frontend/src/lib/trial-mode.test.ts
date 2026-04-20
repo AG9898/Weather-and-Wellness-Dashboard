@@ -65,6 +65,16 @@ describe("trial-mode launch controls", () => {
     expect(componentSource).toContain("Run Test Trial");
     expect(componentSource).toContain("onStartTrial");
   });
+
+  it("keeps Misokinesia playback on the shared video player path", () => {
+    const pageSource = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    const playerUsages = pageSource.match(/<MisokinesiaVideoPlayer/g) ?? [];
+
+    expect(playerUsages).toHaveLength(1);
+    expect(pageSource).toContain("publicUrl={currentClip.public_url}");
+  });
 });
 
 describe("trial-mode submit branching", () => {

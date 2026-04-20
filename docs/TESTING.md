@@ -129,7 +129,7 @@ Config: `frontend/vitest.config.ts`
 | `src/lib/server/route-handler-auth.test.ts` | Route Handler infra | Bearer-token extraction and missing-header auth rejection |
 | `src/lib/server/route-handler-cache.test.ts` | Route Handler infra | Cache-key composition and `x-ww-cache` response helper behavior |
 | `src/lib/server/route-handler-validation.test.ts` | Route Handler infra | Shared `date_from` / `date_to` validation branches |
-| `src/lib/trial-mode.test.ts` | Trial mode | Launch-control source guards, fake-id/read-only manifest helpers, trial-vs-production submit branching, and Trial Run watermark state |
+| `src/lib/trial-mode.test.ts` | Trial mode | Launch-control source guards, fake-id/read-only manifest helpers, trial-vs-production submit branching, and trial-badge helper state |
 
 ### Testable utility modules
 
@@ -156,7 +156,7 @@ Pure utility modules that hold logic extracted from components for testability:
   - Misokinesia trial launch calls only the read-only trial manifest API and receives exactly 5 real clip URLs
   - Misokinesia trial playback uses sampled Supabase Storage URLs instead of local placeholder clips
   - expected local progression to completion in trial mode
-  - visible centered top-screen `"Trial Run"` watermark rendering during trial mode screens
+  - WW participant pages render the centered top-screen `"Trial Run"` watermark in trial mode, while the Misokinesia participant task page does not
 
 **What not to test here (yet)**
 - React component rendering — this requires `@testing-library/react` + jsdom, which is not

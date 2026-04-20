@@ -49,7 +49,7 @@ Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It d
   - Does not serve or proxy video bytes through FastAPI
 - UX behavior:
   - Preserves the same end-to-end screen order as production flow
-  - Shows a centered top-screen "Trial Run" watermark on all participant trial-mode screens
+  - Shows a centered top-screen "Trial Run" watermark on WW participant trial-mode screens; Misokinesia participant task screens do not show this badge
   - Ends on the standard completion screens
 
 ---
@@ -67,10 +67,13 @@ Full specification: [docs/MISOKINESIA.md](MISOKINESIA.md)
 
 **Participant task:**
 1. Intro screen → click to begin
-2. Production mode: for each of 29 clips (randomized per session): video plays → 4-question per-clip form (scale 1–5) → submit
-3. Trial mode: for each of 5 sampled clips (randomized on launch): video plays → 4-question per-clip form (scale 1–5) → local simulated submit
-4. End-of-task form shown once after all clips in the active mode (29 production clips or 5 trial clips)
-5. Completion screen → RA clicks "Return to Dashboard"
+2. MkAQ timing is randomized per participant as either pre-trial or post-trial and stored for analysis
+3. If assigned pre-trial: complete the required 21-item MkAQ before the first clip
+4. Production mode: for each of 29 clips (randomized per session): video plays → 4-question per-clip form (scale 1–5) → submit
+5. Trial mode: for each of 5 sampled clips (randomized on launch): video plays → 4-question per-clip form (scale 1–5) → local simulated submit
+6. If assigned post-trial: complete the required 21-item MkAQ after the final clip response and before the end-of-task form
+7. End-of-task form shown once after all clips and the assigned MkAQ position are complete
+8. Completion screen → RA clicks "Back to Misokinesia" (routes to `/misokinesia`)
 
 Key differences from survey/digit-span flow: fully anonymous (no demographics), single-page state machine, videos served directly from Supabase Storage CDN (not proxied through backend).
 

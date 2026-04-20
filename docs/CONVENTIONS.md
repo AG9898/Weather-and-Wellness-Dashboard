@@ -108,7 +108,7 @@
 - Trial mode must never write participant/session/result rows.
 - Trial mode should use clearly fake frontend-only ids and must not reuse real ids.
 - Keep trial mode logic explicit in the same typed flow handlers (for example, a `mode` branch), rather than duplicating near-identical page components.
-- Show a visible centered top-screen `"Trial Run"` watermark on participant pages while trial mode is active.
+- Show a visible centered top-screen `"Trial Run"` watermark on WW participant pages while trial mode is active; do not show it on the Misokinesia participant task page.
 
 ### Routing governance
 

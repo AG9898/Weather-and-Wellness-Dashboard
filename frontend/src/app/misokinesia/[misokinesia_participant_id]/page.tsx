@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import TrialRunWatermark from "@/lib/components/TrialRunWatermark";
 import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
@@ -140,7 +139,6 @@ export default function MisokinesiaTaskPage() {
   if (phase === "loading") {
     return (
       <Screen>
-        <TrialRunWatermark />
         <p className="text-sm text-muted-foreground">Loading session…</p>
       </Screen>
     );
@@ -149,7 +147,6 @@ export default function MisokinesiaTaskPage() {
   if (phase === "error") {
     return (
       <Screen>
-        <TrialRunWatermark />
         <p className="text-sm text-destructive">{loadError}</p>
       </Screen>
     );
@@ -158,7 +155,6 @@ export default function MisokinesiaTaskPage() {
   if (phase === "intro") {
     return (
       <Screen>
-        <TrialRunWatermark />
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
           Misokinesia Task
         </p>
@@ -183,7 +179,6 @@ export default function MisokinesiaTaskPage() {
   if (phase === "playing" && currentClip) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
-        <TrialRunWatermark />
         <div className="w-full max-w-[92rem] space-y-3">
           <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
           <MisokinesiaVideoPlayer
@@ -198,7 +193,6 @@ export default function MisokinesiaTaskPage() {
   if (phase === "questionnaire" && currentClip) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
-        <TrialRunWatermark />
         <div className="w-full max-w-2xl">
           <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
         </div>
@@ -217,7 +211,6 @@ export default function MisokinesiaTaskPage() {
   if (phase === "end_of_task") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
-        <TrialRunWatermark />
         <MisokinesiaEndOfTaskForm
           misokinesiaParticipantId={participantId}
           trialMode={trialMode}
@@ -231,7 +224,6 @@ export default function MisokinesiaTaskPage() {
     if (completing) {
       return (
         <Screen>
-          <TrialRunWatermark />
           <p className="text-sm text-muted-foreground">Saving your results…</p>
         </Screen>
       );
@@ -240,7 +232,6 @@ export default function MisokinesiaTaskPage() {
     if (completeError) {
       return (
         <Screen>
-          <TrialRunWatermark />
           <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
             {completeError}
           </div>
@@ -256,7 +247,6 @@ export default function MisokinesiaTaskPage() {
 
     return (
       <Screen>
-        <TrialRunWatermark />
         <div
           className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary"
         >
@@ -280,10 +270,10 @@ export default function MisokinesiaTaskPage() {
           The session is complete. Please return this device to the research assistant.
         </p>
         <Button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/misokinesia")}
           className="mt-8 rounded-xl px-8 text-primary-foreground"
         >
-          Return to Dashboard
+          Back to Misokinesia
         </Button>
       </Screen>
     );

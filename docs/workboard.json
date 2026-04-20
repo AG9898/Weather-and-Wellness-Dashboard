@@ -1260,6 +1260,136 @@
         "cd frontend && npm run build"
       ],
       "estimate": "M"
+    },
+    {
+      "id": "T145",
+      "group_id": "MISOKINESIA_MKAQ",
+      "title": "Misokinesia MkAQ - Schema and start assignment",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Persist each Misokinesia participant's randomized MkAQ pre/post assignment and add storage for the 21-item response.",
+      "description": "Add an Alembic migration after the current head to extend `misokinesia_participants` with nullable `mkaq_administration` constrained to `pre` or `post`, create `misokinesia_mkaq_responses` with session-scoped foreign keys, 21 required 0-3 item columns, server-owned `administration`, `total_score`, timestamps, and one-response-per-participant uniqueness. Update SQLAlchemy models and Pydantic manifest schemas so `POST /misokinesia/start` randomly assigns and returns `mkaq_administration` for new production sessions while legacy rows may remain null.",
+      "acceptance_criteria": [
+        "A new Alembic migration applies cleanly after `20260407_000001` and downgrades cleanly",
+        "`misokinesia_participants.mkaq_administration` exists with allowed values `pre` and `post`; existing rows may remain null",
+        "`misokinesia_mkaq_responses` stores `misokinesia_participant_id`, `session_id`, `participant_uuid`, `administration`, `q1` through `q21`, `total_score`, and `created_at`",
+        "The MkAQ response table enforces one response per Misokinesia participant and keeps session/participant foreign keys non-null",
+        "`POST /misokinesia/start` persists a random `pre` or `post` MkAQ assignment and returns it in the manifest response",
+        "Existing trial-manifest behavior remains read-only and unchanged"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/alembic/versions/20260420_000001_misokinesia_mkaq.py",
+        "backend/app/models/misokinesia.py",
+        "backend/app/schemas/misokinesia.py",
+        "backend/app/routers/misokinesia.py",
+        "backend/tests/test_misokinesia.py"
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md"
+      ],
+      "notes": [
+        "Do not backfill MkAQ assignments for historical Misokinesia rows.",
+        "Use server-side assignment for production starts; the client must not choose the assignment."
+      ],
+      "commands": [
+        "cd backend && alembic upgrade head",
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_misokinesia.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T146",
+      "group_id": "MISOKINESIA_MKAQ",
+      "title": "Misokinesia MkAQ - Participant endpoint and flow guards",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add the participant-facing MkAQ submit endpoint with server-side scoring and enforce the assigned pre/post placement.",
+      "description": "Implement `POST /misokinesia/participants/{participant_id}/mkaq` as a no-auth participant endpoint that accepts all 21 MkAQ item values, validates each as 0-3, copies the participant's persisted `mkaq_administration`, computes `total_score` as the direct sum, and writes one `misokinesia_mkaq_responses` row. Add backend guards so `pre` participants cannot submit per-clip responses before MkAQ exists and `post` participants cannot submit the existing end-of-task form before MkAQ exists. Keep the existing per-clip and end-of-task payload shapes unchanged.",
+      "acceptance_criteria": [
+        "`POST /misokinesia/participants/{participant_id}/mkaq` returns 201 with `response_id`, `misokinesia_participant_id`, `session_id`, `administration`, `total_score`, and `created_at`",
+        "The endpoint returns 404 for unknown Misokinesia participants and 409 for duplicate MkAQ submissions",
+        "Missing MkAQ items or item values outside 0-3 return validation errors",
+        "`total_score` is computed in FastAPI as the direct sum of all 21 items and is not accepted from the client",
+        "A `pre` participant receives a 409 from `/responses` until MkAQ has been submitted",
+        "A `post` participant receives a 409 from `/end-of-task` until MkAQ has been submitted after clip completion"
+      ],
+      "depends_on": [
+        "T145"
+      ],
+      "blocked_by": [
+        "T145"
+      ],
+      "files": [
+        "backend/app/routers/misokinesia.py",
+        "backend/app/schemas/misokinesia.py",
+        "backend/tests/test_misokinesia.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md"
+      ],
+      "notes": [
+        "Participant-facing auth posture should match the existing per-clip and end-of-task endpoints.",
+        "Do not add subscale scoring unless a future task provides a confirmed scoring rule."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_misokinesia.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T147",
+      "group_id": "MISOKINESIA_MKAQ",
+      "title": "Misokinesia MkAQ - Frontend form and pre/post state machine",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Show the required MkAQ form at the assigned pre-trial or post-trial position in production and trial Misokinesia flows.",
+      "description": "Update frontend Misokinesia types, typed API wrappers, session-storage manifest handling, and participant-page state machine to include `mkaq_administration`. Add a required 21-item MkAQ form using the documented 0-3 scale and route production submits through `submitMisokinesiaMkaq`; in trial mode, mirror the same pre/post placement with local-only progression and no write API calls. Preserve the current no-watermark Misokinesia participant task behavior and the `Back to Misokinesia` completion route.",
+      "acceptance_criteria": [
+        "Production manifests include `mkaq_administration` and the participant page shows MkAQ before clips for `pre` assignments",
+        "The participant page shows MkAQ after the final per-clip response and before the existing end-of-task form for `post` assignments",
+        "The MkAQ form requires all 21 answers before enabling submit and uses the exact 0-3 labels from the spec",
+        "Production MkAQ submit calls only the typed wrapper in `src/lib/api/`; no component uses bare `fetch`",
+        "Trial mode mirrors pre/post MkAQ placement locally and does not call `/misokinesia/start`, `/responses`, `/mkaq`, or `/end-of-task` write endpoints",
+        "Existing production clip playback, per-clip questionnaire, end-of-task form, no-watermark behavior, and `Back to Misokinesia` completion button remain intact"
+      ],
+      "depends_on": [
+        "T145",
+        "T146"
+      ],
+      "blocked_by": [
+        "T145",
+        "T146"
+      ],
+      "files": [
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/app/(ra)/misokinesia/page.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx",
+        "frontend/src/lib/trial-mode.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "Keep the wording `visual issues` from the source instrument; do not rewrite it to `misokinesia` or `fidgeting`.",
+        "Use the existing Misokinesia participant UI style rather than introducing a separate survey framework."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
     }
   ]
 }

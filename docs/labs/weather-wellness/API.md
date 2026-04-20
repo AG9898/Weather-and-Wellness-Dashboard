@@ -84,6 +84,7 @@
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
+| POST   | /misokinesia/participants/{participant_id}/mkaq | None | planned | T145 |
 | PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
 
 ---
@@ -899,6 +900,7 @@
     "misokinesia_participant_id": "uuid",
     "misokinesia_participant_number": "integer",
     "session_id": "uuid",
+    "mkaq_administration": "pre",
     "clips": [
       {
         "stimulus_id": "uuid",
@@ -912,6 +914,7 @@
 - **Notes:**
   - Atomically creates an anonymous `participants` row (no demographics), an `active` session, and a `misokinesia_participants` row.
   - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
+  - Planned MkAQ extension: assigns `mkaq_administration` randomly as `"pre"` or `"post"`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can place the required MkAQ form.
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
   - `clips` contains all 29 active stimuli for the test set, but the response order is randomized per participant session.
   - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
@@ -974,11 +977,63 @@
   - Returns 404 if `participant_id` not found.
   - Returns 409 if a response for this `(participant_id, stimulus_id)` pair already exists (UNIQUE constraint violation).
   - Returns 409 if all stimuli are already answered (`completed_at` is set).
+  - Planned MkAQ extension: returns 409 for participants assigned `mkaq_administration="pre"` until their MkAQ response exists.
   - Returns 422 if `stimulus_id` does not belong to the participant's assigned test set.
   - Returns 422 if any `qN` value is outside 1–5.
   - After the final response, `misokinesia_participants.completed_at` is set server-side automatically.
   - `is_complete: true` signals to the frontend to transition to the end-of-task state.
   - `session_id` is included so the frontend can call `PATCH /sessions/{session_id}/status` after the end-of-task step.
+  - Trial mode bypasses this endpoint and performs local-only progression.
+
+---
+
+### POST /misokinesia/participants/{participant_id}/mkaq
+- **Auth:** None (participant-facing)
+- **Status:** planned
+- **Request body:** `MisokinesiaMkaqResponseCreate`
+  ```json
+  {
+    "q1": "integer (0-3)",
+    "q2": "integer (0-3)",
+    "q3": "integer (0-3)",
+    "q4": "integer (0-3)",
+    "q5": "integer (0-3)",
+    "q6": "integer (0-3)",
+    "q7": "integer (0-3)",
+    "q8": "integer (0-3)",
+    "q9": "integer (0-3)",
+    "q10": "integer (0-3)",
+    "q11": "integer (0-3)",
+    "q12": "integer (0-3)",
+    "q13": "integer (0-3)",
+    "q14": "integer (0-3)",
+    "q15": "integer (0-3)",
+    "q16": "integer (0-3)",
+    "q17": "integer (0-3)",
+    "q18": "integer (0-3)",
+    "q19": "integer (0-3)",
+    "q20": "integer (0-3)",
+    "q21": "integer (0-3)"
+  }
+  ```
+- **Response (HTTP 201):** `MisokinesiaMkaqResponseResponse`
+  ```json
+  {
+    "response_id": "uuid",
+    "misokinesia_participant_id": "uuid",
+    "session_id": "uuid",
+    "administration": "post",
+    "total_score": "integer (0-63)",
+    "created_at": "datetime"
+  }
+  ```
+- **Notes:**
+  - No auth required.
+  - Returns 404 if `participant_id` not found.
+  - Returns 409 if this participant already has an MkAQ response.
+  - Returns 422 if any `qN` value is outside 0-3 or if any item is missing.
+  - `administration` is copied from `misokinesia_participants.mkaq_administration`; the client does not submit or choose it.
+  - `total_score` is computed server-side as the direct sum of `q1` through `q21`.
   - Trial mode bypasses this endpoint and performs local-only progression.
 
 ---
@@ -1012,6 +1067,7 @@
   - No auth required.
   - Returns 404 if `participant_id` not found.
   - Returns 409 if `misokinesia_participants.completed_at` is null (not all per-clip responses submitted yet).
+  - Planned MkAQ extension: returns 409 for participants assigned `mkaq_administration="post"` until their MkAQ response exists.
   - After success, frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'`.
   - Trial mode bypasses this endpoint and performs no backend writes.
 
