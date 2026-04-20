@@ -769,6 +769,7 @@ export interface MisokinesiaManifest {
   misokinesia_participant_id: string;
   misokinesia_participant_number: number;
   session_id: string;
+  mkaq_administration: "pre" | "post";
   clips: MisokinesiaClipMeta[];
 }
 
@@ -821,6 +822,36 @@ export async function submitMisokinesiaTrialResponse(
 ): Promise<MisokinesiaTrialResponseResult> {
   return apiPost<MisokinesiaTrialResponseResult>(
     `/misokinesia/participants/${participantId}/responses`,
+    payload
+  );
+}
+
+/** MkAQ 21-item request payload. All items required, each valued 0–3. */
+export interface MisokinesiaMkaqRequest {
+  q1: number; q2: number; q3: number; q4: number; q5: number;
+  q6: number; q7: number; q8: number; q9: number; q10: number;
+  q11: number; q12: number; q13: number; q14: number; q15: number;
+  q16: number; q17: number; q18: number; q19: number; q20: number;
+  q21: number;
+}
+
+/** MkAQ response returned by POST /misokinesia/participants/{id}/mkaq. */
+export interface MisokinesiaMkaqResponse {
+  response_id: string;
+  misokinesia_participant_id: string;
+  session_id: string;
+  administration: "pre" | "post";
+  total_score: number;
+  created_at: string;
+}
+
+/** Submit the required 21-item MkAQ (participant-facing, no auth). Server computes total_score. */
+export async function submitMisokinesiaMkaq(
+  participantId: string,
+  payload: MisokinesiaMkaqRequest
+): Promise<MisokinesiaMkaqResponse> {
+  return apiPost<MisokinesiaMkaqResponse>(
+    `/misokinesia/participants/${participantId}/mkaq`,
     payload
   );
 }

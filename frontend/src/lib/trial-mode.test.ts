@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { buildMkaqPanes, MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
+
 import {
   TRIAL_RUN_ID_PREFIX,
   adoptTrialRunStateFromLocation,
@@ -160,6 +162,56 @@ describe("trial-mode submit branching", () => {
 
     expect(submitSurvey).toHaveBeenCalledOnce();
     expect(submitMisokinesiaResponse).toHaveBeenCalledOnce();
+  });
+});
+
+describe("MkAQ typed wrapper and carousel pane logic", () => {
+  it("exports submitMisokinesiaMkaq from src/lib/api/index.ts", () => {
+    const source = readFrontendFile("src/lib/api/index.ts");
+    expect(source).toContain("export async function submitMisokinesiaMkaq");
+    expect(source).toContain("MisokinesiaMkaqRequest");
+    expect(source).toContain("MisokinesiaMkaqResponse");
+  });
+
+  it("MisokinesiaMkaqForm does not use bare fetch", () => {
+    const source = readFrontendFile("src/lib/components/MisokinesiaMkaqForm.tsx");
+    // No bare fetch() calls — all API calls go through typed wrappers
+    expect(source).not.toMatch(/\bfetch\s*\(/);
+  });
+
+  it("groups 21 items into 5/5/5/6 panes", () => {
+    const panes = buildMkaqPanes(MKAQ_ITEMS);
+    expect(panes).toHaveLength(4);
+    expect(panes[0]).toHaveLength(5);
+    expect(panes[1]).toHaveLength(5);
+    expect(panes[2]).toHaveLength(5);
+    expect(panes[3]).toHaveLength(6);
+  });
+
+  it("groups 10 items into 5/5 panes", () => {
+    const panes = buildMkaqPanes(MKAQ_ITEMS.slice(0, 10));
+    expect(panes).toHaveLength(2);
+    expect(panes[0]).toHaveLength(5);
+    expect(panes[1]).toHaveLength(5);
+  });
+
+  it("MKAQ_ITEMS exports all 21 items with correct keys and wording", () => {
+    expect(MKAQ_ITEMS).toHaveLength(21);
+    expect(MKAQ_ITEMS[0].key).toBe("q1");
+    expect(MKAQ_ITEMS[20].key).toBe("q21");
+    // Spec requires instrument wording; items must not use "misokinesia" or "fidgeting"
+    for (const item of MKAQ_ITEMS) {
+      expect(item.text.toLowerCase()).not.toContain("misokinesia");
+      expect(item.text.toLowerCase()).not.toContain("fidgeting");
+    }
+  });
+
+  it("preserves item order across panes", () => {
+    const panes = buildMkaqPanes(MKAQ_ITEMS);
+    const flat = panes.flat();
+    flat.forEach((item, idx) => {
+      expect(item.key).toBe(MKAQ_ITEMS[idx].key);
+    });
   });
 });
 

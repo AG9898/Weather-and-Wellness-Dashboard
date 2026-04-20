@@ -1349,7 +1349,7 @@
       "id": "T147",
       "group_id": "MISOKINESIA_MKAQ",
       "title": "Misokinesia MkAQ - Shared frontend card carousel",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add the reusable MkAQ card carousel and typed production MkAQ API wrapper without wiring it into the participant state machine yet.",
