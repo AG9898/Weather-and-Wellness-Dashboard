@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import {
   buildTrialRunPath,
+  createTrialMkaqAdministration,
   createTrialRunMisokinesiaManifest,
   createTrialRunState,
   persistTrialRunState,
@@ -46,8 +47,9 @@ export default function MisokinesiaPage() {
     setError(null);
     try {
       const trialState = createTrialRunState("misokinesia");
+      const mkaqAdministration = createTrialMkaqAdministration();
       const trialManifest = await getMisokinesiaTrialManifest();
-      const manifest = createTrialRunMisokinesiaManifest(trialState, trialManifest.clips);
+      const manifest = createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, mkaqAdministration);
       persistTrialRunState(trialState);
       sessionStorage.setItem(MISOKINESIA_MANIFEST_KEY, JSON.stringify(manifest));
       router.push(

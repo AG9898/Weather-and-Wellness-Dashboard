@@ -21,11 +21,18 @@ export interface TrialRunMisokinesiaClip {
   duration_ms: number;
 }
 
+export const TRIAL_MKAQ_ITEM_COUNT = 10;
+
 export interface TrialRunMisokinesiaManifest {
   misokinesia_participant_id: string;
   misokinesia_participant_number: number;
   session_id: string;
+  mkaq_administration: "pre" | "post";
   clips: TrialRunMisokinesiaClip[];
+}
+
+export function createTrialMkaqAdministration(): "pre" | "post" {
+  return Math.random() < 0.5 ? "pre" : "post";
 }
 
 interface TrialRunLocation {
@@ -104,7 +111,8 @@ export function clearTrialRunState(): void {
 
 export function createTrialRunMisokinesiaManifest(
   state: TrialRunState,
-  clips: TrialRunMisokinesiaClip[]
+  clips: TrialRunMisokinesiaClip[],
+  mkaqAdministration: "pre" | "post" = createTrialMkaqAdministration()
 ): TrialRunMisokinesiaManifest {
   if (state.flow !== "misokinesia" || !state.session_id || !state.misokinesia_participant_id) {
     throw new Error("Misokinesia trial mode requires fake session and participant ids.");
@@ -117,6 +125,7 @@ export function createTrialRunMisokinesiaManifest(
     misokinesia_participant_id: state.misokinesia_participant_id,
     misokinesia_participant_number: 0,
     session_id: state.session_id,
+    mkaq_administration: mkaqAdministration,
     clips: clips.map((clip) => ({ ...clip })),
   };
 }

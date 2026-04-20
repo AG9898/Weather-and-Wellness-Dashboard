@@ -7,6 +7,7 @@ import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
 import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
+import { TRIAL_MKAQ_ITEM_COUNT } from "@/lib/trial-mode";
 import {
   patchSessionStatus,
   getParticipantErrorMessage,
@@ -276,7 +277,10 @@ export default function MisokinesiaTaskPage() {
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
-        <MisokinesiaMkaqForm items={MKAQ_ITEMS} onComplete={handleMkaqComplete} />
+        <MisokinesiaMkaqForm
+          items={trialMode ? MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT) : MKAQ_ITEMS}
+          onComplete={handleMkaqComplete}
+        />
       </div>
     );
   }

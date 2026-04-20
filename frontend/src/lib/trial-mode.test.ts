@@ -6,10 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMkaqPanes, MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
 
 import {
+  TRIAL_MKAQ_ITEM_COUNT,
   TRIAL_RUN_ID_PREFIX,
   adoptTrialRunStateFromLocation,
   buildTrialRunPath,
   clearTrialRunState,
+  createTrialMkaqAdministration,
   createTrialRunMisokinesiaManifest,
   createTrialRunState,
   getMisokinesiaSubmitMode,
@@ -259,6 +261,86 @@ describe("MkAQ production participant flow placement", () => {
     // is_complete check and post check must both exist in questionnaire handler
     expect(source).toContain("is_complete");
     expect(source).toContain("handleQuestionnaireComplete");
+  });
+});
+
+describe("MkAQ Trial Run shortened carousel (T149)", () => {
+  it("createTrialMkaqAdministration returns pre or post", () => {
+    const seen = new Set<string>();
+    // Run enough times to observe both values
+    for (let i = 0; i < 200; i++) {
+      seen.add(createTrialMkaqAdministration());
+    }
+    expect(seen.has("pre")).toBe(true);
+    expect(seen.has("post")).toBe(true);
+    expect(seen.size).toBe(2);
+  });
+
+  it("trial manifest includes mkaq_administration", () => {
+    const state = createTrialRunState("misokinesia");
+    const clips = Array.from({ length: 5 }, (_, i) => ({
+      stimulus_id: `${"0".repeat(8)}-0000-0000-0000-${"0".repeat(11)}${i + 1}`,
+      public_url: `https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/${i}.mp4`,
+      sort_order: i + 1,
+      duration_ms: 15000,
+    }));
+
+    const manifest = createTrialRunMisokinesiaManifest(state, clips, "pre");
+    expect(manifest.mkaq_administration).toBe("pre");
+
+    const manifest2 = createTrialRunMisokinesiaManifest(state, clips, "post");
+    expect(manifest2.mkaq_administration).toBe("post");
+  });
+
+  it("participant page uses 10-item subset for trial mode MkAQ", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).toContain("TRIAL_MKAQ_ITEM_COUNT");
+    expect(source).toContain("MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT)");
+    expect(source).toContain("trialMode ?");
+  });
+
+  it("TRIAL_MKAQ_ITEM_COUNT is 10", () => {
+    expect(TRIAL_MKAQ_ITEM_COUNT).toBe(10);
+  });
+
+  it("trial MkAQ submit does not call mkaq backend endpoint", async () => {
+    const submitMkaq = vi.fn();
+    const localAdvance = vi.fn();
+
+    await runTrialAwareSubmit(getMisokinesiaSubmitMode(true), {
+      production: submitMkaq,
+      trial: localAdvance,
+    });
+
+    expect(submitMkaq).not.toHaveBeenCalled();
+    expect(localAdvance).toHaveBeenCalledOnce();
+  });
+
+  it("launch page assigns mkaq_administration before building trial manifest", () => {
+    const source = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
+    expect(source).toContain("createTrialMkaqAdministration()");
+    expect(source).toContain("mkaqAdministration");
+    expect(source).toContain("createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, mkaqAdministration)");
+  });
+
+  it("trial MkAQ pre branch shows mkaq before first clip", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    // handleBegin checks for pre and routes to mkaq
+    expect(source).toContain('mkaq_administration === "pre"');
+    expect(source).toContain('"mkaq"');
+  });
+
+  it("trial MkAQ post branch shows mkaq after final clip questionnaire", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    // handleQuestionnaireComplete checks for post and routes to mkaq
+    expect(source).toContain('mkaq_administration === "post"');
+    expect(source).toContain("is_complete");
   });
 });
 

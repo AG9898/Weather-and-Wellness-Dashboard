@@ -1436,7 +1436,7 @@
       "id": "T149",
       "group_id": "MISOKINESIA_MKAQ",
       "title": "Misokinesia MkAQ - Trial Run shortened carousel",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add the shortened 10-item MkAQ carousel to Misokinesia Trial Run with local pre/post randomization and no write calls.",
