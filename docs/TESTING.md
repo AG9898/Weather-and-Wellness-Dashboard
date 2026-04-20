@@ -129,7 +129,7 @@ Config: `frontend/vitest.config.ts`
 | `src/lib/server/route-handler-auth.test.ts` | Route Handler infra | Bearer-token extraction and missing-header auth rejection |
 | `src/lib/server/route-handler-cache.test.ts` | Route Handler infra | Cache-key composition and `x-ww-cache` response helper behavior |
 | `src/lib/server/route-handler-validation.test.ts` | Route Handler infra | Shared `date_from` / `date_to` validation branches |
-| `src/lib/trial-mode.test.ts` | Trial mode | Launch-control source guards, fake-id/manifest helpers, trial-vs-production submit branching, and Trial Run watermark state |
+| `src/lib/trial-mode.test.ts` | Trial mode | Launch-control source guards, fake-id/read-only manifest helpers, trial-vs-production submit branching, and Trial Run watermark state |
 
 ### Testable utility modules
 
@@ -141,7 +141,7 @@ Pure utility modules that hold logic extracted from components for testability:
 | `src/lib/server/route-handler-auth.ts` | `extractBearerToken`, `requireRaBearerToken`, `verifySupabaseJWT` |
 | `src/lib/server/route-handler-cache.ts` | `getRedisClient`, `buildCacheKey`, `readCacheValue`, `writeCacheValue`, `jsonWithCacheState` |
 | `src/lib/server/route-handler-validation.ts` | `isIsoDate`, `readRequiredDateRange` |
-| `src/lib/trial-mode.ts` | `createTrialRunState`, `createTrialRunMisokinesiaManifest`, `getWeatherWellnessSubmitMode`, `getMisokinesiaSubmitMode`, `runTrialAwareSubmit`, `getTrialRunWatermarkLabel` |
+| `src/lib/trial-mode.ts` | `createTrialRunState`, Misokinesia trial manifest composition helpers, `getWeatherWellnessSubmitMode`, `getMisokinesiaSubmitMode`, `runTrialAwareSubmit`, `getTrialRunWatermarkLabel` |
 
 ### Conventions
 
@@ -152,7 +152,9 @@ Pure utility modules that hold logic extracted from components for testability:
 - Route-topology guard tests whenever routing cleanup removes or deprecates a same-origin handler/wrapper, so deleted paths do not silently reappear
 - Trial-mode flow branching for participant pages (`production` vs `trial`) including:
   - launch controls for "Run Test Trial" on WW and Misokinesia launch pages
-  - no API wrapper calls when trial mode is active
+  - no participant write API wrapper calls when trial mode is active
+  - Misokinesia trial launch calls only the read-only trial manifest API and receives exactly 5 real clip URLs
+  - Misokinesia trial playback uses sampled Supabase Storage URLs instead of local placeholder clips
   - expected local progression to completion in trial mode
   - visible centered top-screen `"Trial Run"` watermark rendering during trial mode screens
 

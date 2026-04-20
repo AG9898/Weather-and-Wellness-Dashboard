@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import MisokinesiaLaunchPage from "@/lib/components/MisokinesiaLaunchPage";
 import {
   startMisokinesiaSession,
+  getMisokinesiaTrialManifest,
   type MisokinesiaManifest,
   ApiError,
 } from "@/lib/api";
@@ -40,17 +41,26 @@ export default function MisokinesiaPage() {
     }
   }
 
-  function handleStartTrial() {
+  async function handleStartTrial() {
     setTrialLoading(true);
     setError(null);
-
-    const trialState = createTrialRunState("misokinesia");
-    const manifest = createTrialRunMisokinesiaManifest(trialState);
-    persistTrialRunState(trialState);
-    sessionStorage.setItem(MISOKINESIA_MANIFEST_KEY, JSON.stringify(manifest));
-    router.push(
-      buildTrialRunPath(`/misokinesia/${trialState.misokinesia_participant_id}`)
-    );
+    try {
+      const trialState = createTrialRunState("misokinesia");
+      const trialManifest = await getMisokinesiaTrialManifest();
+      const manifest = createTrialRunMisokinesiaManifest(trialState, trialManifest.clips);
+      persistTrialRunState(trialState);
+      sessionStorage.setItem(MISOKINESIA_MANIFEST_KEY, JSON.stringify(manifest));
+      router.push(
+        buildTrialRunPath(`/misokinesia/${trialState.misokinesia_participant_id}`)
+      );
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? `Trial launch failed (${err.status}): ${err.message}`
+          : "Failed to start trial mode. Please try again."
+      );
+      setTrialLoading(false);
+    }
   }
 
   return (

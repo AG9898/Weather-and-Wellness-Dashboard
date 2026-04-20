@@ -15,7 +15,6 @@ import {
 } from "@/lib/api";
 import {
   adoptTrialRunStateFromLocation,
-  createTrialRunMisokinesiaManifest,
 } from "@/lib/trial-mode";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
@@ -65,19 +64,6 @@ export default function MisokinesiaTaskPage() {
           setPhase("intro");
           return;
         }
-      } catch {
-        // fall through to error
-      }
-    }
-
-    if (activeTrial) {
-      try {
-        const manifest = createTrialRunMisokinesiaManifest(trialState);
-        sessionStorage.setItem(MANIFEST_STORAGE_KEY, JSON.stringify(manifest));
-        setManifest(manifest);
-        setTrialMode(true);
-        setPhase("intro");
-        return;
       } catch {
         // fall through to error
       }
@@ -195,16 +181,6 @@ export default function MisokinesiaTaskPage() {
   }
 
   if (phase === "playing" && currentClip) {
-    if (trialMode) {
-      return (
-        <TrialClipPlayback
-          clipNumber={clipNumber}
-          totalClips={totalClips}
-          onEnded={handleVideoEnded}
-        />
-      );
-    }
-
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
         <TrialRunWatermark />
@@ -337,54 +313,5 @@ function ProgressIndicator({
     <p className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
       Clip {clipNumber} of {totalClips}
     </p>
-  );
-}
-
-function TrialClipPlayback({
-  clipNumber,
-  totalClips,
-  onEnded,
-}: {
-  clipNumber: number;
-  totalClips: number;
-  onEnded: () => void;
-}) {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
-      <TrialRunWatermark />
-      <div className="w-full max-w-[92rem] space-y-3">
-        <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
-        <div
-          className="relative flex w-full items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-card/60 text-center backdrop-blur-sm"
-          style={{ aspectRatio: "16 / 9" }}
-        >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-25"
-            style={{
-              background:
-                "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, var(--ring) 72%, transparent), transparent)",
-            }}
-          />
-          <div className="relative max-w-md space-y-4 px-6">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Trial clip
-            </p>
-            <h1 className="text-2xl font-bold text-foreground">
-              Local rehearsal clip {clipNumber}
-            </h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Continue when the rehearsal clip has finished.
-            </p>
-            <Button
-              type="button"
-              onClick={onEnded}
-              className="rounded-xl px-8 text-primary-foreground"
-            >
-              Continue to Questions
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

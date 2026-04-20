@@ -103,26 +103,21 @@ export function clearTrialRunState(): void {
 }
 
 export function createTrialRunMisokinesiaManifest(
-  state: TrialRunState
+  state: TrialRunState,
+  clips: TrialRunMisokinesiaClip[]
 ): TrialRunMisokinesiaManifest {
   if (state.flow !== "misokinesia" || !state.session_id || !state.misokinesia_participant_id) {
     throw new Error("Misokinesia trial mode requires fake session and participant ids.");
+  }
+  if (clips.length !== 5) {
+    throw new Error("Misokinesia trial mode requires exactly 5 sampled clips.");
   }
 
   return {
     misokinesia_participant_id: state.misokinesia_participant_id,
     misokinesia_participant_number: 0,
     session_id: state.session_id,
-    clips: Array.from({ length: 29 }, (_, index) => {
-      const clipNumber = index + 1;
-      const padded = String(clipNumber).padStart(2, "0");
-      return {
-        stimulus_id: `${TRIAL_RUN_ID_PREFIX}-misokinesia-stimulus-${padded}`,
-        public_url: `trial://misokinesia/clip-${padded}`,
-        sort_order: clipNumber,
-        duration_ms: 15000,
-      };
-    }),
+    clips: clips.map((clip) => ({ ...clip })),
   };
 }
 

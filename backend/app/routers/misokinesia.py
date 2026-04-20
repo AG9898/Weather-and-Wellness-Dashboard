@@ -24,11 +24,13 @@ from app.schemas.misokinesia import (
     MisokinesiaEndOfTaskCreate,
     MisokinesiaEndOfTaskResponse,
     MisokinesiaManifestResponse,
+    MisokinesiaTrialManifestResponse,
     MisokinesiaTrialResponseCreate,
     MisokinesiaTrialResponseResponse,
 )
 
 router = APIRouter(prefix="/misokinesia", tags=["misokinesia"])
+_TRIAL_MANIFEST_CLIP_COUNT = 5
 
 
 def _supabase_url() -> str:
@@ -42,6 +44,25 @@ def _shuffle_stimuli(stimuli: list[MisokinesiaStimulus]) -> list[MisokinesiaStim
     shuffled = list(stimuli)
     random.shuffle(shuffled)
     return shuffled
+
+
+def _sample_trial_stimuli(stimuli: list[MisokinesiaStimulus]) -> list[MisokinesiaStimulus]:
+    return random.sample(stimuli, _TRIAL_MANIFEST_CLIP_COUNT)
+
+
+def _clip_meta_from_stimulus(
+    stimulus: MisokinesiaStimulus,
+    *,
+    base_url: str,
+) -> MisokinesiaClipMeta:
+    return MisokinesiaClipMeta(
+        stimulus_id=stimulus.stimulus_id,
+        public_url=(
+            f"{base_url}/storage/v1/object/public/misokinesia-stimuli/{stimulus.storage_path}"
+        ),
+        sort_order=stimulus.sort_order,
+        duration_ms=stimulus.duration_ms,
+    )
 
 
 @router.post(
@@ -110,15 +131,7 @@ async def start_misokinesia_session(
     # canonical sort_order in the returned metadata.
     base_url = _supabase_url()
     randomized_stimuli = _shuffle_stimuli(stimuli)
-    clips = [
-        MisokinesiaClipMeta(
-            stimulus_id=s.stimulus_id,
-            public_url=f"{base_url}/storage/v1/object/public/misokinesia-stimuli/{s.storage_path}",
-            sort_order=s.sort_order,
-            duration_ms=s.duration_ms,
-        )
-        for s in randomized_stimuli
-    ]
+    clips = [_clip_meta_from_stimulus(s, base_url=base_url) for s in randomized_stimuli]
 
     return MisokinesiaManifestResponse(
         misokinesia_participant_id=miso_participant.misokinesia_participant_id,
@@ -126,6 +139,51 @@ async def start_misokinesia_session(
         session_id=session_obj.session_id,
         clips=clips,
     )
+
+
+@router.get(
+    "/trial-manifest",
+    response_model=MisokinesiaTrialManifestResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_lab_member)],
+)
+async def get_trial_manifest(
+    db: AsyncSession = Depends(get_session),
+) -> MisokinesiaTrialManifestResponse:
+    """RA-only read endpoint for trial mode clip sampling. Performs no writes."""
+
+    ts_result = await db.execute(
+        select(MisokinesiaTestSet).where(MisokinesiaTestSet.active.is_(True))
+    )
+    test_set = ts_result.scalars().first()
+    if test_set is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active misokinesia test set found. Seed data before requesting a trial manifest.",
+        )
+
+    stim_result = await db.execute(
+        select(MisokinesiaStimulus)
+        .where(
+            MisokinesiaStimulus.test_set_id == test_set.test_set_id,
+            MisokinesiaStimulus.active.is_(True),
+        )
+        .order_by(MisokinesiaStimulus.sort_order)
+    )
+    stimuli = stim_result.scalars().all()
+
+    if len(stimuli) < _TRIAL_MANIFEST_CLIP_COUNT:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "At least 5 active misokinesia stimuli are required for a trial manifest."
+            ),
+        )
+
+    base_url = _supabase_url()
+    sampled_stimuli = _sample_trial_stimuli(stimuli)
+    clips = [_clip_meta_from_stimulus(s, base_url=base_url) for s in sampled_stimuli]
+    return MisokinesiaTrialManifestResponse(clips=clips)
 
 
 @router.post(

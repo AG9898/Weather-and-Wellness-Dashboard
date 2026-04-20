@@ -29,6 +29,12 @@ class MisokinesiaManifestResponse(BaseModel):
     clips: list[MisokinesiaClipMeta]
 
 
+class MisokinesiaTrialManifestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    clips: list[MisokinesiaClipMeta]
+
+
 # ---------------------------------------------------------------------------
 # Per-participant record
 # ---------------------------------------------------------------------------
@@ -114,6 +120,7 @@ class MisokinesiaEndOfTaskResponse(BaseModel):
 __all__ = [
     "MisokinesiaClipMeta",
     "MisokinesiaManifestResponse",
+    "MisokinesiaTrialManifestResponse",
     "MisokinesiaParticipantResponse",
     "MisokinesiaTrialResponseCreate",
     "MisokinesiaTrialResponseResponse",

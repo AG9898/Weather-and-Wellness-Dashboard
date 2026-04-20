@@ -19,7 +19,7 @@ Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation libra
    - production mode: KPIs reflect the new complete session
    - trial mode: no KPI/data changes (no writes)
 7. View data via Supabase Studio
-8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click either "Start Misokinesia Session" (backend-backed) or "Run Test Trial" (local-only) → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Flow](#misokinesia-flow) below.
+8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click either "Start Misokinesia Session" (backend-backed write path) or "Run Test Trial" (read-only rehearsal path) → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Flow](#misokinesia-flow) below.
 
 ## Participant Flow
 1. ULS-8 survey
@@ -31,17 +31,22 @@ Visual language baseline: [docs/styleguide.md](styleguide.md) · Animation libra
 
 > **Note:** Consent is obtained at `/new-session` (Step 1 of the RA flow) before the participant session is created. There is no consent page within the `/session/[id]/` route tree.
 
-## Trial Run Mode (offline rehearsal)
+## Trial Run Mode (no-write rehearsal)
 
-Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It demonstrates the full participant interaction flow without backend connectivity.
+Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It demonstrates the participant interaction flow without writing research data.
 
 - Launch points:
   - WW: `/new-session` (after consent + demographics view)
   - Misokinesia: `/misokinesia`
 - Data behavior:
   - Uses frontend-generated fake ids (`session_id`, and for misokinesia also fake `misokinesia_participant_id`)
-  - Never calls FastAPI participant submission/start endpoints
+  - WW trial mode does not call FastAPI endpoints
+  - Misokinesia trial mode may call a read-only RA endpoint for a sampled clip manifest, but never calls write endpoints
   - Never writes rows to `participants`, `sessions`, survey tables, digit span tables, or misokinesia tables
+- Misokinesia video behavior:
+  - Samples 5 active videos by `stimulus_id` each time "Run Test Trial" is clicked
+  - Plays the sampled videos from public Supabase Storage CDN URLs
+  - Does not serve or proxy video bytes through FastAPI
 - UX behavior:
   - Preserves the same end-to-end screen order as production flow
   - Shows a centered top-screen "Trial Run" watermark on all participant trial-mode screens
@@ -57,14 +62,15 @@ Full specification: [docs/MISOKINESIA.md](MISOKINESIA.md)
 1. Navigate to `/misokinesia` via floating dock
 2. Choose launch mode:
    - **Start Misokinesia Session** — backend atomically creates anonymous participant + session
-   - **Run Test Trial** — frontend creates fake ids and a local manifest (no backend start call)
+   - **Run Test Trial** — frontend creates fake ids and loads a read-only 5-clip trial manifest (no backend start/write call)
 3. App navigates to `/misokinesia/[id]` participant task page (same device, no login required)
 
 **Participant task:**
 1. Intro screen → click to begin
-2. For each of 29 clips (randomized per session): video plays → 4-question per-clip form (scale 1–5) → submit
-3. End-of-task form shown once after all 29 clips (3 questions)
-4. Completion screen → RA clicks "Return to Dashboard"
+2. Production mode: for each of 29 clips (randomized per session): video plays → 4-question per-clip form (scale 1–5) → submit
+3. Trial mode: for each of 5 sampled clips (randomized on launch): video plays → 4-question per-clip form (scale 1–5) → local simulated submit
+4. End-of-task form shown once after all clips in the active mode (29 production clips or 5 trial clips)
+5. Completion screen → RA clicks "Return to Dashboard"
 
 Key differences from survey/digit-span flow: fully anonymous (no demographics), single-page state machine, videos served directly from Supabase Storage CDN (not proxied through backend).
 

@@ -26,12 +26,12 @@
 - **Participant endpoints:** No auth. Validated by `session_id` existence + `status == "active"`.
 - **Roles:** `admin` (full access) and `ra` (RA; dashboard access only). Lab membership is tracked via `lab_name` (e.g. `ww` for Weather-Wellness + Misokinesia). Default role when `app_metadata` is absent: `ra`.
 
-## Trial Run Mode (Frontend-only)
+## Trial Run Mode (No-write Rehearsal)
 
 - "Run Test Trial" is an RA-facing frontend rehearsal mode for WW and Misokinesia.
-- Trial mode is not a FastAPI API surface and has no backend contract.
 - In trial mode, frontend uses fake ids and local simulated submit success transitions.
-- Trial mode must not call `/sessions/start`, survey submit endpoints, `/digitspan/runs`, `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, or `/misokinesia/participants/{id}/end-of-task`.
+- WW trial mode is frontend-only and must not call `/sessions/start`, survey submit endpoints, or `/digitspan/runs`.
+- Misokinesia trial mode may call read-only clip-manifest endpoints, but must not call `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, or `/misokinesia/participants/{id}/end-of-task`.
 - Trial mode must not create or update database rows.
 
 ---
@@ -82,6 +82,7 @@
 | GET    | /admin/export.zip | Admin | implemented | T49, T100 |
 | POST   | /admin/backfill/legacy-weather | Admin | implemented | T56, T100 |
 | POST   | /misokinesia/start | RA | implemented | T106 |
+| GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
 
@@ -916,7 +917,34 @@
   - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
   - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
   - Unauthenticated requests return 401.
-  - Trial mode bypasses this endpoint and uses a frontend-local manifest with fake ids.
+  - Trial mode bypasses this write endpoint and uses `GET /misokinesia/trial-manifest` for read-only clip metadata.
+
+### GET /misokinesia/trial-manifest
+- **Auth:** RA required
+- **Status:** implemented (T143)
+- **Request body:** none
+- **Response (HTTP 200):** `MisokinesiaTrialManifestResponse`
+  ```json
+  {
+    "clips": [
+      {
+        "stimulus_id": "uuid",
+        "public_url": "string",
+        "sort_order": "integer",
+        "duration_ms": "integer"
+      }
+    ]
+  }
+  ```
+- **Notes:**
+  - Read-only rehearsal endpoint for "Run Test Trial"; it must not create or update rows.
+  - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
+  - Samples exactly 5 active stimuli from the active test set each time the endpoint is called.
+  - Sampling is randomized by `stimulus_id` membership/order so each click of "Run Test Trial" can produce a different subset and order.
+  - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
+  - The frontend combines these read-only clips with fake trial ids and still performs local simulated response/end-of-task completion.
+  - If fewer than 5 active stimuli exist, return a clear non-2xx error rather than silently shortening the trial.
+  - Unauthenticated requests return 401.
 
 ### POST /misokinesia/participants/{participant_id}/responses
 - **Auth:** None (participant-facing)

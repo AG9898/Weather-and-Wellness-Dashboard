@@ -2,6 +2,8 @@
 
 Covers:
 - POST /misokinesia/start: valid manifest response, auth requirement, clip ordering
+- GET /misokinesia/trial-manifest: read-only trial clip sampling, auth requirement,
+  insufficient-stimuli 409, randomized subset behavior
 - misokinesia_participant_number increments across successive start calls
 - POST /misokinesia/participants/{id}/responses: happy path, no-auth requirement,
   duplicate 409, wrong test-set 422, out-of-range qN 422, completed_at auto-set,
@@ -25,6 +27,7 @@ from sqlalchemy import exc as sa_exc
 
 from app.auth import get_current_lab_member
 from app.routers.misokinesia import (
+    get_trial_manifest,
     router,
     start_misokinesia_session,
     submit_end_of_task,
@@ -45,6 +48,10 @@ _SESSION_ID = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 _MISO_PARTICIPANT_ID = uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
 _STIMULUS_ID_1 = uuid.UUID("11111111-1111-1111-1111-111111111111")
 _STIMULUS_ID_2 = uuid.UUID("22222222-2222-2222-2222-222222222222")
+_STIMULUS_ID_3 = uuid.UUID("33333333-3333-3333-3333-333333333333")
+_STIMULUS_ID_4 = uuid.UUID("44444444-4444-4444-4444-444444444444")
+_STIMULUS_ID_5 = uuid.UUID("55555555-5555-5555-5555-555555555555")
+_STIMULUS_ID_6 = uuid.UUID("66666666-6666-6666-6666-666666666666")
 _RESPONSE_ID = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 _NOW = datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc)
 
@@ -349,7 +356,125 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 2 — submit_trial_response
+# Class 2 — get_trial_manifest
+# ---------------------------------------------------------------------------
+
+
+class GetTrialManifestTests(IsolatedAsyncioTestCase):
+    def _make_stimuli(self, total: int = 6) -> list[_FakeStimulus]:
+        stimulus_ids = [
+            _STIMULUS_ID_1,
+            _STIMULUS_ID_2,
+            _STIMULUS_ID_3,
+            _STIMULUS_ID_4,
+            _STIMULUS_ID_5,
+            _STIMULUS_ID_6,
+        ][:total]
+        return [
+            _FakeStimulus(
+                stimulus_id=stimulus_id,
+                sort_order=index + 1,
+                storage_path=f"clip_{index + 1:02d}.mp4",
+                duration_ms=15000 + (index * 1000),
+            )
+            for index, stimulus_id in enumerate(stimulus_ids)
+        ]
+
+    def _db_for_trial_manifest(
+        self,
+        test_set: _FakeTestSet | None = None,
+        stimuli: list[_FakeStimulus] | None = None,
+    ) -> _SequencedDB:
+        if stimuli is None:
+            stimuli = self._make_stimuli()
+        return _SequencedDB(
+            execute_returns=[
+                test_set if test_set is not None else _FakeTestSet(),
+                stimuli,
+            ]
+        )
+
+    async def test_trial_manifest_route_requires_lab_member_auth(self) -> None:
+        route = next(
+            (
+                r
+                for r in router.routes
+                if isinstance(r, APIRoute)
+                and r.path == "/misokinesia/trial-manifest"
+                and "GET" in (r.methods or set())
+            ),
+            None,
+        )
+        self.assertIsNotNone(route, "GET /misokinesia/trial-manifest route not registered")
+        assert route is not None
+        dep_calls = {d.call for d in route.dependant.dependencies}
+        self.assertIn(
+            get_current_lab_member,
+            dep_calls,
+            "GET /misokinesia/trial-manifest must depend on get_current_lab_member",
+        )
+
+    async def test_raises_404_when_no_active_test_set(self) -> None:
+        db = _SequencedDB(execute_returns=[None])
+        with self.assertRaises(HTTPException) as ctx:
+            await get_trial_manifest(db=db)
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    async def test_raises_409_when_fewer_than_five_active_stimuli_exist(self) -> None:
+        db = self._db_for_trial_manifest(stimuli=self._make_stimuli(total=4))
+        with self.assertRaises(HTTPException) as ctx:
+            await get_trial_manifest(db=db)
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("At least 5 active misokinesia stimuli", str(ctx.exception.detail))
+
+    async def test_returns_five_sampled_clips_with_public_urls_and_no_writes(self) -> None:
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        stimuli = self._make_stimuli(total=6)
+        sampled = [stimuli[5], stimuli[4], stimuli[3], stimuli[2], stimuli[1]]
+        db = self._db_for_trial_manifest(stimuli=stimuli)
+
+        with patch("app.routers.misokinesia._sample_trial_stimuli", return_value=sampled):
+            result = await get_trial_manifest(db=db)
+
+        self.assertEqual(len(result.clips), 5)
+        self.assertEqual(result.clips[0].stimulus_id, _STIMULUS_ID_6)
+        self.assertEqual(result.clips[0].sort_order, 6)
+        self.assertEqual(
+            result.clips[0].public_url,
+            "https://test.supabase.co/storage/v1/object/public/misokinesia-stimuli/clip_06.mp4",
+        )
+        self.assertEqual(result.clips[0].duration_ms, 20000)
+        self.assertFalse(db.committed, "Trial manifest endpoint must not perform writes")
+
+    async def test_repeated_calls_can_return_different_subset_or_order(self) -> None:
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        stimuli = self._make_stimuli(total=6)
+        db_first = self._db_for_trial_manifest(stimuli=stimuli)
+        db_second = self._db_for_trial_manifest(stimuli=stimuli)
+
+        first_sample = [stimuli[0], stimuli[1], stimuli[2], stimuli[3], stimuli[4]]
+        second_sample = [stimuli[1], stimuli[2], stimuli[3], stimuli[4], stimuli[5]]
+
+        with patch(
+            "app.routers.misokinesia._sample_trial_stimuli",
+            side_effect=[first_sample, second_sample],
+        ):
+            first_result = await get_trial_manifest(db=db_first)
+            second_result = await get_trial_manifest(db=db_second)
+
+        first_ids = [clip.stimulus_id for clip in first_result.clips]
+        second_ids = [clip.stimulus_id for clip in second_result.clips]
+        self.assertNotEqual(first_ids, second_ids)
+
+
+# ---------------------------------------------------------------------------
+# Class 3 — submit_trial_response
 # ---------------------------------------------------------------------------
 
 
@@ -535,7 +660,7 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 3 — submit_end_of_task
+# Class 4 — submit_end_of_task
 # ---------------------------------------------------------------------------
 
 

@@ -772,6 +772,10 @@ export interface MisokinesiaManifest {
   clips: MisokinesiaClipMeta[];
 }
 
+export interface MisokinesiaTrialManifest {
+  clips: MisokinesiaClipMeta[];
+}
+
 export interface MisokinesiaTrialResponsePayload {
   stimulus_id: string;
   display_order: number;
@@ -801,6 +805,13 @@ export interface MisokinesiaEndOfTaskResult {
 /** RA-triggered: creates anonymous participant + session + misokinesia_participants row. Returns manifest. */
 export async function startMisokinesiaSession(): Promise<MisokinesiaManifest> {
   return apiPost<MisokinesiaManifest>("/misokinesia/start", {}, { auth: true });
+}
+
+/** RA-triggered: returns 5 sampled active clips for read-only trial mode. */
+export async function getMisokinesiaTrialManifest(): Promise<MisokinesiaTrialManifest> {
+  return apiGet<MisokinesiaTrialManifest>("/misokinesia/trial-manifest", {
+    auth: true,
+  });
 }
 
 /** Submit one per-clip questionnaire response (participant-facing, no auth). */

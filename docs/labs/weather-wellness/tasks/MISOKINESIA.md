@@ -30,14 +30,19 @@ State machine: `intro → playing → questionnaire → (loop × 29) → end_of_
 
 ## Trial mode (Run Test Trial)
 
-Misokinesia also supports an RA-invoked local rehearsal mode:
+Misokinesia also supports an RA-invoked no-write rehearsal mode:
 
 - Launch from `/misokinesia` via "Run Test Trial" (instead of "Start Misokinesia Session").
-- Frontend generates fake `misokinesia_participant_id` and `session_id` values plus a local clip manifest.
+- Frontend generates fake `misokinesia_participant_id` and `session_id` values, then requests a read-only trial clip manifest.
+- The trial manifest contains a random subset of 5 active videos from the active test set, sampled by `stimulus_id` each time the RA clicks "Run Test Trial".
+- Trial videos use the same public Supabase Storage CDN URL pattern as production clips; video bytes are never served or proxied by FastAPI.
+- Trial mode plays the real sampled videos, then shows the same per-clip questionnaire after each clip.
 - Per-clip questionnaire submits and end-of-task submit use local simulated success transitions.
 - No calls are made to `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, or `/misokinesia/participants/{id}/end-of-task`.
 - No rows are written to `participants`, `sessions`, `misokinesia_participants`, or `misokinesia_trial_responses`.
 - A centered top-screen `"Trial Run"` watermark is shown throughout the participant trial-mode flow.
+
+Trial state machine: `intro → playing → questionnaire → (loop × 5 sampled clips) → end_of_task → complete`
 
 ## RA Flow
 
@@ -67,6 +72,7 @@ Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.p
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full 29-clip manifest in a randomized playback order |
+| `GET` | `/misokinesia/trial-manifest` | RA required | Read-only rehearsal endpoint; returns 5 randomly sampled active clip URLs without creating participant, session, or response rows |
 | `POST` | `/misokinesia/participants/{participant_id}/responses` | None (participant-facing) | Submits one per-clip questionnaire; sets `completed_at` server-side on final submission; returns `is_complete` flag |
 | `PATCH` | `/misokinesia/participants/{participant_id}/end-of-task` | None (participant-facing) | Writes the 4 end-of-task fields to `misokinesia_participants`; returns 409 if `completed_at` is null |
 
@@ -106,6 +112,7 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 
 - **Videos served from Supabase Storage public CDN.** Bucket: `misokinesia-stimuli`. URL format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`. No signing, no expiry. Never proxied through FastAPI.
 - **Manifest-first pattern.** All 29 clip URLs are returned in a single `POST /misokinesia/start` response in the randomized order used for that participant. The frontend plays clips directly from those URLs; no per-clip backend round-trip for media.
+- **Trial manifest is read-only.** `GET /misokinesia/trial-manifest` returns only clip metadata and public CDN URLs for 5 randomly sampled active stimuli. It must not create or mutate `participants`, `sessions`, `misokinesia_participants`, or response rows.
 - **`completed_at` set server-side.** On each `POST /responses` call the backend counts submitted responses for the participant; when all stimuli are answered it sets `misokinesia_participants.completed_at` automatically and returns `is_complete: true`.
 - **Independent participant numbering.** `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence and starts from 1, independent of `participants.participant_number`.
 - **Stimuli seeded via seed script.** No admin upload endpoint exists yet; stimulus rows are inserted manually or via a seed script.

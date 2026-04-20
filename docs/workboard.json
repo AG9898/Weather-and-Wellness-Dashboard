@@ -1081,7 +1081,7 @@
         "docs/labs/weather-wellness/API.md"
       ],
       "notes": [
-        "Use deterministic local test clips for trial mode to keep UX stable during rehearsal.",
+        "Superseded by T143/T144: Misokinesia trial clips should come from a read-only 5-video Supabase Storage manifest rather than deterministic local placeholders.",
         "Do not alter seeded-stimulus backend behavior in this task."
       ],
       "commands": [
@@ -1164,6 +1164,96 @@
       "notes": [
         "Current frontend tests run in Node and do not render React components directly.",
         "If component rendering tests are required, include the necessary test-environment update in the same task."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T143",
+      "group_id": "TRIAL_RUN_MODE",
+      "title": "Trial run mode - Read-only Misokinesia trial manifest endpoint",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add a no-write RA endpoint that returns 5 randomly sampled active Misokinesia clip URLs for test trials.",
+      "description": "Implement the planned `GET /misokinesia/trial-manifest` endpoint. The endpoint must resolve the active Misokinesia test set, sample exactly 5 active stimuli by `stimulus_id` on each request, and return public Supabase Storage CDN URLs plus clip metadata without creating or updating any participant, session, misokinesia_participant, or response rows. Keep production `POST /misokinesia/start` behavior unchanged.",
+      "acceptance_criteria": [
+        "`GET /misokinesia/trial-manifest` requires RA auth and returns 401 for unauthenticated requests",
+        "The endpoint returns exactly 5 active clips from the active Misokinesia test set when at least 5 active stimuli exist",
+        "Repeated calls can return different stimulus subsets and/or orders because sampling is randomized by `stimulus_id` membership/order",
+        "Each returned clip includes `stimulus_id`, public Supabase Storage `public_url`, `sort_order`, and `duration_ms`",
+        "The endpoint performs no database writes and does not create `participants`, `sessions`, `misokinesia_participants`, or response rows",
+        "If fewer than 5 active stimuli are available, the endpoint returns a clear non-2xx error instead of silently shortening the trial",
+        "Production `POST /misokinesia/start` still returns all 29 active clips and still creates the canonical rows"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/routers/misokinesia.py",
+        "backend/app/schemas/misokinesia.py",
+        "backend/tests/test_misokinesia.py"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "notes": [
+        "Do not add schema migrations for this task.",
+        "Do not proxy video bytes through FastAPI; only return public Supabase Storage URLs.",
+        "This task supersedes the previous local-placeholder trial clip behavior for Misokinesia test trials."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_misokinesia.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T144",
+      "group_id": "TRIAL_RUN_MODE",
+      "title": "Trial run mode - Misokinesia real 5-video rehearsal playback",
+      "status": "done",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Update Misokinesia Run Test Trial to fetch the read-only 5-clip manifest and play real Supabase-hosted videos while keeping submissions local.",
+      "description": "Replace the current local fake 29-clip Misokinesia trial manifest and placeholder playback with the new read-only trial manifest flow. On each `Run Test Trial` click, call the typed wrapper for `GET /misokinesia/trial-manifest`, combine the returned 5 clips with frontend fake ids, persist the trial manifest in session storage, and navigate to the participant task with `?trial=1`. The participant task should play the sampled public video URLs with the real Misokinesia video player, loop through only those 5 clips, then run the end-of-task and completion transitions locally without write API calls.",
+      "acceptance_criteria": [
+        "Misokinesia `Run Test Trial` calls only the read-only trial manifest API before navigation and does not call `/misokinesia/start`",
+        "The trial manifest stored in session storage contains fake trial ids plus exactly 5 real clip records returned by the backend",
+        "Trial playback uses the same video player path as production and loads each sampled clip from its public Supabase Storage URL",
+        "The participant task shows `Clip X of 5` in Misokinesia trial mode and reaches end-of-task after the fifth sampled clip",
+        "Per-clip questionnaire, end-of-task, and final session completion transitions remain local-only in trial mode and do not call write endpoints",
+        "Production Misokinesia launch and 29-clip participant flow remain unchanged",
+        "Launch errors from the read-only manifest request are visible to the RA and do not navigate into a broken trial"
+      ],
+      "depends_on": [
+        "T143"
+      ],
+      "blocked_by": [
+        "T143"
+      ],
+      "files": [
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/app/(ra)/misokinesia/page.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/MisokinesiaVideoPlayer.tsx",
+        "frontend/src/lib/components/MisokinesiaQuestionnaire.tsx",
+        "frontend/src/lib/components/MisokinesiaEndOfTaskForm.tsx",
+        "frontend/src/lib/trial-mode.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md",
+        "docs/TESTING.md"
+      ],
+      "notes": [
+        "Keep fake ids clearly non-production; only clip metadata and video URLs should come from backend/storage.",
+        "Do not reintroduce local `trial://` clip URLs or placeholder playback for the happy path.",
+        "All frontend API calls must go through typed wrappers in `src/lib/api/`."
       ],
       "commands": [
         "cd frontend && npm test",
