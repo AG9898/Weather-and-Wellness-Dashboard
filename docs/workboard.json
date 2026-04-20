@@ -1393,7 +1393,7 @@
       "id": "T148",
       "group_id": "MISOKINESIA_MKAQ",
       "title": "Misokinesia MkAQ - Production participant flow",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Wire the full 21-item MkAQ card carousel into the production Misokinesia participant state machine at the assigned pre/post position.",

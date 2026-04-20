@@ -215,6 +215,53 @@ describe("MkAQ typed wrapper and carousel pane logic", () => {
   });
 });
 
+describe("MkAQ production participant flow placement", () => {
+  it("participant page includes the mkaq phase in the state machine", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).toContain('"mkaq"');
+    expect(source).toContain('mkaq_administration === "pre"');
+    expect(source).toContain('mkaq_administration === "post"');
+  });
+
+  it("participant page calls submitMisokinesiaMkaq for production submissions", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).toContain("submitMisokinesiaMkaq");
+  });
+
+  it("participant page does not use bare fetch", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).not.toMatch(/\bfetch\s*\(/);
+  });
+
+  it("pre assignment routes through mkaq phase from handleBegin", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    // handleBegin must check pre and set mkaq phase
+    expect(source).toContain("handleBegin");
+    expect(source).toContain('mkaq_administration === "pre"');
+    // The page renders MisokinesiaMkaqForm when phase is mkaq
+    expect(source).toContain("<MisokinesiaMkaqForm");
+  });
+
+  it("post assignment routes through mkaq phase after final questionnaire", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    // handleQuestionnaireComplete must check post and route to mkaq
+    expect(source).toContain('mkaq_administration === "post"');
+    // is_complete check and post check must both exist in questionnaire handler
+    expect(source).toContain("is_complete");
+    expect(source).toContain("handleQuestionnaireComplete");
+  });
+});
+
 describe("trial-mode identity and watermark state", () => {
   it("generates clearly fake local-only ids and manifests", () => {
     const state = createTrialRunState("misokinesia");

@@ -6,14 +6,19 @@ import { Button } from "@/components/ui/button";
 import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
+import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
 import {
   patchSessionStatus,
   getParticipantErrorMessage,
+  submitMisokinesiaMkaq,
   type MisokinesiaManifest,
   type MisokinesiaTrialResponseResult,
+  type MisokinesiaMkaqRequest,
 } from "@/lib/api";
 import {
   adoptTrialRunStateFromLocation,
+  getMisokinesiaSubmitMode,
+  runTrialAwareSubmit,
 } from "@/lib/trial-mode";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
@@ -21,6 +26,7 @@ const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 type Phase =
   | "loading"
   | "intro"
+  | "mkaq"
   | "playing"
   | "questionnaire"
   | "end_of_task"
@@ -42,6 +48,12 @@ export default function MisokinesiaTaskPage() {
   const [sessionPatchAttempt, setSessionPatchAttempt] = useState(0);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
+
+  // MkAQ submission state
+  const [mkaqSubmitTrigger, setMkaqSubmitTrigger] = useState(0);
+  const [mkaqSubmitting, setMkaqSubmitting] = useState(false);
+  const [mkaqError, setMkaqError] = useState<string | null>(null);
+  const [mkaqPendingAnswers, setMkaqPendingAnswers] = useState<Record<string, number> | null>(null);
 
   // ── Load manifest from sessionStorage on mount ──
   useEffect(() => {
@@ -97,11 +109,57 @@ export default function MisokinesiaTaskPage() {
     };
   }, [sessionPatchAttempt, manifest, trialMode]);
 
+  // ── Submit MkAQ when trigger fires ──
+  useEffect(() => {
+    if (mkaqSubmitTrigger === 0 || !mkaqPendingAnswers || !manifest) return;
+    let cancelled = false;
+
+    async function run() {
+      setMkaqError(null);
+      try {
+        await runTrialAwareSubmit(getMisokinesiaSubmitMode(trialMode), {
+          production: async () => {
+            await submitMisokinesiaMkaq(
+              participantId,
+              mkaqPendingAnswers as unknown as MisokinesiaMkaqRequest
+            );
+          },
+          trial: () => {},
+        });
+        if (!cancelled) {
+          setMkaqSubmitting(false);
+          if (manifest!.mkaq_administration === "pre") {
+            setPhase("playing");
+          } else {
+            setPhase("end_of_task");
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setMkaqError(getParticipantErrorMessage(err));
+          setMkaqSubmitting(false);
+        }
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [mkaqSubmitTrigger, mkaqPendingAnswers, manifest, trialMode, participantId]);
+
   const totalClips = manifest?.clips.length ?? 0;
   const currentClip = manifest?.clips[currentClipIndex];
   const clipNumber = currentClipIndex + 1; // 1-based display
 
   // ── State transition handlers ──
+
+  function handleBegin() {
+    if (manifest?.mkaq_administration === "pre") {
+      setPhase("mkaq");
+    } else {
+      setPhase("playing");
+    }
+  }
 
   function handleVideoEnded() {
     setPhase("questionnaire");
@@ -109,11 +167,26 @@ export default function MisokinesiaTaskPage() {
 
   function handleQuestionnaireComplete(result: MisokinesiaTrialResponseResult) {
     if (result.is_complete) {
-      setPhase("end_of_task");
+      if (manifest?.mkaq_administration === "post") {
+        setPhase("mkaq");
+      } else {
+        setPhase("end_of_task");
+      }
     } else {
       setCurrentClipIndex((prev) => prev + 1);
       setPhase("playing");
     }
+  }
+
+  function handleMkaqComplete(answers: Record<string, number>) {
+    setMkaqPendingAnswers(answers);
+    setMkaqSubmitting(true);
+    setMkaqSubmitTrigger((n) => n + 1);
+  }
+
+  function handleMkaqRetry() {
+    setMkaqSubmitting(true);
+    setMkaqSubmitTrigger((n) => n + 1);
   }
 
   function handleEndOfTaskComplete() {
@@ -167,12 +240,44 @@ export default function MisokinesiaTaskPage() {
         </div>
 
         <Button
-          onClick={() => setPhase("playing")}
+          onClick={handleBegin}
           className="mt-8 rounded-xl px-8 text-primary-foreground"
         >
           Begin
         </Button>
       </Screen>
+    );
+  }
+
+  if (phase === "mkaq") {
+    if (mkaqSubmitting) {
+      return (
+        <Screen>
+          <p className="text-sm text-muted-foreground">Submitting questionnaire…</p>
+        </Screen>
+      );
+    }
+
+    if (mkaqError) {
+      return (
+        <Screen>
+          <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+            {mkaqError}
+          </div>
+          <Button
+            onClick={handleMkaqRetry}
+            className="rounded-xl px-8 text-primary-foreground"
+          >
+            Retry
+          </Button>
+        </Screen>
+      );
+    }
+
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+        <MisokinesiaMkaqForm items={MKAQ_ITEMS} onComplete={handleMkaqComplete} />
+      </div>
     );
   }
 
