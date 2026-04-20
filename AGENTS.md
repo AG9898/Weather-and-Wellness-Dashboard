@@ -45,6 +45,7 @@ Participant.
 
 ## Docs and References
 
+- Start with `docs/INDEX.md` for the canonical documentation routing map.
 - For platform-wide concerns (architecture, conventions, decisions, schema, testing), use `docs/` root files.
 - For lab-specific API contracts, design specs, and scoring rules, use `docs/labs/<lab-slug>/`.
 - For study-specific research instruments and analysis scripts, use `reference/labs/<lab-slug>/`.
@@ -81,8 +82,9 @@ These rules are not optional and apply to every task, not just doc-specific task
   env var, route, schema, or workflow, you must update the relevant canonical doc in the same
   commit. Do not defer doc updates to a follow-on task.
 
-- **Maintain navigation links.** If you create a new file under `docs/`, add a link to it from
-  its nearest parent index (`docs/labs/<lab>/README.md`, `AGENTS.md` Docs section, or
+- **Maintain routing and links.** If you create, rename, move, or delete any file under `docs/`,
+  update `docs/INDEX.md` in the same commit and fix all affected references. Also add or update
+  links in the nearest parent index (`docs/labs/<lab>/README.md`, `AGENTS.md` Docs section, or
   `docs/labs/README.md` as appropriate). An unreachable file is as bad as a missing file.
 
 - **Fix broken links you encounter.** If you open a doc and find a broken relative link, fix it

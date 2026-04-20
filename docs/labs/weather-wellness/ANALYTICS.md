@@ -643,7 +643,7 @@ Implemented high-level response shape:
 
 - `docs/SCORING.md`: unchanged scoring formulas
 - `docs/SCHEMA.md`: current persisted schema and logical analytics-source notes
-- `docs/API.md`: endpoint contract status for analytics
+- `docs/labs/weather-wellness/API.md`: endpoint contract status for analytics
 - `docs/ARCHITECTURE.md`: cache/snapshot/recompute architecture
 - `docs/DESIGN_SPEC.md`: dashboard UX and KPI presentation
 

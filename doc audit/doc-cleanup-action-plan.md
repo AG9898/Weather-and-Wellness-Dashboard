@@ -201,6 +201,20 @@ to look. All four source files then become thin cross-references.
 
 ---
 
+## Routing Baseline (Applies To TASK-07+)
+
+The doc system has moved to an index-first model:
+
+- `docs/INDEX.md` is the canonical routing map.
+- Root routing stubs (`docs/API.md`, `docs/ANALYTICS.md`, `docs/WEATHER_INGESTION.md`,
+  `docs/MISOKINESIA.md`) were intentionally removed.
+- Canonical references should use real doc locations (for current lab scope, usually
+  `docs/labs/weather-wellness/...`).
+- Any remaining task that creates, renames, moves, or deletes docs must update
+  `docs/INDEX.md` in the same commit, plus the nearest parent index where relevant.
+
+---
+
 ## TASK-07 — Create docs/TRIAL_MODE.md (NEW FILE) and align trial-mode rules across docs
 
 **Why a new file:** Trial-mode behaviour is currently split between CONVENTIONS.md (fake-id
@@ -227,14 +241,16 @@ reference.
      navigation to the first survey but does not write a database row. Trial mode does not bypass
      or alter consent gating logic.
 
-2. In `docs/CONVENTIONS.md` (lines ~104–111 and ~63–66): replace inline trial-mode prose with
+2. In `docs/INDEX.md`: add `docs/TRIAL_MODE.md` to the Platform Docs table.
+
+3. In `docs/CONVENTIONS.md` (lines ~104–111 and ~63–66): replace inline trial-mode prose with
    a pointer to `docs/TRIAL_MODE.md`. Keep only a one-line summary + link.
 
-3. In `docs/labs/weather-wellness/API.md` TRIAL_RUN_MODE section (line ~159): add a pointer to
+4. In `docs/labs/weather-wellness/API.md` TRIAL_RUN_MODE section (line ~159): add a pointer to
    `docs/TRIAL_MODE.md` and add the explicit watermark exclusion rule for `/misokinesia/[id]`.
 
 **Files to create:** `docs/TRIAL_MODE.md`
-**Files to edit:** `docs/CONVENTIONS.md`, `docs/labs/weather-wellness/API.md`
+**Files to edit:** `docs/INDEX.md`, `docs/CONVENTIONS.md`, `docs/labs/weather-wellness/API.md`
 
 ---
 
@@ -283,6 +299,10 @@ before the agent begins implementing a task:
    enumerate the actual test files from the repo (glob `test_*.py` in the relevant directory)
    rather than accepting a vague description as done criteria.
 
+8. **Documentation routing integrity:** If a task creates, renames, moves, or deletes files
+   under `docs/`, the skill must require updates to `docs/INDEX.md` and verify that canonical
+   references point to real paths (not removed root stubs).
+
 **Both skill files must be updated independently.** `.codex/skills/start-task` and
 `.agents/skills/start-task` are not symlinked — they integrate differently but serve the same
 functional role. Read both files before editing so the additions fit each one's existing
@@ -322,96 +342,77 @@ introducing new inconsistencies between the two; fixing together ensures the "cu
    - Add a header note: "This document is a planning archive. Canonical deployment topology is
      documented in `docs/ARCHITECTURE.md`." No other content changes needed.
 
+4. If any deployment/planning doc status labels or paths change, update `docs/INDEX.md` so the
+   routing map reflects the same current-vs-archive split.
+
 **Files to edit:** `docs/ARCHITECTURE.md`, `docs/devSteps.md`,
-`docs/migrations/working-railway-supabase-canada-migration.md`
+`docs/migrations/working-railway-supabase-canada-migration.md`, `docs/INDEX.md` (if needed)
 
 ---
 
-## TASK-10 — Fix orphan lab docs: add navigation links
+## TASK-10 — Validate index-first routing chain for lab docs
 
-**Why grouped:** All findings are the same operation — adding a markdown link from a parent doc
-to an orphaned child. They all route through `docs/labs/weather-wellness/README.md` as the
-natural hub, so one agent can make all link additions in a single pass.
+**Why grouped:** The current system routes through `docs/INDEX.md` first, then into lab hubs,
+then leaf docs. This task verifies and completes that chain so nested docs are discoverable
+without adding root-level stubs.
 
 **Findings addressed:** DOC-012, DOC-056, DOC-057, DOC-058, DOC-059, DOC-060, DOC-061, DOC-062
 
 **Actions:**
 
-1. In `docs/labs/weather-wellness/README.md`: add a "Documentation Index" section (or extend
-   the existing one) with links to:
-   - `API.md`
-   - `ANALYTICS.md`
-   - `SCORING.md`
-   - `WEATHER_INGESTION.md`
-   - `HISTORICAL_WEATHER_BACKFILL.md` (with a note: "operational procedure for one-time
-     historical backfill")
-   - `DESIGN_SPEC.md`
+1. In `docs/INDEX.md`: ensure Weather & Wellness routing includes:
+   - `docs/labs/weather-wellness/README.md`
+   - `API.md`, `ANALYTICS.md`, `SCORING.md`, `WEATHER_INGESTION.md`,
+     `HISTORICAL_WEATHER_BACKFILL.md`, `DESIGN_SPEC.md`
+   - Add `docs/UI_REDESIGN_2026.md` to Platform Docs with a brief note of scope.
 
-2. In root `README.md` or `AGENTS.md` Docs section: add a markdown link to
-   `docs/labs/weather-wellness/README.md` under a "Labs" heading.
+2. In `docs/labs/weather-wellness/README.md`: ensure the lab documentation section links to the
+   core lab docs and includes explicit leaf links for surveys and tasks.
 
-3. In `AGENTS.md` Docs section: add `docs/UI_REDESIGN_2026.md` as a listed reference under
-   UI/frontend guidance, with a note clarifying its relationship to `docs/styleguide.md`
-   (e.g. "UI_REDESIGN_2026.md provides 2026 direction; styleguide.md is the current
-   implementation reference").
+3. In `AGENTS.md` Docs section: add `docs/UI_REDESIGN_2026.md` as a listed UI reference, with a
+   note clarifying relationship to `docs/styleguide.md` (2026 direction vs. current
+   implementation guidance).
 
-4. In `docs/labs/weather-wellness/WEATHER_INGESTION.md`: add a "See also" link to
+4. In `docs/labs/weather-wellness/WEATHER_INGESTION.md`: ensure there is a "See also" link to
    `HISTORICAL_WEATHER_BACKFILL.md`.
 
-5. In `README.md` or `AGENTS.md`: add a markdown link to `docs/devSteps.md` in the Dev
-   Workflow section if not already present.
+5. Confirm root entry docs keep the index-first pattern: `README.md` and `AGENTS.md` should
+   point to `docs/INDEX.md` as the router (avoid duplicating large lab link lists there).
 
-**Files to edit:** `docs/labs/weather-wellness/README.md`, `AGENTS.md`, `README.md`,
-`docs/labs/weather-wellness/WEATHER_INGESTION.md`
+**Files to edit:** `docs/INDEX.md`, `docs/labs/weather-wellness/README.md`, `AGENTS.md`,
+`README.md`, `docs/labs/weather-wellness/WEATHER_INGESTION.md`
 
 ---
 
-## TASK-11 — Delete historical docs and scrub all references to them
+## TASK-11 — Archive legacy docs and scrub active references
 
-**Why delete rather than archive:** Keeping stale docs — even with "archive" headers — gives
-agents a target to read and a surface to diverge from. Deletion forces all references to resolve
-to live docs, making broken links immediately visible rather than silently misleading.
+**Why archive (current system):** The repo now explicitly keeps archive/history docs (for example
+`docs/progress/PROGRESS_LOG.md` as archive-only) while routing active work through canonical
+docs and `docs/workboard.json`. The fix is to prevent archived docs from being treated as current
+source-of-truth, not blanket-delete all historical files.
 
 **Findings addressed:** DOC-010, DOC-011, DOC-015, DOC-017, DOC-019, DOC-020
 
-**Note on migrations docs:** `docs/migrations/working-railway-supabase-canada-migration.md`
-and `docs/migrations/New_Schema.md` are **not deleted here** — they represent pending work that
-has not yet been applied. They are retained until their respective changes are implemented and
-merged.
-
-**Files to delete:**
-- `docs/ROUTING_CLEANUP.md`
-- `docs/progress/PROGRESS_LOG.md`
-- `docs/labs/weather-wellness/tasks/working-misokinesia-add.md`
-- `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md`
-
 **Actions:**
 
-Before deleting each file, search the entire repo for references to it and remove or replace
-each mention:
+1. Ensure archive-status headers are explicit in retained historical docs (at minimum:
+   `docs/ROUTING_CLEANUP.md`, `docs/progress/PROGRESS_LOG.md`,
+   `docs/labs/weather-wellness/tasks/working-misokinesia-add.md`). Each should point to the
+   canonical replacement doc(s).
 
-1. `docs/ROUTING_CLEANUP.md`: remove references in `docs/ARCHITECTURE.md` (post-impl checklist,
-   line ~334). Any RB01–RB06 tasks not yet in workboard.json should be evaluated — if genuinely
-   outstanding, add a minimal task entry to workboard.json before deleting; if already complete,
-   just delete.
+2. Remove or rewrite active implementation guidance that still treats archive docs as canonical.
+   Keep archive references only where they are explicitly historical context.
 
-2. `docs/progress/PROGRESS_LOG.md`: remove any reference to it in AGENTS.md, README.md, or
-   other docs. The workboard.json reference in AGENTS.md already covers active tasks.
+3. In `docs/INDEX.md`, keep/archive entries clearly labelled (for example, PROGRESS_LOG as
+   archive-only) and avoid routing active implementation through archive docs.
 
-3. `docs/labs/weather-wellness/tasks/working-misokinesia-add.md`: remove any reference.
-   `docs/labs/weather-wellness/tasks/MISOKINESIA.md` is the current architecture doc.
+4. If any historical file is deleted or renamed during cleanup, perform a repo-wide search for
+   that path and update all references in the same commit; then sync `docs/INDEX.md`.
 
-4. `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md`: remove any reference. If the
-   backfill procedure is still operationally relevant, consolidate the essential steps into
-   `docs/labs/weather-wellness/WEATHER_INGESTION.md` before deleting.
-
-After all deletions, do a repo-wide search for each deleted filename to confirm no dangling
-references remain.
-
-**Files to delete:** (listed above)
-**Files to edit:** `docs/ARCHITECTURE.md`, `AGENTS.md`, `README.md`,
-`docs/labs/weather-wellness/WEATHER_INGESTION.md`, `docs/workboard.json` (if RB tasks need
-adding), plus any other files found to reference the deleted docs during the search step.
+**Files to edit:** `docs/INDEX.md`, `docs/ARCHITECTURE.md`, `AGENTS.md`, `README.md`,
+`docs/labs/weather-wellness/WEATHER_INGESTION.md`,
+`docs/labs/weather-wellness/tasks/working-misokinesia-add.md`, plus any other referencing files
+found during search
 
 ---
 
@@ -441,6 +442,9 @@ one pass across two closely related files.
    before changing the Python implementation. Document intentional divergences in
    `docs/DECISIONS.md`."
 
+4. Keep all added references on canonical paths; if this task introduces any new docs, update
+   `docs/INDEX.md` in the same commit.
+
 **Files to edit:** `docs/CONVENTIONS.md`, `docs/TESTING.md`
 
 ---
@@ -462,7 +466,7 @@ agent to canonicalize the relationship between MULTI_LAB.md (authoritative) and 
      `docs/labs/<lab-slug>/DESIGN_SPEC.md`.
    - Optional files and when to create them (e.g. `ANALYTICS.md`, `WEATHER_INGESTION.md`).
    - A checklist: lab registered in `labs` table, `lab_id` scoping verified in all endpoints,
-     lab referenced in root `AGENTS.md` Docs section.
+     lab referenced from `docs/INDEX.md` and the root `AGENTS.md` Docs section.
    - Pointer to `docs/MULTI_LAB.md` as the canonical data model reference.
 
 2. In `docs/migrations/New_Schema.md`: add a header note:
@@ -472,8 +476,10 @@ agent to canonicalize the relationship between MULTI_LAB.md (authoritative) and 
 3. In `docs/MULTI_LAB.md`: add a one-line note at the top confirming it is the authoritative
    multi-lab schema reference, and link to `docs/labs/README.md` for lab onboarding steps.
 
+4. In `docs/INDEX.md`: add a Labs hub entry for `docs/labs/README.md`.
+
 **Files to create:** `docs/labs/README.md`
-**Files to edit:** `docs/migrations/New_Schema.md`, `docs/MULTI_LAB.md`
+**Files to edit:** `docs/migrations/New_Schema.md`, `docs/MULTI_LAB.md`, `docs/INDEX.md`
 
 ---
 
@@ -492,16 +498,15 @@ self-contained and carries no cross-doc dependency risk.
 
 2. `docs/migrations/` directory: add a `README.md` (one paragraph) explaining that this folder
    contains strategic planning and migration documents, not Alembic migration scripts. Point
-   readers to `backend/alembic/` for schema migration scripts.
+   readers to `backend/alembic/` for schema migration scripts. Add this file to `docs/INDEX.md`.
 
 3. `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md`: add a status line at the top
    clarifying whether this procedure is still active or a one-time historical operation. If
    complete, add "Status: completed — retained for reference."
 
-4. `docs/labs/weather-wellness/tasks/working-misokinesia-add.md`: add a header note. If the
-   misokinesia feature is complete (confirmed by DECISIONS.md RESOLVED-18), rename the file to
-   remove the `working-` prefix or add "Status: completed planning doc. See MISOKINESIA.md for
-   current architecture."
+4. `docs/labs/weather-wellness/tasks/working-misokinesia-add.md`: add/confirm a header note:
+   "Status: completed planning archive. See `tasks/MISOKINESIA.md` for current architecture."
+   If renamed, update all references and `docs/INDEX.md` in the same commit.
 
 5. `docs/SCHEMA.md` — import normalization section (lines ~1275–1279): add a reference:
    "See `backend/app/services/import_service.py` normalization functions for the complete
@@ -512,13 +517,14 @@ self-contained and carries no cross-doc dependency risk.
    flag this as a known gap if ARCHITECTURE.md hasn't been updated post-T143.
 
 7. `docs/workboard.json` T115/T116 docs fields: verify that the referenced
-   `docs/labs/weather-wellness/ANALYTICS.md` file exists. If the stub was created in TASK-05,
-   this is already resolved — just confirm the path matches.
+   `docs/labs/weather-wellness/ANALYTICS.md` file exists and paths do not point to removed
+   root stubs.
 
 **Files to edit:** `docs/PRD.md`, `docs/SCHEMA.md`, `docs/labs/weather-wellness/API.md`,
 `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md`,
 `docs/labs/weather-wellness/tasks/working-misokinesia-add.md`, `docs/workboard.json`
 **Files to create:** `docs/migrations/README.md`
+**Also update if needed:** `docs/INDEX.md`
 
 ---
 
@@ -547,7 +553,7 @@ decision tree:
 
 ---
 
-## TASK-16 — Add doc-maintenance and link-integrity rules to AGENTS.md
+## [DONE] TASK-16 — Add doc-maintenance and link-integrity rules to AGENTS.md
 
 **Why a standalone task:** This is a standing instruction to all future agents, not a one-time
 fix. It belongs in AGENTS.md (and therefore CLAUDE.md by symlink) so every agent session starts
@@ -556,39 +562,11 @@ with the expectation baked in. It should be a first-class section, not buried in
 **Findings addressed:** DOC-003, DOC-021 (generalised) — and the systemic root cause behind the
 entire orphan-doc and broken-link clusters found in this audit.
 
-**Actions:**
+**Actions completed:** A top-level **Documentation Maintenance** section now exists in
+`AGENTS.md` after Task Execution, including a routing-aware rule:
 
-In `AGENTS.md`, add a new top-level section titled **"Documentation Maintenance"** positioned
-immediately after the "Task Execution" section (so agents read it before starting any task).
-The section must state:
-
-```markdown
-## Documentation Maintenance
-
-Every agent session is responsible for leaving documentation in a better state than it found.
-These rules are not optional and apply to every task, not just doc-specific tasks.
-
-- **Update docs when you change behaviour.** If a task changes an API contract, scoring rule,
-  env var, route, schema, or workflow, you must update the relevant canonical doc in the same
-  commit. Do not defer doc updates to a follow-on task.
-
-- **Maintain navigation links.** If you create a new file under `docs/`, add a link to it from
-  its nearest parent index (`docs/labs/<lab>/README.md`, `AGENTS.md` Docs section, or
-  `docs/labs/README.md` as appropriate). An unreachable file is as bad as a missing file.
-
-- **Fix broken links you encounter.** If you open a doc and find a broken relative link, fix it
-  before you close the file — even if it is outside your task scope. Record the fix in your
-  commit message.
-
-- **Do not create planning or working-draft docs.** Use workboard.json task notes for in-flight
-  design decisions. Do not create `working-*.md` or `*_DRAFT.md` files in the docs tree.
-
-- **One source of truth per topic.** Before creating a new doc, check whether the topic is
-  already covered. If it is, extend the existing doc. Duplication is a bug.
-
-- **Path format.** All doc references use paths relative to the repo root
-  (e.g. `docs/labs/weather-wellness/API.md`). Never use bare filenames or leading slashes.
-```
+- create/rename/move/delete under `docs/` requires updating `docs/INDEX.md` in the same commit
+- impacted parent indexes and links must be updated alongside the path change
 
 **Files to edit:** `AGENTS.md`
 
@@ -602,28 +580,27 @@ These rules are not optional and apply to every task, not just doc-specific task
 | TASK-02 | Fix 11 broken links in DESIGN_SPEC + SCORING | S | No | DOC-050–055 |
 | TASK-03 | Stale alembic revisions + PYTHONPATH clarity | S | No | DOC-102, 105, 107 |
 | TASK-04 | AGENTS.md setup/workflow accuracy | S | No | DOC-100, 106, 151, 156, 162 |
-| TASK-05 | Root-level doc path stubs | S | 4 stub files | DOC-005, 006, 007, 008 |
+| TASK-05 | Canonical path migration for lab docs (no root stubs) | S | No | DOC-005, 006, 007, 008 |
 | TASK-06 | Create ENV_VARS.md + de-duplicate env var docs | M | `docs/ENV_VARS.md` | DOC-101, 104 |
 | TASK-07 | Create TRIAL_MODE.md + align trial-mode rules | M | `docs/TRIAL_MODE.md` | DOC-155, 161, 165, 170 |
 | TASK-08 | Enforce task quality standards in start-task skill | M | No | DOC-150, 153, 154, 156, 158, 163, 164, 166, 169 |
 | TASK-09 | Current vs. target state in ARCHITECTURE + devSteps | M | No | DOC-004, 009, 014 |
-| TASK-10 | Add navigation links to orphan lab docs | S | No | DOC-012, 056–062 |
-| TASK-11 | Delete historical docs + scrub all references (migrations docs retained — pending) | M | No (deletions) | DOC-010, 011, 017, 019, 020 |
+| TASK-10 | Validate index-first routing chain for lab docs | S | No | DOC-012, 056–062 |
+| TASK-11 | Archive legacy docs + scrub active references | M | No | DOC-010, 011, 017, 019, 020 |
 | TASK-12 | CONVENTIONS.md + TESTING.md policy tightening | S | No | DOC-152, 157, 167 |
 | TASK-13 | Create labs/README.md template + retire New_Schema | M | `docs/labs/README.md` | DOC-018 |
 | TASK-14 | Miscellaneous single-file fixes | S | `docs/migrations/README.md` | DOC-013, 016, 103, 159, 160 |
 | TASK-15 | Skill selection decision tree in AGENTS.md | S | No | DOC-168 |
-| TASK-16 | Add doc-maintenance + link-integrity rules to AGENTS.md | S | No | systemic root cause |
+| TASK-16 | Add doc-maintenance + link-integrity rules to AGENTS.md (**done**) | S | No | systemic root cause |
 
-**New files created across all tasks:** `docs/API.md`, `docs/ANALYTICS.md`,
-`docs/WEATHER_INGESTION.md`, `docs/MISOKINESIA.md`, `docs/ENV_VARS.md`, `docs/TRIAL_MODE.md`,
-`docs/labs/README.md`, `docs/migrations/README.md`
+**New files created across completed tasks:** `docs/INDEX.md`, `docs/ENV_VARS.md`
 
-**Recommended execution order:** TASK-16 → TASK-01 → TASK-02 → TASK-03 → TASK-04 → TASK-05
-→ TASK-06 → TASK-07 → TASK-08 → TASK-11 → TASK-09 → TASK-10 → TASK-12 → TASK-13 → TASK-14
-→ TASK-15
+**Potential new files from remaining tasks:** `docs/TRIAL_MODE.md`, `docs/labs/README.md`,
+`docs/migrations/README.md`
 
-TASK-16 goes first so the doc-maintenance rule is in AGENTS.md before any other agent runs.
-TASK-11 (deletions) runs before TASK-09/10 so those tasks don't add links to files that are
-about to be deleted. TASK-15 is last because it codifies agent behaviour the project owner
-should explicitly review.
+**Recommended execution order (remaining):** TASK-07 → TASK-08 → TASK-09 → TASK-10
+→ TASK-12 → TASK-13 → TASK-14 → TASK-11 → TASK-15
+
+Routing note: all remaining tasks should preserve the index-first pattern
+(`AGENTS.md`/`README.md` → `docs/INDEX.md` → lab hub/leaf docs) and must not reintroduce
+root routing stubs.

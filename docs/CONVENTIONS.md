@@ -28,7 +28,7 @@
 - Import endpoints must be **preview-first** (no writes) and then explicit **commit**.
 - File uploads use `multipart/form-data`; file downloads must set `Content-Disposition` with the required filename.
 - Do not attempt to reconstruct raw survey item rows from imported aggregate values; store aggregates in a dedicated mapping table.
-- Import parsing must be deterministic for Excel serial dates and times (see `docs/API.md` Admin Data section); always store the full source row payload in `imported_session_measures.source_row_json`.
+- Import parsing must be deterministic for Excel serial dates and times (see `docs/labs/weather-wellness/API.md` Admin Data section); always store the full source row payload in `imported_session_measures.source_row_json`.
 - Normalize imported demographic strings conservatively (trim whitespace; canonicalize obvious variants) while preserving the original raw values in `source_row_json`.
 
 ### Start session demographics + daylight exposure (Phase 3)
@@ -112,7 +112,7 @@
 
 ### Routing governance
 
-- `docs/API.md` is the canonical reference for **FastAPI endpoints**. `docs/ARCHITECTURE.md` is the canonical reference for **Next.js same-origin Route Handlers**. Do not mix these responsibilities in one doc section.
+- `docs/labs/weather-wellness/API.md` is the canonical reference for **FastAPI endpoints**. `docs/ARCHITECTURE.md` is the canonical reference for **Next.js same-origin Route Handlers**. Do not mix these responsibilities in one doc section.
 - The single dashboard routing inventory and deprecation map lives in `docs/ARCHITECTURE.md` under `Canonical Dashboard Routing Inventory`. Before adding, removing, or reusing any dashboard/weather read path, update that table first.
 - Every same-origin Route Handler must document:
   - owner screen(s) or caller(s),
@@ -194,7 +194,7 @@ Follow this sequence when adding any new instrument in future phases:
 2. Create scoring module in `backend/app/scoring/<instrument>.py`
 3. Create Pydantic schemas in `backend/app/schemas/`
 4. Create Alembic migration for the new survey table; update `docs/SCHEMA.md` migration history
-5. Add POST endpoint in `backend/app/routers/surveys.py`; update `docs/API.md`
+5. Add POST endpoint in `backend/app/routers/surveys.py`; update `docs/labs/weather-wellness/API.md`
 6. Create Next.js survey route under `src/app/session/[session_id]/<instrument>/page.tsx`
 7. Wire new route into the session flow sequence in the appropriate layout or store
 
@@ -209,7 +209,7 @@ Do not duplicate env var requirements here; update the canonical table instead.
 
 ## Weather Ingestion (Planned)
 
-> Canonical feature spec: `docs/WEATHER_INGESTION.md`
+> Canonical feature spec: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
 
 Rules:
 - Weather ingestion is **day-level** (local day `America/Vancouver`), not hourly-series.

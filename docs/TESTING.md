@@ -219,8 +219,8 @@ blocking before merging analytics changes.
 
 | Topic | Document |
 |---|---|
-| Analytics pipeline design | `docs/ANALYTICS.md` |
-| API endpoint contracts | `docs/API.md` |
+| Analytics pipeline design | `docs/labs/weather-wellness/ANALYTICS.md` |
+| API endpoint contracts | `docs/labs/weather-wellness/API.md` |
 | Scoring formulas | `docs/SCORING.md` |
 | Database schema | `docs/SCHEMA.md` |
 | Code style and patterns | `docs/CONVENTIONS.md` |

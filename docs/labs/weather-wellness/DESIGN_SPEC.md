@@ -139,7 +139,7 @@ All scoring is server-side. See per-instrument docs for full formulas.
 
 > Planned dashboard analytics derived from `reference/Weather_MLM.R` must reuse
 > these stored scores and must not introduce alternate scoring formulas. See
-> `docs/ANALYTICS.md`.
+> `docs/labs/weather-wellness/ANALYTICS.md`.
 
 ---
 

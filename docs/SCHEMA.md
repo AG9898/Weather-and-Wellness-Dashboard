@@ -20,7 +20,7 @@
 > Keep this value in sync after every new migration.
 
 > Planned statistical analysis rules derived from `reference/Weather_MLM.R` are
-> documented in `docs/ANALYTICS.md`. That analytics dataset is currently a
+> documented in `docs/labs/weather-wellness/ANALYTICS.md`. That analytics dataset is currently a
 > logical query-layer construct, not an existing transactional table.
 
 > Planned admin correction tooling includes an append-only audit table for
@@ -66,7 +66,7 @@ for analytics payloads.
 ## Phase 2 Additions — Weather Ingestion (T29, applied 2026-02-26)
 
 > These tables were added by migration `20260226_000005`. They are live in the database.
-> Canonical feature spec: `docs/WEATHER_INGESTION.md`
+> Canonical feature spec: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
 
 ### Day Dimension: `study_days`
 

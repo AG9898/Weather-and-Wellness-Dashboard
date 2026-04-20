@@ -5,7 +5,7 @@
 > idempotency guarantees, and scheduler/security behavior.
 >
 > Related docs:
-> - API contract: `docs/API.md` (Weather section)
+> - API contract: `docs/labs/weather-wellness/API.md` (Weather section)
 > - Planned schema additions: `docs/SCHEMA.md` (Planned Additions section)
 > - Deployment boundaries: `docs/ARCHITECTURE.md` (Scheduled Jobs section)
 > - Historical gap-fill spec: `docs/HISTORICAL_WEATHER_BACKFILL.md`

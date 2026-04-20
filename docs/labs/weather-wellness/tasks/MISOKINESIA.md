@@ -1,6 +1,6 @@
 # MISOKINESIA.md — Misokinesia Video Task
 
-> Canonical spec for the Misokinesia module. For endpoint contracts see `docs/API.md`. For schema see `docs/SCHEMA.md`. For auth/stimulus management decisions see `docs/DECISIONS.md` (OPEN-02).
+> Canonical spec for the Misokinesia module. For endpoint contracts see `docs/labs/weather-wellness/API.md`. For schema see `docs/SCHEMA.md`. For auth/stimulus management decisions see `docs/DECISIONS.md` (OPEN-02).
 
 ---
 
@@ -82,7 +82,7 @@ Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.p
 | `POST` | `/misokinesia/participants/{participant_id}/mkaq` | None (participant-facing) | Submits the required 21-item MkAQ once; server computes and stores `total_score` |
 | `PATCH` | `/misokinesia/participants/{participant_id}/end-of-task` | None (participant-facing) | Writes the 4 end-of-task fields to `misokinesia_participants`; returns 409 if `completed_at` is null |
 
-See `docs/API.md` — "Misokinesia" section for full request/response schemas and error codes.
+See `docs/labs/weather-wellness/API.md` — "Misokinesia" section for full request/response schemas and error codes.
 
 ---
 

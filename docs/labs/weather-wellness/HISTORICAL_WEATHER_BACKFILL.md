@@ -5,9 +5,9 @@
 > timezone handling, DB writes, and idempotency guarantees.
 >
 > Related docs:
-> - API contract: `docs/API.md` (Weather section — `POST /weather/backfill/historical`)
+> - API contract: `docs/labs/weather-wellness/API.md` (Weather section — `POST /weather/backfill/historical`)
 > - Schema: `docs/SCHEMA.md` (`weather_daily.sunshine_duration_hours`)
-> - UBC EOS live ingest: `docs/WEATHER_INGESTION.md`
+> - UBC EOS live ingest: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
 
 ---
 

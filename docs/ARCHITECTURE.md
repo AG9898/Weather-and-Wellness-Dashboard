@@ -17,7 +17,7 @@
 - **Backend (Railway target)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
 - **Database (Supabase)**: Managed Postgres in the target Canada Central region. Lab reads data via Supabase Studio.
 - **Admin data ops**: RA-only Import/Export endpoints on the backend service support legacy imports and controlled CSV/XLSX exports.
-- **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/ANALYTICS.md`.
+- **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/labs/weather-wellness/ANALYTICS.md`.
 - **Session safety tool**: a narrow RA-only undo action for the latest native session is live on `/dashboard`, implemented as transactional hard delete plus audit log rather than soft delete.
 
 ## Dashboard Read Topology
@@ -31,7 +31,7 @@ Current shipped dashboard reads are split across these same-origin Vercel Route 
 
 FastAPI endpoints and same-origin Route Handlers are separate routing layers:
 
-- `docs/API.md` is canonical for FastAPI endpoint contracts.
+- `docs/labs/weather-wellness/API.md` is canonical for FastAPI endpoint contracts.
 - This document is canonical for Next.js Route Handler topology, cache behavior, and cross-tier request flow.
 
 ---
@@ -69,7 +69,7 @@ This section is the single routing inventory for dashboard-related reads across 
 | `/misokinesia` | RA required (via `(ra)` layout) | `canonical` | RA page — launch a Misokinesia session via "Start Misokinesia Session" button |
 | `/misokinesia/[id]` | None | `canonical` | Participant task page — video clips + questionnaires; `id` = `misokinesia_participant_id` |
 
-Backend API endpoints for Misokinesia are documented in `docs/API.md`. Dashboard and session routes are implicitly canonical and owned by their respective layout groups.
+Backend API endpoints for Misokinesia are documented in `docs/labs/weather-wellness/API.md`. Dashboard and session routes are implicitly canonical and owned by their respective layout groups.
 
 ### Deprecation map and target canonical shapes
 
@@ -166,7 +166,7 @@ Standardized same-origin diagnostics:
 
 ## Analytics Snapshot Architecture
 
-Canonical analysis spec: `docs/ANALYTICS.md`
+Canonical analysis spec: `docs/labs/weather-wellness/ANALYTICS.md`
 
 The dashboard's statistical KPI layer now uses a hybrid read path for frontend reads, while the dashboard UI surfaces remain in progress:
 
@@ -272,7 +272,7 @@ Full inventory, conventions, and guidance for adding new tests: **`docs/TESTING.
 
 ## Scheduled Jobs (GitHub Actions)
 
-> Canonical feature spec: `docs/WEATHER_INGESTION.md`
+> Canonical feature spec: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
 
 Two scheduled jobs are active.
 
@@ -325,5 +325,5 @@ defaults, and ownership by environment.
 - Participants are anonymous: do not collect or store names or other direct identifiers.
 - Day-level semantics (study days, weather day linking, dashboard filtering) use the study timezone `America/Vancouver`.
 - Schema details live in `docs/SCHEMA.md`.
-- Analytics dataset rules live in `docs/ANALYTICS.md`.
+- Analytics dataset rules live in `docs/labs/weather-wellness/ANALYTICS.md`.
 - Undo-last-session behavior removes only session-domain rows and must not mutate weather-domain rows.

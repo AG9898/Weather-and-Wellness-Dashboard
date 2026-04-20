@@ -12,7 +12,7 @@
 ---
 
 Agents and contributors: start with `AGENTS.md` (auto-loaded as `CLAUDE.md` by the Claude CLI)
-for all operational detail.
+for all operational detail, then use `docs/INDEX.md` as the canonical documentation router.
 
 ## Who Uses This Platform
 
@@ -22,11 +22,11 @@ for all operational detail.
 ## Quickstart
 
 ```bash
-cd backend && uvicorn app.main:app --reload   # start backend
+cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
 cd frontend && npm run dev                    # start frontend
-cd backend && alembic upgrade head            # apply migrations
+cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
 ```
 
-Copy `.env.example` to `.env`, set required variables, and never commit `.env`.
+Copy `backend/.env.example` to `backend/.env`, set required variables, and never commit `backend/.env`.
 For complete setup, conventions, architecture, and workflow guidance, use `AGENTS.md` and the
-`docs/` references it points to.
+`docs/INDEX.md` routing map.
