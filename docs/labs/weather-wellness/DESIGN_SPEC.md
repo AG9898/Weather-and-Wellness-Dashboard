@@ -43,6 +43,7 @@ Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It d
   - WW trial mode does not call FastAPI endpoints
   - Misokinesia trial mode may call a read-only RA endpoint for a sampled clip manifest, but never calls write endpoints
   - Never writes rows to `participants`, `sessions`, survey tables, digit span tables, or misokinesia tables
+  - Misokinesia Trial Run locally randomizes MkAQ timing as `"pre"` or `"post"` and never persists that assignment
 - Misokinesia video behavior:
   - Samples 5 active videos by `stimulus_id` each time "Run Test Trial" is clicked
   - Plays the sampled videos from public Supabase Storage CDN URLs
@@ -68,12 +69,19 @@ Full specification: [docs/MISOKINESIA.md](MISOKINESIA.md)
 **Participant task:**
 1. Intro screen → click to begin
 2. MkAQ timing is randomized per participant as either pre-trial or post-trial and stored for analysis
-3. If assigned pre-trial: complete the required 21-item MkAQ before the first clip
+3. If assigned pre-trial: complete MkAQ before the first clip
 4. Production mode: for each of 29 clips (randomized per session): video plays → 4-question per-clip form (scale 1–5) → submit
 5. Trial mode: for each of 5 sampled clips (randomized on launch): video plays → 4-question per-clip form (scale 1–5) → local simulated submit
-6. If assigned post-trial: complete the required 21-item MkAQ after the final clip response and before the end-of-task form
+6. If assigned post-trial: complete MkAQ after the final clip response and before the end-of-task form
 7. End-of-task form shown once after all clips and the assigned MkAQ position are complete
 8. Completion screen → RA clicks "Back to Misokinesia" (routes to `/misokinesia`)
+
+**MkAQ card carousel:**
+- Production uses all 21 MkAQ items in four panes: `q1`-`q5`, `q6`-`q10`, `q11`-`q15`, `q16`-`q21`.
+- Trial Run uses the shortened fixed rehearsal set `q1`-`q10` in two panes: `q1`-`q5`, `q6`-`q10`.
+- The carousel stays on the same participant page; panes are not separate routes or separate submit steps.
+- Participants can move backward after advancing; moving forward requires all questions on the current pane to be answered.
+- Final submit is available only after all required answers for the current mode are selected.
 
 Key differences from survey/digit-span flow: fully anonymous (no demographics), single-page state machine, videos served directly from Supabase Storage CDN (not proxied through backend).
 

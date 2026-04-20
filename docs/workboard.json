@@ -1336,7 +1336,8 @@
       ],
       "notes": [
         "Participant-facing auth posture should match the existing per-clip and end-of-task endpoints.",
-        "Do not add subscale scoring unless a future task provides a confirmed scoring rule."
+        "Do not add subscale scoring unless a future task provides a confirmed scoring rule.",
+        "Frontend pane grouping must not change the backend payload; production still submits one complete q1 through q21 response."
       ],
       "commands": [
         "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_misokinesia.py"
@@ -1346,30 +1347,115 @@
     {
       "id": "T147",
       "group_id": "MISOKINESIA_MKAQ",
-      "title": "Misokinesia MkAQ - Frontend form and pre/post state machine",
+      "title": "Misokinesia MkAQ - Shared frontend card carousel",
       "status": "todo",
       "priority": "high",
       "type": "implementation",
-      "summary": "Show the required MkAQ form at the assigned pre-trial or post-trial position in production and trial Misokinesia flows.",
-      "description": "Update frontend Misokinesia types, typed API wrappers, session-storage manifest handling, and participant-page state machine to include `mkaq_administration`. Add a required 21-item MkAQ form using the documented 0-3 scale and route production submits through `submitMisokinesiaMkaq`; in trial mode, mirror the same pre/post placement with local-only progression and no write API calls. Preserve the current no-watermark Misokinesia participant task behavior and the `Back to Misokinesia` completion route.",
+      "summary": "Add the reusable MkAQ card carousel and typed production MkAQ API wrapper without wiring it into the participant state machine yet.",
+      "description": "Add frontend MkAQ types, item constants, the typed `submitMisokinesiaMkaq` API wrapper, and a reusable `MisokinesiaMkaqForm` component. The component must accept a caller-provided ordered item list, render the documented 0-3 scale, split items into card panes of up to 5 questions with a 6-item final pane when needed, preserve answers across pane navigation, allow Previous after the first pane, enable Next only when the current pane is complete, and enable final submit only when all rendered items are answered. Keep this task component/wrapper focused; production and Trial Run state-machine wiring are separate follow-up tasks.",
       "acceptance_criteria": [
-        "Production manifests include `mkaq_administration` and the participant page shows MkAQ before clips for `pre` assignments",
-        "The participant page shows MkAQ after the final per-clip response and before the existing end-of-task form for `post` assignments",
-        "The MkAQ form requires all 21 answers before enabling submit and uses the exact 0-3 labels from the spec",
-        "Production MkAQ submit calls only the typed wrapper in `src/lib/api/`; no component uses bare `fetch`",
-        "Trial mode mirrors pre/post MkAQ placement locally and does not call `/misokinesia/start`, `/responses`, `/mkaq`, or `/end-of-task` write endpoints",
-        "Existing production clip playback, per-clip questionnaire, end-of-task form, no-watermark behavior, and `Back to Misokinesia` completion button remain intact"
+        "`src/lib/api/` exports typed MkAQ request/response types and `submitMisokinesiaMkaq` for the production endpoint",
+        "A reusable `MisokinesiaMkaqForm` renders caller-provided MkAQ items with the exact 0-3 labels from the spec",
+        "The form groups 21 items as 5/5/5/6 panes and 10 items as 5/5 panes without separate routes or partial submits",
+        "Previous navigation preserves selected answers; Next is disabled until the current pane is complete",
+        "Final submit is disabled until every rendered item has an answer and then emits one complete answer object",
+        "No component uses bare `fetch`"
       ],
       "depends_on": [
-        "T145",
         "T146"
       ],
       "blocked_by": [
-        "T145",
         "T146"
       ],
       "files": [
         "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx",
+        "frontend/src/lib/trial-mode.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "Keep the wording `visual issues` from the source instrument; do not rewrite it to `misokinesia` or `fidgeting`.",
+        "Use the existing Misokinesia participant UI style rather than introducing a separate survey framework.",
+        "This task should not wire MkAQ into the participant page; it only creates the reusable form and typed wrapper."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T148",
+      "group_id": "MISOKINESIA_MKAQ",
+      "title": "Misokinesia MkAQ - Production participant flow",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Wire the full 21-item MkAQ card carousel into the production Misokinesia participant state machine at the assigned pre/post position.",
+      "description": "Update production Misokinesia frontend manifest handling and participant-page state transitions to consume `mkaq_administration`, show the shared MkAQ carousel before clips for `pre` assignments or after the final per-clip response for `post` assignments, and submit the full 21-item payload once through `submitMisokinesiaMkaq`. Preserve existing production clip playback, per-clip questionnaire submission, end-of-task form, session completion, no-watermark behavior, and `Back to Misokinesia` completion route.",
+      "acceptance_criteria": [
+        "Production manifests include and persist `mkaq_administration` for the participant page",
+        "`pre` assignments show the 21-item MkAQ carousel before the first clip and block clip responses until it is submitted",
+        "`post` assignments show the 21-item MkAQ carousel after the final per-clip response and before the end-of-task form",
+        "Production MkAQ submission sends all q1 through q21 answers once through the typed API wrapper",
+        "Existing production clip playback, per-clip questionnaire, end-of-task form, session completion, no-watermark behavior, and `Back to Misokinesia` remain intact",
+        "Frontend tests cover production pre/post placement and guard against bare `fetch` use in the participant page"
+      ],
+      "depends_on": [
+        "T147"
+      ],
+      "blocked_by": [
+        "T147"
+      ],
+      "files": [
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/trial-mode.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "Do not add Trial Run-specific shortening or local assignment in this task.",
+        "The frontend should not compute or display the MkAQ total score."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T149",
+      "group_id": "MISOKINESIA_MKAQ",
+      "title": "Misokinesia MkAQ - Trial Run shortened carousel",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add the shortened 10-item MkAQ carousel to Misokinesia Trial Run with local pre/post randomization and no write calls.",
+      "description": "Update Misokinesia Trial Run launch/state handling so each Run Test Trial locally randomizes `mkaq_administration` as `pre` or `post`, stores that value only in the local trial manifest/state, and uses the shared MkAQ carousel with source items q1 through q10 in two 5-question panes. The trial participant flow should show MkAQ before clips for `pre` assignments or after the fifth sampled clip response for `post` assignments, then advance with local simulated success and no production MkAQ, per-clip response, start, or end-of-task write calls.",
+      "acceptance_criteria": [
+        "Each Misokinesia Run Test Trial gets a local randomized `pre` or `post` MkAQ assignment",
+        "Trial Run MkAQ renders only source items q1 through q10 in two 5-question panes using the shared carousel",
+        "`pre` Trial Run assignments show MkAQ before the first sampled clip",
+        "`post` Trial Run assignments show MkAQ after the fifth sampled clip response and before the end-of-task form",
+        "Trial Run MkAQ submit advances locally and does not call `/misokinesia/participants/{id}/mkaq`",
+        "Trial Run still does not call `/misokinesia/start`, `/responses`, `/mkaq`, or `/end-of-task` write endpoints",
+        "Existing 5-video trial playback, no-watermark behavior, and `Back to Misokinesia` completion route remain intact"
+      ],
+      "depends_on": [
+        "T148"
+      ],
+      "blocked_by": [
+        "T148"
+      ],
+      "files": [
         "frontend/src/lib/trial-mode.ts",
         "frontend/src/app/(ra)/misokinesia/page.tsx",
         "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
@@ -1382,8 +1468,8 @@
         "docs/labs/weather-wellness/API.md"
       ],
       "notes": [
-        "Keep the wording `visual issues` from the source instrument; do not rewrite it to `misokinesia` or `fidgeting`.",
-        "Use the existing Misokinesia participant UI style rather than introducing a separate survey framework."
+        "Trial Run uses the fixed source-order item subset q1 through q10; do not randomly sample MkAQ items.",
+        "Trial Run assignment is local only and must not be persisted to backend tables."
       ],
       "commands": [
         "cd frontend && npm test",

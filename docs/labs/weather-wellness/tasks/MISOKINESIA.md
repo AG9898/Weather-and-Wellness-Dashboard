@@ -16,13 +16,13 @@ The Misokinesia module presents a participant with 29 short video clips (each ap
 2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns `mkaq_administration` as either `"pre"` or `"post"`, then returns the full clip manifest (all 29 URLs) plus the MkAQ assignment.
 3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required).
 4. Participant sees intro screen and clicks to begin.
-5. If assigned `"pre"`, participant completes the required 21-item MkAQ before the first clip.
+5. If assigned `"pre"`, participant completes the required 21-item MkAQ before the first clip, using the MkAQ card carousel described below.
 6. For each of 29 clips (session-randomized playback order):
    - Video clip plays.
    - Per-clip questionnaire (4 questions) is shown after the clip.
    - Frontend submits `POST /misokinesia/participants/{id}/responses`.
    - When `is_complete: true` is returned (29th submission), backend has set `completed_at` server-side.
-7. If assigned `"post"`, participant completes the required 21-item MkAQ after the final clip response and before the end-of-task questionnaire.
+7. If assigned `"post"`, participant completes the required 21-item MkAQ after the final clip response and before the end-of-task questionnaire, using the same MkAQ card carousel.
 8. Frontend transitions to the end-of-task questionnaire (not directly to completion).
 9. Participant completes the end-of-task form; frontend submits `PATCH /misokinesia/participants/{id}/end-of-task`.
 10. Frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'` (reuses existing endpoint, same pattern as digitspan).
@@ -39,7 +39,8 @@ Misokinesia also supports an RA-invoked no-write rehearsal mode:
 - The trial manifest contains a random subset of 5 active videos from the active test set, sampled by `stimulus_id` each time the RA clicks "Run Test Trial".
 - Trial videos use the same public Supabase Storage CDN URL pattern as production clips; video bytes are never served or proxied by FastAPI.
 - Trial mode plays the real sampled videos, then shows the same per-clip questionnaire after each clip.
-- Trial mode mirrors the pre/post MkAQ branching locally and stores no MkAQ research rows.
+- Trial mode locally randomizes the pre/post MkAQ branch on each Run Test Trial launch and stores no MkAQ research rows.
+- Trial mode uses a shortened MkAQ rehearsal set containing source items `q1` through `q10` only.
 - Per-clip questionnaire, MkAQ, and end-of-task submits use local simulated success transitions.
 - No calls are made to `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, or `/misokinesia/participants/{id}/end-of-task`.
 - No rows are written to `participants`, `sessions`, `misokinesia_participants`, `misokinesia_trial_responses`, or `misokinesia_mkaq_responses`.
@@ -100,9 +101,22 @@ See `docs/API.md` — "Misokinesia" section for full request/response schemas an
 
 ## Misokinesia Assessment Questionnaire (MkAQ)
 
-Required 21-item questionnaire shown once per participant. `POST /misokinesia/start` randomly assigns whether the participant receives it before the first clip (`"pre"`) or after the final per-clip response (`"post"`). The assignment is stored on `misokinesia_participants.mkaq_administration`, and the submitted response repeats the same `administration` value for analysis.
+Required 21-item questionnaire shown once per production participant. `POST /misokinesia/start` randomly assigns whether the participant receives it before the first clip (`"pre"`) or after the final per-clip response (`"post"`). The assignment is stored on `misokinesia_participants.mkaq_administration`, and the submitted response repeats the same `administration` value for analysis.
 
 Response scale: `0 = Not at all`, `1 = A little of the time`, `2 = A good deal of the time`, `3 = Almost all the time`. All 21 items are required. FastAPI computes `total_score` as the sum of `q1`–`q21` (range 0–63); the frontend must not compute or persist the score.
+
+### MkAQ UI Layout
+
+The MkAQ is displayed as one in-flow section on the Misokinesia participant page, not as 21 vertically stacked questions and not as separate routed pages. The frontend renders the section as a single card carousel with pane navigation:
+
+- Production panes: `q1`-`q5`, `q6`-`q10`, `q11`-`q15`, `q16`-`q21`.
+- Trial Run panes: `q1`-`q5`, `q6`-`q10`.
+- `Previous` is available after the first pane and preserves all selected answers.
+- `Next` is enabled only after every question on the current pane has an answer.
+- Final submit is enabled only after every required item for the current mode has an answer.
+- Pane navigation is frontend-only; production still submits one complete `q1`-`q21` payload to `/misokinesia/participants/{id}/mkaq`.
+
+Trial Run uses the same card carousel behavior but only includes source items `q1` through `q10` in order. The Trial Run MkAQ submit is local-only and does not call the production MkAQ endpoint.
 
 The MkAQ items come from `reference/labs/Misokinesia/41598_2021_96430_MOESM1_ESM.pdf`, Supplementary Figure S1 only. Ignore the Supplementary Methods cover page and the three attention-check prompts in Supplementary Table S1.
 

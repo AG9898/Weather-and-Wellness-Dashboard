@@ -31,7 +31,8 @@
 - "Run Test Trial" is an RA-facing frontend rehearsal mode for WW and Misokinesia.
 - In trial mode, frontend uses fake ids and local simulated submit success transitions.
 - WW trial mode is frontend-only and must not call `/sessions/start`, survey submit endpoints, or `/digitspan/runs`.
-- Misokinesia trial mode may call read-only clip-manifest endpoints, but must not call `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, or `/misokinesia/participants/{id}/end-of-task`.
+- Misokinesia trial mode may call read-only clip-manifest endpoints, but must not call `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, or `/misokinesia/participants/{id}/end-of-task`.
+- Misokinesia trial mode uses a shortened local MkAQ rehearsal set (`q1`-`q10`) and locally randomizes `"pre"`/`"post"` placement; this does not change production MkAQ storage or scoring contracts.
 - Trial mode must not create or update database rows.
 
 ---
@@ -84,7 +85,7 @@
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
-| POST   | /misokinesia/participants/{participant_id}/mkaq | None | planned | T145 |
+| POST   | /misokinesia/participants/{participant_id}/mkaq | None | planned | T146 |
 | PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
 
 ---
@@ -1034,7 +1035,8 @@
   - Returns 422 if any `qN` value is outside 0-3 or if any item is missing.
   - `administration` is copied from `misokinesia_participants.mkaq_administration`; the client does not submit or choose it.
   - `total_score` is computed server-side as the direct sum of `q1` through `q21`.
-  - Trial mode bypasses this endpoint and performs local-only progression.
+  - Production MkAQ UI pane grouping is frontend-only; the endpoint still receives one complete `q1` through `q21` payload.
+  - Trial mode bypasses this endpoint and performs local-only progression with the shortened `q1` through `q10` rehearsal set.
 
 ---
 
