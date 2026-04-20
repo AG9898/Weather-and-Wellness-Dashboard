@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import get_current_lab_member
 from app.db import get_session
 from app.models.misokinesia import (
+    MisokinesiaAqResponse as MisokinesiaAqResponseModel,
     MisokinesiaParticipant,
     MisokinesiaStimulus,
     MisokinesiaTestSet,
@@ -20,6 +21,8 @@ from app.models.misokinesia import (
 from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
 from app.schemas.misokinesia import (
+    MisokinesiaAqCreate,
+    MisokinesiaAqResponse,
     MisokinesiaClipMeta,
     MisokinesiaEndOfTaskCreate,
     MisokinesiaEndOfTaskResponse,
@@ -105,18 +108,22 @@ async def start_misokinesia_session(
     db.add(session_obj)
     await db.flush()  # assigns session_id
 
-    # 4. Create misokinesia_participants row
+    # 4. Randomly assign MkAQ administration server-side
+    mkaq_administration = random.choice(["pre", "post"])
+
+    # 5. Create misokinesia_participants row
     #    misokinesia_participant_number is assigned by the server-side SERIAL sequence
     miso_participant = MisokinesiaParticipant(
         session_id=session_obj.session_id,
         participant_uuid=participant.participant_uuid,
         test_set_id=test_set.test_set_id,
+        mkaq_administration=mkaq_administration,
     )
     db.add(miso_participant)
     await db.commit()
     await db.refresh(miso_participant)
 
-    # 5. Fetch stimuli ordered by sort_order
+    # 6. Fetch stimuli ordered by sort_order
     stim_result = await db.execute(
         select(MisokinesiaStimulus)
         .where(
@@ -127,7 +134,7 @@ async def start_misokinesia_session(
     )
     stimuli = stim_result.scalars().all()
 
-    # 6. Randomize playback order per participant, but preserve each clip's
+    # 7. Randomize playback order per participant, but preserve each clip's
     # canonical sort_order in the returned metadata.
     base_url = _supabase_url()
     randomized_stimuli = _shuffle_stimuli(stimuli)
@@ -137,6 +144,7 @@ async def start_misokinesia_session(
         misokinesia_participant_id=miso_participant.misokinesia_participant_id,
         misokinesia_participant_number=miso_participant.misokinesia_participant_number,
         session_id=session_obj.session_id,
+        mkaq_administration=miso_participant.mkaq_administration,
         clips=clips,
     )
 
@@ -282,6 +290,91 @@ async def submit_trial_response(
         response_id=response_row.response_id,
         session_id=miso_participant.session_id,
         is_complete=is_complete,
+        created_at=response_row.created_at,
+    )
+
+
+@router.post(
+    "/participants/{participant_id}/mkaq",
+    response_model=MisokinesiaAqResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def submit_mkaq(
+    participant_id: UUID,
+    payload: MisokinesiaAqCreate,
+    db: AsyncSession = Depends(get_session),
+) -> MisokinesiaAqResponse:
+    """Participant-facing (no auth). Submit the required 21-item MkAQ once."""
+
+    mp_result = await db.execute(
+        select(MisokinesiaParticipant).where(
+            MisokinesiaParticipant.misokinesia_participant_id == participant_id
+        )
+    )
+    miso_participant = mp_result.scalar_one_or_none()
+    if miso_participant is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Misokinesia participant not found.",
+        )
+
+    if miso_participant.mkaq_administration is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This participant has no MkAQ administration assignment.",
+        )
+
+    total_score = sum(
+        getattr(payload, f"q{i}") for i in range(1, 22)
+    )
+
+    response_row = MisokinesiaAqResponseModel(
+        misokinesia_participant_id=miso_participant.misokinesia_participant_id,
+        session_id=miso_participant.session_id,
+        participant_uuid=miso_participant.participant_uuid,
+        administration=miso_participant.mkaq_administration,
+        q1=payload.q1,
+        q2=payload.q2,
+        q3=payload.q3,
+        q4=payload.q4,
+        q5=payload.q5,
+        q6=payload.q6,
+        q7=payload.q7,
+        q8=payload.q8,
+        q9=payload.q9,
+        q10=payload.q10,
+        q11=payload.q11,
+        q12=payload.q12,
+        q13=payload.q13,
+        q14=payload.q14,
+        q15=payload.q15,
+        q16=payload.q16,
+        q17=payload.q17,
+        q18=payload.q18,
+        q19=payload.q19,
+        q20=payload.q20,
+        q21=payload.q21,
+        total_score=total_score,
+    )
+    db.add(response_row)
+    try:
+        await db.flush()
+    except sa_exc.IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An MkAQ response for this participant already exists.",
+        )
+
+    await db.commit()
+    await db.refresh(response_row)
+
+    return MisokinesiaAqResponse(
+        response_id=response_row.response_id,
+        misokinesia_participant_id=response_row.misokinesia_participant_id,
+        session_id=response_row.session_id,
+        administration=response_row.administration,
+        total_score=response_row.total_score,
         created_at=response_row.created_at,
     )
 

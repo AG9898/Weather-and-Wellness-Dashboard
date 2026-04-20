@@ -26,6 +26,7 @@ class MisokinesiaManifestResponse(BaseModel):
     misokinesia_participant_id: UUID
     misokinesia_participant_number: int
     session_id: UUID
+    mkaq_administration: str
     clips: list[MisokinesiaClipMeta]
 
 
@@ -117,6 +118,48 @@ class MisokinesiaEndOfTaskResponse(BaseModel):
     stronger_responses_timing: Optional[str]
 
 
+# ---------------------------------------------------------------------------
+# MkAQ (Misokinesia Assessment Questionnaire)
+# ---------------------------------------------------------------------------
+
+_VALID_MKAQ_ADMINISTRATION = {"pre", "post"}
+
+
+class MisokinesiaAqCreate(BaseModel):
+    q1: int = Field(..., ge=0, le=3)
+    q2: int = Field(..., ge=0, le=3)
+    q3: int = Field(..., ge=0, le=3)
+    q4: int = Field(..., ge=0, le=3)
+    q5: int = Field(..., ge=0, le=3)
+    q6: int = Field(..., ge=0, le=3)
+    q7: int = Field(..., ge=0, le=3)
+    q8: int = Field(..., ge=0, le=3)
+    q9: int = Field(..., ge=0, le=3)
+    q10: int = Field(..., ge=0, le=3)
+    q11: int = Field(..., ge=0, le=3)
+    q12: int = Field(..., ge=0, le=3)
+    q13: int = Field(..., ge=0, le=3)
+    q14: int = Field(..., ge=0, le=3)
+    q15: int = Field(..., ge=0, le=3)
+    q16: int = Field(..., ge=0, le=3)
+    q17: int = Field(..., ge=0, le=3)
+    q18: int = Field(..., ge=0, le=3)
+    q19: int = Field(..., ge=0, le=3)
+    q20: int = Field(..., ge=0, le=3)
+    q21: int = Field(..., ge=0, le=3)
+
+
+class MisokinesiaAqResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    response_id: UUID
+    misokinesia_participant_id: UUID
+    session_id: UUID
+    administration: str
+    total_score: int
+    created_at: datetime
+
+
 __all__ = [
     "MisokinesiaClipMeta",
     "MisokinesiaManifestResponse",
@@ -126,4 +169,6 @@ __all__ = [
     "MisokinesiaTrialResponseResponse",
     "MisokinesiaEndOfTaskCreate",
     "MisokinesiaEndOfTaskResponse",
+    "MisokinesiaAqCreate",
+    "MisokinesiaAqResponse",
 ]

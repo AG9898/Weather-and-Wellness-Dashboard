@@ -88,6 +88,7 @@ class _FakeMisoParticipant:
         self,
         completed_at: datetime | None = None,
         miso_participant_number: int = 1,
+        mkaq_administration: str = "pre",
     ) -> None:
         self.misokinesia_participant_id = _MISO_PARTICIPANT_ID
         self.session_id = _SESSION_ID
@@ -97,6 +98,7 @@ class _FakeMisoParticipant:
         self.started_at = _NOW
         self.completed_at = completed_at
         self.created_at = _NOW
+        self.mkaq_administration = mkaq_administration
         self.end_fidgeting_text: str | None = None
         self.end_emotions_text: str | None = None
         self.stronger_responses: bool | None = None
@@ -243,6 +245,7 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
         self.assertEqual(result.misokinesia_participant_number, 1)
         self.assertEqual(result.session_id, _SESSION_ID)
+        self.assertIn(result.mkaq_administration, ("pre", "post"))
         self.assertEqual(len(result.clips), 2)
         self.assertEqual(result.clips[0].sort_order, 1)
         self.assertEqual(result.clips[1].sort_order, 2)

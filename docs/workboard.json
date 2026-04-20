@@ -1265,7 +1265,7 @@
       "id": "T145",
       "group_id": "MISOKINESIA_MKAQ",
       "title": "Misokinesia MkAQ - Schema and start assignment",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Persist each Misokinesia participant's randomized MkAQ pre/post assignment and add storage for the 21-item response.",
@@ -1294,10 +1294,11 @@
       ],
       "notes": [
         "Do not backfill MkAQ assignments for historical Misokinesia rows.",
-        "Use server-side assignment for production starts; the client must not choose the assignment."
+        "Use server-side assignment for production starts; the client must not choose the assignment.",
+        "The `.env` file with DATABASE_URL is at the repo root. Source it before running alembic: `set -a && source ../.env && set +a` from the `backend/` directory."
       ],
       "commands": [
-        "cd backend && alembic upgrade head",
+        "cd backend && set -a && source ../.env && set +a && PYTHONPATH=. alembic upgrade head",
         "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_misokinesia.py"
       ],
       "estimate": "M"

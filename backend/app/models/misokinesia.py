@@ -87,12 +87,65 @@ class MisokinesiaParticipant(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Randomized MkAQ timing assignment ('pre' or 'post'); null for legacy rows
+    mkaq_administration: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
     # End-of-task fields (collected once, after all clips)
     end_fidgeting_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     end_emotions_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     stronger_responses: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     stronger_responses_timing: Mapped[Optional[str]] = mapped_column(
         String, nullable=True
+    )
+
+
+class MisokinesiaAqResponse(Base):
+    __tablename__ = "misokinesia_mkaq_responses"
+    __table_args__ = (
+        UniqueConstraint(
+            "misokinesia_participant_id",
+            name="uq_misokinesia_mkaq_responses_participant",
+        ),
+    )
+
+    response_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    misokinesia_participant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("misokinesia_participants.misokinesia_participant_id"),
+        nullable=False,
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.session_id"), nullable=False
+    )
+    participant_uuid: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
+    )
+    administration: Mapped[str] = mapped_column(String(4), nullable=False)
+    q1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q4: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q8: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q9: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q10: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q11: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q12: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q13: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q14: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q15: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q16: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q17: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q18: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q19: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q20: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q21: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    total_score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
     )
 
 
