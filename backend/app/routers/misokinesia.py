@@ -226,6 +226,19 @@ async def submit_trial_response(
             detail="All stimuli for this participant have already been answered.",
         )
 
+    # 2b. Pre-MkAQ guard: pre participants cannot submit per-clip responses until MkAQ exists
+    if miso_participant.mkaq_administration == "pre":
+        mkaq_check = await db.execute(
+            select(MisokinesiaAqResponseModel).where(
+                MisokinesiaAqResponseModel.misokinesia_participant_id == participant_id
+            )
+        )
+        if mkaq_check.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="MkAQ must be submitted before per-clip responses for pre-assigned participants.",
+            )
+
     # 3. Verify stimulus_id belongs to this participant's test_set
     stim_result = await db.execute(
         select(MisokinesiaStimulus).where(
@@ -410,6 +423,19 @@ async def submit_end_of_task(
             status_code=status.HTTP_409_CONFLICT,
             detail="All per-clip responses must be submitted before the end-of-task questionnaire.",
         )
+
+    # 2b. Post-MkAQ guard: post participants cannot submit end-of-task until MkAQ exists
+    if miso_participant.mkaq_administration == "post":
+        mkaq_check = await db.execute(
+            select(MisokinesiaAqResponseModel).where(
+                MisokinesiaAqResponseModel.misokinesia_participant_id == participant_id
+            )
+        )
+        if mkaq_check.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="MkAQ must be submitted before the end-of-task form for post-assigned participants.",
+            )
 
     # 3. Write end-of-task fields
     miso_participant.end_fidgeting_text = payload.end_fidgeting_text

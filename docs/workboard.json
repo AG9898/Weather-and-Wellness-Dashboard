@@ -1307,7 +1307,7 @@
       "id": "T146",
       "group_id": "MISOKINESIA_MKAQ",
       "title": "Misokinesia MkAQ - Participant endpoint and flow guards",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add the participant-facing MkAQ submit endpoint with server-side scoring and enforce the assigned pre/post placement.",

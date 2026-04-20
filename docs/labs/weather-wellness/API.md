@@ -85,7 +85,7 @@
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
-| POST   | /misokinesia/participants/{participant_id}/mkaq | None | planned | T146 |
+| POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
 | PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
 
 ---
@@ -978,7 +978,7 @@
   - Returns 404 if `participant_id` not found.
   - Returns 409 if a response for this `(participant_id, stimulus_id)` pair already exists (UNIQUE constraint violation).
   - Returns 409 if all stimuli are already answered (`completed_at` is set).
-  - Planned MkAQ extension: returns 409 for participants assigned `mkaq_administration="pre"` until their MkAQ response exists.
+  - Returns 409 for participants assigned `mkaq_administration="pre"` until their MkAQ response exists (T146).
   - Returns 422 if `stimulus_id` does not belong to the participant's assigned test set.
   - Returns 422 if any `qN` value is outside 1–5.
   - After the final response, `misokinesia_participants.completed_at` is set server-side automatically.
@@ -1069,7 +1069,7 @@
   - No auth required.
   - Returns 404 if `participant_id` not found.
   - Returns 409 if `misokinesia_participants.completed_at` is null (not all per-clip responses submitted yet).
-  - Planned MkAQ extension: returns 409 for participants assigned `mkaq_administration="post"` until their MkAQ response exists.
+  - Returns 409 for participants assigned `mkaq_administration="post"` until their MkAQ response exists (T146).
   - After success, frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'`.
   - Trial mode bypasses this endpoint and performs no backend writes.
 
