@@ -34,6 +34,7 @@ from app.schemas.misokinesia import (
 
 router = APIRouter(prefix="/misokinesia", tags=["misokinesia"])
 _TRIAL_MANIFEST_CLIP_COUNT = 5
+_MKAQ_DUPLICATE_CONSTRAINT = "uq_misokinesia_mkaq_responses_participant"
 
 
 def _supabase_url() -> str:
@@ -66,6 +67,16 @@ def _clip_meta_from_stimulus(
         sort_order=stimulus.sort_order,
         duration_ms=stimulus.duration_ms,
     )
+
+
+def _matches_constraint(exc: sa_exc.IntegrityError, constraint_name: str) -> bool:
+    """Best-effort constraint name matcher across DB drivers."""
+
+    diag = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
+    if diag == constraint_name:
+        return True
+
+    return constraint_name in f"{exc} {exc.orig}"
 
 
 @router.post(
@@ -337,6 +348,16 @@ async def submit_mkaq(
             detail="This participant has no MkAQ administration assignment.",
         )
 
+    # Post-assigned participants must finish all per-clip responses first.
+    if (
+        miso_participant.mkaq_administration == "post"
+        and miso_participant.completed_at is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="All per-clip responses must be submitted before MkAQ for post-assigned participants.",
+        )
+
     total_score = sum(
         getattr(payload, f"q{i}") for i in range(1, 22)
     )
@@ -372,11 +393,16 @@ async def submit_mkaq(
     db.add(response_row)
     try:
         await db.flush()
-    except sa_exc.IntegrityError:
+    except sa_exc.IntegrityError as exc:
         await db.rollback()
+        if _matches_constraint(exc, _MKAQ_DUPLICATE_CONSTRAINT):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An MkAQ response for this participant already exists.",
+            )
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An MkAQ response for this participant already exists.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to persist MkAQ response due to data integrity constraints.",
         )
 
     await db.commit()

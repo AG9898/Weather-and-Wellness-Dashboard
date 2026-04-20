@@ -21,6 +21,11 @@ import {
   getMisokinesiaSubmitMode,
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
+import {
+  getPhaseAfterBegin,
+  getPhaseAfterMkaqComplete,
+  getPhaseAfterQuestionnaireComplete,
+} from "@/lib/misokinesia-phase";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 
@@ -129,11 +134,7 @@ export default function MisokinesiaTaskPage() {
         });
         if (!cancelled) {
           setMkaqSubmitting(false);
-          if (manifest!.mkaq_administration === "pre") {
-            setPhase("playing");
-          } else {
-            setPhase("end_of_task");
-          }
+          setPhase(getPhaseAfterMkaqComplete(manifest!.mkaq_administration));
         }
       } catch (err) {
         if (!cancelled) {
@@ -155,11 +156,7 @@ export default function MisokinesiaTaskPage() {
   // ── State transition handlers ──
 
   function handleBegin() {
-    if (manifest?.mkaq_administration === "pre") {
-      setPhase("mkaq");
-    } else {
-      setPhase("playing");
-    }
+    setPhase(getPhaseAfterBegin(manifest?.mkaq_administration));
   }
 
   function handleVideoEnded() {
@@ -167,16 +164,14 @@ export default function MisokinesiaTaskPage() {
   }
 
   function handleQuestionnaireComplete(result: MisokinesiaTrialResponseResult) {
-    if (result.is_complete) {
-      if (manifest?.mkaq_administration === "post") {
-        setPhase("mkaq");
-      } else {
-        setPhase("end_of_task");
-      }
-    } else {
+    const nextPhase = getPhaseAfterQuestionnaireComplete(
+      result.is_complete,
+      manifest?.mkaq_administration
+    );
+    if (nextPhase === "playing") {
       setCurrentClipIndex((prev) => prev + 1);
-      setPhase("playing");
     }
+    setPhase(nextPhase);
   }
 
   function handleMkaqComplete(answers: Record<string, number>) {

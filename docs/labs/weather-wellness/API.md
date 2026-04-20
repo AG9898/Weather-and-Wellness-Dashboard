@@ -915,7 +915,7 @@
 - **Notes:**
   - Atomically creates an anonymous `participants` row (no demographics), an `active` session, and a `misokinesia_participants` row.
   - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
-  - Planned MkAQ extension: assigns `mkaq_administration` randomly as `"pre"` or `"post"`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can place the required MkAQ form.
+  - Assigns `mkaq_administration` randomly as `"pre"` or `"post"`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can place the required MkAQ form.
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
   - `clips` contains all 29 active stimuli for the test set, but the response order is randomized per participant session.
   - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
@@ -990,8 +990,8 @@
 
 ### POST /misokinesia/participants/{participant_id}/mkaq
 - **Auth:** None (participant-facing)
-- **Status:** planned
-- **Request body:** `MisokinesiaMkaqResponseCreate`
+- **Status:** implemented (T146)
+- **Request body:** `MisokinesiaAqCreate`
   ```json
   {
     "q1": "integer (0-3)",
@@ -1017,7 +1017,7 @@
     "q21": "integer (0-3)"
   }
   ```
-- **Response (HTTP 201):** `MisokinesiaMkaqResponseResponse`
+- **Response (HTTP 201):** `MisokinesiaAqResponse`
   ```json
   {
     "response_id": "uuid",
@@ -1031,7 +1031,10 @@
 - **Notes:**
   - No auth required.
   - Returns 404 if `participant_id` not found.
+  - Returns 409 if `misokinesia_participants.mkaq_administration` is null (legacy participant with no assignment).
+  - Returns 409 for participants assigned `mkaq_administration="post"` until all per-clip responses are submitted (`completed_at` set).
   - Returns 409 if this participant already has an MkAQ response.
+  - Returns 500 for unexpected non-duplicate DB integrity failures during persistence.
   - Returns 422 if any `qN` value is outside 0-3 or if any item is missing.
   - `administration` is copied from `misokinesia_participants.mkaq_administration`; the client does not submit or choose it.
   - `total_score` is computed server-side as the direct sum of `q1` through `q21`.

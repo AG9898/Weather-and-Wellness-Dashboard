@@ -136,6 +136,29 @@ class _FakeMkaqResponseRow:
     created_at = _NOW
 
 
+class _FakeDiag:
+    def __init__(self, constraint_name: str | None = None) -> None:
+        self.constraint_name = constraint_name
+
+
+class _FakeOrigIntegrityError(Exception):
+    def __init__(self, message: str, constraint_name: str | None = None) -> None:
+        super().__init__(message)
+        self.diag = _FakeDiag(constraint_name)
+
+
+def _make_integrity_error(
+    *,
+    message: str,
+    constraint_name: str | None = None,
+) -> sa_exc.IntegrityError:
+    return sa_exc.IntegrityError(
+        statement="insert into misokinesia_mkaq_responses ...",
+        params={},
+        orig=_FakeOrigIntegrityError(message=message, constraint_name=constraint_name),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Fake AsyncSession helpers
 # ---------------------------------------------------------------------------
@@ -175,10 +198,12 @@ class _SequencedDB:
         self,
         execute_returns: list,
         raise_integrity_on_flush: bool = False,
+        integrity_error_on_flush: sa_exc.IntegrityError | None = None,
     ) -> None:
         self._returns = list(execute_returns)
         self._index = 0
         self._raise_integrity = raise_integrity_on_flush
+        self._integrity_error_on_flush = integrity_error_on_flush
         self._added: list[Any] = []
         self.committed = False
 
@@ -191,6 +216,8 @@ class _SequencedDB:
         self._added.append(obj)
 
     async def flush(self) -> None:
+        if self._integrity_error_on_flush is not None:
+            raise self._integrity_error_on_flush
         if self._raise_integrity:
             raise sa_exc.IntegrityError("unique", {}, Exception())
 
@@ -885,12 +912,14 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
         self,
         miso_participant: _FakeMisoParticipant | None = None,
         raise_integrity_on_flush: bool = False,
+        integrity_error_on_flush: sa_exc.IntegrityError | None = None,
     ) -> _SequencedDB:
         if miso_participant is None:
             miso_participant = _FakeMisoParticipant()
         return _SequencedDB(
             execute_returns=[miso_participant],
             raise_integrity_on_flush=raise_integrity_on_flush,
+            integrity_error_on_flush=integrity_error_on_flush,
         )
 
     async def test_happy_path_returns_201_with_correct_fields(self) -> None:
@@ -927,7 +956,12 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.status_code, 404)
 
     async def test_raises_409_on_duplicate_mkaq_submission(self) -> None:
-        db = self._db_for_mkaq(raise_integrity_on_flush=True)
+        db = self._db_for_mkaq(
+            integrity_error_on_flush=_make_integrity_error(
+                message="duplicate key value violates unique constraint",
+                constraint_name="uq_misokinesia_mkaq_responses_participant",
+            )
+        )
         from unittest.mock import patch
 
         with patch(
@@ -941,6 +975,41 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
                     db=db,
                 )
         self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("already exists", ctx.exception.detail)
+
+    async def test_raises_409_for_post_participant_before_clip_completion(self) -> None:
+        miso = _FakeMisoParticipant(completed_at=None, mkaq_administration="post")
+        db = self._db_for_mkaq(miso_participant=miso)
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_mkaq(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("per-clip responses", ctx.exception.detail)
+
+    async def test_non_duplicate_integrity_error_returns_500(self) -> None:
+        db = self._db_for_mkaq(
+            integrity_error_on_flush=_make_integrity_error(
+                message="insert or update violates foreign key constraint",
+                constraint_name="fk_misokinesia_mkaq_responses_session_id",
+            )
+        )
+        from unittest.mock import patch
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaAqResponseModel",
+            return_value=_FakeMkaqResponseRow(),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                await submit_mkaq(
+                    participant_id=_MISO_PARTICIPANT_ID,
+                    payload=self._valid_payload(),
+                    db=db,
+                )
+        self.assertEqual(ctx.exception.status_code, 500)
+        self.assertNotIn("already exists", ctx.exception.detail)
 
     async def test_raises_409_when_no_mkaq_administration_assigned(self) -> None:
         """Participant with mkaq_administration=None should receive 409."""

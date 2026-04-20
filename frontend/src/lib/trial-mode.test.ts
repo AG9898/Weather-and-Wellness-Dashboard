@@ -22,6 +22,11 @@ import {
   persistTrialRunState,
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
+import {
+  getPhaseAfterBegin,
+  getPhaseAfterMkaqComplete,
+  getPhaseAfterQuestionnaireComplete,
+} from "@/lib/misokinesia-phase";
 
 function createFakeSessionStorage(): Storage {
   const values = new Map<string, string>();
@@ -223,8 +228,9 @@ describe("MkAQ production participant flow placement", () => {
       "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
     );
     expect(source).toContain('"mkaq"');
-    expect(source).toContain('mkaq_administration === "pre"');
-    expect(source).toContain('mkaq_administration === "post"');
+    expect(source).toContain("getPhaseAfterBegin");
+    expect(source).toContain("getPhaseAfterQuestionnaireComplete");
+    expect(source).toContain("getPhaseAfterMkaqComplete");
   });
 
   it("participant page calls submitMisokinesiaMkaq for production submissions", () => {
@@ -241,26 +247,18 @@ describe("MkAQ production participant flow placement", () => {
     expect(source).not.toMatch(/\bfetch\s*\(/);
   });
 
-  it("pre assignment routes through mkaq phase from handleBegin", () => {
-    const source = readFrontendFile(
-      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
-    );
-    // handleBegin must check pre and set mkaq phase
-    expect(source).toContain("handleBegin");
-    expect(source).toContain('mkaq_administration === "pre"');
-    // The page renders MisokinesiaMkaqForm when phase is mkaq
-    expect(source).toContain("<MisokinesiaMkaqForm");
+  it("routes begin phase to mkaq only for pre assignment", () => {
+    expect(getPhaseAfterBegin("pre")).toBe("mkaq");
+    expect(getPhaseAfterBegin("post")).toBe("playing");
+    expect(getPhaseAfterBegin(undefined)).toBe("playing");
   });
 
-  it("post assignment routes through mkaq phase after final questionnaire", () => {
-    const source = readFrontendFile(
-      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
-    );
-    // handleQuestionnaireComplete must check post and route to mkaq
-    expect(source).toContain('mkaq_administration === "post"');
-    // is_complete check and post check must both exist in questionnaire handler
-    expect(source).toContain("is_complete");
-    expect(source).toContain("handleQuestionnaireComplete");
+  it("routes final questionnaire completion to mkaq only for post assignment", () => {
+    expect(getPhaseAfterQuestionnaireComplete(true, "post")).toBe("mkaq");
+    expect(getPhaseAfterQuestionnaireComplete(true, "pre")).toBe("end_of_task");
+    expect(getPhaseAfterQuestionnaireComplete(true, undefined)).toBe("end_of_task");
+    expect(getPhaseAfterQuestionnaireComplete(false, "post")).toBe("playing");
+    expect(getPhaseAfterQuestionnaireComplete(false, "pre")).toBe("playing");
   });
 });
 
@@ -325,22 +323,13 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
     expect(source).toContain("createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, mkaqAdministration)");
   });
 
-  it("trial MkAQ pre branch shows mkaq before first clip", () => {
-    const source = readFrontendFile(
-      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
-    );
-    // handleBegin checks for pre and routes to mkaq
-    expect(source).toContain('mkaq_administration === "pre"');
-    expect(source).toContain('"mkaq"');
+  it("routes mkaq completion to clip playback for pre assignment", () => {
+    expect(getPhaseAfterMkaqComplete("pre")).toBe("playing");
   });
 
-  it("trial MkAQ post branch shows mkaq after final clip questionnaire", () => {
-    const source = readFrontendFile(
-      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
-    );
-    // handleQuestionnaireComplete checks for post and routes to mkaq
-    expect(source).toContain('mkaq_administration === "post"');
-    expect(source).toContain("is_complete");
+  it("routes mkaq completion to end_of_task for post assignment", () => {
+    expect(getPhaseAfterMkaqComplete("post")).toBe("end_of_task");
+    expect(getPhaseAfterMkaqComplete(undefined)).toBe("end_of_task");
   });
 });
 
