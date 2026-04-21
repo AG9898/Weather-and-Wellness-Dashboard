@@ -1,8 +1,9 @@
-# Backend Reliability Fixes — Agent Playbook
+# Backend Reliability Fixes — Archived Playbook
 
+> **Status:** Historical archive (completed reliability pass).
+> **Canonical replacements:** `docs/workboard.json` for active task tracking, `docs/ARCHITECTURE.md` for deployed routing/runtime behavior, and `docs/labs/weather-wellness/ANALYTICS.md` for analytics recompute behavior.
 > **Context:** Diagnosed 2026-03-15 via live Playwright inspection of the deployed site.
-> Two production bugs make the dashboard unusable on cold start and permanently break analytics recompute.
-> This document is the canonical agent-executable playbook. Implement fixes in order. Update docs after each fix.
+> This file is retained for implementation history only; do not treat it as an active task board.
 
 ---
 
@@ -334,7 +335,8 @@ After all fixes are implemented, verify the following docs are consistent with t
 | `docs/ARCHITECTURE.md` | All "15-second timeout" references replaced with "55-second timeout". `maxDuration = 60` mentioned in Route Handler infra section. Keep-alive workflow in Scheduled Jobs. Lifespan cleanup mentioned in Render Setup and Analytics Snapshot Architecture. |
 | `docs/ANALYTICS.md` | Snapshot/Recompute Strategy section mentions 30-minute staleness cutoff, `asyncio.to_thread` for model fitting, and startup cleanup of orphaned runs. |
 
-Do not update `docs/ROUTING_CLEANUP.md` itself — this file is the task board and its history should be preserved.
+Do not append new implementation tasks here; preserve this file as historical record only.
+Track active work in `docs/workboard.json`.
 
 ---
 

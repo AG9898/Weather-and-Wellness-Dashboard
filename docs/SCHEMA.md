@@ -184,6 +184,7 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 - Historical predecessor only: `reference/data_full_1-230.xlsx`
 - `participant ID` → `participants.participant_number` (upsert key)
 - `age` → `participants.age_band` (whitespace-trimmed; canonicalize obvious variants like `Over 38` → `>38`)
+- See `backend/app/services/import_service.py` normalization helpers for the full canonicalization rules and edge cases (including `Over 38` -> `>38`).
 - `gender` → `participants.gender` (trim; canonicalize obvious variants like `Man ` → `Man`)
 - `origin` → `participants.origin` (trim)
 - If `origin` is an “Other” category, the free-text detail (if present) is stored in `participants.origin_other_text`.

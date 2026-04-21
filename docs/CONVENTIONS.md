@@ -13,7 +13,7 @@
 - **No business logic in route handlers.** Route handlers call service functions; service functions call scoring modules or DB helpers.
 - **No orphaned dashboard reads.** Do not create `/dashboard/*` backend endpoints just to mirror a screen when another domain router already owns the data; keep those reads in the owning router and move DB/query logic into a service module.
 - **Never log PII.** Do not log any direct identifiers. Participants are anonymous: do not collect or store names.
-- **UUID v4** for all generated IDs (Python: `uuid.uuid4()`; never client-generated).
+- **UUID v4** for generated production IDs (Python: `uuid.uuid4()`; never client-generated). Trial-mode fake IDs are the only exception and are defined in `docs/TRIAL_MODE.md`.
 
 ---
 
@@ -42,6 +42,7 @@
 - Naming: `...Create` for request bodies, `...Response` for responses
 - Never return SQLAlchemy ORM objects directly from endpoints — always serialize to a `...Response` schema
 - Place schemas in `backend/app/schemas/`, one file per domain
+- Name schema files after the domain (for example, `analytics.py`, `misokinesia.py`) and group that domain's `*Create`, `*Response`, and `*Update` schemas in the same file. Do not split one domain across multiple schema files.
 
 ### Scoring modules
 - One file per instrument in `backend/app/scoring/`: `digitspan.py`, `uls8.py`, `cesd10.py`, `gad7.py`, `cogfunc8a.py`
@@ -64,6 +65,7 @@
 - All Supabase Auth SDK calls isolated in `backend/app/auth.py`
 - **Frontend:** RA routes are gated at the edge by `src/middleware.ts` (primary, server-side) and by the `(ra)` layout client guard (secondary, handles mid-session state). Do not rely on the layout guard alone — the middleware is required for real security.
 - **Supabase browser client:** use `createBrowserClient` from `@supabase/ssr` (not `createClient` from `@supabase/supabase-js`) so the session is cookie-persisted and readable by the middleware.
+- Any route change that touches auth gating must include an assertion in `frontend/src/app/api/ra/route-topology.test.ts` so both middleware and layout guard wiring remain enforced.
 
 ### DB access
 - Alembic autogenerate from SQLAlchemy models; **always review** generated migration before committing
@@ -102,13 +104,7 @@
 - Wrapper functions handle headers (including auth tokens) and type the response
 
 ### Trial run mode
-- Trial mode is an RA-invoked rehearsal path only; it is not a production data path.
-- Trial mode must preserve the participant UX order while avoiding all research-data writes.
-- WW trial mode has no backend dependency; Misokinesia trial mode may call read-only manifest endpoints to load real public video URLs.
-- Trial mode must never write participant/session/result rows.
-- Trial mode should use clearly fake frontend-only ids and must not reuse real ids.
-- Keep trial mode logic explicit in the same typed flow handlers (for example, a `mode` branch), rather than duplicating near-identical page components.
-- Show a visible centered top-screen `"Trial Run"` watermark on WW participant pages while trial mode is active; do not show it on the Misokinesia participant task page.
+- Trial mode is a no-write RA rehearsal path. Canonical behavior (fake ID format, watermark visibility, consent, and module boundaries) lives in `docs/TRIAL_MODE.md`.
 
 ### Routing governance
 

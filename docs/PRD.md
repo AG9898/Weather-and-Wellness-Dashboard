@@ -1,5 +1,13 @@
 # PRD — Research Web Application (Weather & Wellness + Misokinesia)
 
+> **Status (2026-04-21)**
+>
+> | Track | State |
+> |---|---|
+> | Shipped | Phase 1 instruments/scoring, Misokinesia task flow, and RA import/export workflows are implemented. |
+> | In Progress | None on the active `docs/workboard.json` queue (all listed tasks are currently marked `done`). |
+> | Planned | Deployment cutover direction (Railway backend + Canada Supabase) and broader multi-lab expansion remain planned. |
+
 ## Objective
 Internal lab-operated web app to:
 - Run Backwards Digit Span (repo-matched parameters)

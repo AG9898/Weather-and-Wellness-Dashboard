@@ -3,9 +3,10 @@
 > Canonical source for hosting, tiers, and environment boundaries. Other docs should link
 > here instead of restating architecture details.
 >
-> This document reflects the **target post-cutover topology**. Until the
-> migration is executed, some operational runbooks may still reference the
-> current Render deployment as the live service.
+> Deployment state split:
+> - **Current state (legacy live):** Render backend + existing Supabase project.
+> - **Target state:** Railway backend + Canada-region Supabase (`ca-central-1`).
+> This document tracks both explicitly; treat Railway as the implementation target.
 
 ---
 
@@ -285,7 +286,11 @@ Two scheduled jobs are active.
 - Reliability: ingestion is idempotent so duplicate runs are safe. Retry policy can remain for transient backend/network failures during the transition.
 - Exit policy: 2xx → success; 409/429 → exit 0 (expected control-flow responses); all other non-2xx → retry, then exit 1 (loud failure in Actions UI).
 
-**2. Render keep-alive ping** (transitional only)
+### Legacy / Current Deployment (Render transitional)
+
+Render-specific operations are retained only until backend cutover is complete.
+
+**Render keep-alive ping** (transitional only)
 
 - Workflow file: `.github/workflows/render-keepalive.yml`
 - Trigger: `cron: '0/14 * * * *'` (every 14 minutes, around the clock) + `workflow_dispatch` for manual runs.
@@ -293,6 +298,7 @@ Two scheduled jobs are active.
 - Secret: reuses `WEATHER_INGEST_BASE_URL` (already present); no new secret required.
 - Pings `GET /health`. Exit policy: always exits 0 — a missed or non-2xx ping is not a failure; the next ping will resume keep-alive.
 - Remove this workflow after the backend cutover to Railway.
+- Legacy Render service configuration reference: `docs/devSteps.md` under "Legacy Reference (Render transitional)".
 
 ### Secrets ownership
 

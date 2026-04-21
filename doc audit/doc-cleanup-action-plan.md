@@ -215,7 +215,7 @@ The doc system has moved to an index-first model:
 
 ---
 
-## TASK-07 — Create docs/TRIAL_MODE.md (NEW FILE) and align trial-mode rules across docs
+## [DONE] TASK-07 — Create docs/TRIAL_MODE.md (NEW FILE) and align trial-mode rules across docs
 
 **Why a new file:** Trial-mode behaviour is currently split between CONVENTIONS.md (fake-id
 format, watermark) and API.md (trial-run mode section), with contradictions and gaps. Agents
@@ -254,7 +254,7 @@ reference.
 
 ---
 
-## TASK-08 — Enforce task quality standards in the start-task skill
+## [DONE] TASK-08 — Enforce task quality standards in the start-task skill
 
 **Why redirected from workboard.json:** The affected workboard tasks (T115, T128, T130, T132,
 T134, T136, T142, T143) are already complete — there is no value in back-filling their entries.
@@ -313,7 +313,7 @@ if the surrounding structure differs.
 
 ---
 
-## TASK-09 — Separate current vs. target state in ARCHITECTURE.md and devSteps.md
+## [DONE] TASK-09 — Separate current vs. target state in ARCHITECTURE.md and devSteps.md
 
 **Why grouped:** Both files interleave Render (legacy) and Railway (target) deployment details
 without labelling them, creating the same reader confusion. Fixing them independently risks
@@ -350,7 +350,7 @@ introducing new inconsistencies between the two; fixing together ensures the "cu
 
 ---
 
-## TASK-10 — Validate index-first routing chain for lab docs
+## [DONE] TASK-10 — Validate index-first routing chain for lab docs
 
 **Why grouped:** The current system routes through `docs/INDEX.md` first, then into lab hubs,
 then leaf docs. This task verifies and completes that chain so nested docs are discoverable
@@ -384,7 +384,7 @@ without adding root-level stubs.
 
 ---
 
-## TASK-11 — Archive legacy docs and scrub active references
+## [DONE] TASK-11 — Archive legacy docs and scrub active references
 
 **Why archive (current system):** The repo now explicitly keeps archive/history docs (for example
 `docs/progress/PROGRESS_LOG.md` as archive-only) while routing active work through canonical
@@ -416,7 +416,7 @@ found during search
 
 ---
 
-## TASK-12 — CONVENTIONS.md + TESTING.md policy tightening
+## [DONE] TASK-12 — CONVENTIONS.md + TESTING.md policy tightening
 
 **Why grouped:** All findings are policy/constraint clarity improvements to docs that agents
 read when implementing features. They share no file-structural dependencies and can be done in
@@ -449,7 +449,7 @@ one pass across two closely related files.
 
 ---
 
-## TASK-13 — Create docs/labs/README.md lab onboarding template (NEW FILE) + consolidate multi-lab schema docs
+## [DONE] TASK-13 — Create docs/labs/README.md lab onboarding template (NEW FILE) + consolidate multi-lab schema docs
 
 **Why a new file:** There is no template or checklist for new labs. Without it, new lab docs
 will continue to be inconsistently structured and orphaned. Creating a template also forces the
@@ -483,7 +483,7 @@ agent to canonicalize the relationship between MULTI_LAB.md (authoritative) and 
 
 ---
 
-## TASK-14 — Miscellaneous single-file fixes (PRD, SCHEMA, DECISIONS, working draft docs)
+## [DONE] TASK-14 — Miscellaneous single-file fixes (PRD, SCHEMA, DECISIONS, working draft docs)
 
 **Why grouped:** These are the remaining small S2/S3 findings that don't cluster naturally with
 any earlier task. Grouping them avoids four tiny one-line agent passes. Each fix is
@@ -528,7 +528,7 @@ self-contained and carries no cross-doc dependency risk.
 
 ---
 
-## TASK-15 — Add skill selection decision tree to AGENTS.md
+## [DONE] TASK-15 — Add skill selection decision tree to AGENTS.md
 
 **Why a standalone task:** This is a policy-level edit to AGENTS.md that is intentionally
 isolated from TASK-04 (which also touches AGENTS.md). The decision tree requires understanding
@@ -598,8 +598,8 @@ entire orphan-doc and broken-link clusters found in this audit.
 **Potential new files from remaining tasks:** `docs/TRIAL_MODE.md`, `docs/labs/README.md`,
 `docs/migrations/README.md`
 
-**Recommended execution order (remaining):** TASK-07 → TASK-08 → TASK-09 → TASK-10
-→ TASK-12 → TASK-13 → TASK-14 → TASK-11 → TASK-15
+**Recommended execution order (remaining):** TASK-09 → TASK-10 → TASK-12 → TASK-13
+→ TASK-14 → TASK-11
 
 Routing note: all remaining tasks should preserve the index-first pattern
 (`AGENTS.md`/`README.md` → `docs/INDEX.md` → lab hub/leaf docs) and must not reintroduce

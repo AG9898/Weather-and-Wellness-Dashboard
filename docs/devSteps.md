@@ -75,28 +75,31 @@ Troubleshooting:
 
 ## T27 Runbook — Backend Deployment Service
 
-> Historical note: this section originally documented the live Render service.
-> The current target deployment is Railway; keep any remaining Render-specific
-> steps only until the cutover is complete.
-
 Use this runbook when re-deploying or reconfiguring the backend service.
 
-### 1) Service configuration (reference)
+### Current Setup (Railway)
 
 | Setting | Value |
 |---|---|
+| Host | Railway |
 | Root Directory | `backend` |
 | Runtime | Python 3 |
 | Build Command | `pip install -r requirements.txt` |
-| Start Command | `PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
 | Health Check Path | `/health` |
 
-### 2) Required backend environment variables
+### Required backend environment variables
 
 See `docs/ENV_VARS.md` for canonical backend variable requirements, defaults, and
 deployment ownership.
 
 > Keep all secret values in deployment env settings only — never commit values to the repo.
+
+### Legacy Reference (Render transitional)
+
+- Render was the previous live backend host and is retained only as a transition reference.
+- Transitional keep-alive workflow: `.github/workflows/render-keepalive.yml` (remove after Railway cutover).
+- Treat Railway settings above as canonical for active deployment work.
 
 ## Admin Import/Export Setup (Phase 3 — T46+)
 

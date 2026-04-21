@@ -1,5 +1,7 @@
 # HISTORICAL_WEATHER_BACKFILL.md — Open-Meteo Historical Weather Backfill
 
+> Status: active maintenance procedure; run as needed to fill historical weather gaps.
+>
 > Canonical spec for the Open-Meteo historical weather backfill feature (T65–T66).
 > This document defines the external data source, field mappings, precedence rules,
 > timezone handling, DB writes, and idempotency guarantees.

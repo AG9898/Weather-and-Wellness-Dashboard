@@ -1,9 +1,7 @@
 # New Shared-DB Multi-Lab Schema
 
-> Status: draft design for the new backend + database migration.
-> This document proposes the target schema shape for a shared database that
-> hosts multiple labs and studies while keeping participant data anonymous and
-> allowing each lab to own its own result/scoring tables.
+> Status: design archive. The canonical multi-lab schema is documented in
+> `docs/MULTI_LAB.md`. This file is retained for historical context only.
 
 ---
 

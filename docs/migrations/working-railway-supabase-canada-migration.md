@@ -1,5 +1,7 @@
 # Working Railway + Canada Supabase Migration
 
+> This document is a planning archive. Canonical deployment topology is documented in `docs/ARCHITECTURE.md`.
+>
 > Working planning snapshot for the infrastructure migration from Render +
 > the current Supabase project to Railway (backend) + a new Supabase project
 > in `ca-central-1` (database + auth). This document records the current

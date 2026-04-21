@@ -39,6 +39,10 @@ Participant.
 - **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.
 - **Active task board.** Use `docs/workboard.json` as the canonical active task queue. `docs/progress/PROGRESS_LOG.md` is archive history only.
 - **Repo-local task skills.** Use the repo-local workflow skills under `.codex/skills/` (`project-plan`, `query-workboard`, `start-task`, `ralphloop`) for planning, board execution, or delegated loops. These are symlinked from `.agents/skills/`, where the canonical implementations live. `ralph_loop.sh` is CLI fallback only.
+  - To inspect the active queue without executing: use `query-workboard`.
+  - To implement a single task end-to-end: use `start-task`.
+  - To run autonomous multi-task loops (e.g. "complete the next 3 tasks"): use `ralphloop`.
+  - Do not invoke `ralphloop` for a single task; do not invoke `start-task` in a loop manually.
 - **Workboard schema.** Active tasks in this repo use the lean `tasks[]` schema in `docs/workboard.json`, with `docs`, `files`, `commands`, and `acceptance_criteria` fields. Do not expect older `read_docs` or `updates_docs` fields from other repos.
 
 ---
@@ -51,6 +55,7 @@ Participant.
 - For study-specific research instruments and analysis scripts, use `reference/labs/<lab-slug>/`.
 - For universal UI assets (branding, logos, component mockups), use `reference/UI Reference/`.
 - For UI style, `docs/styleguide.md` is the canonical reference.
+- For 2026 UI direction and redesign scope context, see `docs/UI_REDESIGN_2026.md` (directional; `docs/styleguide.md` remains the current implementation guide).
 - For shadcn component usage and CLI patterns, follow `docs/shadcn.md`.
 - For Storybook-driven isolated UI review, story scope, and story authoring expectations, follow `docs/storybook.md`.
 - For the multi-lab data model and onboarding new labs, see `docs/MULTI_LAB.md`.

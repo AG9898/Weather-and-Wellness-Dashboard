@@ -8,7 +8,7 @@
 > - API contract: `docs/labs/weather-wellness/API.md` (Weather section)
 > - Planned schema additions: `docs/SCHEMA.md` (Planned Additions section)
 > - Deployment boundaries: `docs/ARCHITECTURE.md` (Scheduled Jobs section)
-> - Historical gap-fill spec: `docs/HISTORICAL_WEATHER_BACKFILL.md`
+> - Historical gap-fill spec: `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md`
 
 ---
 
@@ -147,7 +147,7 @@ For each date in the requested range, the existing `weather_daily` row (if any) 
 - `source_primary_url` = the Open-Meteo URL used for that batch.
 - Idempotent: a second call with the same range returns `days_inserted=0, days_enhanced=0, days_skipped=N`.
 
-See `docs/HISTORICAL_WEATHER_BACKFILL.md` for the complete spec and API contract.
+See `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md` for the complete spec and API contract.
 
 ---
 
@@ -171,7 +171,7 @@ When legacy sessions are imported (Phase 3 admin import), we may not have UBC-in
 - Implemented in `backend/app/services/weather_backfill_service.py` and exposed via `backend/app/routers/admin.py`.
 - Combined script: `backend/app/scripts/weather_backfill.py` runs legacy backfill then Open-Meteo in the correct order.
 
-**Recommended run order:** always run the legacy import backfill **before** the Open-Meteo backfill. If Open-Meteo was run first (e.g., to fill the full date range), run the legacy backfill afterward to overwrite temp/precip for import dates. See `docs/HISTORICAL_WEATHER_BACKFILL.md` for full details.
+**Recommended run order:** always run the legacy import backfill **before** the Open-Meteo backfill. If Open-Meteo was run first (e.g., to fill the full date range), run the legacy backfill afterward to overwrite temp/precip for import dates. See `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md` for full details.
 
 **Important:** day-level linking is always by `study_days.date_local` (America/Vancouver). Metadata timestamps like `weather_daily.updated_at` and `weather_daily.current_observed_at` must not be treated as the analytic join key.
 
@@ -249,3 +249,9 @@ GitHub Actions is the primary and only scheduler in this phase.
 - Auth: shared secret header (`X-WW-Weather-Ingest-Secret`); never a LabMember JWT.
 
 See `docs/ARCHITECTURE.md` for secret ownership boundaries and required GitHub secrets.
+
+---
+
+## See Also
+
+- `docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md`

@@ -29,9 +29,11 @@
 ## Trial Run Mode (No-write Rehearsal)
 
 - "Run Test Trial" is an RA-facing frontend rehearsal mode for WW and Misokinesia.
+- Canonical trial-mode behavior (fake ID format, consent rules, and module boundaries) is documented in `docs/TRIAL_MODE.md`.
 - In trial mode, frontend uses fake ids and local simulated submit success transitions.
 - WW trial mode is frontend-only and must not call `/sessions/start`, survey submit endpoints, or `/digitspan/runs`.
 - Misokinesia trial mode may call read-only clip-manifest endpoints, but must not call `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, or `/misokinesia/participants/{id}/end-of-task`.
+- The `Trial Run` watermark is shown on WW participant pages only and must be excluded from `/misokinesia/[id]` even when `TRIAL_RUN_MODE` is active.
 - Misokinesia trial mode uses a shortened local MkAQ rehearsal set (`q1`-`q10`) and locally randomizes `"pre"`/`"post"` placement; this does not change production MkAQ storage or scoring contracts.
 - Trial mode must not create or update database rows.
 
@@ -42,7 +44,7 @@
 - This document is the canonical reference for **FastAPI endpoints on Render** only.
 - Same-origin Next.js Route Handlers under `/api/ra/*` are a separate routing layer on Vercel. Their topology and cache behavior are documented in `docs/ARCHITECTURE.md`.
 - The single dashboard routing inventory and deprecation map lives in `docs/ARCHITECTURE.md` under `Canonical Dashboard Routing Inventory`.
-- Backend reliability fix history (timeout increases, keep-alive, analytics staleness) is documented in `docs/ROUTING_CLEANUP.md` (completed playbook, preserved for historical reference).
+- Archived reliability fix playbook: `docs/ROUTING_CLEANUP.md` (historical context only, not an active task board). Current canonical behavior is documented in `docs/ARCHITECTURE.md` and this API reference.
 - Frontend topology regressions are guarded by `frontend/src/app/api/ra/route-topology.test.ts`; do not reintroduce removed paths such as `/api/ra/dashboard/range` without first updating the routing inventory and regression coverage.
 - Current dashboard-related same-origin Route Handlers are:
   - `GET /api/ra/dashboard/study-window` — latest study-day metadata for dashboard range anchoring
@@ -926,6 +928,7 @@
 ### GET /misokinesia/trial-manifest
 - **Auth:** RA required
 - **Status:** implemented (T143)
+- **Routing inventory note (T143):** This endpoint should also appear in the routing inventory in `docs/ARCHITECTURE.md`. Known gap as of 2026-04-21: that inventory does not yet list `/misokinesia/trial-manifest`.
 - **Request body:** none
 - **Response (HTTP 200):** `MisokinesiaTrialManifestResponse`
   ```json

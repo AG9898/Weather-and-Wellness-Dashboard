@@ -65,7 +65,7 @@ This is pytest-only and does not apply to `alembic` commands.
 | `test_analytics_modeling.py` | Analytics | Mixed-model fitting: status flows, REML mode, z-score sample isolation, term output |
 | `test_analytics_service.py` | Analytics | Snapshot orchestration: snapshot reads, live recompute, stale fallback, failure preservation |
 | `test_dashboard_analytics_router.py` | Analytics | Endpoint: auth dependency, date-range validation, snapshot and live mode delegation |
-| `test_analytics_parity.py` | Analytics | R-script parity: formula structure, field naming, z-score convention, complete-case inclusion, end-to-end term parity with `reference/Weather_MLM.R` |
+| `test_analytics_parity.py` | Analytics | R-script parity: formula structure, field naming, z-score convention, complete-case inclusion, end-to-end term parity with `reference/labs/weather-wellness/Weather_MLM.R` |
 | `test_misokinesia.py` | Misokinesia | Endpoint tests: POST /start (RA auth), POST /responses (per-clip, no auth), PATCH /end-of-task (no auth); 409 on duplicate response, 409 on end-of-task before completed_at set, 422 on invalid stronger_responses_timing |
 
 ### Conventions
@@ -180,7 +180,7 @@ Pure utility modules that hold logic extracted from components for testability:
 ## Analytics Parity Tests
 
 The file `backend/tests/test_analytics_parity.py` is specifically designed to catch regressions
-against the reference R analysis script at `reference/Weather_MLM.R`.
+against the reference R analysis script at `reference/labs/weather-wellness/Weather_MLM.R`.
 
 It verifies:
 
@@ -193,6 +193,10 @@ It verifies:
 If any of these tests fail after editing the analytics pipeline, it means the Python
 implementation has drifted from the R reference design. Treat parity test failures as
 blocking before merging analytics changes.
+Parity failures indicate Python logic has drifted from `reference/labs/weather-wellness/` R
+scripts. Verify the formula, field names, and z-score logic against the reference R script
+before changing the Python implementation. Document intentional divergences in
+`docs/DECISIONS.md`.
 
 ---
 
@@ -224,5 +228,5 @@ blocking before merging analytics changes.
 | Scoring formulas | `docs/SCORING.md` |
 | Database schema | `docs/SCHEMA.md` |
 | Code style and patterns | `docs/CONVENTIONS.md` |
-| Reference R analysis | `reference/Weather_MLM.R` |
+| Reference R analysis | `reference/labs/weather-wellness/Weather_MLM.R` |
 | Current task queue | `docs/workboard.json` |

@@ -1,7 +1,7 @@
 # Multi-Lab Platform Model
 
-> **Status: Skeleton.** This document captures known primitives and open questions.
-> Full spec is deferred until the first new lab's requirements are confirmed.
+> **Status: Authoritative.** This is the canonical multi-lab schema reference for the current platform.
+> For lab onboarding steps and required lab doc structure, see [`docs/labs/README.md`](labs/README.md).
 
 ---
 
