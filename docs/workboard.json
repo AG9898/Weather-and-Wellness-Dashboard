@@ -1477,6 +1477,293 @@
         "cd frontend && npm run build"
       ],
       "estimate": "M"
+    },
+    {
+      "id": "T150",
+      "group_id": "ADMIN_USER_MANAGEMENT",
+      "title": "Schema - App-owned RA invitations table",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add durable invitation storage for admin-managed RA/admin onboarding while keeping Supabase Auth as the session provider.",
+      "description": "Add an Alembic migration, SQLAlchemy model, and schema documentation for the planned `ra_invitations` table. The table stores lowercased email, role, lab_name, token hash, 7-day expiry, accept/revoke timestamps, creator/revoker auth subjects, linked Supabase Auth user id, email send metadata, and timestamps. Keep raw invite tokens out of the database and preserve Supabase Auth as the login/session source of truth.",
+      "acceptance_criteria": [
+        "`ra_invitations` exists with hashed token storage, 7-day expiry fields, accept/revoke fields, send metadata, and timestamps",
+        "The migration adds indexes/constraints for email lookup, status lookup, expiry cleanup, and active pending invite uniqueness",
+        "A SQLAlchemy model exposes the invitation fields without storing raw invite tokens",
+        "Schema docs match the applied migration and model",
+        "Alembic upgrade applies cleanly from the repo-root backend command pattern"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/alembic/versions/",
+        "backend/app/models.py",
+        "docs/SCHEMA.md"
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/DECISIONS.md"
+      ],
+      "notes": [
+        "Use Alembic only; do not edit database DDL directly.",
+        "The table is app-owned invite state only and does not replace Supabase Auth."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. alembic upgrade head"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T151",
+      "group_id": "ADMIN_USER_MANAGEMENT",
+      "title": "Backend - Invite token and email service",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Implement reusable invitation service logic for token lifecycle, 7-day expiry, resend/revoke state, and Resend-backed custom email delivery.",
+      "description": "Create backend service modules for invite token generation, hashing, validation, expiration, resend, revoke, and acceptance state transitions. Add a small email provider abstraction with Resend as the default provider using `INVITE_EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `ADMIN_EMAIL_FROM`, and `SITE_URL`. This task should not expose HTTP routes yet; it should provide tested service functions that later router tasks can call.",
+      "acceptance_criteria": [
+        "Invite tokens are generated with sufficient entropy and only token hashes are persisted",
+        "Pending invites expire after 7 days by default and expired/revoked/accepted invites cannot be accepted",
+        "Resend behavior updates `last_sent_at`, increments `send_count`, and records provider message id when available",
+        "Email delivery uses a provider abstraction with Resend as the implemented provider",
+        "Service tests cover create, duplicate pending invite, expiry, resend, revoke, and email failure paths"
+      ],
+      "depends_on": [
+        "T150"
+      ],
+      "blocked_by": [
+        "T150"
+      ],
+      "files": [
+        "backend/app/services/",
+        "backend/app/config.py",
+        "backend/requirements.txt",
+        "backend/tests/"
+      ],
+      "docs": [
+        "docs/ENV_VARS.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "notes": [
+        "Do not send email through Supabase Auth mailer in this path.",
+        "Keep AWS SES swappable later without implementing SES in this task."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests/test_admin_invites.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T152",
+      "group_id": "ADMIN_USER_MANAGEMENT",
+      "title": "Backend - Supabase admin user management client",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Add a backend wrapper around Supabase Admin API operations needed by the app-owned invite and user management flow.",
+      "description": "Create a narrowly scoped Supabase Admin API client for listing RA/admin users, creating or updating invited users, setting `app_metadata.role` and `app_metadata.lab_name`, and revoking access without hard-deleting normal users. Keep service-role key usage server-only and covered by tests with mocked HTTP responses.",
+      "acceptance_criteria": [
+        "Backend code can create or update Supabase Auth users through service-role Admin API calls",
+        "Role and lab metadata are set only in Supabase `app_metadata` and never accepted from the browser without admin authorization",
+        "User listing returns only safe fields needed by the admin UI",
+        "Access revocation is implemented without normal hard deletion of `auth.users`",
+        "Tests mock Supabase HTTP calls and cover success, missing service-role env, auth API failures, and final-admin guard behavior where applicable"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/services/",
+        "backend/app/auth.py",
+        "backend/tests/"
+      ],
+      "docs": [
+        "docs/ARCHITECTURE.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "notes": [
+        "This task can proceed in parallel with T150/T151 because it should mock Supabase responses and avoid depending on the invite table implementation.",
+        "Never expose `SUPABASE_SERVICE_ROLE_KEY` to frontend code."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests/test_supabase_admin_users.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T153",
+      "group_id": "ADMIN_USER_MANAGEMENT",
+      "title": "Backend API - Admin user and invitation endpoints",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Expose admin-only user/invite management endpoints and a public token-protected invite acceptance endpoint.",
+      "description": "Add FastAPI route contracts for `GET /admin/users`, invite create/resend/revoke, user role/lab edit, access revocation, and `POST /auth/invitations/accept`. Wire the routes to the invite service and Supabase admin user client. Enforce `get_current_admin` on all admin routes, keep invite acceptance public but token-protected, and return user-safe errors for expired, revoked, already accepted, duplicate, or malformed invites.",
+      "acceptance_criteria": [
+        "All planned admin user/invitation endpoints exist with typed request/response schemas",
+        "Admin routes require `role == admin`; non-admin RA JWTs receive 403 and unauthenticated requests receive 401",
+        "Invite acceptance rejects expired, revoked, accepted, missing, and malformed tokens with safe messages",
+        "Accepted invites create/update the Supabase Auth user, set role/lab app metadata, and mark the invite accepted transactionally where possible",
+        "Route tests cover create, list, resend, revoke, edit role/lab, revoke access, accept invite, and key failure modes"
+      ],
+      "depends_on": [
+        "T151",
+        "T152"
+      ],
+      "blocked_by": [
+        "T151",
+        "T152"
+      ],
+      "files": [
+        "backend/app/routers/",
+        "backend/app/schemas.py",
+        "backend/app/services/",
+        "backend/tests/",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "notes": [
+        "Keep participant endpoints unauthenticated as before; this work is only RA/admin auth management.",
+        "Do not add participant-facing export or user management capabilities."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests/test_admin_user_routes.py tests/test_invitation_acceptance.py"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T154",
+      "group_id": "ADMIN_USER_MANAGEMENT",
+      "title": "Frontend - Invite API wrappers and set-password flow",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Update typed frontend API wrappers and `/set-password` so app-owned invitation tokens activate Supabase Auth accounts.",
+      "description": "Add typed frontend API wrappers for invite acceptance and admin user-management endpoints needed by the UI. Update `/set-password?invite=<token>` to validate and submit app-owned invite tokens through the backend accept endpoint, while preserving the existing Supabase session/login behavior after activation. Show clear states for expired, revoked, already accepted, invalid, email delivery, and successful activation paths.",
+      "acceptance_criteria": [
+        "Frontend API wrappers cover invite acceptance and admin user-management calls without bare `fetch` in components",
+        "`/set-password?invite=<token>` submits password activation through the backend invite acceptance endpoint",
+        "Expired, revoked, already accepted, invalid, and success states render clear user-safe copy",
+        "Existing login route behavior for normal email/password sign-in remains unchanged",
+        "Tests cover set-password invite state handling and guard against component-level bare `fetch` use"
+      ],
+      "depends_on": [
+        "T153"
+      ],
+      "blocked_by": [
+        "T153"
+      ],
+      "files": [
+        "frontend/src/lib/api/",
+        "frontend/src/app/set-password/page.tsx",
+        "frontend/src/app/login/page.tsx",
+        "frontend/src/lib/components/LoginDialogForm.tsx",
+        "frontend/src/lib/*.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Do not use Supabase built-in invite hash handling as the primary path for app-owned invites.",
+        "Keep all frontend backend calls in typed wrappers under `src/lib/api/`."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run lint"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T155",
+      "group_id": "ADMIN_USER_MANAGEMENT",
+      "title": "Frontend - Admin user management page",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Build the admin-only user management page for listing users/invites and managing create, edit, resend, revoke, and access revocation actions.",
+      "description": "Add an admin-only user management route and navigation entry using existing RA page layout and component conventions. The page should list users and invites with status badges, provide dialogs/forms for creating invites and editing role/lab metadata, and provide confirmed actions for resend invite, revoke invite, and revoke access. Non-admin RAs should not see the nav item and should receive a guarded access state if they hit the route directly.",
+      "acceptance_criteria": [
+        "Admin users can view user/invite status, create invites, edit role/lab, resend pending invites, revoke pending invites, and revoke access",
+        "Non-admin RAs do not see the user-management navigation item and cannot use the page",
+        "Repeated row actions use compact icon buttons with accessible labels/tooltips and confirmation for destructive actions",
+        "UI uses existing RA table, dialog, input, button, badge, and inline error patterns",
+        "No secrets, raw invite tokens, or token hashes are exposed in browser-visible data",
+        "Frontend tests cover admin gating and key actions with mocked API wrappers"
+      ],
+      "depends_on": [
+        "T154"
+      ],
+      "blocked_by": [
+        "T154"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/",
+        "frontend/src/lib/components/",
+        "frontend/src/lib/api/",
+        "frontend/src/lib/ra-user-context.tsx",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "notes": [
+        "Choose and document the final route as `/users` or `/admin/users` during implementation.",
+        "Keep the page operational and table-focused; do not build a marketing-style page."
+      ],
+      "commands": [
+        "cd frontend && npm test",
+        "cd frontend && npm run lint",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T156",
+      "group_id": "ADMIN_USER_MANAGEMENT",
+      "title": "CLI - Update invite script to use app-owned invite flow",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "summary": "Update the existing invite CLI so batch/admin scripts use the durable app-owned invitation path instead of Supabase built-in invite emails.",
+      "description": "Refactor `backend/admin_cli/invite_user.py` to create and send app-owned invitations through the same backend service or API path used by the admin UI. Preserve batch-friendly command-line usage for email, role, lab_name, and optional redirect/site URL behavior, but remove the misleading fallback that treats Supabase `generate_link` as if it sends email.",
+      "acceptance_criteria": [
+        "CLI creates the same `ra_invitations` records as the admin UI path",
+        "CLI sends custom invite emails through the configured provider and reports provider/send failures accurately",
+        "Existing email, role, lab_name command arguments remain available for batch use",
+        "The script no longer uses Supabase `generate_link` as an email-send fallback",
+        "CLI/service tests cover successful invite, duplicate pending invite, email failure, and missing env vars"
+      ],
+      "depends_on": [
+        "T153"
+      ],
+      "blocked_by": [
+        "T153"
+      ],
+      "files": [
+        "backend/admin_cli/invite_user.py",
+        "backend/app/services/",
+        "backend/tests/",
+        "docs/ARCHITECTURE.md",
+        "docs/ENV_VARS.md"
+      ],
+      "docs": [
+        "docs/ARCHITECTURE.md",
+        "docs/ENV_VARS.md"
+      ],
+      "notes": [
+        "This task is intentionally after the backend API/service work so the script does not create a second invite implementation.",
+        "Keep service-role and email provider secrets server/local only."
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests/test_admin_invite_cli.py tests/test_admin_invites.py"
+      ],
+      "estimate": "S"
     }
   ]
 }

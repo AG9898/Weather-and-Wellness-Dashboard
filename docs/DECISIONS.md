@@ -366,6 +366,50 @@ secure user metadata.
 
 ---
 
+### RESOLVED-19 — App-Owned Admin Invites on Supabase Auth
+
+**Resolved:** 2026-05-12
+
+**Decision:** Keep Supabase Auth as the authentication/session/JWT provider, but
+replace Supabase's built-in invite email flow as the primary onboarding
+mechanism with an app-owned invitation layer and admin-only user management UI.
+
+The app stores durable invitation state in its own Postgres table and sends
+custom invite emails. Invite links expire after **7 days**. Accepting an invite
+creates or updates the Supabase Auth user through the service-role Admin API,
+sets `app_metadata.role` and `app_metadata.lab_name`, and then lets the user
+sign in through the existing Supabase Auth session flow.
+
+**Admin user management scope:**
+- Admins can list users and invitations from a front-facing admin page.
+- Admins can create, edit role/lab metadata, resend invites, revoke invites,
+  and revoke user access.
+- "Delete" in the UI means access revocation/disablement by default, not a hard
+  deletion of `auth.users`. Hard deletion remains an explicit maintenance action
+  only when needed.
+- Existing scripts remain useful for batch or CLI workflows, but should share
+  the same backend/service behavior instead of depending on Supabase's built-in
+  one-hour invite email links.
+
+**Email provider:** Use Resend as the default transactional email provider for
+custom invite emails. Keep the email sending layer provider-abstracted so the
+project can switch to AWS SES later if data residency or institutional policy
+requires it.
+
+**Why:** Supabase's default Auth mailer is rate-limited and short-lived for this
+use case. The current project had invite failures due to one-hour link expiry
+and Supabase email limits. Owning invitation state gives admins durable,
+auditable control over onboarding while keeping the existing Supabase Auth
+tables, JWT validation, and role/lab claims.
+
+**Affects:** `docs/ARCHITECTURE.md`, `docs/SCHEMA.md`,
+`docs/ENV_VARS.md`, `docs/labs/weather-wellness/API.md`,
+`docs/labs/weather-wellness/DESIGN_SPEC.md`, `backend/admin_cli/invite_user.py`,
+`backend/app/auth.py`, admin routers/services, frontend RA navigation, and the
+set-password route.
+
+---
+
 ### RESOLVED-17 — Monorepo vs. Split Repositories (was OPEN-01)
 
 **Resolved:** Pre-project (before T01)

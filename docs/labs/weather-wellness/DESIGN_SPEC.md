@@ -461,6 +461,43 @@ The Import/Export page at `/import-export` is RA-only and contains two sections:
    - Export CSV: a zip containing one CSV per DB table. Filename: `Weather and wellness - YYYY-MM-DD.zip`
    - Exports are schema-faithful and include join keys (`participant_uuid`, `session_id`, `study_day_id` where applicable) so tables can be linked offline.
 
+## Admin User Management Page (planned, RESOLVED-19)
+
+The User Management page is admin-only and provides the front-facing control
+surface for RA/admin onboarding and access management. Non-admin RAs must not
+see the nav item and must receive a guarded access state if they reach the route
+directly.
+
+Expected route: `/users` or `/admin/users` (final route chosen during
+implementation and reflected in `docs/ARCHITECTURE.md`).
+
+Required capabilities:
+
+1. **Create invite** — admin enters email, role (`admin` or `ra`), and
+   `lab_name`; the backend creates a 7-day app-owned invite and sends a custom
+   email.
+2. **View status** — table shows email, role, lab, Supabase account status,
+   invite status, expiry, last sent time, and last sign-in when available.
+3. **Resend invite** — available only for pending invitations; updates send
+   metadata and sends through the configured email provider.
+4. **Revoke invite** — prevents a pending invite token from being accepted.
+5. **Edit user** — updates existing user role/lab metadata through admin-only
+   backend endpoints.
+6. **Revoke access** — UI may label this as delete/remove, but behavior is
+   access revocation/disablement rather than normal hard deletion of Supabase
+   Auth rows.
+
+Interaction and visual expectations:
+- Use the existing RA page layout, navigation, table, dialog, input, button,
+  badge, and inline error patterns.
+- Use icon buttons where actions are compact and repeated; provide tooltips for
+  less obvious icons.
+- Confirmation is required before revoke invite or revoke access actions.
+- Error copy should distinguish expired invite, revoked invite, already accepted
+  invite, duplicate pending invite, and email delivery failure.
+- No service-role keys, token hashes, raw invite tokens, or provider secrets are
+  exposed in the browser.
+
 ---
 
 ## Component Style Conventions

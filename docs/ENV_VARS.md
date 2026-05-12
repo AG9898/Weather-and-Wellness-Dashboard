@@ -17,6 +17,9 @@ primary path and only use HS256 when `SUPABASE_JWT_SECRET` is configured. See
 | `SUPABASE_SERVICE_ROLE_KEY` | Conditional (admin tooling only) | None | Service-role key for admin API access (for example `backend/admin_cli/invite_user.py`). | Secure admin environment only (local protected `.env`, CI secret, Railway) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes (frontend auth enabled) | None | Browser-visible Supabase URL used by frontend auth client. | Frontend env (`frontend/.env.local`, Vercel project env) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes (frontend auth enabled) | None | Browser-visible Supabase anon/public key used by frontend auth client. | Frontend env (`frontend/.env.local`, Vercel project env) |
+| `INVITE_EMAIL_PROVIDER` | Conditional (admin invite email enabled) | `resend` | Transactional email provider for app-owned admin invites. Supported planned values: `resend`, later `ses` if needed. | Backend runtime env (`backend/.env`, Railway) |
+| `RESEND_API_KEY` | Conditional (`INVITE_EMAIL_PROVIDER=resend`) | None | Resend API key used to send custom invite emails. | Backend runtime env (`backend/.env`, Railway) |
+| `ADMIN_EMAIL_FROM` | Conditional (admin invite email enabled) | None | Verified sender address for admin invite emails (for example `Weather & Wellness <invites@example.org>`). | Backend runtime env (`backend/.env`, Railway) |
 | `KV_REST_API_URL` | Conditional (cache enabled) | None | Vercel KV/Upstash REST URL alias accepted by same-origin cache helpers. | Vercel server env |
 | `KV_REST_API_TOKEN` | Conditional (cache enabled) | None | Vercel KV/Upstash REST token alias accepted by same-origin cache helpers. | Vercel server env |
 | `UPSTASH_REDIS_REST_URL` | Conditional (cache enabled fallback) | None | Direct Upstash Redis REST URL (fallback when KV alias vars are not used). | Vercel server env (or local server env for dev) |
@@ -26,4 +29,4 @@ primary path and only use HS256 when `SUPABASE_JWT_SECRET` is configured. See
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | Optional | `600` | Per-station weather ingestion cooldown window in seconds. | Backend runtime env (`backend/.env`, Railway) |
 | `WEATHER_INGEST_BASE_URL` | Conditional (GitHub Actions weather jobs) | None | Base URL used by scheduled/manual weather ingestion workflows. | GitHub repository secret |
 | `WEATHER_INGEST_SHARED_SECRET` | Conditional (GitHub Actions weather jobs) | None | Shared secret header value used by GitHub Actions weather workflows. | GitHub repository secret |
-| `SITE_URL` | Conditional (admin invite flow) | None | App base URL used by invite tooling to generate password-setup links. | Root `.env` for admin CLI and related operational tooling |
+| `SITE_URL` | Conditional (admin invite flow) | None | App base URL used by invite tooling to generate password-setup links (`/set-password?invite=<token>`). | Root `.env` for admin CLI and related operational tooling; backend runtime env when invite email is sent by backend |

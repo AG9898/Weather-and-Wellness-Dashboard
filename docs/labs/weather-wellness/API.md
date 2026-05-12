@@ -84,6 +84,13 @@
 | GET    | /admin/export.xlsx | Admin | implemented | T49, T100 |
 | GET    | /admin/export.zip | Admin | implemented | T49, T100 |
 | POST   | /admin/backfill/legacy-weather | Admin | implemented | T56, T100 |
+| GET    | /admin/users | Admin | planned | RESOLVED-19 |
+| POST   | /admin/users/invitations | Admin | planned | RESOLVED-19 |
+| POST   | /admin/users/invitations/{invitation_id}/resend | Admin | planned | RESOLVED-19 |
+| POST   | /admin/users/invitations/{invitation_id}/revoke | Admin | planned | RESOLVED-19 |
+| PATCH  | /admin/users/{user_id} | Admin | planned | RESOLVED-19 |
+| POST   | /admin/users/{user_id}/revoke-access | Admin | planned | RESOLVED-19 |
+| POST   | /auth/invitations/accept | None (invite token) | planned | RESOLVED-19 |
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
@@ -692,7 +699,7 @@
 
 ## Admin Data (Phase 3)
 
-> These endpoints are RA-only and are intended for internal lab administration. They are not participant-facing.
+> These endpoints are admin-only and are intended for internal lab administration. They are not participant-facing.
 > Imports must be preview-first (no writes on preview), then explicit commit.
 >
 > Authoritative legacy reference file: `reference/data_complete.xlsx` (single-sheet workbook).
@@ -700,6 +707,82 @@
 > Expected header columns (exact, case-insensitive, whitespace-trimmed):
 > `participant ID`, `date`, `age`, `gender`, `origin`, `commute_method`, `time_outside`, `precipitation`,
 > `temperature`, `daytime`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
+
+## Admin User Management (planned, RESOLVED-19)
+
+> Supabase Auth remains the login/session/JWT provider. These endpoints provide
+> app-owned invite and user management on top of Supabase Auth. Admin endpoints
+> require `role == 'admin'`; non-admin RAs receive 403. Invite acceptance is
+> public but requires a valid app-owned invite token.
+
+### GET /admin/users
+- **Auth:** Admin required
+- **Status:** planned
+- **Purpose:** Return Supabase Auth users relevant to RA/admin access plus pending/revoked/expired app-owned invitations.
+- **Response:** planned `AdminUsersResponse`
+- **Behavior:**
+  - Includes email, Supabase Auth user id, role, `lab_name`, confirmed/sign-in timestamps where available, access status, and current invitation state.
+  - Does not expose service-role keys, invite token hashes, or raw invite tokens.
+
+### POST /admin/users/invitations
+- **Auth:** Admin required
+- **Status:** planned
+- **Purpose:** Create a 7-day app-owned invitation and send a custom invite email.
+- **Request:** planned `CreateUserInvitationRequest`
+  - `email`
+  - `role`: `"admin"` or `"ra"`
+  - `lab_name`
+- **Behavior:**
+  - Stores only a hash of the invite token.
+  - Sends email through the configured provider (`INVITE_EMAIL_PROVIDER`, default `resend`).
+  - Invite URL format: `{SITE_URL}/set-password?invite=<token>`.
+  - Returns 409 when an unexpired pending invite already exists unless the implementation explicitly chooses token rotation semantics.
+
+### POST /admin/users/invitations/{invitation_id}/resend
+- **Auth:** Admin required
+- **Status:** planned
+- **Purpose:** Resend a custom invite email for a pending invitation.
+- **Behavior:**
+  - Does not resend revoked or accepted invites.
+  - Either reuses a still-valid token or rotates token + extends expiry; the chosen behavior must be documented at implementation time.
+  - Updates `last_sent_at`, increments `send_count`, and stores the email provider message id when available.
+
+### POST /admin/users/invitations/{invitation_id}/revoke
+- **Auth:** Admin required
+- **Status:** planned
+- **Purpose:** Revoke a pending invitation before acceptance.
+- **Behavior:** Sets `revoked_at` and prevents future acceptance.
+
+### PATCH /admin/users/{user_id}
+- **Auth:** Admin required
+- **Status:** planned
+- **Purpose:** Edit an existing RA/admin user's role and lab assignment.
+- **Behavior:**
+  - Updates Supabase Auth `app_metadata.role` and `app_metadata.lab_name` via the service-role Admin API.
+  - Should prevent an admin from accidentally revoking their own final admin access.
+
+### POST /admin/users/{user_id}/revoke-access
+- **Auth:** Admin required
+- **Status:** planned
+- **Purpose:** Revoke user access without hard-deleting the Supabase Auth row.
+- **Behavior:**
+  - UI "delete" maps to this access-revocation behavior.
+  - The implementation should disable sign-in or mark app metadata so backend/frontend authorization rejects the user.
+  - Hard deletion of `auth.users` is outside normal admin UI behavior.
+
+### POST /auth/invitations/accept
+- **Auth:** None; valid invite token required
+- **Status:** planned
+- **Purpose:** Accept an app-owned invitation and activate the Supabase Auth account.
+- **Request:** planned `AcceptInvitationRequest`
+  - `token`
+  - `password`
+- **Behavior:**
+  - Rejects expired, revoked, accepted, missing, or malformed tokens with user-safe messages.
+  - Creates or updates the Supabase Auth user via service-role Admin API.
+  - Sets `app_metadata.role` and `app_metadata.lab_name`.
+  - Marks the invitation accepted.
+  - Directs the frontend to sign in normally after activation.
 
 ### POST /admin/import/preview
 - **Auth:** RA required

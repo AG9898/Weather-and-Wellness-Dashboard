@@ -44,6 +44,7 @@ sessions (1) ──────────────────── (0..1)
 study_days (1) ────────────────── (many) weather_daily
 weather_ingest_runs (1) ───────── (many) weather_daily
 analytics_runs (1) ────────────── (many) analytics_snapshots
+ra_invitations (many) ──────────── (0..1) Supabase Auth users (by email/user_id)
 misokinesia_test_sets (1) ──────── (many) misokinesia_stimuli
 misokinesia_test_sets (1) ──────── (many) misokinesia_participants
 sessions (1) ──────────────────── (0..1) misokinesia_participants
@@ -57,9 +58,58 @@ misokinesia_participants (1) ───── (0..1) misokinesia_mkaq_responses
 session and participant identifiers by value for the RA-only undo feature
 (applied by migration `20260311_000001`, T96).
 
+`ra_invitations` is the planned app-owned invitation table for admin-managed RA
+onboarding. It does not replace Supabase Auth; it stores durable invite state
+and links invite acceptance to Supabase Auth user creation/update.
+
 `analytics_runs` and `analytics_snapshots` store the durable backend analytics
 state. Redis remains an optional read cache only and is not the source of truth
 for analytics payloads.
+
+---
+
+## Admin User Management — Invitations (planned)
+
+> Planned by RESOLVED-19. Add via Alembic only. Supabase Auth remains the
+> source of authenticated sessions; this table stores app-owned invite state.
+
+### Table: `ra_invitations`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| invitation_id | UUID | PK | Generated server-side |
+| email | VARCHAR | NOT NULL | Lowercased invitee email |
+| role | VARCHAR | NOT NULL | `admin` or `ra` |
+| lab_name | VARCHAR | NOT NULL | Lab scope to write into Supabase `app_metadata.lab_name`; empty allowed only for unrestricted admins |
+| token_hash | VARCHAR | NOT NULL, UNIQUE | Hash of the invite token; raw token is never stored |
+| status | VARCHAR | NOT NULL | `pending`, `accepted`, `revoked`, `expired` |
+| expires_at | TIMESTAMPTZ | NOT NULL | Defaults to 7 days after creation |
+| accepted_at | TIMESTAMPTZ | NULLABLE | Set once a token is successfully accepted |
+| revoked_at | TIMESTAMPTZ | NULLABLE | Set when an admin revokes the invite |
+| revoked_by_lab_member_id | UUID | NULLABLE | Supabase Auth subject for the admin who revoked |
+| created_by_lab_member_id | UUID | NOT NULL | Supabase Auth subject for the admin who created |
+| supabase_user_id | UUID | NULLABLE | Supabase Auth user id after acceptance or when linked to an existing user |
+| last_sent_at | TIMESTAMPTZ | NULLABLE | Last custom invite email send time |
+| send_count | INT | NOT NULL | Number of invite emails sent |
+| provider_message_id | VARCHAR | NULLABLE | Email provider message id when available |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() | |
+
+Expected indexes/constraints:
+- UNIQUE active pending invite per lowercased email where `accepted_at IS NULL`
+  and `revoked_at IS NULL`
+- Index on `email`
+- Index on `status`
+- Index on `expires_at`
+
+Behavior:
+- Invite links expire after 7 days.
+- Resend may either reuse a still-valid pending invitation or rotate the token
+  and extend `expires_at`, but it must record `last_sent_at` and increment
+  `send_count`.
+- Revoking an invite prevents acceptance even if the token has not expired.
+- Admin UI "delete user" means access revocation/disablement by default. Hard
+  deletion of Supabase Auth rows is not part of normal user management.
 
 ---
 
