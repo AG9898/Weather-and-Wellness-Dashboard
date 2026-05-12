@@ -15,6 +15,8 @@
 - **Three-tier web app**: Next.js frontend → FastAPI backend → Supabase Postgres
 - **Optional cache layer (Vercel)**: Next.js Route Handlers use **Upstash Redis** (via Vercel integration) to cache select RA read responses while still fetching live data from the backend service.
 - **Frontend (Vercel)**: Next.js (TypeScript + Tailwind) for UI and Route Handlers. No FastAPI on Vercel.
+  - Primary domain: `https://ubcpsych.com`
+  - Legacy Vercel subdomain (also active): `https://weather-and-wellness-dashboard.vercel.app`
 - **Backend (Railway target)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
 - **Database (Supabase)**: Managed Postgres in the target Canada Central region. Lab reads data via Supabase Studio.
 - **Admin data ops**: RA-only Import/Export endpoints on the backend service support legacy imports and controlled CSV/XLSX exports.
@@ -243,7 +245,7 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 
 - Allowed origins are configured via the `ALLOWED_ORIGINS` env var (comma-separated list).
 - When `ALLOWED_ORIGINS` is unset, the backend defaults to localhost dev origins only.
-- In production, set `ALLOWED_ORIGINS` to the Vercel frontend URL(s).
+- In production, set `ALLOWED_ORIGINS` to the Vercel frontend URL(s). Both `https://ubcpsych.com` and `https://weather-and-wellness-dashboard.vercel.app` must be included.
 - No wildcard (`*`) origins are used — least-privilege policy.
 
 ---
