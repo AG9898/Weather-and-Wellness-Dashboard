@@ -226,14 +226,14 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 - Participant endpoints remain unauthenticated and are validated by `session_id` + status.
 - **Role + lab scoping:** `role` (`admin` | `ra`) and `lab_name` are stored in Supabase `app_metadata` (admin-only writable). FastAPI extracts both from the JWT; `get_current_admin` enforces `role == 'admin'` on admin-only routes. The frontend reads these from the session and gates UI links/pages accordingly (see RESOLVED-15 and RESOLVED-19 in `docs/DECISIONS.md`).
 - **Frontend auth gate (two layers):**
-  1. `src/middleware.ts` — Next.js edge middleware using `@supabase/ssr` `createServerClient`. Runs before any page rendering; redirects unauthenticated requests to `/login?next=<path>` for all RA routes (`/dashboard`, `/new-session`, `/import-export`, `/misokinesia`). This is the primary server-side gate.
+  1. `src/middleware.ts` — Next.js edge middleware using `@supabase/ssr` `createServerClient`. Runs before any page rendering; redirects unauthenticated requests to `/login?next=<path>` for all RA routes (`/dashboard`, `/new-session`, `/import-export`, `/misokinesia`, `/users`). This is the primary server-side gate.
   2. `src/app/(ra)/layout.tsx` — client-side secondary guard. Handles mid-session sign-outs and populates `RAUserContext` (`role`, `lab_name`) from `app_metadata` after hydration.
 - **Cookie-based session:** The browser Supabase client uses `createBrowserClient` from `@supabase/ssr` (`src/lib/supabase.ts`), which persists the session in cookies in addition to `localStorage`. This is required for the edge middleware to read the session server-side.
 - **Post-login redirect:** After successful login, `LoginDialogForm` reads the `?next=` search param and redirects there, falling back to `/dashboard`.
 - **Admin user management and invites:** Supabase Auth remains the login/session/JWT provider, but admin onboarding uses an app-owned invitation layer (RESOLVED-19) instead of Supabase's built-in invite email as the durable control plane.
   - Admins manage users from an admin-only user management page.
   - Creating an invite writes a `ra_invitations` row with a hashed token, `role`, `lab_name`, and a 7-day `expires_at`.
-  - The backend sends a custom invite email through the configured provider. Resend is the default provider; the email layer should remain swappable for AWS SES if required.
+  - The backend sends a custom invite email through the configured provider. Resend is the default provider; the email layer should remain swappable for AWS SES if required. The provider renders the repo-owned templates in `backend/app/services/email_templates/admin_invite.html` and `backend/app/services/email_templates/admin_invite.txt`; do not rely on a provider-hosted template as the primary source of invite content.
   - Invite links point to `{SITE_URL}/set-password?invite=<token>`.
   - Accepting an invite validates the app-owned token, creates or updates the Supabase Auth user through the service-role Admin API, sets `app_metadata.role` and `app_metadata.lab_name`, marks the invitation accepted, and then directs the user through the normal Supabase sign-in/session flow.
   - Resend/revoke/edit/delete actions are admin-only. UI "delete" means access revocation/disablement by default, not hard deletion of `auth.users`.

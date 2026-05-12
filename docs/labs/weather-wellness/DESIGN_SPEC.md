@@ -468,14 +468,14 @@ surface for RA/admin onboarding and access management. Non-admin RAs must not
 see the nav item and must receive a guarded access state if they reach the route
 directly.
 
-Expected route: `/users` or `/admin/users` (final route chosen during
-implementation and reflected in `docs/ARCHITECTURE.md`).
+Expected route: `/users`.
 
 Required capabilities:
 
 1. **Create invite** — admin enters email, role (`admin` or `ra`), and
    `lab_name`; the backend creates a 7-day app-owned invite and sends a custom
-   email.
+   email using `backend/app/services/email_templates/admin_invite.html` plus the
+   matching plain-text fallback.
 2. **View status** — table shows email, role, lab, Supabase account status,
    invite status, expiry, last sent time, and last sign-in when available.
 3. **Resend invite** — available only for pending invitations; updates send

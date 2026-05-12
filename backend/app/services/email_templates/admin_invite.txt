@@ -1,0 +1,14 @@
+You have been invited to {{site_name}}.
+
+Lab: {{lab_name}}
+Role: {{role_label}}
+Email: {{recipient_email}}
+Invite expires: {{expires_at}}
+
+Set your password:
+{{invite_url}}
+
+This link is for {{recipient_email}} only. If you were not expecting this
+invitation, you can ignore this email.
+
+Questions about access? Contact {{support_email}}.

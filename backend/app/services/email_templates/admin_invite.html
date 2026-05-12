@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>{{site_name}} invitation</title>
+  </head>
+  <body style="margin:0; padding:0; background:#f7f9fc; color:#152033; font-family:'JetBrains Mono','SFMono-Regular',Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;">
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
+      You have been invited to {{site_name}}. This invite expires {{expires_at}}.
+    </div>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%; background:#f7f9fc;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%; max-width:640px; background:#ffffff; border:1px solid #d9e1ec; border-radius:20px; overflow:hidden;">
+            <tr>
+              <td style="background:#001328; padding:28px 32px;">
+                <p style="margin:0 0 10px; color:#a9b6cc; font-size:12px; line-height:16px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em;">
+                  Secure lab access
+                </p>
+                <h1 style="margin:0; color:#e6edf8; font-size:28px; line-height:36px; font-weight:700;">
+                  Join {{site_name}}
+                </h1>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 20px; color:#152033; font-size:16px; line-height:24px; font-weight:500;">
+                  You have been invited to access the research platform for <strong>{{lab_name}}</strong>.
+                </p>
+
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%; margin:0 0 24px; border:1px solid #d9e1ec; border-radius:16px; background:#f9fbfe;">
+                  <tr>
+                    <td style="padding:16px 18px; border-bottom:1px solid #d9e1ec;">
+                      <p style="margin:0 0 4px; color:#6e7c95; font-size:12px; line-height:16px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em;">Email</p>
+                      <p style="margin:0; color:#152033; font-size:14px; line-height:22px; font-weight:600;">{{recipient_email}}</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:16px 18px; border-bottom:1px solid #d9e1ec;">
+                      <p style="margin:0 0 4px; color:#6e7c95; font-size:12px; line-height:16px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em;">Role</p>
+                      <p style="margin:0; color:#152033; font-size:14px; line-height:22px; font-weight:600;">{{role_label}}</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:16px 18px;">
+                      <p style="margin:0 0 4px; color:#6e7c95; font-size:12px; line-height:16px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em;">Invite expires</p>
+                      <p style="margin:0; color:#152033; font-size:14px; line-height:22px; font-weight:600;">{{expires_at}}</p>
+                    </td>
+                  </tr>
+                </table>
+
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
+                  <tr>
+                    <td bgcolor="#001328" style="border-radius:14px;">
+                      <a href="{{invite_url}}" style="display:inline-block; padding:14px 20px; color:#ffffff; font-size:14px; line-height:20px; font-weight:700; text-decoration:none; border-radius:14px;">
+                        Set Password
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 12px; color:#506176; font-size:13px; line-height:20px; font-weight:500;">
+                  If the button does not work, copy and paste this link into your browser:
+                </p>
+                <p style="margin:0 0 24px; color:#23415a; font-size:12px; line-height:18px; font-weight:500; word-break:break-all;">
+                  <a href="{{invite_url}}" style="color:#23415a; text-decoration:underline;">{{invite_url}}</a>
+                </p>
+
+                <p style="margin:0; color:#506176; font-size:13px; line-height:20px; font-weight:500;">
+                  This link is for {{recipient_email}} only. If you were not expecting this invitation, you can ignore this email.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:20px 32px 28px; border-top:1px solid #d9e1ec; background:#fbfcfe;">
+                <p style="margin:0; color:#6e7c95; font-size:12px; line-height:18px; font-weight:500;">
+                  Questions about access? Contact {{support_email}}.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -24,3 +24,6 @@ data_full_1-230.xlsx
 
 # Local media source files are uploaded to Supabase Storage and should not be committed
 reference/labs/Misokinesia/videos_on_site/
+
+# Local Supabase CLI/config scratch directory; production Supabase is managed externally
+supabase/

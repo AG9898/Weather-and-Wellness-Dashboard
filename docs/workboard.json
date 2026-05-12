@@ -1492,7 +1492,8 @@
         "The migration adds indexes/constraints for email lookup, status lookup, expiry cleanup, and active pending invite uniqueness",
         "A SQLAlchemy model exposes the invitation fields without storing raw invite tokens",
         "Schema docs match the applied migration and model",
-        "Alembic upgrade applies cleanly from the repo-root backend command pattern"
+        "Alembic upgrade applies cleanly from the repo-root backend command pattern",
+        "The task worker applies the migration during implementation and reports the migration command, success/failure status, and current Alembic head back to the supervisor agent"
       ],
       "depends_on": [],
       "blocked_by": [],
@@ -1507,7 +1508,8 @@
       ],
       "notes": [
         "Use Alembic only; do not edit database DDL directly.",
-        "The table is app-owned invite state only and does not replace Supabase Auth."
+        "The table is app-owned invite state only and does not replace Supabase Auth.",
+        "When run under ralphloop, do not leave migration application as an owner/manual follow-up. Apply it from the task worker using the listed command and include the exact migration status in the worker's final report to the supervisor agent."
       ],
       "commands": [
         "cd backend && PYTHONPATH=. alembic upgrade head"
@@ -1538,6 +1540,9 @@
       ],
       "files": [
         "backend/app/services/",
+        "backend/app/services/email_templates/README.md",
+        "backend/app/services/email_templates/admin_invite.html",
+        "backend/app/services/email_templates/admin_invite.txt",
         "backend/app/config.py",
         "backend/requirements.txt",
         "backend/tests/"
@@ -1548,7 +1553,8 @@
       ],
       "notes": [
         "Do not send email through Supabase Auth mailer in this path.",
-        "Keep AWS SES swappable later without implementing SES in this task."
+        "Keep AWS SES swappable later without implementing SES in this task.",
+        "Render invite emails from the repo-owned `backend/app/services/email_templates/admin_invite.html` and `.txt` templates; do not depend on Resend-hosted templates as the primary content source."
       ],
       "commands": [
         "cd backend && PYTHONPATH=. pytest tests/test_admin_invites.py"
@@ -1686,7 +1692,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Build the admin-only user management page for listing users/invites and managing create, edit, resend, revoke, and access revocation actions.",
-      "description": "Add an admin-only user management route and navigation entry using existing RA page layout and component conventions. The page should list users and invites with status badges, provide dialogs/forms for creating invites and editing role/lab metadata, and provide confirmed actions for resend invite, revoke invite, and revoke access. Non-admin RAs should not see the nav item and should receive a guarded access state if they hit the route directly.",
+      "description": "Add an admin-only `/users` user management route and navigation entry using existing RA page layout and component conventions. The page should list users and invites with status badges, provide dialogs/forms for creating invites and editing role/lab metadata, and provide confirmed actions for resend invite, revoke invite, and revoke access. Non-admin RAs should not see the nav item and should receive a guarded access state if they hit the route directly.",
       "acceptance_criteria": [
         "Admin users can view user/invite status, create invites, edit role/lab, resend pending invites, revoke pending invites, and revoke access",
         "Non-admin RAs do not see the user-management navigation item and cannot use the page",
@@ -1702,10 +1708,13 @@
         "T154"
       ],
       "files": [
-        "frontend/src/app/(ra)/",
+        "frontend/src/app/(ra)/users/page.tsx",
+        "frontend/src/middleware.ts",
         "frontend/src/lib/components/",
+        "frontend/src/lib/components/RAFloatingChrome.tsx",
+        "frontend/src/lib/components/RANavBar.tsx",
         "frontend/src/lib/api/",
-        "frontend/src/lib/ra-user-context.tsx",
+        "frontend/src/lib/contexts/RAUserContext.tsx",
         "docs/labs/weather-wellness/DESIGN_SPEC.md"
       ],
       "docs": [
@@ -1713,7 +1722,8 @@
         "docs/ARCHITECTURE.md"
       ],
       "notes": [
-        "Choose and document the final route as `/users` or `/admin/users` during implementation.",
+        "Use `/users` as the final admin user management route and document it in `docs/ARCHITECTURE.md` / design docs during implementation.",
+        "Add `/users` to the RA auth middleware protected-route set and gate page actions through `RAUserContext.role === \"admin\"`.",
         "Keep the page operational and table-focused; do not build a marketing-style page."
       ],
       "commands": [

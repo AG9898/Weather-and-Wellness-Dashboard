@@ -735,6 +735,7 @@
 - **Behavior:**
   - Stores only a hash of the invite token.
   - Sends email through the configured provider (`INVITE_EMAIL_PROVIDER`, default `resend`).
+  - Email body content is rendered from `backend/app/services/email_templates/admin_invite.html` with `backend/app/services/email_templates/admin_invite.txt` as the plain-text fallback.
   - Invite URL format: `{SITE_URL}/set-password?invite=<token>`.
   - Returns 409 when an unexpired pending invite already exists unless the implementation explicitly chooses token rotation semantics.
 
