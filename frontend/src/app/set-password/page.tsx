@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { Suspense, type FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
   type InviteActivationState,
 } from "@/lib/invitation-ui";
 
-export default function SetPasswordPage() {
+function SetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("invite");
@@ -165,5 +165,19 @@ export default function SetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#12161c] text-sm text-white/72">
+          Loading invite…
+        </div>
+      }
+    >
+      <SetPasswordForm />
+    </Suspense>
   );
 }

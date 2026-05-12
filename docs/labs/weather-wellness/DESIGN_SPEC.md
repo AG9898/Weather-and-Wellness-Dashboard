@@ -196,7 +196,7 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 
 ## Layout Structure
 
-### RA Pages (`/dashboard`, `/import-export`)
+### RA Pages (`/dashboard`, `/import-export`, `/users`)
 ```
 <html class="dark|light">
   <body>
@@ -462,14 +462,14 @@ The Import/Export page at `/import-export` is RA-only and contains two sections:
    - Export CSV: a zip containing one CSV per DB table. Filename: `Weather and wellness - YYYY-MM-DD.zip`
    - Exports are schema-faithful and include join keys (`participant_uuid`, `session_id`, `study_day_id` where applicable) so tables can be linked offline.
 
-## Admin User Management Page (planned, RESOLVED-19)
+## Admin User Management Page (implemented, RESOLVED-19)
 
 The User Management page is admin-only and provides the front-facing control
 surface for RA/admin onboarding and access management. Non-admin RAs must not
 see the nav item and must receive a guarded access state if they reach the route
 directly.
 
-Expected route: `/users`.
+Route: `/users`.
 
 Required capabilities:
 

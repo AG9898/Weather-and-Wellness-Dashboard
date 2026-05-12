@@ -11,6 +11,7 @@ import {
   LogOut,
   PanelTopClose,
   PanelTopOpen,
+  Users,
   Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const ALL_DOCK_ITEMS: DockItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home, adminOnly: false },
   { href: "/misokinesia", label: "Misokinesia", icon: Video, adminOnly: false },
   { href: "/import-export", label: "Export", icon: ArrowUpDown, adminOnly: true },
+  { href: "/users", label: "Users", icon: Users, adminOnly: true },
 ];
 
 const DOCK_DISTANCE_LIMIT = 180;
@@ -81,7 +83,12 @@ function dockLiftForDistance(distance: number, active: boolean): number {
 }
 
 export function shouldShowRAFloatingChrome(pathname: string | null): boolean {
-  return pathname === "/dashboard" || pathname === "/import-export" || pathname === "/misokinesia";
+  return (
+    pathname === "/dashboard" ||
+    pathname === "/import-export" ||
+    pathname === "/misokinesia" ||
+    pathname === "/users"
+  );
 }
 
 export default function RAFloatingChrome() {

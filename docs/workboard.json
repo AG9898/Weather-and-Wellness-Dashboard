@@ -1688,7 +1688,7 @@
       "id": "T155",
       "group_id": "ADMIN_USER_MANAGEMENT",
       "title": "Frontend - Admin user management page",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Build the admin-only user management page for listing users/invites and managing create, edit, resend, revoke, and access revocation actions.",

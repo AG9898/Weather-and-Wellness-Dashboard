@@ -69,6 +69,7 @@ This section is the single routing inventory for dashboard-related reads across 
 
 | Route | Auth | Classification | Notes |
 |---|---|---|---|
+| `/users` | RA required, admin role required in page guard | `canonical` | Admin page for app-owned invitations, role/lab edits, pending invite resend/revoke, and access revocation. |
 | `/misokinesia` | RA required (via `(ra)` layout) | `canonical` | RA page — launch a Misokinesia session via "Start Misokinesia Session" button |
 | `/misokinesia/[id]` | None | `canonical` | Participant task page — video clips + questionnaires; `id` = `misokinesia_participant_id` |
 

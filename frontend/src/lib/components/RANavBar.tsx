@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowUpDown, Home, LogOut } from "lucide-react";
+import { ArrowUpDown, Home, LogOut, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/lib/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
@@ -13,6 +13,7 @@ import { useRAUser } from "@/lib/contexts/RAUserContext";
 const BASE_NAV_LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/import-export", label: "Import / Export", icon: ArrowUpDown, adminOnly: true },
+  { href: "/users", label: "Users", icon: Users, adminOnly: true },
 ];
 
 /**
