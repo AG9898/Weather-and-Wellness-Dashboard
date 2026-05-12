@@ -16,7 +16,7 @@
 - **FKs:** Enforced at DB level, not just application level
 
 > Migration head check: `alembic current -v` should report
-> `Rev: 20260407_000001 (head)`.
+> `Rev: 20260512_000001 (head)`.
 > Keep this value in sync after every new migration.
 
 > Planned statistical analysis rules derived from `reference/Weather_MLM.R` are
@@ -58,9 +58,9 @@ misokinesia_participants (1) ───── (0..1) misokinesia_mkaq_responses
 session and participant identifiers by value for the RA-only undo feature
 (applied by migration `20260311_000001`, T96).
 
-`ra_invitations` is the planned app-owned invitation table for admin-managed RA
-onboarding. It does not replace Supabase Auth; it stores durable invite state
-and links invite acceptance to Supabase Auth user creation/update.
+`ra_invitations` is the app-owned invitation table for admin-managed RA
+onboarding (applied T150). It does not replace Supabase Auth; it stores durable
+invite state and links invite acceptance to Supabase Auth user creation/update.
 
 `analytics_runs` and `analytics_snapshots` store the durable backend analytics
 state. Redis remains an optional read cache only and is not the source of truth
@@ -68,9 +68,9 @@ for analytics payloads.
 
 ---
 
-## Admin User Management — Invitations (planned)
+## Admin User Management — Invitations
 
-> Planned by RESOLVED-19. Add via Alembic only. Supabase Auth remains the
+> Applied by migration `20260512_000001` (T150). Supabase Auth remains the
 > source of authenticated sessions; this table stores app-owned invite state.
 
 ### Table: `ra_invitations`
@@ -717,8 +717,10 @@ Constraints/indexes:
 | 2026-03-13 | RC08 | Add partial `sessions` indexes for analytics date-range reads on `completed_at` and `study_day_id` |
 | 2026-03-17 | T104 | Add misokinesia_test_sets, misokinesia_stimuli, misokinesia_participants, misokinesia_trial_responses tables |
 | 2026-04-07 | Import authority prep | Add `imported_session_measures.supplemental_attributes_json` for structured storage of workbook-only legacy fields |
+| 2026-04-20 | T145 | Add `misokinesia_participants.mkaq_administration` column and `misokinesia_mkaq_responses` table |
+| 2026-05-12 | T150 | Add `ra_invitations` table for app-owned RA invitation state |
 
-As of 2026-04-07, migration `20260407_000001` is the current head revision.
+As of 2026-05-12, migration `20260512_000001` is the current head revision.
 
 ---
 

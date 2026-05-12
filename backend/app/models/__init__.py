@@ -17,6 +17,7 @@ from .misokinesia import (
     MisokinesiaParticipant,
     MisokinesiaTrialResponse,
 )
+from .invitations import RAInvitation
 
 __all__ = [
     "Participant",
@@ -38,4 +39,5 @@ __all__ = [
     "MisokinesiaStimulus",
     "MisokinesiaParticipant",
     "MisokinesiaTrialResponse",
+    "RAInvitation",
 ]
