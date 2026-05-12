@@ -96,7 +96,8 @@ PROMPT_FILE=$(mktemp /tmp/ralph_prompt_XXXXXX.txt)
 {
   echo "You are an autonomous implementation agent. The following are your full skill instructions — follow every phase exactly."
   echo ""
-  echo "Do NOT run \`git commit\` or \`git push\`. The monitoring agent owns all version control."
+  echo "If the cycle succeeds, create exactly one local git commit before you stop. Do NOT run \`git push\`; the monitoring agent owns pushing."
+  echo "Do NOT add Claude, Anthropic, or any AI assistant as a co-author, co-committer, co-contributor, or trailer in the commit message."
   echo ""
   echo "=== SKILL INSTRUCTIONS ==="
   cat "$SKILL_FILE"
@@ -112,11 +113,12 @@ TASK_TITLE: <task title or brief one-line description>
 TESTS: PASS|FAIL|SKIP (<command run and its result>)
 FILES_CHANGED: <comma-separated list of changed files, max 5>
 COMMIT_MSG: <one-line commit message, 72 chars max>
+COMMIT_SHA: <local commit sha if STATUS=SUCCESS; else n/a>
 FAILURE_REASON: <explain if STATUS=FAILURE; else write none>
 RALPH-SUMMARY-END
 
 STATUS definitions:
-- SUCCESS: task fully complete, all tests pass, work is ready to commit
+- SUCCESS: task fully complete, all tests pass, exactly one local commit was created
 - FAILURE: tests fail, build broken, or hit an unresolvable blocker
 - BLOCKED: no tasks are currently startable (all blocked or no todo tasks remain)
 SUFFIX
@@ -129,7 +131,8 @@ echo "$PROMPT_FILE"
 ```bash
 PROMPT_FILE=$(mktemp /tmp/ralph_prompt_XXXXXX.txt)
 cat > "$PROMPT_FILE" << 'PROMPTEOF'
-Do NOT run `git commit` or `git push`. The monitoring agent owns all version control.
+If the cycle succeeds, create exactly one local git commit before you stop. Do NOT run `git push`; the monitoring agent owns pushing.
+Do NOT add Claude, Anthropic, or any AI assistant as a co-author, co-committer, co-contributor, or trailer in the commit message.
 
 <INSERT THE FREE-FORM PROMPT STRING HERE>
 
@@ -142,6 +145,7 @@ TASK_TITLE: <brief one-line description of what was done>
 TESTS: PASS|FAIL|SKIP (<detail>)
 FILES_CHANGED: <comma-separated list of changed files, max 5>
 COMMIT_MSG: <one-line commit message, 72 chars max>
+COMMIT_SHA: <local commit sha if STATUS=SUCCESS; else n/a>
 FAILURE_REASON: <explain if STATUS=FAILURE; else write none>
 RALPH-SUMMARY-END
 
@@ -156,6 +160,7 @@ echo "$PROMPT_FILE"
 ### Step 2b — Launch the sub-agent process
 
 ```bash
+CYCLE_BASE_HEAD=$(git rev-parse HEAD)
 RESULT_FILE=$(mktemp /tmp/ralph_result_XXXXXX.json)
 claude -p "$(cat "$PROMPT_FILE")" \
   --dangerously-skip-permissions \
@@ -183,6 +188,7 @@ TASK_ID=$(echo "$SUMMARY" | grep '^TASK_ID:' | cut -d' ' -f2- | xargs)
 TASK_TITLE=$(echo "$SUMMARY" | grep '^TASK_TITLE:' | cut -d' ' -f2- | xargs)
 TESTS=$(echo "$SUMMARY" | grep '^TESTS:' | cut -d' ' -f2- | xargs)
 COMMIT_MSG=$(echo "$SUMMARY" | grep '^COMMIT_MSG:' | cut -d' ' -f2- | xargs)
+COMMIT_SHA=$(echo "$SUMMARY" | grep '^COMMIT_SHA:' | cut -d' ' -f2- | xargs)
 FAILURE_REASON=$(echo "$SUMMARY" | grep '^FAILURE_REASON:' | cut -d' ' -f2- | xargs)
 
 echo "STATUS=$STATUS"
@@ -213,11 +219,14 @@ Branch on the value of `STATUS`:
    ```
    **Infinite-loop guard:** if `TASKS_COMPLETED` did not increase since the last cycle, treat as BLOCKED and jump to Phase 4.
 
-3. Commit:
+3. Verify the sub-agent created exactly one local commit:
    ```bash
-   git add -A
-   git commit -m "$COMMIT_MSG"
+   git rev-parse --verify "$COMMIT_SHA^{commit}"
+   test "$(git rev-list --count "$CYCLE_BASE_HEAD..$COMMIT_SHA")" = "1"
+   test "$(git rev-parse HEAD)" = "$COMMIT_SHA"
+   git log -1 --format=%B "$COMMIT_SHA"
    ```
+   Confirm the commit exists and its message does not include Claude, Anthropic, AI assistant, co-author, co-committer, co-contributor, or similar attribution trailers. If the commit is missing or the message violates this rule, treat as FAILURE and stop.
 
 4. Push:
    ```bash
@@ -327,6 +336,8 @@ Print the final summary box. Use the threshold-reached variant if threshold was 
 
 - **You are the monitor. Never implement.** If you find yourself writing code or editing source files, stop — you are out of role.
 - **Never commit if STATUS == FAILURE.** The quality gate is absolute.
+- **Every SUCCESS cycle must already have exactly one local commit from the sub-agent.** The monitor verifies and pushes; it does not create the cycle commit.
+- **Never add Claude as a co-contributor.** Commit messages must not contain Claude, Anthropic, AI assistant, co-author, co-committer, co-contributor, or similar attribution trailers.
 - **Never read sub-agent output beyond the RALPH-SUMMARY block.** Parsing full sub-agent transcripts will exhaust your context over many iterations. Extract only the summary fields.
 - **Never touch workboard.json yourself.** Sub-agents own all workboard mutations. You only query done-task counts for threshold tracking.
 - **Never run extra cycles past threshold.** Hard stop when reached.

@@ -59,6 +59,12 @@ If the threshold is reached, print the final summary and stop.
 
 Spawn one fresh subagent per cycle.
 
+Before spawning the worker, record `CYCLE_BASE_HEAD` with:
+
+```bash
+git rev-parse HEAD
+```
+
 - Use `spawn_agent`
 - Prefer `agent_type: "worker"`
 - Prefer `fork_context: false`
@@ -66,7 +72,8 @@ Spawn one fresh subagent per cycle.
 - Tell the worker to do at most one task or one prompt cycle, then stop
 - Tell the worker to update any required docs before considering the cycle complete
 - Tell the worker to run the required validation for that cycle
-- Do not require commit or push unless the user explicitly asked for publishing in the current invocation
+- Tell the worker to create exactly one local git commit for a successful cycle
+- Tell the worker not to push unless the user explicitly asked for publishing in the current invocation
 
 ### Worker prompt when `TASK` is a skill name
 
@@ -76,8 +83,11 @@ Tell the worker:
 2. Follow the skill fully.
 3. Update any required docs before considering the cycle complete.
 4. Run the required tests or checks for the cycle.
-5. Stop after one task or one bounded cycle.
-6. End with this exact trailer as the last thing in the final message:
+5. If the cycle succeeds, run `git status --short`, stage only the completed cycle's intended changes, and create exactly one local git commit before stopping.
+6. Do not commit on `FAILURE` or `BLOCKED`.
+7. Do not push unless publishing was explicitly requested in the user's current invocation.
+8. Stop after one task or one bounded cycle.
+9. End with this exact trailer as the last thing in the final message:
 
 ```text
 RALPH-SUMMARY-START
@@ -87,6 +97,7 @@ TASK_TITLE: <task title or one-line summary>
 DOCS: UPDATED|N/A|MISSING (<brief detail>)
 TESTS: PASS|FAIL|SKIP (<brief detail>)
 FILES_CHANGED: <comma-separated paths, max 5>
+COMMITTED: YES|NO (<commit sha and subject, or reason>)
 PUSHED: YES|NO (<reason>)
 FAILURE_REASON: <reason or none>
 RALPH-SUMMARY-END
@@ -101,6 +112,10 @@ Pass the prompt directly with the same restrictions and the same `RALPH-SUMMARY`
 Wait for the worker to finish with `wait_agent`, then parse only the `RALPH-SUMMARY` block from the worker's final message.
 
 If the summary block is missing, treat that cycle as failure.
+
+If the cycle reports `SUCCESS` but `COMMITTED` is not `YES`, treat that cycle as failure.
+
+If the cycle reports `SUCCESS` but `git rev-list --count "$CYCLE_BASE_HEAD..HEAD"` is not exactly `1`, treat that cycle as failure.
 
 If the cycle reports `SUCCESS` but the done count did not increase for a `start-task` style run, treat that cycle as blocked and stop.
 
@@ -121,5 +136,6 @@ Report:
 - You are the orchestrator, not the implementer.
 - Keep the loop JSON-native; do not extract board data from markdown.
 - Fail fast if the workboard is missing, invalid, or lacks actionable tasks.
+- Require exactly one local git commit from the worker for each successful cycle.
 - Never discard changes automatically with destructive git commands.
 - Never run extra cycles after the threshold is met.

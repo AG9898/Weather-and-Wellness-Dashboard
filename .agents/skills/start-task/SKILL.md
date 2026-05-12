@@ -30,6 +30,7 @@ Use this skill when implementing the next active task in WW Webapp.
 8. Verify every acceptance criterion explicitly against code and command results.
 9. Update any authoritative docs required to keep repo guidance accurate. Prefer canonical docs in `docs/` root or `docs/labs/<lab>/`; do not append to archived progress history.
 10. Set the task `status` to `done` in `docs/workboard.json` only after verification passes.
+11. Create exactly one local git commit for the completed task. Stage only the task's intended code, docs, tests, and `docs/workboard.json` changes. Do not push unless the user explicitly asked for publishing.
 
 ## Guardrails
 
@@ -42,3 +43,4 @@ Use this skill when implementing the next active task in WW Webapp.
 - Keep validation aligned to this repo’s actual tools: backend `.venv` + `pytest`, frontend `npm test`, and optionally `npm run build` when needed.
 - Prefer existing repo patterns over new abstractions unless the task requires them.
 - For backend command execution, normalize command prefixes (`cd backend &&`) and backend `pytest` env (`PYTHONPATH=.`) even when task commands omit them.
+- A completed task must end with exactly one local git commit. Do not commit on failure or when blocked.
