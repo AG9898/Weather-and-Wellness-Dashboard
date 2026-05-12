@@ -1,48 +1,57 @@
 #!/usr/bin/env python3
-"""Admin CLI: invite a new RA or admin user and assign role + lab_name.
+"""Create and send an app-owned RA/admin invitation.
 
-Uses the Supabase Admin API (service role key) via httpx.
-Env vars are loaded automatically from the project root .env file.
+Env vars are loaded automatically from the project root `.env` file.
 
 Usage (run from repo root or backend/):
     python backend/admin_cli/invite_user.py \\
         --email user@example.com \\
         --role ra \\
-        --lab-name ww
+        --lab-name ww \\
+        --created-by-lab-member-id 00000000-0000-0000-0000-000000000000
 
     python backend/admin_cli/invite_user.py \\
         --email admin@example.com \\
         --role admin \\
-        --lab-name ""
+        --lab-name "" \\
+        --site-url https://ubcpsych.com
 
-Required env vars (loaded from root .env):
-    SUPABASE_URL               Supabase project URL
-    SUPABASE_SERVICE_ROLE_KEY  Service role key — NEVER the anon key
+Required env vars:
+    DATABASE_URL                      Database URL for the app-owned invite row
+    RESEND_API_KEY                    Email provider API key when provider=resend
+    ADMIN_EMAIL_FROM                  Verified sender for invitation emails
+    SITE_URL                          App base URL for /set-password?invite=...
+    ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID  Optional fallback creator UUID
 """
 
 from __future__ import annotations
 
 import argparse
-import base64
-import json
+import asyncio
 import os
 import sys
+import uuid
 from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
 
-# ---------------------------------------------------------------------------
-# Load env from project root .env (two levels up: backend/admin_cli/ → root)
-# ---------------------------------------------------------------------------
-_ROOT_ENV = Path(__file__).resolve().parent.parent.parent / ".env"
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
+from app.db import get_session_factory  # noqa: E402
+from app.services.admin_invite_service import (  # noqa: E402
+    DuplicatePendingInviteError,
+    create_invite,
+)
+
+
+_ROOT_ENV = _BACKEND_DIR.parent / ".env"
 if _ROOT_ENV.exists():
     load_dotenv(_ROOT_ENV, override=False)
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _require_env(name: str) -> str:
     value = os.getenv(name, "").strip()
@@ -51,119 +60,83 @@ def _require_env(name: str) -> str:
     return value
 
 
-def _jwt_role_claim(token: str) -> str | None:
-    """Decode the payload of a JWT without verifying signature and return the 'role' claim."""
+def _normalize_site_url(value: str) -> str:
+    normalized = value.strip().rstrip("/")
+    suffix = "/set-password"
+    if normalized.endswith(suffix):
+        normalized = normalized[: -len(suffix)]
+    if not normalized:
+        sys.exit("ERROR: SITE_URL/--site-url must be an app base URL.")
+    return normalized
+
+
+def _creator_id_from_args(value: str | None) -> uuid.UUID:
+    raw = value or os.getenv("ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID", "")
+    if not raw.strip():
+        sys.exit(
+            "ERROR: Missing creator UUID. Pass --created-by-lab-member-id or set "
+            "ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID in the root .env file."
+        )
     try:
-        parts = token.split(".")
-        if len(parts) != 3:
-            return None
-        # Base64url decode with padding
-        padding = 4 - len(parts[1]) % 4
-        payload_bytes = base64.urlsafe_b64decode(parts[1] + "=" * padding)
-        payload = json.loads(payload_bytes)
-        return payload.get("role")
-    except Exception:
-        return None
-
-
-def _validate_service_role_key(key: str) -> None:
-    """Abort if the key looks like the anon key rather than the service role key."""
-    role = _jwt_role_claim(key)
-    if role == "anon":
+        return uuid.UUID(raw.strip())
+    except ValueError:
         sys.exit(
-            "ERROR: The key you provided has role='anon' — this is the anon key, not the service "
-            "role key. SUPABASE_SERVICE_ROLE_KEY must be the service_role JWT from your Supabase "
-            "project settings > API."
-        )
-    if role is not None and role != "service_role":
-        sys.exit(
-            f"ERROR: Unexpected JWT role claim '{role}' in SUPABASE_SERVICE_ROLE_KEY. "
-            "Expected 'service_role'."
+            "ERROR: created-by lab member id must be a valid Supabase Auth user UUID."
         )
 
 
-def _admin_headers(service_role_key: str) -> dict[str, str]:
-    return {
-        "apikey": service_role_key,
-        "Authorization": f"Bearer {service_role_key}",
-        "Content-Type": "application/json",
-    }
+def _preflight_email_env() -> None:
+    provider = os.getenv("INVITE_EMAIL_PROVIDER", "resend").strip() or "resend"
+    if provider != "resend":
+        sys.exit(
+            f"ERROR: Unsupported INVITE_EMAIL_PROVIDER {provider!r}; only 'resend' is implemented."
+        )
+    _require_env("RESEND_API_KEY")
+    _require_env("ADMIN_EMAIL_FROM")
 
 
-# ---------------------------------------------------------------------------
-# Supabase Admin API calls
-# ---------------------------------------------------------------------------
+async def _run_invite(args: argparse.Namespace) -> int:
+    _require_env("DATABASE_URL")
+    _preflight_email_env()
 
-def invite_user(supabase_url: str, service_role_key: str, email: str, redirect_to: str) -> dict:
-    """Send an invite email and return the created user object.
-    If the email already exists, fall back to a password-recovery (magic link) flow."""
-    url = f"{supabase_url}/auth/v1/invite"
-    response = httpx.post(
-        url,
-        headers=_admin_headers(service_role_key),
-        json={"email": email, "redirect_to": redirect_to},
-        timeout=15,
+    site_url = _normalize_site_url(
+        args.site_url or args.redirect_to or _require_env("SITE_URL")
     )
-    if response.status_code in (200, 201):
-        return response.json()
+    os.environ["SITE_URL"] = site_url
+    creator_id = _creator_id_from_args(args.created_by_lab_member_id)
 
-    body = response.json()
-    if response.status_code == 422 and body.get("error_code") == "email_exists":
-        print("  User already exists — sending a password-reset link instead.")
-        return _generate_recovery_link(supabase_url, service_role_key, email, redirect_to)
+    print(f"Creating app-owned invite for {args.email} (role={args.role}, lab_name={args.lab_name!r}) ...")
+    print(f"  site_url: {site_url}")
 
-    sys.exit(f"ERROR: Supabase invite failed (HTTP {response.status_code}):\n{response.text}")
+    session_factory = get_session_factory()
+    async with session_factory() as db:
+        try:
+            result = await create_invite(
+                db,
+                email=args.email,
+                role=args.role,
+                lab_name=args.lab_name,
+                created_by_lab_member_id=creator_id,
+            )
+        except DuplicatePendingInviteError:
+            sys.exit("ERROR: A non-expired pending invite already exists for this email.")
+        except httpx.HTTPError as exc:
+            sys.exit(f"ERROR: Invite email send failed: {exc}")
 
-
-def _generate_recovery_link(
-    supabase_url: str, service_role_key: str, email: str, redirect_to: str
-) -> dict:
-    """Use the admin generate_link endpoint to send a password-recovery email."""
-    url = f"{supabase_url}/auth/v1/admin/generate_link"
-    response = httpx.post(
-        url,
-        headers=_admin_headers(service_role_key),
-        json={"type": "recovery", "email": email, "redirect_to": redirect_to},
-        timeout=15,
-    )
-    if response.status_code not in (200, 201):
-        sys.exit(
-            f"ERROR: generate_link failed (HTTP {response.status_code}):\n{response.text}"
-        )
-    data = response.json()
-    # generate_link returns the user under data.user; normalise to same shape as invite
-    return data.get("user") or data
-
-
-def set_app_metadata(
-    supabase_url: str,
-    service_role_key: str,
-    user_id: str,
-    role: str,
-    lab_name: str,
-) -> dict:
-    """Set app_metadata.role and app_metadata.lab_name on an existing user."""
-    url = f"{supabase_url}/auth/v1/admin/users/{user_id}"
-    response = httpx.put(
-        url,
-        headers=_admin_headers(service_role_key),
-        json={"app_metadata": {"role": role, "lab_name": lab_name}},
-        timeout=15,
-    )
-    if response.status_code not in (200, 201):
-        sys.exit(
-            f"ERROR: Supabase update_user failed (HTTP {response.status_code}):\n{response.text}"
-        )
-    return response.json()
+    invitation = result.invitation
+    print("Success. App-owned invite created and custom invite email sent.")
+    print(f"  invitation_id : {invitation.invitation_id}")
+    print(f"  email         : {invitation.email}")
+    print(f"  role          : {invitation.role}")
+    print(f"  lab_name      : {invitation.lab_name!r}")
+    print(f"  expires_at    : {invitation.expires_at}")
+    print(f"  send_count    : {invitation.send_count}")
+    return 0
 
 
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
-
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Invite a new RA or admin user and assign role + lab_name via Supabase Admin API.",
+        description="Create and send an app-owned RA/admin invitation.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -181,43 +154,36 @@ def main() -> None:
         help="Lab name to assign (e.g. 'ww'). Use '' for admins with no lab restriction.",
     )
     parser.add_argument(
+        "--site-url",
+        dest="site_url",
+        default=None,
+        help="App base URL for invite links (default: SITE_URL from env).",
+    )
+    parser.add_argument(
         "--redirect-to",
         dest="redirect_to",
         default=None,
         help=(
-            "URL to redirect after invite acceptance (default: SITE_URL/set-password from env). "
-            "Must be in the Supabase redirect allowlist."
+            "Deprecated alias for --site-url. A trailing /set-password path is stripped "
+            "before building the app-owned invite link."
         ),
     )
+    parser.add_argument(
+        "--created-by-lab-member-id",
+        dest="created_by_lab_member_id",
+        default=None,
+        help=(
+            "Supabase Auth UUID of the admin responsible for this batch invite "
+            "(default: ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID)."
+        ),
+    )
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
     args = parser.parse_args()
-
-    supabase_url = _require_env("SUPABASE_URL").rstrip("/")
-    service_role_key = _require_env("SUPABASE_SERVICE_ROLE_KEY")
-
-    site_url = os.getenv("SITE_URL", "").rstrip("/")
-    redirect_to = args.redirect_to or (f"{site_url}/set-password" if site_url else None)
-    if not redirect_to:
-        sys.exit(
-            "ERROR: No redirect URL. Set SITE_URL in your .env or pass --redirect-to <url>."
-        )
-
-    _validate_service_role_key(service_role_key)
-
-    print(f"Inviting {args.email} (role={args.role}, lab_name={args.lab_name!r}) ...")
-    print(f"  redirect_to: {redirect_to}")
-
-    user = invite_user(supabase_url, service_role_key, args.email, redirect_to)
-    user_id: str = user.get("id", "")
-    if not user_id:
-        sys.exit(f"ERROR: Invite succeeded but response contained no user ID.\nResponse: {user}")
-
-    set_app_metadata(supabase_url, service_role_key, user_id, args.role, args.lab_name)
-
-    print(f"Success. User ID: {user_id}")
-    print(f"  email    : {args.email}")
-    print(f"  role     : {args.role}")
-    print(f"  lab_name : {args.lab_name!r}")
-    print("Invite email sent. The user must accept it before they can log in.")
+    raise SystemExit(asyncio.run(_run_invite(args)))
 
 
 if __name__ == "__main__":

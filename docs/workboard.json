@@ -1737,7 +1737,7 @@
       "id": "T156",
       "group_id": "ADMIN_USER_MANAGEMENT",
       "title": "CLI - Update invite script to use app-owned invite flow",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "summary": "Update the existing invite CLI so batch/admin scripts use the durable app-owned invitation path instead of Supabase built-in invite emails.",

@@ -28,6 +28,7 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 | `RESEND_API_KEY` | Conditional (`INVITE_EMAIL_PROVIDER=resend`) | — | Resend API key for sending invite emails from the backend. | [resend.com](https://resend.com) Dashboard → API Keys |
 | `ADMIN_EMAIL_FROM` | Conditional (invite email) | — | Verified sender address for invite emails, e.g. `team@ubcpsych.com`. Must be verified in Resend. | Resend Dashboard → Domains (verify `ubcpsych.com`); address is `team@ubcpsych.com` |
 | `SITE_URL` | Conditional (invite flow) | — | App base URL used to build invite acceptance links (`/set-password?invite=<token>`). | `https://ubcpsych.com` (production) or `http://localhost:3000` (dev) |
+| `ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID` | Conditional (admin invite CLI) | — | Supabase Auth UUID recorded as `created_by_lab_member_id` when `backend/admin_cli/invite_user.py` creates app-owned invites without an interactive admin JWT. Can be overridden with `--created-by-lab-member-id`. | Use the admin Auth user UUID responsible for the batch invite run |
 | `DAYLIGHT_START_LOCAL_TIME` | Optional | `06:00` | Local `HH:MM` clock time for computing `daylight_exposure_minutes` in study timezone. | Hardcode or omit to accept default |
 | `WEATHER_INGEST_SHARED_SECRETS` | Conditional (weather ingest) | — | Comma-separated shared secrets for `POST /weather/ingest/ubc-eos` (supports key rotation). | Generate a random UUID per environment; store in Render and GitHub Actions secrets |
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | Optional | `600` | Per-station weather ingestion cooldown window in seconds. | Hardcode or omit to accept default |
@@ -83,6 +84,7 @@ These live in the root `.env` (never in Render or Vercel).
 | `RESEND_API_KEY` | ✓ | ✓ | ✓ | |
 | `ADMIN_EMAIL_FROM` | ✓ | ✓ | | |
 | `SITE_URL` | ✓ | ✓ | | |
+| `ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID` | ✓ | | | |
 | `NEXT_PUBLIC_SUPABASE_URL` | | | ✓ | |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | | | ✓ | |
 | `NEXT_PUBLIC_API_URL` | | | ✓ | |
