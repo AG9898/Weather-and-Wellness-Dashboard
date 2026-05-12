@@ -157,6 +157,7 @@ def update_user_metadata(
     }
     if password is not None:
         payload["password"] = password
+        payload["email_confirm"] = True
 
     resp = httpx.put(
         f"{url}/auth/v1/admin/users/{user_id}",

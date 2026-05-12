@@ -173,6 +173,23 @@ class TestUpdateUserMetadata:
         assert "password" not in sent_payload
         assert result.role == "admin"
 
+    def test_password_update_confirms_existing_user_email(self) -> None:
+        updated = dict(_RAW_RA, app_metadata={"role": "ra", "lab_name": "ww"})
+        resp = _mock_response(200, updated)
+        with patch("httpx.put", return_value=resp) as mock_put:
+            update_user_metadata(
+                "bbbb-0002",
+                "ra",
+                "ww",
+                "new-secure-password",
+                _URL,
+                _KEY,
+            )
+
+        sent_payload = mock_put.call_args.kwargs["json"]
+        assert sent_payload["password"] == "new-secure-password"
+        assert sent_payload["email_confirm"] is True
+
     def test_http_error_propagates(self) -> None:
         resp = _mock_response(404, {"message": "not found"})
         with patch("httpx.put", return_value=resp):
