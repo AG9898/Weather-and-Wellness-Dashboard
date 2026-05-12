@@ -1565,7 +1565,7 @@
       "id": "T152",
       "group_id": "ADMIN_USER_MANAGEMENT",
       "title": "Backend - Supabase admin user management client",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Add a backend wrapper around Supabase Admin API operations needed by the app-owned invite and user management flow.",
