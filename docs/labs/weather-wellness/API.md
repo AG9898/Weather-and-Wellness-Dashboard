@@ -84,13 +84,13 @@
 | GET    | /admin/export.xlsx | Admin | implemented | T49, T100 |
 | GET    | /admin/export.zip | Admin | implemented | T49, T100 |
 | POST   | /admin/backfill/legacy-weather | Admin | implemented | T56, T100 |
-| GET    | /admin/users | Admin | planned | RESOLVED-19 |
-| POST   | /admin/users/invitations | Admin | planned | RESOLVED-19 |
-| POST   | /admin/users/invitations/{invitation_id}/resend | Admin | planned | RESOLVED-19 |
-| POST   | /admin/users/invitations/{invitation_id}/revoke | Admin | planned | RESOLVED-19 |
-| PATCH  | /admin/users/{user_id} | Admin | planned | RESOLVED-19 |
-| POST   | /admin/users/{user_id}/revoke-access | Admin | planned | RESOLVED-19 |
-| POST   | /auth/invitations/accept | None (invite token) | planned | RESOLVED-19 |
+| GET    | /admin/users | Admin | implemented | T153 |
+| POST   | /admin/users/invitations | Admin | implemented | T153 |
+| POST   | /admin/users/invitations/{invitation_id}/resend | Admin | implemented | T153 |
+| POST   | /admin/users/invitations/{invitation_id}/revoke | Admin | implemented | T153 |
+| PATCH  | /admin/users/{user_id} | Admin | implemented | T153 |
+| POST   | /admin/users/{user_id}/revoke-access | Admin | implemented | T153 |
+| POST   | /auth/invitations/accept | None (invite token) | implemented | T153 |
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
@@ -708,7 +708,7 @@
 > `participant ID`, `date`, `age`, `gender`, `origin`, `commute_method`, `time_outside`, `precipitation`,
 > `temperature`, `daytime`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.
 
-## Admin User Management (planned, RESOLVED-19)
+## Admin User Management (implemented, T153)
 
 > Supabase Auth remains the login/session/JWT provider. These endpoints provide
 > app-owned invite and user management on top of Supabase Auth. Admin endpoints
@@ -717,72 +717,153 @@
 
 ### GET /admin/users
 - **Auth:** Admin required
-- **Status:** planned
+- **Status:** implemented (T153)
 - **Purpose:** Return Supabase Auth users relevant to RA/admin access plus pending/revoked/expired app-owned invitations.
-- **Response:** planned `AdminUsersResponse`
+- **Response:** `AdminUsersResponse`
+
+```json
+{
+  "users": [
+    {
+      "id": "supabase-auth-user-id",
+      "email": "admin@example.com",
+      "role": "admin | ra",
+      "lab_name": "ww",
+      "is_banned": false,
+      "created_at": "datetime string from Supabase Auth",
+      "last_sign_in_at": "datetime string from Supabase Auth | null"
+    }
+  ],
+  "invitations": [
+    {
+      "invitation_id": "uuid",
+      "email": "ra@example.com",
+      "role": "admin | ra",
+      "lab_name": "ww",
+      "status": "pending | accepted | revoked",
+      "expires_at": "datetime",
+      "accepted_at": "datetime | null",
+      "revoked_at": "datetime | null",
+      "revoked_by_lab_member_id": "uuid | null",
+      "created_by_lab_member_id": "uuid",
+      "supabase_user_id": "uuid | null",
+      "last_sent_at": "datetime | null",
+      "send_count": "integer",
+      "provider_message_id": "string | null",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    }
+  ]
+}
+```
+
 - **Behavior:**
   - Includes email, Supabase Auth user id, role, `lab_name`, confirmed/sign-in timestamps where available, access status, and current invitation state.
   - Does not expose service-role keys, invite token hashes, or raw invite tokens.
+  - Returns 500 with a user-safe message if the Supabase Admin API environment is not configured.
 
 ### POST /admin/users/invitations
 - **Auth:** Admin required
-- **Status:** planned
+- **Status:** implemented (T153)
 - **Purpose:** Create a 7-day app-owned invitation and send a custom invite email.
-- **Request:** planned `CreateUserInvitationRequest`
-  - `email`
-  - `role`: `"admin"` or `"ra"`
-  - `lab_name`
+- **Request:** `CreateUserInvitationRequest`
+
+```json
+{
+  "email": "ra@example.com",
+  "role": "admin | ra",
+  "lab_name": "ww"
+}
+```
+
+- **Response:** `AdminInvitationResponse`; same shape as invitation entries in `GET /admin/users`.
 - **Behavior:**
   - Stores only a hash of the invite token.
   - Sends email through the configured provider (`INVITE_EMAIL_PROVIDER`, default `resend`).
   - Email body content is rendered from `backend/app/services/email_templates/admin_invite.html` with `backend/app/services/email_templates/admin_invite.txt` as the plain-text fallback.
   - Invite URL format: `{SITE_URL}/set-password?invite=<token>`.
-  - Returns 409 when an unexpired pending invite already exists unless the implementation explicitly chooses token rotation semantics.
+  - Returns 409 when an unexpired pending invite already exists for the same email.
 
 ### POST /admin/users/invitations/{invitation_id}/resend
 - **Auth:** Admin required
-- **Status:** planned
+- **Status:** implemented (T153)
 - **Purpose:** Resend a custom invite email for a pending invitation.
+- **Response:** `AdminInvitationResponse`.
 - **Behavior:**
   - Does not resend revoked or accepted invites.
-  - Either reuses a still-valid token or rotates token + extends expiry; the chosen behavior must be documented at implementation time.
+  - Rotates the raw token and token hash; previously sent links stop working.
+  - Does not extend the original 7-day `expires_at`.
   - Updates `last_sent_at`, increments `send_count`, and stores the email provider message id when available.
+  - Returns 404 for missing invitation ids and 409 for expired, accepted, or revoked invitations.
 
 ### POST /admin/users/invitations/{invitation_id}/revoke
 - **Auth:** Admin required
-- **Status:** planned
+- **Status:** implemented (T153)
 - **Purpose:** Revoke a pending invitation before acceptance.
-- **Behavior:** Sets `revoked_at` and prevents future acceptance.
+- **Response:** `AdminInvitationResponse`.
+- **Behavior:** Sets `status="revoked"`, records `revoked_at` / `revoked_by_lab_member_id`, and prevents future acceptance.
 
 ### PATCH /admin/users/{user_id}
 - **Auth:** Admin required
-- **Status:** planned
+- **Status:** implemented (T153)
 - **Purpose:** Edit an existing RA/admin user's role and lab assignment.
+- **Request:** `UpdateAdminUserRequest`
+
+```json
+{
+  "role": "admin | ra",
+  "lab_name": "ww"
+}
+```
+
+- **Response:** `AdminUserResponse`; same shape as user entries in `GET /admin/users`.
 - **Behavior:**
   - Updates Supabase Auth `app_metadata.role` and `app_metadata.lab_name` via the service-role Admin API.
-  - Should prevent an admin from accidentally revoking their own final admin access.
+  - Does not accept arbitrary browser-provided metadata beyond `role` and `lab_name`.
+  - Supabase Admin API failures return 502 with a user-safe message.
 
 ### POST /admin/users/{user_id}/revoke-access
 - **Auth:** Admin required
-- **Status:** planned
+- **Status:** implemented (T153)
 - **Purpose:** Revoke user access without hard-deleting the Supabase Auth row.
+- **Response:** `204 No Content` on success.
 - **Behavior:**
   - UI "delete" maps to this access-revocation behavior.
-  - The implementation should disable sign-in or mark app metadata so backend/frontend authorization rejects the user.
+  - Sets a long Supabase Auth ban through the service-role Admin API.
+  - Returns 409 when revoking the target would remove the final active admin.
   - Hard deletion of `auth.users` is outside normal admin UI behavior.
 
 ### POST /auth/invitations/accept
 - **Auth:** None; valid invite token required
-- **Status:** planned
+- **Status:** implemented (T153)
 - **Purpose:** Accept an app-owned invitation and activate the Supabase Auth account.
-- **Request:** planned `AcceptInvitationRequest`
-  - `token`
-  - `password`
+- **Request:** `AcceptInvitationRequest`
+
+```json
+{
+  "token": "raw invite token from email link",
+  "password": "new Supabase Auth password"
+}
+```
+
+- **Response:** `AcceptInvitationResponse`
+
+```json
+{
+  "email": "ra@example.com",
+  "role": "admin | ra",
+  "lab_name": "ww",
+  "supabase_user_id": "uuid",
+  "status": "accepted"
+}
+```
+
 - **Behavior:**
-  - Rejects expired, revoked, accepted, missing, or malformed tokens with user-safe messages.
+  - Rejects missing or malformed request bodies with 422.
+  - Rejects invalid tokens with 404, expired tokens with 410, and revoked/accepted tokens with 409.
   - Creates or updates the Supabase Auth user via service-role Admin API.
   - Sets `app_metadata.role` and `app_metadata.lab_name`.
-  - Marks the invitation accepted.
+  - Marks the invitation accepted and links `supabase_user_id`.
   - Directs the frontend to sign in normally after activation.
 
 ### POST /admin/import/preview

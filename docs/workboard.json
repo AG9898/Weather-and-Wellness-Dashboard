@@ -1601,7 +1601,7 @@
       "id": "T153",
       "group_id": "ADMIN_USER_MANAGEMENT",
       "title": "Backend API - Admin user and invitation endpoints",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Expose admin-only user/invite management endpoints and a public token-protected invite acceptance endpoint.",

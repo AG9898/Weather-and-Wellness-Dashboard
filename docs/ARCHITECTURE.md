@@ -236,7 +236,8 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
   - The backend sends a custom invite email through the configured provider. Resend is the default provider; the email layer should remain swappable for AWS SES if required. The provider renders the repo-owned templates in `backend/app/services/email_templates/admin_invite.html` and `backend/app/services/email_templates/admin_invite.txt`; do not rely on a provider-hosted template as the primary source of invite content.
   - Invite links point to `{SITE_URL}/set-password?invite=<token>`.
   - Accepting an invite validates the app-owned token, creates or updates the Supabase Auth user through the service-role Admin API, sets `app_metadata.role` and `app_metadata.lab_name`, marks the invitation accepted, and then directs the user through the normal Supabase sign-in/session flow.
-  - Resend/revoke/edit/delete actions are admin-only. UI "delete" means access revocation/disablement by default, not hard deletion of `auth.users`.
+  - FastAPI exposes the admin-only management contracts under `/admin/users*` and the public token-protected activation contract at `POST /auth/invitations/accept`; exact request and response shapes live in `docs/labs/weather-wellness/API.md`.
+  - Resend/revoke/edit/delete actions are admin-only. Resend rotates the invite token without extending the original expiry. UI "delete" means access revocation/disablement by default, not hard deletion of `auth.users`.
   - `backend/admin_cli/invite_user.py` may remain as a CLI/batch wrapper, but it should share the same invite service behavior and must not rely on Supabase `generate_link` as if it sends email.
 
 ---

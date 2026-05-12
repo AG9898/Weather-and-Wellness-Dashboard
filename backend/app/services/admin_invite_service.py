@@ -16,7 +16,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invitations import RAInvitation
@@ -316,6 +316,14 @@ async def accept_invite(
     return invitation
 
 
+async def list_invitations(db: AsyncSession) -> list[RAInvitation]:
+    """Return invitations for the admin management screen, newest first."""
+    result = await db.execute(
+        select(RAInvitation).order_by(desc(RAInvitation.created_at))
+    )
+    return list(result.scalars().all())
+
+
 __all__ = [
     "InviteError",
     "DuplicatePendingInviteError",
@@ -330,4 +338,5 @@ __all__ = [
     "resend_invite",
     "revoke_invite",
     "accept_invite",
+    "list_invitations",
 ]

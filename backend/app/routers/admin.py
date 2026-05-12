@@ -24,18 +24,45 @@ POST /admin/backfill/legacy-weather
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_admin
+from app.auth import LabMember, get_current_admin
 from app.config import STUDY_TIMEZONE
 from app.db import get_session
-from app.schemas.admin import ImportCommitResponse, ImportPreviewResponse, LegacyWeatherBackfillResponse
+from app.schemas.admin import (
+    AdminInvitationResponse,
+    AdminUserResponse,
+    AdminUsersResponse,
+    CreateUserInvitationRequest,
+    ImportCommitResponse,
+    ImportPreviewResponse,
+    LegacyWeatherBackfillResponse,
+    UpdateAdminUserRequest,
+)
+from app.services.admin_invite_service import (
+    DuplicatePendingInviteError,
+    InviteAlreadyUsedError,
+    InviteExpiredError,
+    InviteNotFoundError,
+    create_invite,
+    list_invitations,
+    resend_invite,
+    revoke_invite,
+)
 from app.services.export_service import build_xlsx, build_zip_csv
 from app.services.import_service import commit_import, parse_file, preview_import
+from app.services.supabase_admin_users import (
+    LabUserInfo,
+    list_lab_users,
+    revoke_user_access,
+    update_user_metadata,
+)
 from app.services.weather_backfill_service import run_legacy_weather_backfill
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -55,6 +82,194 @@ def _require_valid_extension(filename: str | None) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Unsupported file type. Expected .csv or .xlsx (got: {filename!r}).",
         )
+
+
+def _admin_user_response(user: LabUserInfo) -> AdminUserResponse:
+    return AdminUserResponse(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        lab_name=user.lab_name,
+        is_banned=user.is_banned,
+        created_at=user.created_at,
+        last_sign_in_at=user.last_sign_in_at,
+    )
+
+
+def _map_invite_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, DuplicatePendingInviteError):
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A pending invite already exists for this email.",
+        )
+    if isinstance(exc, InviteNotFoundError):
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found.",
+        )
+    if isinstance(exc, InviteExpiredError):
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Invitation has expired.",
+        )
+    if isinstance(exc, InviteAlreadyUsedError):
+        return HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Invitation is no longer pending.",
+        )
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Invitation operation failed.",
+    )
+
+
+def _map_admin_client_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    if isinstance(exc, RuntimeError):
+        return HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Admin user management is not configured.",
+        )
+    if isinstance(exc, httpx.HTTPError):
+        return HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Supabase Admin API request failed.",
+        )
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Admin user operation failed.",
+    )
+
+
+# ── Admin user management endpoints ───────────────────────────────────────────
+
+
+@router.get(
+    "/users",
+    response_model=AdminUsersResponse,
+)
+async def get_admin_users(
+    _admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> AdminUsersResponse:
+    """Return safe Supabase Auth user summaries plus app-owned invitations."""
+    try:
+        users = [_admin_user_response(user) for user in list_lab_users()]
+        invitations = await list_invitations(db)
+    except (RuntimeError, httpx.HTTPStatusError) as exc:
+        raise _map_admin_client_error(exc) from exc
+    return AdminUsersResponse(
+        users=users,
+        invitations=[
+            AdminInvitationResponse.model_validate(invitation)
+            for invitation in invitations
+        ],
+    )
+
+
+@router.post(
+    "/users/invitations",
+    response_model=AdminInvitationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_admin_user_invitation(
+    request: CreateUserInvitationRequest,
+    admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> AdminInvitationResponse:
+    """Create and send an app-owned invitation for an RA/admin user."""
+    try:
+        result = await create_invite(
+            db,
+            email=request.email,
+            role=request.role,
+            lab_name=request.lab_name,
+            created_by_lab_member_id=admin.id,
+        )
+    except (
+        DuplicatePendingInviteError,
+        InviteExpiredError,
+        InviteAlreadyUsedError,
+        InviteNotFoundError,
+    ) as exc:
+        raise _map_invite_error(exc) from exc
+    except (RuntimeError, httpx.HTTPError) as exc:
+        raise _map_admin_client_error(exc) from exc
+    return AdminInvitationResponse.model_validate(result.invitation)
+
+
+@router.post(
+    "/users/invitations/{invitation_id}/resend",
+    response_model=AdminInvitationResponse,
+)
+async def resend_admin_user_invitation(
+    invitation_id: UUID,
+    _admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> AdminInvitationResponse:
+    """Resend a pending invitation and rotate its token."""
+    try:
+        invitation = await resend_invite(db, invitation_id=invitation_id)
+    except (InviteNotFoundError, InviteExpiredError, InviteAlreadyUsedError) as exc:
+        raise _map_invite_error(exc) from exc
+    except (RuntimeError, httpx.HTTPError) as exc:
+        raise _map_admin_client_error(exc) from exc
+    return AdminInvitationResponse.model_validate(invitation)
+
+
+@router.post(
+    "/users/invitations/{invitation_id}/revoke",
+    response_model=AdminInvitationResponse,
+)
+async def revoke_admin_user_invitation(
+    invitation_id: UUID,
+    admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> AdminInvitationResponse:
+    """Revoke a pending or expired invitation."""
+    try:
+        invitation = await revoke_invite(
+            db,
+            invitation_id=invitation_id,
+            revoked_by_lab_member_id=admin.id,
+        )
+    except (InviteNotFoundError, InviteAlreadyUsedError) as exc:
+        raise _map_invite_error(exc) from exc
+    return AdminInvitationResponse.model_validate(invitation)
+
+
+@router.patch(
+    "/users/{user_id}",
+    response_model=AdminUserResponse,
+)
+async def update_admin_user(
+    user_id: str,
+    request: UpdateAdminUserRequest,
+    _admin: LabMember = Depends(get_current_admin),
+) -> AdminUserResponse:
+    """Update an RA/admin user's app_metadata role and lab assignment."""
+    try:
+        user = update_user_metadata(user_id, request.role, request.lab_name)
+    except Exception as exc:
+        raise _map_admin_client_error(exc) from exc
+    return _admin_user_response(user)
+
+
+@router.post(
+    "/users/{user_id}/revoke-access",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def revoke_admin_user_access(
+    user_id: str,
+    _admin: LabMember = Depends(get_current_admin),
+) -> Response:
+    """Revoke access without hard-deleting the Supabase Auth user."""
+    try:
+        revoke_user_access(user_id)
+    except Exception as exc:
+        raise _map_admin_client_error(exc) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
