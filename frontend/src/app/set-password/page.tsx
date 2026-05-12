@@ -1,38 +1,36 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { acceptInvitation } from "@/lib/api";
 import LoginBackgroundPaths from "@/lib/components/LoginBackgroundPaths";
-import { supabase } from "@/lib/supabase";
-
-type PageState = "loading" | "ready" | "success" | "invalid";
+import {
+  getInviteActivationCopy,
+  getInviteActivationErrorState,
+  type InviteActivationState,
+} from "@/lib/invitation-ui";
 
 export default function SetPasswordPage() {
   const router = useRouter();
-  const [pageState, setPageState] = useState<PageState>("loading");
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
+  const [pageState, setPageState] = useState<InviteActivationState>("ready");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Supabase JS v2 automatically picks up the access_token from the URL hash
-    // when getSession() is called. We just need to confirm a session is present.
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setPageState("ready");
-      } else {
-        setPageState("invalid");
-      }
-    });
-  }, []);
-
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    if (!inviteToken) {
+      setPageState("missing");
+      return;
+    }
 
     if (password !== confirm) {
       setError("Passwords do not match.");
@@ -44,17 +42,22 @@ export default function SetPasswordPage() {
     }
 
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-
-    if (updateError) {
-      setError(updateError.message);
+    try {
+      await acceptInvitation({ token: inviteToken, password });
+    } catch (activationError) {
+      setPageState(getInviteActivationErrorState(activationError));
       setLoading(false);
       return;
     }
 
     setPageState("success");
-    setTimeout(() => router.replace("/dashboard"), 1500);
+    setLoading(false);
+    setTimeout(() => router.replace("/login"), 1800);
   };
+
+  const displayState: InviteActivationState =
+    pageState === "ready" && !inviteToken ? "missing" : pageState;
+  const stateCopy = getInviteActivationCopy(displayState);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#12161c_0%,#171c22_36%,#1d232b_68%,#12161c_100%)] text-white">
@@ -70,29 +73,30 @@ export default function SetPasswordPage() {
                 W&amp;W Research
               </p>
 
-              {pageState === "loading" && (
-                <p className="mt-4 text-sm text-white/72">Verifying invite…</p>
+              {displayState === "loading" && (
+                <p className="mt-4 text-sm text-white/72">{stateCopy.body}</p>
               )}
 
-              {pageState === "invalid" && (
+              {displayState !== "loading" &&
+                displayState !== "ready" &&
+                displayState !== "success" && (
                 <>
                   <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">
-                    Link expired
+                    {stateCopy.title}
                   </h1>
                   <p className="mt-2 text-sm leading-6 text-white/72">
-                    This invite link is invalid or has already been used. Ask your lab
-                    administrator to send a new invite.
+                    {stateCopy.body}
                   </p>
                 </>
               )}
 
-              {pageState === "ready" && (
+              {displayState === "ready" && (
                 <>
                   <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">
-                    Set your password
+                    {stateCopy.title}
                   </h1>
                   <p className="mt-1 mb-6 text-sm leading-6 text-white/72">
-                    Choose a password to activate your account.
+                    {stateCopy.body}
                   </p>
 
                   <form onSubmit={handleSubmit} className="space-y-4">
@@ -145,13 +149,13 @@ export default function SetPasswordPage() {
                 </>
               )}
 
-              {pageState === "success" && (
+              {displayState === "success" && (
                 <>
                   <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">
-                    Account activated
+                    {stateCopy.title}
                   </h1>
                   <p className="mt-2 text-sm leading-6 text-white/72">
-                    Redirecting to dashboard…
+                    {stateCopy.body}
                   </p>
                 </>
               )}

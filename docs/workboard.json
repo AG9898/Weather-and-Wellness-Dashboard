@@ -1645,7 +1645,7 @@
       "id": "T154",
       "group_id": "ADMIN_USER_MANAGEMENT",
       "title": "Frontend - Invite API wrappers and set-password flow",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Update typed frontend API wrappers and `/set-password` so app-owned invitation tokens activate Supabase Auth accounts.",

@@ -641,6 +641,66 @@ export interface ImportCommitResponse {
   sessions_updated: number;
 }
 
+export type AdminUserRole = "admin" | "ra";
+
+export interface AdminUserResponse {
+  id: string;
+  email: string;
+  role: AdminUserRole | string;
+  lab_name: string;
+  is_banned: boolean;
+  created_at: string;
+  last_sign_in_at: string | null;
+}
+
+export interface AdminInvitationResponse {
+  invitation_id: string;
+  email: string;
+  role: AdminUserRole | string;
+  lab_name: string;
+  status: "pending" | "accepted" | "revoked" | string;
+  expires_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  revoked_by_lab_member_id: string | null;
+  created_by_lab_member_id: string;
+  supabase_user_id: string | null;
+  last_sent_at: string | null;
+  send_count: number;
+  provider_message_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminUsersResponse {
+  users: AdminUserResponse[];
+  invitations: AdminInvitationResponse[];
+}
+
+export interface CreateUserInvitationRequest {
+  email: string;
+  role: AdminUserRole;
+  lab_name: string;
+}
+
+export interface UpdateAdminUserRequest {
+  role: AdminUserRole;
+  lab_name: string;
+}
+
+export interface AcceptInvitationRequest {
+  token: string;
+  password: string;
+}
+
+export interface AcceptInvitationResponse {
+  email: string;
+  role: AdminUserRole | string;
+  lab_name: string;
+  supabase_user_id: string;
+  status: "accepted";
+}
+
 /**
  * Build auth-only headers (no Content-Type — browser sets it for FormData).
  * Used for multipart file upload requests.
@@ -684,6 +744,76 @@ export async function importCommit(
     throw new ApiError(res.status, body.detail ?? res.statusText);
   }
   return res.json() as Promise<ImportCommitResponse>;
+}
+
+/** Accept an app-owned RA/admin invitation and activate the Supabase Auth account. */
+export async function acceptInvitation(
+  payload: AcceptInvitationRequest
+): Promise<AcceptInvitationResponse> {
+  return apiPost<AcceptInvitationResponse>("/auth/invitations/accept", payload);
+}
+
+/** Return admin-visible users plus app-owned invitation records. */
+export async function getAdminUsers(): Promise<AdminUsersResponse> {
+  return apiGet<AdminUsersResponse>("/admin/users", { auth: true });
+}
+
+/** Create and email a new app-owned RA/admin invitation. */
+export async function createUserInvitation(
+  payload: CreateUserInvitationRequest
+): Promise<AdminInvitationResponse> {
+  return apiPost<AdminInvitationResponse>("/admin/users/invitations", payload, {
+    auth: true,
+  });
+}
+
+/** Resend a pending app-owned invitation, rotating its raw token. */
+export async function resendUserInvitation(
+  invitationId: string
+): Promise<AdminInvitationResponse> {
+  return apiPost<AdminInvitationResponse>(
+    `/admin/users/invitations/${encodeURIComponent(invitationId)}/resend`,
+    {},
+    { auth: true }
+  );
+}
+
+/** Revoke a pending app-owned invitation before acceptance. */
+export async function revokeUserInvitation(
+  invitationId: string
+): Promise<AdminInvitationResponse> {
+  return apiPost<AdminInvitationResponse>(
+    `/admin/users/invitations/${encodeURIComponent(invitationId)}/revoke`,
+    {},
+    { auth: true }
+  );
+}
+
+/** Update an RA/admin user's role and lab assignment. */
+export async function updateAdminUser(
+  userId: string,
+  payload: UpdateAdminUserRequest
+): Promise<AdminUserResponse> {
+  return apiPatch<AdminUserResponse>(
+    `/admin/users/${encodeURIComponent(userId)}`,
+    payload,
+    { auth: true }
+  );
+}
+
+/** Revoke RA/admin access without hard-deleting the Supabase Auth user. */
+export async function revokeAdminUserAccess(userId: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/admin/users/${encodeURIComponent(userId)}/revoke-access`,
+    {
+      method: "POST",
+      headers: await buildHeaders(true),
+    }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
 }
 
 // ── Undo Last Session types + wrappers ──

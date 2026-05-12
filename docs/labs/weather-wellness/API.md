@@ -865,6 +865,9 @@
   - Sets `app_metadata.role` and `app_metadata.lab_name`.
   - Marks the invitation accepted and links `supabase_user_id`.
   - Directs the frontend to sign in normally after activation.
+  - Frontend `/set-password?invite=<token>` calls this endpoint through the typed `acceptInvitation` wrapper; it no longer depends on Supabase invite hash sessions for app-owned invites.
+  - Frontend maps 404/422, 410, 409, and 502 responses to user-safe invalid, expired, already accepted/revoked, and activation-failure states.
+- **Verified:** T154 frontend wiring confirmed `/set-password?invite=<token>` submits the backend accept contract and then returns users to normal login.
 
 ### POST /admin/import/preview
 - **Auth:** RA required

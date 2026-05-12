@@ -9,6 +9,7 @@ Visual language baseline: [docs/styleguide.md](../../styleguide.md) · Animation
 
 ## RA Flow
 1. Login
+   - App-owned RA/admin invitation links use `/set-password?invite=<token>`; successful activation sets the Supabase Auth password through the backend invitation acceptance endpoint, then returns the user to normal email/password login.
 2. Click "Start New Entry" → navigates to `/new-session`
 3. **Step 1 (consent):** Participant reads the official consent PDF; clicks "I Consent" to proceed or "I Do Not Consent" to cancel and return to dashboard (no DB record in either case)
 4. **Step 2 (demographics):** RA fills required participant details and chooses either production start or rehearsal start:
