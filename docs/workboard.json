@@ -1520,7 +1520,7 @@
       "id": "T151",
       "group_id": "ADMIN_USER_MANAGEMENT",
       "title": "Backend - Invite token and email service",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Implement reusable invitation service logic for token lifecycle, 7-day expiry, resend/revoke state, and Resend-backed custom email delivery.",
