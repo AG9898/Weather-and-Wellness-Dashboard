@@ -25,7 +25,7 @@ export function NewSessionStoryShell({
   state = "replica",
 }: NewSessionStoryShellProps) {
   return (
-    <RAUserContext.Provider value={{ role: "admin", lab_name: "Weather & Wellness" }}>
+    <RAUserContext.Provider value={{ role: "admin", lab_name: "Weather & Wellness", email: "demo@example.com" }}>
       <div className="min-h-screen bg-background">
         <main className="pb-32 sm:pb-36">
           <NewSessionLaunchMock state={state} />

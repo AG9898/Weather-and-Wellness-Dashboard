@@ -8,6 +8,7 @@ import { animate, spring, utils } from "animejs";
 import {
   ArrowUpDown,
   Home,
+  KeyRound,
   LogOut,
   PanelTopClose,
   PanelTopOpen,
@@ -87,14 +88,24 @@ export function shouldShowRAFloatingChrome(pathname: string | null): boolean {
     pathname === "/dashboard" ||
     pathname === "/import-export" ||
     pathname === "/misokinesia" ||
-    pathname === "/users"
+    pathname === "/users" ||
+    pathname === "/account/password"
   );
+}
+
+function roleLabel(role: string): string {
+  if (role === "admin") return "Admin";
+  if (role === "ra") return "Research Assistant";
+  return role
+    .split(/[\s_-]+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 }
 
 export default function RAFloatingChrome() {
   const pathname = usePathname();
   const router = useRouter();
-  const { role } = useRAUser();
+  const { role, lab_name, email } = useRAUser();
   const prefersReducedMotion = usePrefersReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
@@ -407,8 +418,30 @@ export default function RAFloatingChrome() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
                     W&amp;W Research
                   </p>
+                  {email && (
+                    <p className="mt-1.5 truncate text-[13px] font-medium text-foreground">
+                      {email}
+                    </p>
+                  )}
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {roleLabel(role)}
+                    {lab_name ? ` · ${lab_name}` : ""}
+                  </p>
                 </div>
+                <div className="my-1 h-px bg-border/50" />
                 <ThemeToggle variant="menu" className="mb-1" />
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="mb-1 h-11 w-full justify-between rounded-2xl px-3 text-sm hover:bg-accent/70"
+                >
+                  <Link href="/account/password">
+                    <span className="inline-flex items-center gap-2">
+                      <KeyRound className="size-4" />
+                      Change password
+                    </span>
+                  </Link>
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"

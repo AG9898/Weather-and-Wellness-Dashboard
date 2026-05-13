@@ -1779,7 +1779,7 @@
       "id": "T157",
       "group_id": "RA_AUTH_UI",
       "title": "RA UI - Add profile identity to floating chrome",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "summary": "Show the signed-in RA/admin email, role, and lab context in the top-left floating chrome menu.",

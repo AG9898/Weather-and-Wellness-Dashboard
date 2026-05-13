@@ -22,7 +22,7 @@ export default function RALayout({
   const pathname = usePathname();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [raUser, setRAUser] = useState<RAUser>({ role: "ra", lab_name: "" });
+  const [raUser, setRAUser] = useState<RAUser>({ role: "ra", lab_name: "", email: "" });
   const showFloatingChrome = shouldShowRAFloatingChrome(pathname);
 
   useEffect(() => {
@@ -44,6 +44,7 @@ export default function RALayout({
         setRAUser({
           role: typeof meta.role === "string" ? meta.role : "ra",
           lab_name: typeof meta.lab_name === "string" ? meta.lab_name : "",
+          email: data.session.user.email ?? "",
         });
         setAuthorized(true);
       }
@@ -53,13 +54,14 @@ export default function RALayout({
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        setRAUser({ role: "ra", lab_name: "" });
+        setRAUser({ role: "ra", lab_name: "", email: "" });
         router.replace("/login");
       } else {
         const meta = session.user.app_metadata ?? {};
         setRAUser({
           role: typeof meta.role === "string" ? meta.role : "ra",
           lab_name: typeof meta.lab_name === "string" ? meta.lab_name : "",
+          email: session.user.email ?? "",
         });
       }
     });
