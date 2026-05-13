@@ -783,6 +783,7 @@
   - Email body content is rendered from `backend/app/services/email_templates/admin_invite.html` with `backend/app/services/email_templates/admin_invite.txt` as the plain-text fallback.
   - Invite URL format: `{SITE_URL}/set-password?invite=<token>`.
   - Returns 409 when an unexpired pending invite already exists for the same email.
+  - Retires expired pending invites for the same email before creating a fresh pending invite.
 
 ### POST /admin/users/invitations/{invitation_id}/resend
 - **Auth:** Admin required

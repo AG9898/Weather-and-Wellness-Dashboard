@@ -15,9 +15,6 @@ backend/.venv/
 # Playwright MCP artifacts (screenshots, logs)
 .playwright-mcp/
 
-# Destructive data migrations — never push
-backend/alembic/versions/20260228_000009_clear_all_test_data.py
-
 # Reference import data (demo/test) should never be committed
 data_complete.xlsx
 data_full_1-230.xlsx
@@ -27,3 +24,4 @@ reference/labs/Misokinesia/videos_on_site/
 
 # Local Supabase CLI/config scratch directory; production Supabase is managed externally
 supabase/
+.vercel

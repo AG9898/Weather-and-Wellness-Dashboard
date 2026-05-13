@@ -180,6 +180,26 @@ class TestCreateInvite:
                 )
             )
         db.add.assert_not_called()
+        assert db.execute.await_count == 1
+
+    def test_success_retires_expired_pending_invite_before_insert(self) -> None:
+        db = _mock_db(scalar_result=None)
+        provider = _stub_email_provider()
+
+        asyncio.run(
+            create_invite(
+                db,
+                email="ra@lab.test",
+                role="ra",
+                lab_name="ww",
+                created_by_lab_member_id=_CREATOR_ID,
+                email_provider=provider,
+            )
+        )
+
+        assert db.execute.await_count == 2
+        assert db.add.call_args[0][0].status == "pending"
+        db.commit.assert_called_once()
 
     def test_email_failure_propagates_without_db_write(self) -> None:
         db = _mock_db(scalar_result=None)

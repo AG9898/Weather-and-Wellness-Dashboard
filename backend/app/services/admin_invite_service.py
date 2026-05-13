@@ -16,7 +16,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invitations import RAInvitation
@@ -141,6 +141,16 @@ async def create_invite(
         raise DuplicatePendingInviteError(
             f"A pending invite for {normalized!r} already exists."
         )
+
+    await db.execute(
+        update(RAInvitation)
+        .where(
+            RAInvitation.email == normalized,
+            RAInvitation.status == "pending",
+            RAInvitation.expires_at <= now,
+        )
+        .values(status="expired", updated_at=now)
+    )
 
     raw_token = generate_token()
     expires_at = now + timedelta(days=expiry_days)

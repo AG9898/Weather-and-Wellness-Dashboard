@@ -96,17 +96,18 @@ for analytics payloads.
 | updated_at | TIMESTAMPTZ | DEFAULT NOW() | |
 
 Expected indexes/constraints:
-- UNIQUE active pending invite per lowercased email where `accepted_at IS NULL`
-  and `revoked_at IS NULL`
+- UNIQUE active pending invite per lowercased email where `status = 'pending'`,
+  `accepted_at IS NULL`, and `revoked_at IS NULL`
 - Index on `email`
 - Index on `status`
 - Index on `expires_at`
 
 Behavior:
 - Invite links expire after 7 days.
-- Resend may either reuse a still-valid pending invitation or rotate the token
-  and extend `expires_at`, but it must record `last_sent_at` and increment
-  `send_count`.
+- Creating a fresh invite retires any expired pending invite for the same email
+  by setting `status = 'expired'` before inserting the new pending row.
+- Resend rotates the token without extending `expires_at`, records
+  `last_sent_at`, and increments `send_count`.
 - Revoking an invite prevents acceptance even if the token has not expired.
 - Admin UI "delete user" means access revocation/disablement by default. Hard
   deletion of Supabase Auth rows is not part of normal user management.
@@ -719,8 +720,10 @@ Constraints/indexes:
 | 2026-04-07 | Import authority prep | Add `imported_session_measures.supplemental_attributes_json` for structured storage of workbook-only legacy fields |
 | 2026-04-20 | T145 | Add `misokinesia_participants.mkaq_administration` column and `misokinesia_mkaq_responses` table |
 | 2026-05-12 | T150 | Add `ra_invitations` table for app-owned RA invitation state |
+| 2026-05-13 | T153 follow-up | Fix active pending invite uniqueness so expired pending rows do not block a fresh invite |
 
-As of 2026-05-12, migration `20260512_000001` is the current head revision.
+As of 2026-05-13, migration `20260513_000001` is the current invite-management
+head revision.
 
 ---
 
