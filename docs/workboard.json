@@ -1774,6 +1774,82 @@
         "cd backend && PYTHONPATH=. pytest tests/test_admin_invite_cli.py tests/test_admin_invites.py"
       ],
       "estimate": "S"
+    },
+    {
+      "id": "T157",
+      "group_id": "RA_AUTH_UI",
+      "title": "RA UI - Add profile identity to floating chrome",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "summary": "Show the signed-in RA/admin email, role, and lab context in the top-left floating chrome menu.",
+      "description": "Extend RAUserContext and the RA layout to expose the signed-in Supabase Auth email alongside existing role/lab metadata, then update RAFloatingChrome so its top-left menu shows email, human-readable role label, lab name when available, theme toggle, a change-password navigation action, and sign-out. Keep role and lab read-only and do not add account-editing behavior.",
+      "acceptance_criteria": [
+        "Top-left RA menu displays signed-in email",
+        "Role displays as Admin or Research Assistant with a safe fallback",
+        "Lab name appears when present",
+        "Change password action links to the intended self-service password route",
+        "Role/lab remain display-only"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/contexts/RAUserContext.tsx",
+        "frontend/src/app/(ra)/layout.tsx",
+        "frontend/src/lib/components/RAFloatingChrome.tsx"
+      ],
+      "docs": [
+        "docs/ARCHITECTURE.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Email-only profile identity is accepted for this version."
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T158",
+      "group_id": "RA_AUTH_UI",
+      "title": "RA Auth - Add self-service password screen",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "summary": "Add a light styled RA-only password change screen backed by the current Supabase Auth session.",
+      "description": "Create an RA-protected `/account/password` page using the existing RA layout and floating chrome. The screen should provide a focused styled form with new password and confirmation fields, validate minimum length and mismatch locally, then call Supabase Auth from the browser session to update only the signed-in user's password. Do not add a FastAPI endpoint or use service-role admin APIs.",
+      "acceptance_criteria": [
+        "`/account/password` is protected by the RA auth guard and middleware route topology",
+        "The page uses existing shadcn input, label, and button patterns",
+        "Short or mismatched passwords are rejected before calling Supabase",
+        "Successful password change shows inline success feedback and keeps the user signed in",
+        "Supabase errors are shown as user-safe inline feedback"
+      ],
+      "depends_on": [
+        "T157"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/app/(ra)/account/password/page.tsx",
+        "frontend/src/middleware.ts",
+        "frontend/src/app/api/ra/route-topology.test.ts",
+        "frontend/src/lib/components/RAFloatingChrome.tsx"
+      ],
+      "docs": [
+        "docs/ARCHITECTURE.md",
+        "docs/CONVENTIONS.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": [
+        "Use the frontend Supabase browser client for the current user's own password update.",
+        "Keep this separate from admin user management."
+      ],
+      "commands": [
+        "cd frontend && npm test -- route-topology",
+        "cd frontend && npm run build"
+      ],
+      "estimate": "M"
     }
   ]
 }

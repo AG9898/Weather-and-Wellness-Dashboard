@@ -189,19 +189,19 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 | Component | Path | Usage |
 |---|---|---|
 | `PageContainer` | `src/lib/components/PageContainer.tsx` | Max-width content wrapper for all pages. Use `narrow` prop for survey/task flows. |
-| `RANavBar` | `src/lib/components/RANavBar.tsx` | Sticky capsule-style top nav for RA pages (logo mark, icon-first nav links, theme control, sign-out). |
+| `RAFloatingChrome` | `src/lib/components/RAFloatingChrome.tsx` | Floating RA chrome for shipped RA pages. Provides top-left profile/utility menu plus bottom floating dock navigation. |
 | `ThemeToggle` | `src/lib/components/ThemeToggle.tsx` | Toggles between `light` and `dark`; startup still resolves from `system` when no preference is stored. |
 | `WeatherUnifiedCard` | `src/lib/components/WeatherUnifiedCard.tsx` | Unified weather display + Highcharts 3-series line chart (Temperature/Precipitation/Sunlight) + internal date range filter (default: study start → anchor date, usually the latest study day or Vancouver today). Replaces the former `WeatherCard` + `WeatherTrendChart` pair (T69–T70). |
 | `SurveyForm` | `src/lib/components/SurveyForm.tsx` | Reusable survey renderer for all four instruments with shared progress bar + calm card-shell styling. |
 
 ## Layout Structure
 
-### RA Pages (`/dashboard`, `/import-export`, `/users`)
+### RA Pages (`/dashboard`, `/import-export`, `/users`, `/account/password`)
 ```
 <html class="dark|light">
   <body>
     <RALayout>           ← auth guard
-      <RANavBar />       ← sticky nav with theme control
+      <RAFloatingChrome /> ← top-left profile/utility menu + bottom dock
       <main>
         <PageContainer>  ← max-w-5xl, responsive padding
           {page content}
@@ -216,6 +216,46 @@ Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapp
 - `/dashboard` is the primary RA landing page.
 - `/import-export` is the admin data operations page.
 - RA pages `/participants` and `/sessions` have been removed. The backend endpoints remain available for internal operations and debugging.
+
+### RA Profile / Utility Menu
+
+The top-left menu in `RAFloatingChrome` is the self-service RA profile and
+utility surface. It appears on shipped RA pages that use the floating chrome.
+
+Required content:
+- Signed-in email from the current Supabase Auth session.
+- Human-readable role label from `app_metadata.role`: `Admin` for `admin`,
+  `Research Assistant` for `ra`, and a safe title-case fallback for unknown
+  strings.
+- Lab name from `app_metadata.lab_name` when available.
+- Theme toggle.
+- Change password action.
+- Sign out action.
+
+Role and lab are read-only in this menu. They are admin-controlled metadata and
+must continue to be changed only through the admin user-management flow.
+
+Password change behavior:
+- Opens a lightweight RA-only screen from the profile menu at
+  `/account/password`.
+- Uses the existing RA auth guard and floating chrome; unauthenticated users are
+  redirected through the normal login flow.
+- Requires new password and confirm password fields.
+- Enforces the same minimum password length used by invite activation: 8
+  characters.
+- Rejects mismatched confirmation before calling Supabase.
+- Calls Supabase Auth with the active browser session to update only the signed
+  in user's own password.
+- Shows inline success or error feedback and keeps the user signed in after a
+  successful change unless Supabase returns a session-invalidating state.
+
+Visual expectations:
+- Keep the password screen light, focused, and styled: a single concise form in
+  the standard RA page layout, with restrained explanatory copy and inline
+  status feedback.
+- Use the existing shadcn input, label, and button patterns.
+- Avoid adding a broader account-management page or extra admin controls.
+- Use icon+label rows consistent with the rest of the floating chrome.
 
 ### Participant Pages (`/session/[id]/*`)
 ```

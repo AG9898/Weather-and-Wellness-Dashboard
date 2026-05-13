@@ -65,6 +65,7 @@
 - All Supabase Auth SDK calls isolated in `backend/app/auth.py`
 - **Frontend:** RA routes are gated at the edge by `src/middleware.ts` (primary, server-side) and by the `(ra)` layout client guard (secondary, handles mid-session state). Do not rely on the layout guard alone — the middleware is required for real security.
 - **Supabase browser client:** use `createBrowserClient` from `@supabase/ssr` (not `createClient` from `@supabase/supabase-js`) so the session is cookie-persisted and readable by the middleware.
+- **Self-service auth actions:** Signed-in user actions that affect only the current Supabase Auth user, such as changing the user's own password, may use the frontend Supabase browser client. Admin/user-management actions that affect another account or `app_metadata` must stay behind FastAPI admin endpoints and the service-role-backed server code.
 - Any route change that touches auth gating must include an assertion in `frontend/src/app/api/ra/route-topology.test.ts` so both middleware and layout guard wiring remain enforced.
 
 ### DB access
@@ -96,7 +97,7 @@
 - Shared reusable UI goes in `src/lib/components/`
 - Application state: client-side stores in `src/lib/stores/` (current `session_id`, current step, participant mode flag)
 - Use `PageContainer` (from `src/lib/components/PageContainer.tsx`) as the content wrapper on every page — do not introduce ad-hoc `max-w-*` container divs
-- Use `RANavBar` (from `src/lib/components/RANavBar.tsx`) via the RA layout — do not add navigation manually to individual RA pages
+- Use `RAFloatingChrome` (from `src/lib/components/RAFloatingChrome.tsx`) via the RA layout — do not add navigation manually to individual RA pages
 
 ### API calls
 - **All** API calls go through typed wrapper functions in `src/lib/api/`
