@@ -48,5 +48,6 @@ Internal lab-operated web app to:
 - Lab team can view stored results via Supabase Studio
 
 ## Infrastructure Direction
-- Target deployment after the infrastructure migration: Vercel frontend + Railway backend + Supabase project in Canada Central (`ca-central-1`)
+- Current deployment: Vercel frontend + Render FastAPI backend + existing Supabase project
+- Planned deployment after the funded infrastructure migration: Vercel frontend + Railway backend + Supabase project in Canada Central (`ca-central-1`)
 - The pending multi-lab schema redesign remains out of scope for this PRD update

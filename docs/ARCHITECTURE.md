@@ -4,9 +4,9 @@
 > here instead of restating architecture details.
 >
 > Deployment state split:
-> - **Current state (legacy live):** Render backend + existing Supabase project.
-> - **Target state:** Railway backend + Canada-region Supabase (`ca-central-1`).
-> This document tracks both explicitly; treat Railway as the implementation target.
+> - **Current live state:** Vercel frontend + Render backend + existing Supabase project.
+> - **Planned cutover:** Railway backend + Canada-region Supabase (`ca-central-1`).
+> Railway remains planned until funding and project-owner approval unblock the cutover.
 
 ---
 
@@ -17,8 +17,8 @@
 - **Frontend (Vercel)**: Next.js (TypeScript + Tailwind) for UI and Route Handlers. No FastAPI on Vercel.
   - Primary domain: `https://ubcpsych.com`
   - Legacy Vercel subdomain (also active): `https://weather-and-wellness-dashboard.vercel.app`
-- **Backend (Railway target)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here.
-- **Database (Supabase)**: Managed Postgres in the target Canada Central region. Lab reads data via Supabase Studio.
+- **Backend (Render current)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here. Railway is the planned replacement, not the active host.
+- **Database (Supabase current)**: Managed Postgres in the existing Supabase project. A Canada Central (`ca-central-1`) project remains planned for the infrastructure cutover. Lab reads data via Supabase Studio.
 - **Admin data ops**: RA-only Import/Export endpoints on the backend service support legacy imports and controlled CSV/XLSX exports.
 - **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/labs/weather-wellness/ANALYTICS.md`.
 - **Session safety tool**: a narrow RA-only undo action for the latest native session is live on `/dashboard`, implemented as transactional hard delete plus audit log rather than soft delete.
@@ -295,19 +295,19 @@ Two scheduled jobs are active.
 - Reliability: ingestion is idempotent so duplicate runs are safe. Retry policy can remain for transient backend/network failures during the transition.
 - Exit policy: 2xx → success; 409/429 → exit 0 (expected control-flow responses); all other non-2xx → retry, then exit 1 (loud failure in Actions UI).
 
-### Legacy / Current Deployment (Render transitional)
+### Current Backend Deployment (Render)
 
-Render-specific operations are retained only until backend cutover is complete.
+Render-specific operations remain current until the Railway backend cutover is funded, approved, and completed.
 
-**Render keep-alive ping** (transitional only)
+**Render keep-alive ping**
 
 - Workflow file: `.github/workflows/render-keepalive.yml`
 - Trigger: `cron: '0/14 * * * *'` (every 14 minutes, around the clock) + `workflow_dispatch` for manual runs.
-- Purpose: Prevents Render free-tier cold starts before the Railway cutover is complete.
+- Purpose: Prevents Render free-tier cold starts while Render remains the live backend host.
 - Secret: reuses `WEATHER_INGEST_BASE_URL` (already present); no new secret required.
 - Pings `GET /health`. Exit policy: always exits 0 — a missed or non-2xx ping is not a failure; the next ping will resume keep-alive.
-- Remove this workflow after the backend cutover to Railway.
-- Legacy Render service configuration reference: `docs/devSteps.md` under "Legacy Reference (Render transitional)".
+- Remove this workflow only after the backend cutover to Railway is complete.
+- Current Render service configuration reference: `docs/devSteps.md` under "T27 Runbook — Backend Deployment Service".
 
 ### Secrets ownership
 
@@ -318,14 +318,14 @@ For this workflow, GitHub Actions uses `WEATHER_INGEST_BASE_URL` and
 
 ---
 
-## Railway Setup
+## Planned Railway Setup
 
-- Target service host: Railway.
+- Planned service host after cutover: Railway.
 - Health check path: `/health` → returns `{"status":"ok"}`.
-- Local backend tasks in Phase 1 (DB wiring, models, migrations, stub auth) do not require Railway.
+- Local backend tasks and current production operations do not require Railway.
 - On startup, a lifespan hook cleans up orphaned `analytics_runs` rows from previous process lifetimes (see "Failure behavior" above).
 
-### Required Railway Environment Variables
+### Planned Railway Environment Variables
 
 See `docs/ENV_VARS.md` for the canonical required/conditional variable table,
 defaults, and ownership by environment.

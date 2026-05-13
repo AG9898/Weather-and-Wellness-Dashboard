@@ -9,6 +9,8 @@ If any other doc conflicts with this file, update that doc to point here.
 - **Frontend runtime** — Vercel project env (set via Vercel Dashboard or `vercel env add`) + `frontend/.env.local` for dev.
 - `backend/.env.example` documents the canonical set of backend vars with placeholder values.
 
+Current production uses Vercel for the frontend and Render for the FastAPI backend. Railway backend hosting and a Canada-region Supabase project remain planned until the infrastructure cutover is funded and approved.
+
 JWT verification note: same-origin Route Handlers use ES256/JWKS as the primary path and only fall back
 to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth section) for full topology.
 
@@ -67,6 +69,8 @@ These live in the root `.env` (never in Render or Vercel).
 | Variable | Description | How to obtain |
 |---|---|---|
 | `RENDER_API_KEY` | Render API key for admin scripts and CLI automation against the Render service. | Render Dashboard → Account Settings → API Keys |
+
+For operational debugging, local workstations may already have the `vercel`, `supabase`, and `render` CLIs authenticated for this project. They are useful for log inspection, environment checks, deployment status, and service diagnostics when relevant, but they are not mandatory validation steps.
 
 ---
 

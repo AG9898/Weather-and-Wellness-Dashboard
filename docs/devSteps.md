@@ -77,11 +77,11 @@ Troubleshooting:
 
 Use this runbook when re-deploying or reconfiguring the backend service.
 
-### Current Setup (Railway)
+### Current Setup (Render)
 
 | Setting | Value |
 |---|---|
-| Host | Railway |
+| Host | Render |
 | Root Directory | `backend` |
 | Runtime | Python 3 |
 | Build Command | `pip install -r requirements.txt` |
@@ -95,11 +95,15 @@ deployment ownership.
 
 > Keep all secret values in deployment env settings only — never commit values to the repo.
 
-### Legacy Reference (Render transitional)
+### Optional service CLIs
 
-- Render was the previous live backend host and is retained only as a transition reference.
-- Transitional keep-alive workflow: `.github/workflows/render-keepalive.yml` (remove after Railway cutover).
-- Treat Railway settings above as canonical for active deployment work.
+For infrastructure debugging, local workstations may already have the Vercel, Supabase, and Render CLIs authenticated for this project. Use them when they help inspect logs, env vars, deployment status, or service health. Do not treat CLI checks as required validation unless a task specifically asks for infrastructure diagnostics.
+
+### Planned Reference (Railway cutover)
+
+- Railway is the planned backend host after funding and project-owner approval.
+- The current Render keep-alive workflow is `.github/workflows/render-keepalive.yml`; remove it only after the Railway cutover is complete.
+- Treat Render settings above as canonical for active deployment work until that cutover happens.
 
 ## Admin Import/Export Setup (Phase 3 — T46+)
 

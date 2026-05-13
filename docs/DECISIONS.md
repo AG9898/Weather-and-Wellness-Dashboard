@@ -226,6 +226,10 @@ Auth is optional. If enabled, Next.js obtains a Supabase JWT and sends `Authoriz
 This supersedes the **hosting target** from RESOLVED-06 while keeping Supabase as the managed
 platform chosen in RESOLVED-01.
 
+**Current status:** This remains a planned cutover. The live stack is still Vercel frontend,
+Render FastAPI backend, and the existing Supabase project until funding and project-owner
+approval unblock the migration.
+
 **Why:** Railway removes the Render cold-start problem on write paths, and Supabase's Canada
 Central region satisfies the current database residency requirement without introducing a second
 managed platform for auth and data access. The migration is project-level for Supabase, so the

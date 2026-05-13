@@ -8,8 +8,9 @@
 > direction and confirmed decisions so the migration can be executed cleanly
 > without re-deciding the basics.
 >
-> Status: pre-implementation. This is the target cutover plan, not a claim
-> that production has already moved.
+> Status: pre-implementation. This is the planned target cutover, not a claim
+> that production has already moved. Do not execute this runbook until funding
+> and project-owner approval unblock the migration.
 
 ---
 
@@ -51,10 +52,10 @@ The migration addresses both by:
 
 ---
 
-## Current Decisions
+## Planned Cutover Defaults
 
-These are the working defaults and should be treated as the current direction
-unless explicitly changed.
+These are the working defaults for the planned migration and should not be
+treated as current production state.
 
 - Keep backend Python code exactly as-is. Do not refactor during migration.
 - Keep frontend code exactly as-is. Do not refactor during migration.
