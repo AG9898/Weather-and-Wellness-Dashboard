@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -56,5 +56,19 @@ describe("RA route topology", () => {
 
   it("exports the participant demographics helper", () => {
     expect(api).toHaveProperty("getParticipantDemographics");
+  });
+
+  it("/account/password page exists under (ra) layout and middleware protects /account/*", () => {
+    const passwordPage = resolve(
+      process.cwd(),
+      "src/app/(ra)/account/password/page.tsx"
+    );
+    expect(existsSync(passwordPage)).toBe(true);
+
+    const middlewareSrc = readFileSync(
+      resolve(process.cwd(), "src/middleware.ts"),
+      "utf8"
+    );
+    expect(middlewareSrc).toContain('"/account/:path*"');
   });
 });

@@ -47,5 +47,6 @@ export const config = {
     "/import-export/:path*",
     "/misokinesia/:path*",
     "/users/:path*",
+    "/account/:path*",
   ],
 };

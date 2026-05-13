@@ -1814,7 +1814,7 @@
       "id": "T158",
       "group_id": "RA_AUTH_UI",
       "title": "RA Auth - Add self-service password screen",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "summary": "Add a light styled RA-only password change screen backed by the current Supabase Auth session.",
