@@ -1855,7 +1855,7 @@
       "id": "T159",
       "group_id": "INFRA",
       "title": "Infra - Railway backend service provisioning and deployment",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Create the Railway service, set all backend env vars, deploy FastAPI, and confirm the health endpoint responds.",
@@ -1882,7 +1882,10 @@
         "Alembic migrations run in T160 \u2014 this task only deploys the app process.",
         "T160 output: new Supabase project is `ubcpsych` (`gqtsjkqugvhmidzdghsr`) in `ca-central-1`; local-only runtime values are in ignored `.supabase-migration-secrets/t160-new-project-env.txt`.",
         "For Railway `DATABASE_URL`, prefer a direct or session-compatible connection for asyncpg, or add asyncpg prepared-statement cache disabling if using the transaction pooler; verification hit PgBouncer duplicate prepared statement errors through the transaction pooler.",
-        "The new Supabase project serves ES256 JWKS at `/auth/v1/.well-known/jwks.json`; the app supports JWKS as the primary auth verification path. `SUPABASE_JWT_SECRET` was not exported by the Management API and is only needed for HS256 fallback."
+        "The new Supabase project serves ES256 JWKS at `/auth/v1/.well-known/jwks.json`; the app supports JWKS as the primary auth verification path. `SUPABASE_JWT_SECRET` was not exported by the Management API and is only needed for HS256 fallback.",
+        "Completed 2026-05-17: Railway project `ubcpsych` (`b5bcf140-8336-4284-bb6f-4ede7fae9772`) and service `backend` (`a16226f5-dc23-45a3-ab7b-3d2aaa5a3b99`) created and linked.",
+        "Railway backend URL for T161: https://backend-production-5809.up.railway.app",
+        "Deployed backend from `backend/` using `railway up backend --path-as-root --service backend`; `/health` returned 200 `{\"status\":\"ok\"}`."
       ],
       "commands": [
         "railway status",
@@ -1965,7 +1968,9 @@
         "KV/Upstash vars are injected by the Vercel marketplace integration and are not Supabase-project-specific; do not touch them.",
         "SUPABASE_SERVICE_ROLE_KEY and SUPABASE_JWT_SECRET are backend-only; do not add them to Vercel frontend env.",
         "T160 output: Vercel Preview Supabase values should come from ignored `.supabase-migration-secrets/t160-new-project-env.txt` (`SUPABASE_URL` and `SUPABASE_ANON_KEY`) for project `ubcpsych` / ref `gqtsjkqugvhmidzdghsr`.",
-        "Do not add `SUPABASE_SERVICE_ROLE_KEY` or any legacy JWT secret to Vercel; same-origin JWT verification should use the new project's ES256 JWKS via `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_URL`."
+        "Do not add `SUPABASE_SERVICE_ROLE_KEY` or any legacy JWT secret to Vercel; same-origin JWT verification should use the new project's ES256 JWKS via `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_URL`.",
+        "Use Railway backend URL from T159 for Preview `NEXT_PUBLIC_API_URL`: https://backend-production-5809.up.railway.app",
+        "CORS handoff caveat: Railway `ALLOWED_ORIGINS` currently includes `https://ubcpsych.com`, `https://weather-and-wellness-dashboard.vercel.app`, and the latest preview URL seen during T159. If T161 creates a new Vercel preview URL, add that exact preview origin to Railway `ALLOWED_ORIGINS` before treating preview browser checks as failed."
       ],
       "commands": [
         "vercel env ls",

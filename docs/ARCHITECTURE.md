@@ -321,6 +321,11 @@ For this workflow, GitHub Actions uses `WEATHER_INGEST_BASE_URL` and
 ## Planned Railway Setup
 
 - Planned service host after cutover: Railway.
+- Migration-stage Railway project: `ubcpsych`; backend service: `backend`.
+- Migration-stage Railway backend URL: `https://backend-production-5809.up.railway.app`.
+- Deploy the backend service from the backend directory as the archive root:
+  `railway up backend --path-as-root --service backend`.
+- Backend startup is defined in `backend/Procfile`.
 - Health check path: `/health` → returns `{"status":"ok"}`.
 - Local backend tasks and current production operations do not require Railway.
 - On startup, a lifespan hook cleans up orphaned `analytics_runs` rows from previous process lifetimes (see "Failure behavior" above).
