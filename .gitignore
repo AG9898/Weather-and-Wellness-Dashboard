@@ -11,6 +11,7 @@ backend/.venv/
 # Env files
 .env
 .env.local
+.supabase-migration-secrets/
 
 # Playwright MCP artifacts (screenshots, logs)
 .playwright-mcp/

@@ -1892,7 +1892,7 @@
       "id": "T160",
       "group_id": "INFRA",
       "title": "Infra - New Supabase ca-central-1 project setup and schema migration",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Create the replacement Supabase project in the Canada Central region, run all Alembic migrations, configure auth settings, and recreate the misokinesia storage bucket.",
@@ -1917,7 +1917,12 @@
         "This task creates an empty schema only \u2014 no data rows are moved here.",
         "The old Supabase project remains live and untouched until T166 (manual cutover) completes.",
         "Auth user records are NOT migrated here \u2014 that is T164 (manual).",
-        "Storage bucket policy must be public to match the existing misokinesia-stimuli setup (see T115)."
+        "Storage bucket policy must be public to match the existing misokinesia-stimuli setup (see T115).",
+        "Completed 2026-05-17: created Supabase project `ubcpsych` in `ca-central-1` with ref `gqtsjkqugvhmidzdghsr`.",
+        "Alembic migrations applied successfully to head `20260513_000001`; all expected public app tables verified present.",
+        "Public sign-ups disabled via Supabase Management API; unauthenticated signup check returned `Signups not allowed for this instance`.",
+        "Created public Supabase Storage bucket `misokinesia-stimuli` in the new project.",
+        "New project runtime credentials are stored locally only in ignored `.supabase-migration-secrets/t160-new-project-env.txt` for T159/T161. `SUPABASE_JWT_SECRET` was not exported by the Management API; the new project serves ES256 JWKS and the app supports JWKS verification as the primary path."
       ],
       "commands": [
         "supabase projects list",
