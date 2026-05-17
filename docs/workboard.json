@@ -1879,7 +1879,10 @@
         "DATABASE_URL and SUPABASE_* vars come from the new ca-central-1 project created in T160 \u2014 do T160 first.",
         "ALLOWED_ORIGINS must include both https://ubcpsych.com and the Vercel preview URL.",
         "Do not set any Railway-specific secrets in the repo. All secrets go in Railway service env only.",
-        "Alembic migrations run in T160 \u2014 this task only deploys the app process."
+        "Alembic migrations run in T160 \u2014 this task only deploys the app process.",
+        "T160 output: new Supabase project is `ubcpsych` (`gqtsjkqugvhmidzdghsr`) in `ca-central-1`; local-only runtime values are in ignored `.supabase-migration-secrets/t160-new-project-env.txt`.",
+        "For Railway `DATABASE_URL`, prefer a direct or session-compatible connection for asyncpg, or add asyncpg prepared-statement cache disabling if using the transaction pooler; verification hit PgBouncer duplicate prepared statement errors through the transaction pooler.",
+        "The new Supabase project serves ES256 JWKS at `/auth/v1/.well-known/jwks.json`; the app supports JWKS as the primary auth verification path. `SUPABASE_JWT_SECRET` was not exported by the Management API and is only needed for HS256 fallback."
       ],
       "commands": [
         "railway status",
@@ -1960,7 +1963,9 @@
       "notes": [
         "Only touch Preview env \u2014 production cutover is T166 (manual approval required).",
         "KV/Upstash vars are injected by the Vercel marketplace integration and are not Supabase-project-specific; do not touch them.",
-        "SUPABASE_SERVICE_ROLE_KEY and SUPABASE_JWT_SECRET are backend-only; do not add them to Vercel frontend env."
+        "SUPABASE_SERVICE_ROLE_KEY and SUPABASE_JWT_SECRET are backend-only; do not add them to Vercel frontend env.",
+        "T160 output: Vercel Preview Supabase values should come from ignored `.supabase-migration-secrets/t160-new-project-env.txt` (`SUPABASE_URL` and `SUPABASE_ANON_KEY`) for project `ubcpsych` / ref `gqtsjkqugvhmidzdghsr`.",
+        "Do not add `SUPABASE_SERVICE_ROLE_KEY` or any legacy JWT secret to Vercel; same-origin JWT verification should use the new project's ES256 JWKS via `NEXT_PUBLIC_SUPABASE_URL`/`SUPABASE_URL`."
       ],
       "commands": [
         "vercel env ls",
