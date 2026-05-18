@@ -2047,7 +2047,8 @@
         "Exclude the `auth` schema from pg_dump \u2014 Supabase manages auth.users internally; auth migration is T164.",
         "Use the Transaction pooler DATABASE_URL (not the direct connection) for both dump and restore.",
         "If row counts do not match, investigate before proceeding \u2014 do not continue with a partial dataset.",
-        "The old Supabase project must remain live and unchanged until T166 completes."
+        "The old Supabase project must remain live and unchanged until T166 completes.",
+        "A retained T162 smoke-test RA user exists in the new Supabase project for preview-stack verification: `ww-smoke-1779063058-28916@example.invalid` / user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`. Credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`; do not commit them."
       ],
       "commands": [
         "pg_dump --no-owner --no-acl --exclude-schema=auth --exclude-schema=storage -Fc $OLD_DATABASE_URL > ww_dump.pgdump",
@@ -2087,7 +2088,8 @@
         "The app-owned invite flow (invite_user.py) is the safest path: it writes ra_invitations, sends a custom email, and sets app_metadata correctly.",
         "If using the invite flow, users will receive a new invite email to /set-password \u2014 communicate this to the lab team in advance.",
         "Verify app_metadata.role and app_metadata.lab_name for every user after migration \u2014 wrong metadata silently breaks dashboard access and lab isolation.",
-        "Do not hard-delete users from the old project until T166 (production cutover) is complete."
+        "Do not hard-delete users from the old project until T166 (production cutover) is complete.",
+        "The retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`) already exists in the new project with `app_metadata.role=ra` and `app_metadata.lab_name=ww`; keep or remove it deliberately during auth migration. Local-only credentials live in `.supabase-migration-secrets/t162-smoke-user.txt`."
       ],
       "commands": [
         "python backend/admin_cli/invite_user.py --email <user> --role <role> --lab-name <lab> --site-url https://ubcpsych.com"
@@ -2121,7 +2123,8 @@
         "MANUAL TASK \u2014 requires human to verify asset counts and CDN URL format match.",
         "This task can run in parallel with T163 and T164 since it does not depend on the data migration.",
         "If the new project CDN URL format differs from the old one, a one-off SQL UPDATE on misokinesia_participants.stimulus_url may be needed before production cutover.",
-        "The supabase CLI `supabase storage cp` command can bulk-copy objects between projects if both are accessible."
+        "The supabase CLI `supabase storage cp` command can bulk-copy objects between projects if both are accessible.",
+        "The retained T162 smoke-test RA user can be used for preview verification after storage copy if RA auth is needed; credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`."
       ],
       "commands": [
         "supabase storage ls ss://misokinesia-stimuli --project-ref <old-project-ref>",
@@ -2162,7 +2165,8 @@
         "MANUAL TASK \u2014 requires explicit project owner go/no-go approval before any production env var is changed.",
         "Rollback plan: if the production site is unhealthy after cutover, revert NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY to old values and redeploy. The old Render service must remain live until this task completes.",
         "Update WEATHER_INGEST_BASE_URL in GitHub Actions secrets (repo Settings \u2192 Secrets) to the Railway URL, or the daily weather ingestion job will keep hitting Render.",
-        "Do not decommission Render or the old Supabase project until T167 is done."
+        "Do not decommission Render or the old Supabase project until T167 is done.",
+        "Before approving production cutover, decide whether to keep, disable, or delete the retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`). Credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`."
       ],
       "commands": [
         "vercel env add NEXT_PUBLIC_API_URL production",
@@ -2206,7 +2210,8 @@
       "notes": [
         "Only run this task after T166 (production cutover) is confirmed healthy.",
         "The weather-ingest.yml workflow is NOT removed \u2014 it continues to run against Railway.",
-        "After removing render-keepalive.yml, verify .github/workflows/ has no other Render references."
+        "After removing render-keepalive.yml, verify .github/workflows/ has no other Render references.",
+        "If the retained T162 smoke-test RA user was not removed during T166, clean it up or document why it remains before decommissioning old infrastructure."
       ],
       "commands": [
         "git rm .github/workflows/render-keepalive.yml",
