@@ -252,6 +252,7 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
 - Allowed origins are configured via the `ALLOWED_ORIGINS` env var (comma-separated list).
 - When `ALLOWED_ORIGINS` is unset, the backend defaults to localhost dev origins only.
 - In production, set `ALLOWED_ORIGINS` to the Vercel frontend URL(s). Both `https://ubcpsych.com` and `https://weather-and-wellness-dashboard.vercel.app` must be included.
+- During migration smoke testing, also include the exact Vercel Preview deployment origin currently wired to Railway and the Canada-region Supabase project.
 - No wildcard (`*`) origins are used — least-privilege policy.
 
 ---

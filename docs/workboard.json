@@ -1985,7 +1985,7 @@
       "id": "T162",
       "group_id": "INFRA",
       "title": "Infra - End-to-end smoke test against preview stack",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Verify the Railway backend and new Supabase project behave correctly end-to-end via the Vercel preview deployment before any production cutover.",
