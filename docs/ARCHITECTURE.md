@@ -5,8 +5,10 @@
 >
 > Deployment state split:
 > - **Current live state:** Vercel frontend + Render backend + existing Supabase project.
+> - **Preview migration stack:** Vercel Preview points at the Railway backend and Canada-region
+>   Supabase project for pre-cutover smoke testing.
 > - **Planned cutover:** Railway backend + Canada-region Supabase (`ca-central-1`).
-> Railway remains planned until funding and project-owner approval unblock the cutover.
+> Railway remains outside live production traffic until project-owner approval unblocks the cutover.
 
 ---
 
@@ -17,8 +19,8 @@
 - **Frontend (Vercel)**: Next.js (TypeScript + Tailwind) for UI and Route Handlers. No FastAPI on Vercel.
   - Primary domain: `https://ubcpsych.com`
   - Legacy Vercel subdomain (also active): `https://weather-and-wellness-dashboard.vercel.app`
-- **Backend (Render current)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here. Railway is the planned replacement, not the active host.
-- **Database (Supabase current)**: Managed Postgres in the existing Supabase project. A Canada Central (`ca-central-1`) project remains planned for the infrastructure cutover. Lab reads data via Supabase Studio.
+- **Backend (Render current)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here for production. Railway hosts the preview migration backend but is not the production host until cutover approval.
+- **Database (Supabase current)**: Managed Postgres in the existing Supabase project for production. A Canada Central (`ca-central-1`) project backs the preview migration stack and remains outside production until the infrastructure cutover. Lab reads data via Supabase Studio.
 - **Admin data ops**: RA-only Import/Export endpoints on the backend service support legacy imports and controlled CSV/XLSX exports.
 - **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/labs/weather-wellness/ANALYTICS.md`.
 - **Session safety tool**: a narrow RA-only undo action for the latest native session is live on `/dashboard`, implemented as transactional hard delete plus audit log rather than soft delete.

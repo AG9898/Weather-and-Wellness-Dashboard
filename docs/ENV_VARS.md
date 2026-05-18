@@ -9,7 +9,7 @@ If any other doc conflicts with this file, update that doc to point here.
 - **Frontend runtime** — Vercel project env (set via Vercel Dashboard or `vercel env add`) + `frontend/.env.local` for dev.
 - `backend/.env.example` documents the canonical set of backend vars with placeholder values.
 
-Current production uses Vercel for the frontend and Render for the FastAPI backend. Railway backend hosting and a Canada-region Supabase project remain planned until the infrastructure cutover is funded and approved.
+Current production uses Vercel for the frontend, Render for the FastAPI backend, and the existing Supabase project. Vercel Preview is wired to the Railway backend and Canada-region Supabase project for pre-cutover testing; production stays on Render/existing Supabase until the infrastructure cutover is explicitly approved.
 
 JWT verification note: same-origin Route Handlers use ES256/JWKS as the primary path and only fall back
 to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth section) for full topology.
@@ -43,7 +43,7 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 |---|---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | — | Browser-visible Supabase project URL for the frontend auth client. | Supabase Dashboard → Project Settings → API → Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | — | Browser-visible Supabase anon key for the frontend auth client. | Supabase Dashboard → Project Settings → API → `anon` key |
-| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000` | Base URL of the FastAPI backend. Frontend API wrappers prepend this to all requests. | Set to the Render service URL in production, e.g. `https://weather-and-wellness-dashboard.onrender.com`; `http://localhost:8000` for local dev |
+| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000` | Base URL of the FastAPI backend. Frontend API wrappers prepend this to all requests. | Set to the Render service URL in production, e.g. `https://weather-and-wellness-dashboard.onrender.com`; Vercel Preview points to the Railway service during migration testing; `http://localhost:8000` for local dev |
 | `KV_REST_API_URL` | Conditional (cache enabled) | — | Vercel KV / Upstash REST URL for same-origin cache helpers. | Vercel Dashboard → Storage → KV instance → `.env.local` tab, or `vercel env pull` |
 | `KV_REST_API_TOKEN` | Conditional (cache enabled) | — | Vercel KV / Upstash REST token (read-write) for same-origin cache helpers. | Same as `KV_REST_API_URL` source |
 | `KV_REST_API_READ_ONLY_TOKEN` | Conditional (cache, read-only path) | — | Read-only variant of the KV token for public-safe cache reads. | Same as `KV_REST_API_URL` source |

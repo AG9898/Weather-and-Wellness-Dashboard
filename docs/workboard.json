@@ -1941,7 +1941,7 @@
       "id": "T161",
       "group_id": "INFRA",
       "title": "Infra - Wire Vercel preview environment to Railway + new Supabase",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Update Vercel preview environment variables to point at the Railway backend and new ca-central-1 Supabase project, then deploy a preview build to confirm it connects.",
