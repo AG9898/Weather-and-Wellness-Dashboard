@@ -2638,7 +2638,7 @@
       "group_id": "DOC_RESTRUCTURE_WW",
       "title": "Doc restructure - split API.md into weather/ and misokinesia/",
       "type": "implementation",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "summary": "Split the monolithic API.md at line 1062 (## Misokinesia) into weather/API.md and misokinesia/API.md.",
       "description": "Read docs/labs/weather-wellness/API.md (1350 lines). Split at line 1062 (## Misokinesia header). Write docs/labs/weather-wellness/weather/API.md with lines 1-1061 plus a footer note pointing to misokinesia/API.md. Write docs/labs/weather-wellness/misokinesia/API.md with a brief header (Base URL, Auth, Trial Run Mode sections with a back-link to weather/API.md) followed by the full Misokinesia section and the shared Error/CORS/Error Codes sections. Delete the original docs/labs/weather-wellness/API.md after both split files are confirmed present.",

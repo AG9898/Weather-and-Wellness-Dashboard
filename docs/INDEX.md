@@ -37,14 +37,15 @@ stub docs that only redirect to lab-specific paths.
 | Path | Purpose |
 |---|---|
 | [`docs/labs/weather-wellness/README.md`](labs/weather-wellness/README.md) | Lab overview and doc index |
-| [`docs/labs/weather-wellness/API.md`](labs/weather-wellness/API.md) | FastAPI contracts for this lab |
+| [`docs/labs/weather-wellness/weather/API.md`](labs/weather-wellness/weather/API.md) | FastAPI contracts — Weather-Wellness dashboard, sessions, surveys, admin, auth |
+| [`docs/labs/weather-wellness/misokinesia/API.md`](labs/weather-wellness/misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
 | [`docs/labs/weather-wellness/ANALYTICS.md`](labs/weather-wellness/ANALYTICS.md) | Analytics snapshot/modeling design |
 | [`docs/labs/weather-wellness/DESIGN_SPEC.md`](labs/weather-wellness/DESIGN_SPEC.md) | Participant and RA UX specifications |
 | [`docs/labs/weather-wellness/SCORING.md`](labs/weather-wellness/SCORING.md) | Instrument scoring rules |
-| [`docs/labs/weather-wellness/WEATHER_INGESTION.md`](labs/weather-wellness/WEATHER_INGESTION.md) | Live weather ingest and reconciliation |
-| [`docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md`](labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill process |
-| [`docs/labs/weather-wellness/tasks/DIGITSPAN.md`](labs/weather-wellness/tasks/DIGITSPAN.md) | Digit Span task specification |
-| [`docs/labs/weather-wellness/tasks/MISOKINESIA.md`](labs/weather-wellness/tasks/MISOKINESIA.md) | Misokinesia task specification |
+| [`docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`](labs/weather-wellness/weather/WEATHER_INGESTION.md) | Live weather ingest and reconciliation |
+| [`docs/labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md`](labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill process |
+| [`docs/labs/weather-wellness/weather/DIGITSPAN.md`](labs/weather-wellness/weather/DIGITSPAN.md) | Digit Span task specification |
+| [`docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`](labs/weather-wellness/misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 | [`docs/labs/weather-wellness/surveys/`](labs/weather-wellness/surveys/) | Survey instrument specs (ULS8, CESD10, GAD7, CogFunc8a) |
 
 ## Archive Docs (Historical Context Only)

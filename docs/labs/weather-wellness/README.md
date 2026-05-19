@@ -33,14 +33,14 @@ Global routing map: [`docs/INDEX.md`](../../INDEX.md)
 
 | Document | Purpose |
 |---|---|
-| [`API.md`](API.md) | FastAPI endpoint contracts for this lab's sessions, surveys, and tasks |
+| [`weather/API.md`](weather/API.md) | FastAPI contracts — WW dashboard, sessions, surveys, admin, auth |
+| [`misokinesia/API.md`](misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
 | [`DESIGN_SPEC.md`](DESIGN_SPEC.md) | Participant and RA UX flows |
-| [`SCORING.md`](SCORING.md) | Server-side scoring rules for all instruments |
-| [`ANALYTICS.md`](ANALYTICS.md) | Analytics architecture — MLM model, KPIs, snapshot system |
-| [`WEATHER_INGESTION.md`](WEATHER_INGESTION.md) | Weather data ingestion via UBC EOS station |
-| [`HISTORICAL_WEATHER_BACKFILL.md`](HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill procedure |
+| [`weather/SCORING.md`](weather/SCORING.md) | Server-side scoring rules for all instruments |
+| [`weather/ANALYTICS.md`](weather/ANALYTICS.md) | Analytics architecture — MLM model, KPIs, snapshot system |
+| [`weather/WEATHER_INGESTION.md`](weather/WEATHER_INGESTION.md) | Weather data ingestion via UBC EOS station |
+| [`weather/HISTORICAL_WEATHER_BACKFILL.md`](weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill procedure |
 | [`surveys/`](surveys/) | Instrument specifications (ULS8, CESD10, GAD7, CogFunc8a) |
-| [`tasks/`](tasks/) | Task specifications (Digit Span, Misokinesia) |
 
 ### Survey Specs
 
@@ -51,8 +51,8 @@ Global routing map: [`docs/INDEX.md`](../../INDEX.md)
 
 ### Task Specs
 
-- [`tasks/DIGITSPAN.md`](tasks/DIGITSPAN.md)
-- [`tasks/MISOKINESIA.md`](tasks/MISOKINESIA.md)
+- [`weather/DIGITSPAN.md`](weather/DIGITSPAN.md)
+- [`misokinesia/MISOKINESIA.md`](misokinesia/MISOKINESIA.md)
 
 ## Reference Materials
 

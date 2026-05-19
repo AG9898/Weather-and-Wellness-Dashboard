@@ -33,7 +33,8 @@ Current shipped dashboard reads are split across these same-origin Vercel Route 
 
 FastAPI endpoints and same-origin Route Handlers are separate routing layers:
 
-- `docs/labs/weather-wellness/API.md` is canonical for FastAPI endpoint contracts.
+- `docs/labs/weather-wellness/weather/API.md` is canonical for FastAPI endpoint contracts (Weather-Wellness dashboard, sessions, surveys, admin, auth endpoints).
+- `docs/labs/weather-wellness/misokinesia/API.md` is canonical for Misokinesia FastAPI endpoint contracts.
 - This document is canonical for Next.js Route Handler topology, cache behavior, and cross-tier request flow.
 
 ---
@@ -72,7 +73,7 @@ This section is the single routing inventory for dashboard-related reads across 
 | `/misokinesia` | RA required (via `(ra)` layout) | `canonical` | RA page — launch a Misokinesia session via "Start Misokinesia Session" button |
 | `/misokinesia/[id]` | None | `canonical` | Participant task page — video clips + questionnaires; `id` = `misokinesia_participant_id` |
 
-Backend API endpoints for Misokinesia are documented in `docs/labs/weather-wellness/API.md`. Dashboard and session routes are implicitly canonical and owned by their respective layout groups.
+Backend API endpoints for Misokinesia are documented in `docs/labs/weather-wellness/misokinesia/API.md`. Dashboard and session routes are implicitly canonical and owned by their respective layout groups.
 
 ### Deprecation map and target canonical shapes
 
@@ -238,7 +239,7 @@ The dashboard's statistical KPI layer now uses a hybrid read path for frontend r
   - The backend sends a custom invite email through the configured provider. Resend is the default provider; the email layer should remain swappable for AWS SES if required. The provider renders the repo-owned templates in `backend/app/services/email_templates/admin_invite.html` and `backend/app/services/email_templates/admin_invite.txt`; do not rely on a provider-hosted template as the primary source of invite content.
   - Invite links point to `{SITE_URL}/set-password?invite=<token>`.
   - Accepting an invite validates the app-owned token, creates or updates the Supabase Auth user through the service-role Admin API, sets `app_metadata.role` and `app_metadata.lab_name`, marks the invitation accepted, and then directs the user through the normal Supabase sign-in/session flow.
-  - FastAPI exposes the admin-only management contracts under `/admin/users*` and the public token-protected activation contract at `POST /auth/invitations/accept`; exact request and response shapes live in `docs/labs/weather-wellness/API.md`.
+  - FastAPI exposes the admin-only management contracts under `/admin/users*` and the public token-protected activation contract at `POST /auth/invitations/accept`; exact request and response shapes live in `docs/labs/weather-wellness/weather/API.md`.
   - Resend/revoke/edit/delete actions are admin-only. Resend rotates the invite token without extending the original expiry. UI "delete" means access revocation/disablement by default, not hard deletion of `auth.users`.
   - `backend/admin_cli/invite_user.py` is a CLI/batch wrapper over the same app-owned invite service used by the admin UI. It writes `ra_invitations`, sends the custom provider email, accepts `--site-url` or the legacy `--redirect-to` alias for invite-link base URL selection, and records `created_by_lab_member_id` from `--created-by-lab-member-id` or `ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID`. For migration batches, pass `--use-railway-env` to read the linked Railway backend env or `--env-file <path>` to target a local migration env file instead of root `.env`. It does not call Supabase `/auth/v1/invite` or `generate_link` as an email-send fallback.
 
