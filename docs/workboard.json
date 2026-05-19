@@ -2231,6 +2231,263 @@
         "grep -r 'render' docs/ --include='*.md' -i | grep -v 'rendering'"
       ],
       "estimate": "S"
+    },
+    {
+      "id": "T168",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - Schema migration & session-start changes",
+      "status": "todo",
+      "priority": "high",
+      "description": "Alembic migration replacing mkaq_administration with post_survey_order on misokinesia_participants, plus two new tables (misokinesia_gad7_responses, misokinesia_maq_responses). Update POST /misokinesia/start to assign a random permutation of ['mkaq','gad7','maq'] and return it as post_survey_order. Update GET /misokinesia/trial-manifest: add optional query param `full: bool = Query(False)`; when full=True return all active stimuli in randomized order (same as production, no DB writes); when full=False (default) keep existing 5-clip sample behaviour. Also return post_survey_order (locally generated, not persisted) in both cases. Update MisokinesiaManifest TypeScript type: remove mkaq_administration, add post_survey_order. Add parseSurveyOrder() helper in src/lib/api/.",
+      "acceptance_criteria": [
+        "alembic upgrade head applies cleanly: misokinesia_participants has post_survey_order column, mkaq_administration is dropped, misokinesia_gad7_responses and misokinesia_maq_responses tables exist",
+        "POST /misokinesia/start response includes post_survey_order (comma-separated string) and omits mkaq_administration",
+        "GET /misokinesia/trial-manifest?full=true returns all active stimuli in randomized order with no DB writes",
+        "GET /misokinesia/trial-manifest response includes post_survey_order",
+        "MisokinesiaManifest TypeScript type updated accordingly",
+        "docs/SCHEMA.md and API.md reflect the new schema and endpoint contracts"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "backend/app/routers/misokinesia.py",
+        "backend/app/schemas/misokinesia.py",
+        "backend/app/models/misokinesia.py",
+        "backend/alembic/versions/",
+        "frontend/src/lib/api/",
+        "docs/SCHEMA.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md"
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. alembic upgrade head",
+        "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -v",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T169",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - New schemas, models, and survey endpoints",
+      "status": "todo",
+      "priority": "high",
+      "description": "Add Pydantic schemas to backend/app/schemas/misokinesia.py: MisoGAD7Create (r1-r7, int 1-4), MisoGAD7Response (response_id, total_score, severity_band), MisoMAQCreate (q1-q21, int 0-3), MisoMAQResponse (response_id, total_score). Add ORM models to backend/app/models/misokinesia.py: MisokinesiaGAD7Response and MisokinesiaMAQResponse (matching the planned tables in docs/SCHEMA.md). Add POST /misokinesia/participants/{id}/gad7 endpoint: guard requires completed_at set, reuse backend/app/scoring/gad7.py::score_gad7(), write to misokinesia_gad7_responses, return 409 on duplicate. Add POST /misokinesia/participants/{id}/maq endpoint: guard requires completed_at set, total_score = sum(q1..q21), write to misokinesia_maq_responses, return 409 on duplicate. Do not change existing endpoint guards in this task \u2014 those are in T173.",
+      "acceptance_criteria": [
+        "POST /misokinesia/participants/{id}/gad7 returns 201 with response_id, total_score, severity_band",
+        "POST /misokinesia/participants/{id}/maq returns 201 with response_id, total_score",
+        "Both new endpoints return 409 until completed_at is set",
+        "Both new endpoints return 409 on duplicate submission",
+        "cd backend && PYTHONPATH=. python -c 'from app.routers.misokinesia import router' succeeds (import check)",
+        "cd frontend && npm run build passes (no schema changes affect frontend yet)"
+      ],
+      "depends_on": [
+        "T168"
+      ],
+      "blocked_by": [],
+      "files": [
+        "backend/app/routers/misokinesia.py",
+        "backend/app/schemas/misokinesia.py",
+        "backend/app/models/misokinesia.py",
+        "backend/app/scoring/gad7.py",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -v",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T173",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - Guard updates and test coverage",
+      "status": "todo",
+      "priority": "high",
+      "description": "Update three existing guards in backend/app/routers/misokinesia.py: (1) POST /misokinesia/participants/{id}/responses \u2014 remove the mkaq_administration='pre' guard entirely; (2) POST /misokinesia/participants/{id}/mkaq \u2014 remove the null-administration 409 guard; unconditionally require completed_at (MkAQ is always post-video now); (3) PATCH /misokinesia/participants/{id}/end-of-task \u2014 replace the mkaq_administration='post' MkAQ check with a check that all three response rows exist (mkaq + gad7 + maq). Write or update tests in backend/tests/test_misokinesia.py to cover: new gad7 endpoint (happy path, 409 guard, 409 duplicate), new maq endpoint (happy path, 409 guard, 409 duplicate), mkaq guard now always requires completed_at, end-of-task now requires all three surveys.",
+      "acceptance_criteria": [
+        "POST /misokinesia/participants/{id}/responses no longer returns 409 for pre-MkAQ check",
+        "POST /misokinesia/participants/{id}/mkaq returns 409 until completed_at is set (regardless of old administration field)",
+        "PATCH /misokinesia/participants/{id}/end-of-task returns 409 until mkaq + gad7 + maq rows all exist",
+        "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -v passes with all new cases covered"
+      ],
+      "depends_on": [
+        "T169"
+      ],
+      "blocked_by": [],
+      "files": [
+        "backend/app/routers/misokinesia.py",
+        "backend/tests/test_misokinesia.py"
+      ],
+      "docs": [],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -v"
+      ]
+    },
+    {
+      "id": "T170",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - Frontend phase logic and API types",
+      "status": "todo",
+      "priority": "high",
+      "description": [
+        "Rewrite frontend/src/lib/misokinesia-phase.ts: remove MisokinesiaMkaqAdministration type; add PostSurveyKey = 'mkaq' | 'gad7' | 'maq'; add getPhaseAfterBegin(): 'playing' (always, no pre-branch); add getPhaseAfterVideoComplete(order: PostSurveyKey[]): PostSurveyKey (returns first survey); add getNextPostSurveyPhase(order: PostSurveyKey[], completedIndex: number): PostSurveyKey | 'end_of_task'. Update MisokinesiaManifest type in src/lib/api/: remove mkaq_administration, add post_survey_order: string. Add parseSurveyOrder(order: string): PostSurveyKey[] helper in src/lib/api/. Add submitMisokinesiaMAQ(participantId, answers) and submitMisokinesiaGAD7(participantId, answers) typed API wrappers in src/lib/api/ following the same pattern as submitMisokinesiaMkaq. No component or participant page changes in this task."
+      ],
+      "acceptance_criteria": [
+        "cd frontend && npm run build passes with no TypeScript errors",
+        "misokinesia-phase.ts exports PostSurveyKey, getPhaseAfterBegin, getPhaseAfterVideoComplete, getNextPostSurveyPhase",
+        "MisokinesiaManifest type has post_survey_order and no mkaq_administration",
+        "parseSurveyOrder exported from src/lib/api/",
+        "submitMisokinesiaMAQ and submitMisokinesiaGAD7 exported from src/lib/api/"
+      ],
+      "depends_on": [
+        "T168"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/misokinesia-phase.ts",
+        "frontend/src/lib/api/",
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx"
+      ],
+      "docs": [],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T174",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - MisokinesiaMAQForm component",
+      "status": "todo",
+      "priority": "high",
+      "description": "Create frontend/src/lib/components/MisokinesiaMAQForm.tsx. Model it on MisokinesiaMkaqForm.tsx \u2014 same card carousel pattern, same 0-3 scale, same Previous/Next/Submit pane navigation logic. Props: onSubmit(answers: Record<string, number>): void; submitting: boolean; error: string | null; itemCount?: number (default 21, trial short uses 10). Production panes: q1-q7, q8-q14, q15-q21. Trial panes (itemCount=10): q1-q5, q6-q10. Use 'sound issues' wording from the 21 MAQ items listed in docs/labs/weather-wellness/tasks/MISOKINESIA.md. Export MAQ_ITEMS constant (array of {id, text}) for use in tests and trial mode. No participant page wiring in this task.",
+      "acceptance_criteria": [
+        "cd frontend && npm run build passes with no TypeScript errors",
+        "MisokinesiaMAQForm renders all 21 items in three panes (q1-q7, q8-q14, q15-q21) by default",
+        "When itemCount=10, renders two panes (q1-q5, q6-q10)",
+        "Next button disabled until all items on current pane answered",
+        "Previous preserves answers",
+        "Submit fires onSubmit with complete Record<string, number> payload"
+      ],
+      "depends_on": [
+        "T170"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaMAQForm.tsx",
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx"
+      ],
+      "docs": [],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T175",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - GAD-7 form and participant page wiring",
+      "status": "todo",
+      "priority": "high",
+      "description": "Create frontend/src/lib/components/MisokinesiaGAD7Form.tsx using the shared SurveyForm component (src/lib/components/SurveyForm.tsx). Props: onSubmit(answers): void; submitting: boolean; error: string | null. Items and scale match the GAD-7 items in docs/labs/weather-wellness/tasks/MISOKINESIA.md (7 items, scale 1-4). Then update frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx: add Phase variants 'gad7' and 'maq'; add surveyOrder: PostSurveyKey[] and surveyIndex: number state; on manifest load call parseSurveyOrder(manifest.post_survey_order) \u2192 setSurveyOrder; replace the getPhaseAfterBegin(mkaqAdministration) call with getPhaseAfterBegin(); after is_complete=true from clip responses call getPhaseAfterVideoComplete(surveyOrder) and set phase; after each survey submit call getNextPostSurveyPhase(surveyOrder, surveyIndex) and increment surveyIndex; render MisokinesiaGAD7Form when phase='gad7' and MisokinesiaMAQForm when phase='maq'; remove all mkaqAdministration references.",
+      "acceptance_criteria": [
+        "cd frontend && npm run build passes with no TypeScript errors",
+        "No mkaqAdministration or getPhaseAfterMkaqComplete references remain in the participant page",
+        "Participant page Phase type includes 'gad7' and 'maq'",
+        "surveyOrder and surveyIndex state exist and drive phase transitions",
+        "MisokinesiaGAD7Form renders when phase='gad7'",
+        "MisokinesiaMAQForm renders when phase='maq'",
+        "Submitting each survey advances to the next phase in surveyOrder order"
+      ],
+      "depends_on": [
+        "T174"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaGAD7Form.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/SurveyForm.tsx",
+        "frontend/src/lib/misokinesia-phase.ts"
+      ],
+      "docs": [],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T171",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - Short Trial mode updates",
+      "status": "todo",
+      "priority": "medium",
+      "description": "Update frontend/src/lib/trial-mode.ts: remove createTrialMkaqAdministration(); add MisokinesiaTrialMode = 'short' | 'full' type; add createTrialSurveyOrder(): PostSurveyKey[] (random permutation of ['mkaq','gad7','maq']); add TRIAL_MAQ_ITEM_COUNT = 10; update createTrialRunMisokinesiaManifest() to accept mode param and use post_survey_order from createTrialSurveyOrder(). Update RA launch page frontend/src/app/(ra)/misokinesia/page.tsx: rename handleStartTrial() \u2192 handleStartShortTrial() and wire it to the 'Run Short Trial' button (button label update only \u2014 full trial button added in T172). In participant page, pass TRIAL_MKAQ_ITEM_COUNT to MisokinesiaMkaqForm and TRIAL_MAQ_ITEM_COUNT to MisokinesiaMAQForm when trialMode is true (short trial). GAD-7 shows all 7 items in short trial \u2014 no itemCount restriction needed.",
+      "acceptance_criteria": [
+        "cd frontend && npm run build passes with no TypeScript errors",
+        "MisokinesiaTrialMode type exported from trial-mode.ts",
+        "createTrialMkaqAdministration is removed",
+        "createTrialSurveyOrder returns a 3-element PostSurveyKey array",
+        "Short trial plays 5 clips with MkAQ and MAQ showing q1-q10 and GAD-7 showing all 7 items",
+        "No backend calls are made during any short trial submit"
+      ],
+      "depends_on": [
+        "T175"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/app/(ra)/misokinesia/page.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx",
+        "frontend/src/lib/components/MisokinesiaMAQForm.tsx"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T172",
+      "group_id": "MISO_SURVEYS",
+      "title": "Miso post-video surveys - Full Trial mode & RA launch UI",
+      "status": "todo",
+      "priority": "medium",
+      "description": "Add Full Trial mode to the RA launch page and participant flow. RA launch page (/misokinesia): replace single 'Run Test Trial' button with two distinct buttons \u2014 'Run Short Trial' (existing behaviour) and 'Run Full Trial'. handleStartFullTrial(): call GET /misokinesia/trial-manifest?full=true, build a full manifest with createTrialRunMisokinesiaManifest('full'), navigate to participant page. Participant page: detect trial mode type from manifest (clip count or explicit flag); in full trial mode pass full item counts to MisokinesiaMkaqForm (21) and MisokinesiaMAQForm (21). All submits remain local-only simulated transitions \u2014 no DB writes in full trial.",
+      "acceptance_criteria": [
+        "npm run build passes with no TypeScript errors",
+        "/misokinesia RA page shows both 'Run Short Trial' and 'Run Full Trial' buttons",
+        "Run Full Trial calls GET /misokinesia/trial-manifest?full=true",
+        "Full trial plays all active clips (not just 5) with the same local-only submit behaviour",
+        "MkAQ and MAQ show all 21 items in full trial mode",
+        "GAD-7 shows all 7 items in full trial mode",
+        "Short trial behaviour is unchanged after this task",
+        "No rows are written during full trial"
+      ],
+      "depends_on": [
+        "T171",
+        "T173"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/app/(ra)/misokinesia/page.tsx",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx",
+        "frontend/src/lib/components/MisokinesiaMAQForm.tsx"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/tasks/MISOKINESIA.md",
+        "docs/labs/weather-wellness/API.md"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
     }
   ]
 }

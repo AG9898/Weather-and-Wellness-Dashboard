@@ -52,6 +52,8 @@ participants (1) ──────────────── (many) misokin
 misokinesia_participants (1) ───── (many) misokinesia_trial_responses
 misokinesia_stimuli (1) ────────── (many) misokinesia_trial_responses
 misokinesia_participants (1) ───── (0..1) misokinesia_mkaq_responses
+misokinesia_participants (1) ───── (0..1) misokinesia_gad7_responses
+misokinesia_participants (1) ───── (0..1) misokinesia_maq_responses
 ```
 
 `admin_session_undo_log` is an append-only audit table that stores deleted
@@ -618,7 +620,7 @@ One row per participant's task execution. Contains per-participant progress stat
 | started_at                    | TIMESTAMPTZ | DEFAULT NOW() | |
 | completed_at                  | TIMESTAMPTZ | NULLABLE      | Set server-side when all stimuli have a response row |
 | created_at                    | TIMESTAMPTZ | DEFAULT NOW() | |
-| mkaq_administration           | VARCHAR     | NULLABLE      | Planned MkAQ extension: `"pre"` or `"post"` assignment; null only for legacy rows created before the MkAQ migration |
+| post_survey_order             | VARCHAR(20) | NOT NULL      | Comma-separated ordered list of post-video survey keys assigned randomly at session start, e.g. `"mkaq,gad7,maq"`; null only for legacy rows created before the T168 migration |
 | end_fidgeting_text            | TEXT        | NULLABLE      | End-of-task: "Please list any fidgeting stimuli you are bothered by that did not show up in the task" |
 | end_emotions_text             | TEXT        | NULLABLE      | End-of-task: "Please list any emotional responses felt during the videos not asked in the questionnaire" |
 | stronger_responses            | BOOLEAN     | NULLABLE      | End-of-task: "Did viewing the videos create stronger responses over time?" (No=false / Yes=true) |
@@ -650,9 +652,9 @@ Constraints/indexes:
 - Index (`misokinesia_trial_responses(misokinesia_participant_id)`)
 - Index (`misokinesia_trial_responses(stimulus_id)`)
 
-### Planned Table: `misokinesia_mkaq_responses`
+### Table: `misokinesia_mkaq_responses`
 
-One required 21-item Misokinesia Assessment Questionnaire (MkAQ) response per participant. The timing assignment is randomized at session start and stored on `misokinesia_participants.mkaq_administration`; the response row repeats the same `administration` value for analysis. All MkAQ rows remain session-scoped through both `session_id` and `participant_uuid`.
+One required 21-item Misokinesia Assessment Questionnaire (MkAQ) response per participant. Always submitted after the video loop (post-video only). All MkAQ rows remain session-scoped through both `session_id` and `participant_uuid`.
 
 | Column                      | Type        | Constraints   | Notes |
 |-----------------------------|-------------|---------------|-------|
@@ -660,7 +662,6 @@ One required 21-item Misokinesia Assessment Questionnaire (MkAQ) response per pa
 | misokinesia_participant_id  | UUID        | FK, NOT NULL, UNIQUE | → misokinesia_participants.misokinesia_participant_id |
 | session_id                  | UUID        | FK, NOT NULL  | → sessions.session_id |
 | participant_uuid            | UUID        | FK, NOT NULL  | → participants.participant_uuid |
-| administration              | VARCHAR     | NOT NULL      | `"pre"` or `"post"` copied from `misokinesia_participants.mkaq_administration` |
 | q1                          | SMALLINT    | NOT NULL      | MkAQ item 1, 0–3 |
 | q2                          | SMALLINT    | NOT NULL      | MkAQ item 2, 0–3 |
 | q3                          | SMALLINT    | NOT NULL      | MkAQ item 3, 0–3 |
@@ -687,11 +688,78 @@ One required 21-item Misokinesia Assessment Questionnaire (MkAQ) response per pa
 
 Constraints/indexes:
 - UNIQUE (`misokinesia_participant_id`) — one MkAQ response per participant
-- CHECK (`administration IN ('pre', 'post')`)
 - CHECK (`q1` through `q21` are each between 0 and 3)
 - CHECK (`total_score` between 0 and 63)
 - Index (`misokinesia_mkaq_responses(session_id)`)
 - Index (`misokinesia_mkaq_responses(participant_uuid)`)
+
+### Planned Table: `misokinesia_gad7_responses`
+
+One GAD-7 (Generalized Anxiety Disorder-7) response per miso participant. Isolated from the weather-wellness `survey_gad7` table. Always submitted after the video loop as part of the randomised post-video survey block.
+
+| Column                      | Type        | Constraints   | Notes |
+|-----------------------------|-------------|---------------|-------|
+| response_id                 | UUID        | PK            | Generated server-side |
+| misokinesia_participant_id  | UUID        | FK, NOT NULL, UNIQUE | → misokinesia_participants.misokinesia_participant_id |
+| session_id                  | UUID        | FK, NOT NULL  | → sessions.session_id |
+| participant_uuid            | UUID        | FK, NOT NULL  | → participants.participant_uuid |
+| r1                          | SMALLINT    | NOT NULL      | GAD-7 item 1, 1–4 (1=Never, 4=Often) |
+| r2                          | SMALLINT    | NOT NULL      | GAD-7 item 2, 1–4 |
+| r3                          | SMALLINT    | NOT NULL      | GAD-7 item 3, 1–4 |
+| r4                          | SMALLINT    | NOT NULL      | GAD-7 item 4, 1–4 |
+| r5                          | SMALLINT    | NOT NULL      | GAD-7 item 5, 1–4 |
+| r6                          | SMALLINT    | NOT NULL      | GAD-7 item 6, 1–4 |
+| r7                          | SMALLINT    | NOT NULL      | GAD-7 item 7, 1–4 |
+| total_score                 | SMALLINT    | NOT NULL      | Server-computed; raw values converted to 0–3 scale then summed; range 0–21 |
+| severity_band               | VARCHAR     | NOT NULL      | `"minimal"` (0–4), `"mild"` (5–9), `"moderate"` (10–14), `"severe"` (15–21) |
+| created_at                  | TIMESTAMPTZ | DEFAULT NOW() | |
+
+Constraints/indexes:
+- UNIQUE (`misokinesia_participant_id`) — one GAD-7 response per participant
+- CHECK (`r1` through `r7` are each between 1 and 4)
+- Index (`misokinesia_gad7_responses(session_id)`)
+- Index (`misokinesia_gad7_responses(participant_uuid)`)
+
+### Planned Table: `misokinesia_maq_responses`
+
+One Misophonia Assessment Questionnaire (MAQ) response per miso participant. 21-item scale using original "sound issues" wording (source: `reference/labs/Misokinesia/MAQ.pdf` page 1, by Marsha Johnson, revised by Tom Dozier). Always submitted after the video loop as part of the randomised post-video survey block.
+
+| Column                      | Type        | Constraints   | Notes |
+|-----------------------------|-------------|---------------|-------|
+| response_id                 | UUID        | PK            | Generated server-side |
+| misokinesia_participant_id  | UUID        | FK, NOT NULL, UNIQUE | → misokinesia_participants.misokinesia_participant_id |
+| session_id                  | UUID        | FK, NOT NULL  | → sessions.session_id |
+| participant_uuid            | UUID        | FK, NOT NULL  | → participants.participant_uuid |
+| q1                          | SMALLINT    | NOT NULL      | MAQ item 1, 0–3 |
+| q2                          | SMALLINT    | NOT NULL      | MAQ item 2, 0–3 |
+| q3                          | SMALLINT    | NOT NULL      | MAQ item 3, 0–3 |
+| q4                          | SMALLINT    | NOT NULL      | MAQ item 4, 0–3 |
+| q5                          | SMALLINT    | NOT NULL      | MAQ item 5, 0–3 |
+| q6                          | SMALLINT    | NOT NULL      | MAQ item 6, 0–3 |
+| q7                          | SMALLINT    | NOT NULL      | MAQ item 7, 0–3 |
+| q8                          | SMALLINT    | NOT NULL      | MAQ item 8, 0–3 |
+| q9                          | SMALLINT    | NOT NULL      | MAQ item 9, 0–3 |
+| q10                         | SMALLINT    | NOT NULL      | MAQ item 10, 0–3 |
+| q11                         | SMALLINT    | NOT NULL      | MAQ item 11, 0–3 |
+| q12                         | SMALLINT    | NOT NULL      | MAQ item 12, 0–3 |
+| q13                         | SMALLINT    | NOT NULL      | MAQ item 13, 0–3 |
+| q14                         | SMALLINT    | NOT NULL      | MAQ item 14, 0–3 |
+| q15                         | SMALLINT    | NOT NULL      | MAQ item 15, 0–3 |
+| q16                         | SMALLINT    | NOT NULL      | MAQ item 16, 0–3 |
+| q17                         | SMALLINT    | NOT NULL      | MAQ item 17, 0–3 |
+| q18                         | SMALLINT    | NOT NULL      | MAQ item 18, 0–3 |
+| q19                         | SMALLINT    | NOT NULL      | MAQ item 19, 0–3 |
+| q20                         | SMALLINT    | NOT NULL      | MAQ item 20, 0–3 |
+| q21                         | SMALLINT    | NOT NULL      | MAQ item 21, 0–3 |
+| total_score                 | SMALLINT    | NOT NULL      | Server-computed direct sum of `q1`–`q21`, range 0–63 |
+| created_at                  | TIMESTAMPTZ | DEFAULT NOW() | |
+
+Constraints/indexes:
+- UNIQUE (`misokinesia_participant_id`) — one MAQ response per participant
+- CHECK (`q1` through `q21` are each between 0 and 3)
+- CHECK (`total_score` between 0 and 63)
+- Index (`misokinesia_maq_responses(session_id)`)
+- Index (`misokinesia_maq_responses(participant_uuid)`)
 
 ---
 
@@ -721,6 +789,7 @@ Constraints/indexes:
 | 2026-04-20 | T145 | Add `misokinesia_participants.mkaq_administration` column and `misokinesia_mkaq_responses` table |
 | 2026-05-12 | T150 | Add `ra_invitations` table for app-owned RA invitation state |
 | 2026-05-13 | T153 follow-up | Fix active pending invite uniqueness so expired pending rows do not block a fresh invite |
+| pending    | T168 | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables |
 
 As of 2026-05-13, migration `20260513_000001` is the current invite-management
 head revision.

@@ -32,9 +32,9 @@
 - Canonical trial-mode behavior (fake ID format, consent rules, and module boundaries) is documented in `docs/TRIAL_MODE.md`.
 - In trial mode, frontend uses fake ids and local simulated submit success transitions.
 - WW trial mode is frontend-only and must not call `/sessions/start`, survey submit endpoints, or `/digitspan/runs`.
-- Misokinesia trial mode may call read-only clip-manifest endpoints, but must not call `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, or `/misokinesia/participants/{id}/end-of-task`.
+- Misokinesia trial mode may call read-only clip-manifest endpoints, but must not call `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, `/misokinesia/participants/{id}/gad7`, `/misokinesia/participants/{id}/maq`, or `/misokinesia/participants/{id}/end-of-task`.
 - The `Trial Run` watermark is shown on WW participant pages only and must be excluded from `/misokinesia/[id]` even when `TRIAL_RUN_MODE` is active.
-- Misokinesia trial mode uses a shortened local MkAQ rehearsal set (`q1`-`q10`) and locally randomizes `"pre"`/`"post"` placement; this does not change production MkAQ storage or scoring contracts.
+- Two misokinesia trial modes exist: **Short Trial** (5 clips, MkAQ/MAQ q1–q10 only) and **Full Trial** (all clips, all items). Both present all three post-video surveys in a locally generated randomised order. Neither writes any rows. This does not change production storage or scoring contracts.
 - Trial mode must not create or update database rows.
 
 ---
@@ -95,6 +95,8 @@
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
+| POST   | /misokinesia/participants/{participant_id}/gad7 | None | planned (T169) | |
+| POST   | /misokinesia/participants/{participant_id}/maq | None | planned (T169) | |
 | PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
 
 ---
@@ -1072,7 +1074,7 @@
     "misokinesia_participant_id": "uuid",
     "misokinesia_participant_number": "integer",
     "session_id": "uuid",
-    "mkaq_administration": "pre",
+    "post_survey_order": "mkaq,gad7,maq",
     "clips": [
       {
         "stimulus_id": "uuid",
@@ -1086,7 +1088,7 @@
 - **Notes:**
   - Atomically creates an anonymous `participants` row (no demographics), an `active` session, and a `misokinesia_participants` row.
   - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
-  - Assigns `mkaq_administration` randomly as `"pre"` or `"post"`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can place the required MkAQ form.
+  - Assigns a random permutation of `["mkaq", "gad7", "maq"]` as `post_survey_order`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can present the three post-video surveys in the assigned order.
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
   - `clips` contains all 29 active stimuli for the test set, but the response order is randomized per participant session.
   - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
@@ -1096,12 +1098,14 @@
 
 ### GET /misokinesia/trial-manifest
 - **Auth:** RA required
-- **Status:** implemented (T143)
+- **Status:** implemented (T143); `?full=true` param planned (T168)
 - **Routing inventory note (T143):** This endpoint should also appear in the routing inventory in `docs/ARCHITECTURE.md`. Known gap as of 2026-04-21: that inventory does not yet list `/misokinesia/trial-manifest`.
+- **Query params:** `full` (boolean, optional, default `false`) — when `true`, returns all active stimuli instead of a 5-clip sample
 - **Request body:** none
 - **Response (HTTP 200):** `MisokinesiaTrialManifestResponse`
   ```json
   {
+    "post_survey_order": "gad7,maq,mkaq",
     "clips": [
       {
         "stimulus_id": "uuid",
@@ -1113,13 +1117,14 @@
   }
   ```
 - **Notes:**
-  - Read-only rehearsal endpoint for "Run Test Trial"; it must not create or update rows.
+  - Read-only rehearsal endpoint for both trial modes; it must not create or update rows.
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
-  - Samples exactly 5 active stimuli from the active test set each time the endpoint is called.
-  - Sampling is randomized by `stimulus_id` membership/order so each click of "Run Test Trial" can produce a different subset and order.
+  - Without `?full=true`: samples exactly 5 active stimuli in a randomized order (short trial).
+  - With `?full=true`: returns all active stimuli in a randomized order — same count and ordering logic as production `POST /misokinesia/start` but without any DB writes (full trial).
+  - Returns a randomly generated `post_survey_order` (not persisted) so either trial mode can drive the three post-video surveys in a randomised sequence.
   - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
-  - The frontend combines these read-only clips with fake trial ids and still performs local simulated response/end-of-task completion.
-  - If fewer than 5 active stimuli exist, return a clear non-2xx error rather than silently shortening the trial.
+  - The frontend combines these read-only clips with fake trial ids and performs local-only simulated completions.
+  - If fewer than 5 active stimuli exist (short trial only), return a clear non-2xx error rather than silently shortening the trial.
   - Unauthenticated requests return 401.
 
 ### POST /misokinesia/participants/{participant_id}/responses
@@ -1150,7 +1155,6 @@
   - Returns 404 if `participant_id` not found.
   - Returns 409 if a response for this `(participant_id, stimulus_id)` pair already exists (UNIQUE constraint violation).
   - Returns 409 if all stimuli are already answered (`completed_at` is set).
-  - Returns 409 for participants assigned `mkaq_administration="pre"` until their MkAQ response exists (T146).
   - Returns 422 if `stimulus_id` does not belong to the participant's assigned test set.
   - Returns 422 if any `qN` value is outside 1–5.
   - After the final response, `misokinesia_participants.completed_at` is set server-side automatically.
@@ -1195,7 +1199,6 @@
     "response_id": "uuid",
     "misokinesia_participant_id": "uuid",
     "session_id": "uuid",
-    "administration": "post",
     "total_score": "integer (0-63)",
     "created_at": "datetime"
   }
@@ -1203,12 +1206,10 @@
 - **Notes:**
   - No auth required.
   - Returns 404 if `participant_id` not found.
-  - Returns 409 if `misokinesia_participants.mkaq_administration` is null (legacy participant with no assignment).
-  - Returns 409 for participants assigned `mkaq_administration="post"` until all per-clip responses are submitted (`completed_at` set).
+  - Returns 409 until all per-clip responses are submitted (`completed_at` set) — MkAQ is always post-video.
   - Returns 409 if this participant already has an MkAQ response.
   - Returns 500 for unexpected non-duplicate DB integrity failures during persistence.
   - Returns 422 if any `qN` value is outside 0-3 or if any item is missing.
-  - `administration` is copied from `misokinesia_participants.mkaq_administration`; the client does not submit or choose it.
   - `total_score` is computed server-side as the direct sum of `q1` through `q21`.
   - Production MkAQ UI pane grouping is frontend-only; the endpoint still receives one complete `q1` through `q21` payload.
   - Trial mode bypasses this endpoint and performs local-only progression with the shortened `q1` through `q10` rehearsal set.
@@ -1244,9 +1245,76 @@
   - No auth required.
   - Returns 404 if `participant_id` not found.
   - Returns 409 if `misokinesia_participants.completed_at` is null (not all per-clip responses submitted yet).
-  - Returns 409 for participants assigned `mkaq_administration="post"` until their MkAQ response exists (T146).
+  - Returns 409 until all three post-video surveys are submitted: MkAQ, GAD-7, and MAQ rows must all exist.
   - After success, frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'`.
   - Trial mode bypasses this endpoint and performs no backend writes.
+
+---
+
+### POST /misokinesia/participants/{participant_id}/gad7
+- **Auth:** None (participant-facing)
+- **Status:** planned (T169)
+- **Request body:** `MisoGAD7Create`
+  ```json
+  {
+    "r1": "integer (1–4)",
+    "r2": "integer (1–4)",
+    "r3": "integer (1–4)",
+    "r4": "integer (1–4)",
+    "r5": "integer (1–4)",
+    "r6": "integer (1–4)",
+    "r7": "integer (1–4)"
+  }
+  ```
+- **Response (HTTP 201):** `MisoGAD7Response`
+  ```json
+  {
+    "response_id": "uuid",
+    "total_score": "integer (0-21)",
+    "severity_band": "string"
+  }
+  ```
+- **Notes:**
+  - No auth required.
+  - Writes to `misokinesia_gad7_responses` (isolated from weather-wellness `survey_gad7`).
+  - Returns 404 if `participant_id` not found.
+  - Returns 409 until `completed_at` is set (clips must be finished before any post-video survey).
+  - Returns 409 if this participant already has a GAD-7 response.
+  - Returns 422 if any `rN` value is outside 1–4.
+  - Scoring reuses `backend/app/scoring/gad7.py::score_gad7()`: converts 1–4 → 0–3 per item, sums to `total_score` (0–21), assigns `severity_band` (`"minimal"` 0–4, `"mild"` 5–9, `"moderate"` 10–14, `"severe"` 15–21).
+  - Trial mode bypasses this endpoint and performs local-only progression.
+
+---
+
+### POST /misokinesia/participants/{participant_id}/maq
+- **Auth:** None (participant-facing)
+- **Status:** planned (T169)
+- **Request body:** `MisoMAQCreate`
+  ```json
+  {
+    "q1": "integer (0-3)",
+    "q2": "integer (0-3)",
+    "...": "...",
+    "q21": "integer (0-3)"
+  }
+  ```
+- **Response (HTTP 201):** `MisoMAQResponse`
+  ```json
+  {
+    "response_id": "uuid",
+    "total_score": "integer (0-63)"
+  }
+  ```
+- **Notes:**
+  - No auth required.
+  - Writes to `misokinesia_maq_responses`.
+  - Returns 404 if `participant_id` not found.
+  - Returns 409 until `completed_at` is set (clips must be finished before any post-video survey).
+  - Returns 409 if this participant already has a MAQ response.
+  - Returns 422 if any `qN` value is outside 0–3 or if any item is missing.
+  - `total_score` is computed server-side as the direct sum of `q1` through `q21` (range 0–63).
+  - Production MAQ UI pane grouping (q1–q7, q8–q14, q15–q21) is frontend-only; one complete payload is submitted.
+  - Trial mode bypasses this endpoint and performs local-only progression with the shortened `q1` through `q10` rehearsal set.
 
 ---
 

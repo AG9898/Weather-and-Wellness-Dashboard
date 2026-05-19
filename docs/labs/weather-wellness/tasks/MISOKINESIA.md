@@ -6,47 +6,65 @@
 
 ## Purpose
 
-The Misokinesia module presents a participant with 29 short video clips (each approximately 15 seconds, longest 33 seconds) in a randomized per-session order. After each clip the participant answers a 4-question per-clip questionnaire. Each participant is also randomly assigned to complete the 21-item Misokinesia Assessment Questionnaire (MkAQ) either before the clips or after the final clip response. After all clip and MkAQ requirements are complete, the participant answers the existing end-of-task questionnaire. All results are stored anonymously — no demographics are collected — linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
+The Misokinesia module presents a participant with 29 short video clips (each approximately 15 seconds, longest 33 seconds) in a randomized per-session order. After each clip the participant answers a 4-question per-clip questionnaire. After the final clip response, the participant completes three post-video surveys in a server-assigned randomised order: the 21-item Misokinesia Assessment Questionnaire (MkAQ), the 7-item GAD-7 anxiety scale, and the 21-item Misophonia Assessment Questionnaire (MAQ). After all clip and post-video survey requirements are complete, the participant answers the end-of-task questionnaire. All results are stored anonymously — no demographics are collected — linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
 
 ---
 
 ## Participant Flow
 
 1. RA navigates to `/misokinesia` via the floating dock and clicks "Start Misokinesia Session".
-2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns `mkaq_administration` as either `"pre"` or `"post"`, then returns the full clip manifest (all 29 URLs) plus the MkAQ assignment.
+2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns a `post_survey_order` permutation of `["mkaq", "gad7", "maq"]`, then returns the full clip manifest (all 29 URLs) plus the survey order.
 3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required).
 4. Participant sees intro screen and clicks to begin.
-5. If assigned `"pre"`, participant completes the required 21-item MkAQ before the first clip, using the MkAQ card carousel described below.
-6. For each of 29 clips (session-randomized playback order):
+5. For each of 29 clips (session-randomized playback order):
    - Video clip plays.
    - Per-clip questionnaire (4 questions) is shown after the clip.
    - Frontend submits `POST /misokinesia/participants/{id}/responses`.
    - When `is_complete: true` is returned (29th submission), backend has set `completed_at` server-side.
-7. If assigned `"post"`, participant completes the required 21-item MkAQ after the final clip response and before the end-of-task questionnaire, using the same MkAQ card carousel.
-8. Frontend transitions to the end-of-task questionnaire (not directly to completion).
-9. Participant completes the end-of-task form; frontend submits `PATCH /misokinesia/participants/{id}/end-of-task`.
-10. Frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'` (reuses existing endpoint, same pattern as digitspan).
-11. Completion screen shown; RA clicks "Back to Misokinesia" to return to `/misokinesia`.
+6. Participant completes the three post-video surveys in the order given by `post_survey_order`:
+   - **MkAQ** — 21-item card carousel; `POST /misokinesia/participants/{id}/mkaq`
+   - **GAD-7** — 7-item radio form; `POST /misokinesia/participants/{id}/gad7`
+   - **MAQ** — 21-item card carousel; `POST /misokinesia/participants/{id}/maq`
+7. Frontend transitions to the end-of-task questionnaire (not directly to completion).
+8. Participant completes the end-of-task form; frontend submits `PATCH /misokinesia/participants/{id}/end-of-task`.
+9. Frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'` (reuses existing endpoint, same pattern as digitspan).
+10. Completion screen shown; RA clicks "Back to Misokinesia" to return to `/misokinesia`.
 
-State machine: `intro → mkaq(pre only) → playing → questionnaire → (loop × 29) → mkaq(post only) → end_of_task → complete`
+State machine: `intro → playing → questionnaire → (loop × 29) → [post_survey_order: mkaq/gad7/maq in assigned order] → end_of_task → complete`
 
 ## Trial mode (Run Test Trial)
 
 Misokinesia also supports an RA-invoked no-write rehearsal mode:
 
-- Launch from `/misokinesia` via "Run Test Trial" (instead of "Start Misokinesia Session").
-- Frontend generates fake `misokinesia_participant_id` and `session_id` values, then requests a read-only trial clip manifest.
-- The trial manifest contains a random subset of 5 active videos from the active test set, sampled by `stimulus_id` each time the RA clicks "Run Test Trial".
-- Trial videos use the same public Supabase Storage CDN URL pattern as production clips; video bytes are never served or proxied by FastAPI.
-- Trial mode plays the real sampled videos, then shows the same per-clip questionnaire after each clip.
-- Trial mode locally randomizes the pre/post MkAQ branch on each Run Test Trial launch and stores no MkAQ research rows.
-- Trial mode uses a shortened MkAQ rehearsal set containing source items `q1` through `q10` only.
-- Per-clip questionnaire, MkAQ, and end-of-task submits use local simulated success transitions.
-- No calls are made to `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, or `/misokinesia/participants/{id}/end-of-task`.
-- No rows are written to `participants`, `sessions`, `misokinesia_participants`, `misokinesia_trial_responses`, or `misokinesia_mkaq_responses`.
-- No `"Trial Run"` watermark is shown on the Misokinesia participant task page, including trial mode.
+Two trial modes are available from the `/misokinesia` RA launch page. Both are no-write rehearsals — no rows are created in any table.
 
-Trial state machine: `intro → mkaq(pre only) → playing → questionnaire → (loop × 5 sampled clips) → mkaq(post only) → end_of_task → complete`
+### Short Trial ("Run Short Trial")
+
+- RA clicks **Run Short Trial** on `/misokinesia`.
+- Frontend calls `GET /misokinesia/trial-manifest` (no params); backend returns 5 randomly sampled active clips.
+- Surveys use shortened rehearsal sets: MkAQ `q1`–`q10` only, MAQ `q1`–`q10` only, GAD-7 all 7 items.
+- Per-clip questionnaire, all survey, and end-of-task submits are local-only simulated transitions.
+
+Short trial state machine: `intro → playing → questionnaire → (loop × 5 sampled clips) → [post_survey_order: mkaq/gad7/maq shortened] → end_of_task → complete`
+
+### Full Trial ("Run Full Trial")
+
+- RA clicks **Run Full Trial** on `/misokinesia`.
+- Frontend calls `GET /misokinesia/trial-manifest?full=true`; backend returns all active clips in a randomized order (same count and randomization as production, but no rows written).
+- Surveys use full item sets: MkAQ `q1`–`q21`, GAD-7 `q1`–`q7`, MAQ `q1`–`q21`.
+- Per-clip questionnaire, all survey, and end-of-task submits are local-only simulated transitions.
+- Designed to let the RA rehearse the complete production experience end-to-end.
+
+Full trial state machine: `intro → playing → questionnaire → (loop × 29 clips) → [post_survey_order: mkaq/gad7/maq full] → end_of_task → complete`
+
+### Shared trial constraints (both modes)
+
+- Frontend generates fake `misokinesia_participant_id` and `session_id` values.
+- Trial videos use the same public Supabase Storage CDN URL pattern as production clips.
+- A locally generated `post_survey_order` permutation drives the post-video survey sequence.
+- No calls are made to `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, `/misokinesia/participants/{id}/gad7`, `/misokinesia/participants/{id}/maq`, or `/misokinesia/participants/{id}/end-of-task`.
+- No rows are written to `participants`, `sessions`, `misokinesia_participants`, `misokinesia_trial_responses`, `misokinesia_mkaq_responses`, `misokinesia_gad7_responses`, or `misokinesia_maq_responses`.
+- No `"Trial Run"` watermark is shown on the Misokinesia participant task page in either trial mode.
 
 ## RA Flow
 
@@ -62,9 +80,11 @@ Four core tables were added by migration `20260317_000001`. The planned MkAQ add
 |---|---|---|
 | `misokinesia_test_sets` | Reusable stimulus configuration / study version | `test_set_id` (UUID PK), `name`, `version`, `active` |
 | `misokinesia_stimuli` | Clip metadata; no video bytes in DB | `stimulus_id` (UUID PK), `test_set_id` (FK), `storage_path`, `sort_order`, `duration_ms`, `active` |
-| `misokinesia_participants` | One row per participant task execution; holds progress state, randomized MkAQ timing, and end-of-task responses | `misokinesia_participant_id` (UUID PK), `session_id` (FK), `participant_uuid` (FK), `test_set_id` (FK), `misokinesia_participant_number` (SERIAL), `mkaq_administration` (`"pre"`/`"post"`), `completed_at` (nullable), end-of-task columns |
+| `misokinesia_participants` | One row per participant task execution; holds progress state, randomized post-video survey order, and end-of-task responses | `misokinesia_participant_id` (UUID PK), `session_id` (FK), `participant_uuid` (FK), `test_set_id` (FK), `misokinesia_participant_number` (SERIAL), `post_survey_order` (VARCHAR, e.g. `"mkaq,gad7,maq"`), `completed_at` (nullable), end-of-task columns |
 | `misokinesia_trial_responses` | One row per clip per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `stimulus_id` (FK), `display_order`, `q1`–`q4` (SMALLINT), UNIQUE (`misokinesia_participant_id`, `stimulus_id`) |
-| `misokinesia_mkaq_responses` | One required MkAQ response per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `administration`, `q1`–`q21` (SMALLINT 0–3), `total_score` (0–63), UNIQUE (`misokinesia_participant_id`) |
+| `misokinesia_mkaq_responses` | One MkAQ response per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `q1`–`q21` (SMALLINT 0–3), `total_score` (0–63), UNIQUE (`misokinesia_participant_id`) |
+| `misokinesia_gad7_responses` | One GAD-7 response per participant (miso-isolated table) | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `r1`–`r7` (SMALLINT 1–4), `total_score` (0–21), `severity_band`, UNIQUE (`misokinesia_participant_id`) |
+| `misokinesia_maq_responses` | One MAQ response per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `q1`–`q21` (SMALLINT 0–3), `total_score` (0–63), UNIQUE (`misokinesia_participant_id`) |
 
 See `docs/SCHEMA.md` — "Phase 4 Additions — Misokinesia Module" for the full column list.
 
@@ -76,11 +96,13 @@ Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.p
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full 29-clip manifest in a randomized playback order |
-| `GET` | `/misokinesia/trial-manifest` | RA required | Read-only rehearsal endpoint; returns 5 randomly sampled active clip URLs without creating participant, session, or response rows |
+| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full 29-clip manifest in a randomized playback order plus `post_survey_order` |
+| `GET` | `/misokinesia/trial-manifest` | RA required | Read-only rehearsal endpoint; returns 5 randomly sampled active clip URLs and a locally generated `post_survey_order` without creating any rows |
 | `POST` | `/misokinesia/participants/{participant_id}/responses` | None (participant-facing) | Submits one per-clip questionnaire; sets `completed_at` server-side on final submission; returns `is_complete` flag |
 | `POST` | `/misokinesia/participants/{participant_id}/mkaq` | None (participant-facing) | Submits the required 21-item MkAQ once; server computes and stores `total_score` |
-| `PATCH` | `/misokinesia/participants/{participant_id}/end-of-task` | None (participant-facing) | Writes the 4 end-of-task fields to `misokinesia_participants`; returns 409 if `completed_at` is null |
+| `POST` | `/misokinesia/participants/{participant_id}/gad7` | None (participant-facing) | Submits the 7-item GAD-7 once; server computes `total_score` and `severity_band` |
+| `POST` | `/misokinesia/participants/{participant_id}/maq` | None (participant-facing) | Submits the 21-item MAQ once; server computes and stores `total_score` |
+| `PATCH` | `/misokinesia/participants/{participant_id}/end-of-task` | None (participant-facing) | Writes the 4 end-of-task fields to `misokinesia_participants`; requires all three post-video surveys to be submitted first |
 
 See `docs/labs/weather-wellness/API.md` — "Misokinesia" section for full request/response schemas and error codes.
 
@@ -99,9 +121,15 @@ See `docs/labs/weather-wellness/API.md` — "Misokinesia" section for full reque
 
 ---
 
+## Post-Video Surveys
+
+Three surveys are administered after the video loop, in the randomised order given by `post_survey_order` from the session manifest. The frontend drives the sequence; all three must be submitted before `PATCH .../end-of-task` is accepted.
+
+---
+
 ## Misokinesia Assessment Questionnaire (MkAQ)
 
-Required 21-item questionnaire shown once per production participant. `POST /misokinesia/start` randomly assigns whether the participant receives it before the first clip (`"pre"`) or after the final per-clip response (`"post"`). The assignment is stored on `misokinesia_participants.mkaq_administration`, and the submitted response repeats the same `administration` value for analysis.
+Required 21-item questionnaire shown once per production participant, always after the video loop as part of the randomised post-video survey block.
 
 Response scale: `0 = Not at all`, `1 = A little of the time`, `2 = A good deal of the time`, `3 = Almost all the time`. All 21 items are required. FastAPI computes `total_score` as the sum of `q1`–`q21` (range 0–63); the frontend must not compute or persist the score.
 
@@ -146,9 +174,68 @@ The MkAQ items come from `reference/labs/Misokinesia/41598_2021_96430_MOESM1_ESM
 
 ---
 
+## GAD-7 (Generalized Anxiety Disorder-7)
+
+Required 7-item questionnaire shown once per production participant as part of the randomised post-video survey block. Uses the same items and scale as the weather-wellness GAD-7, but results are stored in the miso-isolated `misokinesia_gad7_responses` table.
+
+Response scale: `1 = Never`, `2 = Rarely`, `3 = Sometimes`, `4 = Often`. All 7 items are required. FastAPI computes `total_score` (0–21, converted 1–4 → 0–3 per item) and `severity_band`; the frontend must not compute scores.
+
+Rendered using the shared `SurveyForm` component — not a card carousel.
+
+| Column | Question |
+|---|---|
+| `r1` | I am feeling nervous, anxious, or on edge. |
+| `r2` | I am not able to stop or control worrying. |
+| `r3` | I am worrying too much about different things. |
+| `r4` | I am having trouble relaxing. |
+| `r5` | I am feeling so restless that it is hard to sit still. |
+| `r6` | I am feeling easily annoyed or irritable. |
+| `r7` | I am feeling afraid, as if something awful might happen. |
+
+---
+
+## Misophonia Assessment Questionnaire (MAQ)
+
+Required 21-item questionnaire shown once per production participant as part of the randomised post-video survey block. Source: `reference/labs/Misokinesia/MAQ.pdf` page 1 (Marsha Johnson, revised by Tom Dozier, 2013). Original "sound issues" wording is preserved — this is a distinct instrument from the MkAQ.
+
+Response scale: `0 = Not at all`, `1 = A little of the time`, `2 = A good deal of the time`, `3 = Almost all the time`. All 21 items are required. FastAPI computes `total_score` as the sum of `q1`–`q21` (range 0–63); the frontend must not compute or persist the score.
+
+### MAQ UI Layout
+
+Same card carousel pattern as MkAQ:
+- Production panes: `q1`–`q7`, `q8`–`q14`, `q15`–`q21`.
+- Trial Run panes: `q1`–`q5`, `q6`–`q10`.
+- Trial Run submit is local-only and does not call the production MAQ endpoint.
+
+| Column | Question |
+|---|---|
+| `q1` | My sound issues currently make me unhappy. |
+| `q2` | My sound issues currently create problems for me. |
+| `q3` | My sound issues have recently made me feel angry. |
+| `q4` | I feel that no one understands my problems with certain sounds. |
+| `q5` | My sound issues do not seem to have a known cause. |
+| `q6` | My sound issues currently make me feel helpless. |
+| `q7` | My sound issues currently interfere with my social life. |
+| `q8` | My sound issues currently make me feel isolated. |
+| `q9` | My sound issues have recently created problems for me in groups. |
+| `q10` | My sound issues negatively affect my work/school life (currently or recently). |
+| `q11` | My sound issues currently make me feel frustrated. |
+| `q12` | My sound issues currently impact my entire life negatively. |
+| `q13` | My sound issues have recently made me feel guilty. |
+| `q14` | My sound issues are classified as 'crazy'. |
+| `q15` | I feel that no one can help me with my sound issues. |
+| `q16` | My sound issues currently make me feel hopeless. |
+| `q17` | I feel that my sound issues will only get worse with time. |
+| `q18` | My sound issues currently impact my family relationships. |
+| `q19` | My sound issues have recently affected my ability to be with other people. |
+| `q20` | My sound issues have not been recognized as legitimate. |
+| `q21` | I am worried that my whole life will be affected by sound issues. |
+
+---
+
 ## End-of-task Questionnaire
 
-Three items shown once after all 29 per-clip questionnaires and the required MkAQ are complete, before the completion screen. Stored as columns on `misokinesia_participants`.
+Three items shown once after all 29 per-clip questionnaires and all three post-video surveys are complete, before the completion screen. Stored as columns on `misokinesia_participants`.
 
 | Column | Type | Question / Notes |
 |---|---|---|
@@ -157,7 +244,7 @@ Three items shown once after all 29 per-clip questionnaires and the required MkA
 | `stronger_responses` | BOOLEAN | "Did viewing the videos create stronger responses over time?" — No (false) / Yes (true), optional |
 | `stronger_responses_timing` | VARCHAR | If `stronger_responses` is true: one of `"Immediately"`, `"After 5 seconds"`, `"After 10 seconds"`, `"At the end of the video"`; otherwise null. Setting this when `stronger_responses` is false returns 422. |
 
-All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `completed_at` is null (per-clip responses not yet finished).
+All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `completed_at` is null (clips not yet finished) or if any of the three post-video surveys (MkAQ, GAD-7, MAQ) have not been submitted.
 
 ---
 
@@ -166,8 +253,8 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 - **Videos served from Supabase Storage public CDN.** Bucket: `misokinesia-stimuli`. URL format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`. No signing, no expiry. Never proxied through FastAPI.
 - **Manifest-first pattern.** All 29 clip URLs are returned in a single `POST /misokinesia/start` response in the randomized order used for that participant. The frontend plays clips directly from those URLs; no per-clip backend round-trip for media.
 - **Trial manifest is read-only.** `GET /misokinesia/trial-manifest` returns only clip metadata and public CDN URLs for 5 randomly sampled active stimuli. It must not create or mutate `participants`, `sessions`, `misokinesia_participants`, or response rows.
-- **MkAQ timing is randomized and persisted.** Production starts assign `mkaq_administration` server-side as `"pre"` or `"post"` and return it in the manifest so the frontend can place the required MkAQ form in the participant flow.
-- **MkAQ total score is server-computed.** Store raw `q1`–`q21` responses plus FastAPI's direct-sum `total_score`; do not compute MkAQ scoring on the client.
+- **Post-video survey order is randomized and persisted.** Production starts assign a random permutation of `["mkaq", "gad7", "maq"]` as `post_survey_order` server-side, persist it on `misokinesia_participants`, and return it in the manifest so the frontend drives all three post-video surveys in the correct sequence.
+- **Survey scores are server-computed.** MkAQ and MAQ: direct sum of raw items; GAD-7: items converted 1–4 → 0–3 then summed. The frontend must not compute or persist scores for any survey.
 - **`completed_at` set server-side.** On each `POST /responses` call the backend counts submitted responses for the participant; when all stimuli are answered it sets `misokinesia_participants.completed_at` automatically and returns `is_complete: true`.
 - **Independent participant numbering.** `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence and starts from 1, independent of `participants.participant_number`.
 - **Stimuli seeded via seed script.** No admin upload endpoint exists yet; stimulus rows are inserted manually or via a seed script.
