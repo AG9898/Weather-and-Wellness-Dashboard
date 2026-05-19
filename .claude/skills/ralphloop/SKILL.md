@@ -1,346 +1,88 @@
 ---
 name: ralphloop
-description: Use this skill to run an autonomous ralph loop — repeatedly spawns fresh claude CLI sub-processes to execute a skill or prompt, commits successful results, and stops at a defined threshold. Invoke as: /ralphloop <skill-or-prompt> <threshold>. Examples: "/ralphloop start-task iterations:5", "/ralphloop start-task tasks:3", "/ralphloop \"audit the repo for stale docs\" iterations:2".
-version: 2.0.0
+description: Monitor-only delegated loop that runs one worker per cycle against a skill/prompt and stops at `iterations:N` or `tasks:N` threshold.
+version: 1.0.0
 ---
 
-# Ralph Loop — Autonomous Iteration Monitor
+# Ralph Loop
 
-You are now the **monitoring agent**. Your only roles are: loop orchestration, quality gating, and version control. You never do implementation work yourself.
+This skill is for explicit delegated loop requests only.
 
-Each iteration you fire a completely fresh `claude -p` subprocess via the Bash tool. That process runs the task, exits, and is gone. You read only the compact `RALPH-SUMMARY` block from its stdout. This keeps your context window clean across many iterations.
+The current agent is the monitor/orchestrator. It does not implement tasks directly.
 
----
+## Invocation
 
-## Parameter extraction
+`/ralphloop <skill-or-prompt> <threshold>`
 
-From the user's invocation, extract:
+Examples:
 
-- **`TASK`** — first argument: a skill name (e.g. `start-task`) or a quoted free-form prompt string (e.g. `"analyze repo for dead code"`)
-- **`THRESHOLD`** — second argument, one of:
-  - `iterations:N` — stop after N successful pushed cycles
-  - `tasks:N` — stop after N tasks transition to `done` in `docs/workboard.json`
+- `/ralphloop start-task iterations:3`
+- `/ralphloop start-task tasks:2`
+- `/ralphloop "audit docs links" iterations:1`
 
-If either is missing or malformed, print:
-```
-ERROR: Usage is /ralphloop <skill-or-prompt> <threshold>
-  Examples:
-    /ralphloop start-task iterations:5
-    /ralphloop start-task tasks:3
-    /ralphloop "my custom prompt" iterations:2
-```
-Then stop.
+## Inputs
 
----
+- `TASK`: skill name or quoted prompt
+- `THRESHOLD`: `iterations:N` or `tasks:N`
 
-## Phase 0 — Initialize
+If malformed, print usage and stop.
 
-Track these values in your working context throughout the loop:
-- `ITER = 0` — successful cycles completed
-- `BASELINE_DONE` — done-task count at loop start (for `tasks:N` threshold only)
+## Setup
 
-**Step 1.** If THRESHOLD is `tasks:N`, record the baseline done count:
+Track:
+
+- `ITER = 0`
+- `BASELINE_DONE` when threshold is `tasks:N`:
+
 ```bash
 jq '[.tasks[] | select(.status == "done")] | length' docs/workboard.json
 ```
-Store the integer result as `BASELINE_DONE`.
 
-**Step 2.** If TASK is a skill name (single token, no spaces), locate its SKILL.md. Run:
-```bash
-SKILL_NAME="<TASK>"
-SKILL_FILE="$(pwd)/.claude/skills/$SKILL_NAME/SKILL.md"
-[ -f "$SKILL_FILE" ] || SKILL_FILE="$HOME/.claude/skills/$SKILL_NAME/SKILL.md"
-[ -f "$SKILL_FILE" ] || SKILL_FILE="$(pwd)/.codex/skills/$SKILL_NAME/SKILL.md"
-[ -f "$SKILL_FILE" ] && echo "FOUND: $SKILL_FILE" || echo "NOT FOUND"
-```
-If not found, print an error and stop. Store the confirmed path as `SKILL_FILE`.
+If `TASK` is a skill name, ensure skill file exists in configured local skill directories.
 
-**Step 3.** Print the loop header:
-```
-╔══════════════════════════════════════════════════════════╗
-║  RALPH LOOP STARTED                                      ║
-╠══════════════════════════════════════════════════════════╣
-║  Task:      <TASK>                                       ║
-║  Threshold: <THRESHOLD>                                  ║
-╚══════════════════════════════════════════════════════════╝
-```
+## Per-Cycle Contract
 
----
+1. Check threshold before launching next worker.
+2. Launch one fresh worker agent/subprocess per cycle.
+3. Worker performs at most one bounded cycle and must finish with a strict summary trailer:
 
-## Phase 1 — Threshold check
-
-Before every cycle, verify the stop condition is not yet met:
-
-- `iterations:N` → if `ITER >= N`, jump to Phase 4
-- `tasks:N` → run:
-  ```bash
-  jq '[.tasks[] | select(.status == "done")] | length' docs/workboard.json
-  ```
-  If `(result − BASELINE_DONE) >= N`, jump to Phase 4
-
-If threshold not met, proceed to Phase 2.
-
----
-
-## Phase 2 — Build and fire the sub-agent
-
-This is the core of the ralph loop. You will write a prompt to a temp file, then launch a fresh `claude` process. When it exits, it is completely gone — that is the point.
-
-### Step 2a — Write the prompt file
-
-**Case A — TASK is a skill name:**
-
-Build the prompt file in two parts using bash:
-```bash
-PROMPT_FILE=$(mktemp /tmp/ralph_prompt_XXXXXX.txt)
-{
-  echo "You are an autonomous implementation agent. The following are your full skill instructions — follow every phase exactly."
-  echo ""
-  echo "If the cycle succeeds, create exactly one local git commit before you stop. Do NOT run \`git push\`; the monitoring agent owns pushing."
-  echo "Do NOT add Claude, Anthropic, or any AI assistant as a co-author, co-committer, co-contributor, or trailer in the commit message."
-  echo ""
-  echo "=== SKILL INSTRUCTIONS ==="
-  cat "$SKILL_FILE"
-  echo "=== END SKILL INSTRUCTIONS ==="
-  echo ""
-  cat << 'SUFFIX'
-CRITICAL: After finishing all phases (regardless of outcome), output a RALPH-SUMMARY block as the absolute last thing in your response. The monitoring agent parses only this block — nothing else you write is read.
-
+```text
 RALPH-SUMMARY-START
 STATUS: SUCCESS|FAILURE|BLOCKED
-TASK_ID: <workboard task id, or n/a>
-TASK_TITLE: <task title or brief one-line description>
-TESTS: PASS|FAIL|SKIP (<command run and its result>)
-FILES_CHANGED: <comma-separated list of changed files, max 5>
-COMMIT_MSG: <one-line commit message, 72 chars max>
-COMMIT_SHA: <local commit sha if STATUS=SUCCESS; else n/a>
-FAILURE_REASON: <explain if STATUS=FAILURE; else write none>
+TASK_ID: <task id or n/a>
+TASK_TITLE: <task title or one-line summary>
+DOCS: UPDATED|N/A|MISSING (<brief detail>)
+TESTS: PASS|FAIL|SKIP (<brief detail>)
+FILES_CHANGED: <comma-separated paths, max 5>
+COMMIT_MSG: <one-line commit message, max 72 chars>
+PUSHED: YES|NO (<sha or reason>)
+FAILURE_REASON: <reason or none>
 RALPH-SUMMARY-END
-
-STATUS definitions:
-- SUCCESS: task fully complete, all tests pass, exactly one local commit was created
-- FAILURE: tests fail, build broken, or hit an unresolvable blocker
-- BLOCKED: no tasks are currently startable (all blocked or no todo tasks remain)
-SUFFIX
-} > "$PROMPT_FILE"
-echo "$PROMPT_FILE"
 ```
 
-**Case B — TASK is a free-form prompt string:**
+4. Parse summary block only. If missing, treat as `FAILURE`.
 
-```bash
-PROMPT_FILE=$(mktemp /tmp/ralph_prompt_XXXXXX.txt)
-cat > "$PROMPT_FILE" << 'PROMPTEOF'
-If the cycle succeeds, create exactly one local git commit before you stop. Do NOT run `git push`; the monitoring agent owns pushing.
-Do NOT add Claude, Anthropic, or any AI assistant as a co-author, co-committer, co-contributor, or trailer in the commit message.
+## Publish Policy
 
-<INSERT THE FREE-FORM PROMPT STRING HERE>
+- Default: monitor does not commit/push.
+- If user explicitly requested publishing for this run, worker may commit/push only on `SUCCESS` after docs+tests gates pass.
 
-CRITICAL: After finishing (regardless of outcome), output a RALPH-SUMMARY block as the absolute last thing in your response.
+## Success Handling
 
-RALPH-SUMMARY-START
-STATUS: SUCCESS|FAILURE|BLOCKED
-TASK_ID: n/a
-TASK_TITLE: <brief one-line description of what was done>
-TESTS: PASS|FAIL|SKIP (<detail>)
-FILES_CHANGED: <comma-separated list of changed files, max 5>
-COMMIT_MSG: <one-line commit message, 72 chars max>
-COMMIT_SHA: <local commit sha if STATUS=SUCCESS; else n/a>
-FAILURE_REASON: <explain if STATUS=FAILURE; else write none>
-RALPH-SUMMARY-END
+- Increment `ITER`.
+- If threshold is `tasks:N`, re-check done count and compute delta from baseline.
+- For `start-task` style loops, if `SUCCESS` is reported but done count did not increase, treat as `BLOCKED` and stop.
 
-STATUS definitions:
-- SUCCESS: work complete and correct
-- FAILURE: unable to complete the task
-- BLOCKED: nothing to do
-PROMPTEOF
-echo "$PROMPT_FILE"
-```
+## Failure/Blocked Handling
 
-### Step 2b — Launch the sub-agent process
-
-```bash
-CYCLE_BASE_HEAD=$(git rev-parse HEAD)
-RESULT_FILE=$(mktemp /tmp/ralph_result_XXXXXX.json)
-claude -p "$(cat "$PROMPT_FILE")" \
-  --dangerously-skip-permissions \
-  --allowedTools "Bash,Read,Edit,Write,Glob,Grep" \
-  --max-turns 50 \
-  --output-format json \
-  > "$RESULT_FILE" 2>/tmp/ralph_stderr_$$.txt
-echo "Exit code: $?"
-```
-
-Wait for the command to complete. The process will exit on its own.
-
-### Step 2c — Extract the RALPH-SUMMARY
-
-```bash
-# Extract text output
-AGENT_TEXT=$(jq -r '.result // empty' "$RESULT_FILE")
-
-# Extract just the RALPH-SUMMARY block content
-SUMMARY=$(echo "$AGENT_TEXT" | awk '/RALPH-SUMMARY-START/{f=1; next} /RALPH-SUMMARY-END/{f=0} f{print}')
-
-# Parse each field
-STATUS=$(echo "$SUMMARY" | grep '^STATUS:' | awk '{print $2}' | tr -d '[:space:]')
-TASK_ID=$(echo "$SUMMARY" | grep '^TASK_ID:' | cut -d' ' -f2- | xargs)
-TASK_TITLE=$(echo "$SUMMARY" | grep '^TASK_TITLE:' | cut -d' ' -f2- | xargs)
-TESTS=$(echo "$SUMMARY" | grep '^TESTS:' | cut -d' ' -f2- | xargs)
-COMMIT_MSG=$(echo "$SUMMARY" | grep '^COMMIT_MSG:' | cut -d' ' -f2- | xargs)
-COMMIT_SHA=$(echo "$SUMMARY" | grep '^COMMIT_SHA:' | cut -d' ' -f2- | xargs)
-FAILURE_REASON=$(echo "$SUMMARY" | grep '^FAILURE_REASON:' | cut -d' ' -f2- | xargs)
-
-echo "STATUS=$STATUS"
-echo "TASK_ID=$TASK_ID"
-echo "TASK_TITLE=$TASK_TITLE"
-
-# Cleanup
-rm -f "$PROMPT_FILE" "$RESULT_FILE" /tmp/ralph_stderr_$$.txt
-```
-
-If `STATUS` is empty (RALPH-SUMMARY block not found), treat as `FAILURE` with `FAILURE_REASON="Sub-agent did not produce a RALPH-SUMMARY block"`.
-
----
-
-## Phase 3 — Evaluate and act
-
-Branch on the value of `STATUS`:
-
----
-
-### Branch: SUCCESS
-
-1. Increment `ITER` (note the new value for display).
-
-2. If THRESHOLD is `tasks:N`, re-query done count and compute `TASKS_COMPLETED`:
-   ```bash
-   jq '[.tasks[] | select(.status == "done")] | length' docs/workboard.json
-   ```
-   **Infinite-loop guard:** if `TASKS_COMPLETED` did not increase since the last cycle, treat as BLOCKED and jump to Phase 4.
-
-3. Verify the sub-agent created exactly one local commit:
-   ```bash
-   git rev-parse --verify "$COMMIT_SHA^{commit}"
-   test "$(git rev-list --count "$CYCLE_BASE_HEAD..$COMMIT_SHA")" = "1"
-   test "$(git rev-parse HEAD)" = "$COMMIT_SHA"
-   git log -1 --format=%B "$COMMIT_SHA"
-   ```
-   Confirm the commit exists and its message does not include Claude, Anthropic, AI assistant, co-author, co-committer, co-contributor, or similar attribution trailers. If the commit is missing or the message violates this rule, treat as FAILURE and stop.
-
-4. Push:
-   ```bash
-   git push origin HEAD
-   ```
-   If this fails, treat as FAILURE: write the failure report (see below) with the push error as `FAILURE_REASON`, then stop.
-
-5. Print cycle result:
-   ```
-   ✓ Cycle <ITER> — <TASK_TITLE>
-     Tests: <TESTS>
-     Pushed: <COMMIT_MSG>
-   ```
-
-6. Return to Phase 1.
-
----
-
-### Branch: FAILURE
-
-1. Do not commit or push.
-
-2. Discard all uncommitted changes:
-   ```bash
-   git checkout -- .
-   git clean -fd
-   ```
-
-3. Write the failure report using the Write tool — create `docs/ralph-loop-failure.md`:
-   ```markdown
-   # Ralph Loop Failure Report
-
-   - **Timestamp:** <current UTC time>
-   - **Cycle:** <ITER + 1>
-   - **Task ID:** <TASK_ID>
-   - **Task Title:** <TASK_TITLE>
-   - **Tests:** <TESTS>
-   - **Failure reason:** <FAILURE_REASON>
-   ```
-
-4. Print:
-   ```
-   ✗ Cycle <ITER+1> FAILED — <FAILURE_REASON>
-     Loop halted. Failure report: docs/ralph-loop-failure.md
-   ```
-
-5. **Stop. Do not continue the loop.**
-
----
-
-### Branch: BLOCKED
-
-No tasks were available. Stop gracefully.
-
-Print:
-```
-⊘ Cycle <ITER+1> — BLOCKED (no startable tasks)
-  Stopping early — workboard has no todo tasks or all are blocked.
-```
-
-Jump to Phase 4.
-
----
-
-## Phase 4 — Loop complete
-
-Print the final summary box. Use the threshold-reached variant if threshold was met, or the stopped-early variant otherwise.
-
-**Threshold reached:**
-```
-╔══════════════════════════════════════════════════════════╗
-║  RALPH LOOP COMPLETE                                     ║
-╠══════════════════════════════════════════════════════════╣
-║  Cycles completed:  <ITER>                               ║
-║  Tasks completed:   <TASKS_COMPLETED>                    ║
-║  Threshold:         <THRESHOLD> — REACHED                ║
-║  All changes committed and pushed to origin.             ║
-╚══════════════════════════════════════════════════════════╝
-```
-
-**Stopped by FAILURE:**
-```
-╔══════════════════════════════════════════════════════════╗
-║  RALPH LOOP HALTED                                       ║
-╠══════════════════════════════════════════════════════════╣
-║  Cycles completed:  <ITER>                               ║
-║  Tasks completed:   <TASKS_COMPLETED>                    ║
-║  Stopped by:        FAILURE on cycle <ITER+1>            ║
-║  See: docs/ralph-loop-failure.md                         ║
-╚══════════════════════════════════════════════════════════╝
-```
-
-**Stopped by BLOCKED:**
-```
-╔══════════════════════════════════════════════════════════╗
-║  RALPH LOOP HALTED                                       ║
-╠══════════════════════════════════════════════════════════╣
-║  Cycles completed:  <ITER>                               ║
-║  Tasks completed:   <TASKS_COMPLETED>                    ║
-║  Stopped by:        BLOCKED (workboard exhausted)        ║
-╚══════════════════════════════════════════════════════════╝
-```
-
----
+- `FAILURE`: halt loop, report reason and current non-destructive `git status --short`.
+- `BLOCKED`: halt loop gracefully.
+- Optionally write a concise failure note file only if useful in this repo.
 
 ## Guardrails
 
-- **You are the monitor. Never implement.** If you find yourself writing code or editing source files, stop — you are out of role.
-- **Never commit if STATUS == FAILURE.** The quality gate is absolute.
-- **Every SUCCESS cycle must already have exactly one local commit from the sub-agent.** The monitor verifies and pushes; it does not create the cycle commit.
-- **Never add Claude as a co-contributor.** Commit messages must not contain Claude, Anthropic, AI assistant, co-author, co-committer, co-contributor, or similar attribution trailers.
-- **Never read sub-agent output beyond the RALPH-SUMMARY block.** Parsing full sub-agent transcripts will exhaust your context over many iterations. Extract only the summary fields.
-- **Never touch workboard.json yourself.** Sub-agents own all workboard mutations. You only query done-task counts for threshold tracking.
-- **Never run extra cycles past threshold.** Hard stop when reached.
-- **One `git push` per cycle.** Never batch.
-- **Temp files are ephemeral.** Always `rm -f` prompt and result temp files after each cycle to avoid accumulation.
-- **If `claude` binary is not found**, check that `~/.cargo/bin` or the install path is in `$PATH`, print an error, and stop.
+- Monitor never does implementation work.
+- Never auto-discard changes with destructive git commands.
+- Never continue past reached threshold.
+- Never treat `SUCCESS` as valid when docs/tests/publish gates fail for a publish-required run.
+

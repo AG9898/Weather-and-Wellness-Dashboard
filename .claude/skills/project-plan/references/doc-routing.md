@@ -1,35 +1,27 @@
 # Doc Routing
 
-Open only the docs implied by the proposal.
+Open only the docs implied by the proposal. The specific docs available in this project are discovered by reading `{{INSTRUCTION_FILE}}` or the project's docs index.
 
-## Routing
+## General Heuristics
 
-- Product scope, capability, or success criteria: `docs/PRD.md`
-- Runtime ownership, subsystem boundaries, auth/data flow, deployment: `docs/ARCHITECTURE.md`
-- Engineering guardrails, coding patterns, and constraints: `docs/CONVENTIONS.md`
-- Existing decisions, tradeoffs, or open architectural questions: `docs/DECISIONS.md`
-- Environment variables and configuration behavior: `docs/ENV_VARS.md`
-- Test strategy and required verification depth: `docs/TESTING.md`
-- UI direction, layout, visual language, component patterns: `docs/styleguide.md`
-- shadcn component usage and CLI patterns: `docs/shadcn.md`
-- Storybook-driven isolated UI review: `docs/storybook.md`
-- Multi-lab data model and lab isolation rules: `docs/MULTI_LAB.md`
-- Database schema, table definitions, and Alembic conventions: `docs/SCHEMA.md`
-- 2026 UI redesign direction and scope context: `docs/UI_REDESIGN_2026.md`
-- Docs map and where canonical sources live: `docs/INDEX.md`
-- Active task queue and task metadata: `docs/workboard.json` (only when task planning or edits are requested)
-
-## Selection Heuristics
-
-- Start with the narrowest likely docs.
+- Read `{{INSTRUCTION_FILE}}` first to find which canonical docs exist for this project.
+- Start with the narrowest likely docs for the proposal type.
 - Expand only when the proposal crosses subsystem boundaries.
-- For mixed proposals, read one doc per concern instead of preloading everything.
+- Do not preload unrelated docs.
 
-Common combinations:
+## Common Proposal-to-Doc Mappings
 
-- New product feature: `docs/PRD.md` + `docs/ARCHITECTURE.md` + `docs/CONVENTIONS.md`
-- Data or migration change: `docs/SCHEMA.md` + `docs/ARCHITECTURE.md` + `docs/DECISIONS.md`
-- Auth/session or env behavior change: `docs/ARCHITECTURE.md` + `docs/ENV_VARS.md` + `docs/DECISIONS.md`
-- Multi-lab or isolation concern: `docs/MULTI_LAB.md` + `docs/ARCHITECTURE.md` + `docs/DECISIONS.md`
-- UI redesign/component behavior: `docs/styleguide.md` + `docs/shadcn.md` + `docs/storybook.md`
-- Work planning and sequencing: targeted `docs/workboard.json` queries
+| Proposal type | Likely doc categories |
+|---|---|
+| New product feature | Product requirements, architecture, conventions |
+| Data model or migration change | Architecture, decisions, schema docs |
+| Auth, session, or env behavior | Architecture, environment config, decisions |
+| UI redesign or component behavior | Style guide, component library, animation guide |
+| Work planning and sequencing | Workboard usage contract, workboard schema, targeted workboard data |
+| Engineering guardrails or patterns | Conventions, testing strategy |
+
+## Selection Rules
+
+- Read one doc per concern rather than preloading everything.
+- For mixed proposals, identify the primary concern first, then expand as needed.
+- Load `docs/workboard.json` only when the user explicitly requests task planning or board edits.
