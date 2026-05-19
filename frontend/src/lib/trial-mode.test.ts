@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildMkaqPanes, MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
+import { buildMaqPanes, MAQ_ITEMS } from "@/lib/components/MisokinesiaMAQForm";
 
 import {
   TRIAL_MKAQ_ITEM_COUNT,
@@ -315,6 +316,54 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
 
   it("routes mkaq completion to end_of_task", () => {
     expect(getPhaseAfterMkaqComplete()).toBe("end_of_task");
+  });
+});
+
+describe("MAQ post-video survey carousel (T174)", () => {
+  it("exports all 21 MAQ items with sound issues wording", () => {
+    expect(MAQ_ITEMS).toHaveLength(21);
+    expect(MAQ_ITEMS[0]).toMatchObject({
+      id: "q1",
+      text: "My sound issues currently make me unhappy.",
+    });
+    expect(MAQ_ITEMS[3]).toMatchObject({
+      id: "q4",
+      text: "I feel that no one understands my problems with certain sounds.",
+    });
+    expect(MAQ_ITEMS[20]).toMatchObject({
+      id: "q21",
+      text: "I am worried that my whole life will be affected by sound issues.",
+    });
+  });
+
+  it("groups production MAQ items into q1-q7, q8-q14, and q15-q21 panes", () => {
+    const panes = buildMaqPanes(MAQ_ITEMS);
+
+    expect(panes).toHaveLength(3);
+    expect(panes.map((pane) => pane.map((item) => item.id))).toEqual([
+      ["q1", "q2", "q3", "q4", "q5", "q6", "q7"],
+      ["q8", "q9", "q10", "q11", "q12", "q13", "q14"],
+      ["q15", "q16", "q17", "q18", "q19", "q20", "q21"],
+    ]);
+  });
+
+  it("groups trial MAQ items into q1-q5 and q6-q10 panes", () => {
+    const panes = buildMaqPanes(MAQ_ITEMS, 10);
+
+    expect(panes).toHaveLength(2);
+    expect(panes.map((pane) => pane.map((item) => item.id))).toEqual([
+      ["q1", "q2", "q3", "q4", "q5"],
+      ["q6", "q7", "q8", "q9", "q10"],
+    ]);
+  });
+
+  it("MisokinesiaMAQForm keeps API work outside the component", () => {
+    const source = readFrontendFile("src/lib/components/MisokinesiaMAQForm.tsx");
+
+    expect(source).not.toMatch(/\bfetch\s*\(/);
+    expect(source).toContain("onSubmit({ ...answers })");
+    expect(source).toContain("disabled={!currentPaneComplete || submitting}");
+    expect(source).toContain("disabled={!allAnswered || submitting}");
   });
 });
 

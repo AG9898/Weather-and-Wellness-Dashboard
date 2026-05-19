@@ -2364,7 +2364,7 @@
       "id": "T174",
       "group_id": "MISO_SURVEYS",
       "title": "Miso post-video surveys - MisokinesiaMAQForm component",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Create frontend/src/lib/components/MisokinesiaMAQForm.tsx. Model it on MisokinesiaMkaqForm.tsx \u2014 same card carousel pattern, same 0-3 scale, same Previous/Next/Submit pane navigation logic. Props: onSubmit(answers: Record<string, number>): void; submitting: boolean; error: string | null; itemCount?: number (default 21, trial short uses 10). Production panes: q1-q7, q8-q14, q15-q21. Trial panes (itemCount=10): q1-q5, q6-q10. Use 'sound issues' wording from the 21 MAQ items listed in docs/labs/weather-wellness/tasks/MISOKINESIA.md. Export MAQ_ITEMS constant (array of {id, text}) for use in tests and trial mode. No participant page wiring in this task.",
       "acceptance_criteria": [
