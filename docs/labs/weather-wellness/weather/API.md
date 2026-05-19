@@ -107,7 +107,7 @@
 > Shipped operational dashboard reads still use the weather router primitive
 > documented under `GET /weather/daily`.
 > Statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
-> in `docs/labs/weather-wellness/ANALYTICS.md`.
+> in `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 
 ### GET /dashboard/study-window
 - **Auth:** RA required
@@ -135,7 +135,7 @@
 - **Status:** implemented (T88)
 - **Classification:** internal-only backend primitive
 - **Current same-origin caller:** `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from&date_to`
-- **Canonical spec:** `docs/labs/weather-wellness/ANALYTICS.md`
+- **Canonical spec:** `docs/labs/weather-wellness/weather/ANALYTICS.md`
 - **Purpose:** Return model-based dashboard KPIs computed from the backend DB rather than hard-coded statistical outputs.
 - **Query parameters:**
 
@@ -611,7 +611,7 @@
 
 ## Weather
 
-> Canonical feature spec: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
+> Canonical feature spec: `docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`
 
 ### POST /weather/ingest/ubc-eos
 - **Auth:** LabMember JWT **or** GitHub Actions shared secret
@@ -1016,7 +1016,7 @@
   - `study_days` rows are get-or-created as needed (same pattern as live ingest).
   - Idempotent: calling twice returns `days_inserted=0, days_enhanced=0, days_skipped=N`.
   - Max date range: 400 days. `start_date > end_date` returns 422.
-  - See `docs/HISTORICAL_WEATHER_BACKFILL.md` for full spec.
+  - See `docs/labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md` for full spec.
 
 ---
 

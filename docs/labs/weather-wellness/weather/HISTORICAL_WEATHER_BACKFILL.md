@@ -9,7 +9,7 @@
 > Related docs:
 > - API contract: `docs/labs/weather-wellness/weather/API.md` (Weather section — `POST /weather/backfill/historical`)
 > - Schema: `docs/SCHEMA.md` (`weather_daily.sunshine_duration_hours`)
-> - UBC EOS live ingest: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
+> - UBC EOS live ingest: `docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`
 
 ---
 

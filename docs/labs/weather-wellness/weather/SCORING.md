@@ -10,11 +10,11 @@
 
 | Instrument              | Full specification       | Key scoring notes                                          |
 |-------------------------|--------------------------|------------------------------------------------------------|
-| Backwards Digit Span    | [docs/labs/weather-wellness/tasks/DIGITSPAN.md](tasks/DIGITSPAN.md)   | Server-side: total_correct + max_span                     |
-| ULS-8 (Loneliness)      | [docs/labs/weather-wellness/surveys/ULS8.md](surveys/ULS8.md)         | Reverse items 3 & 6; mean → 0-100 transform              |
-| CES-D 10 (Depression)   | [docs/labs/weather-wellness/surveys/CESD10.md](surveys/CESD10.md)     | Raw 1-4, convert to 0-3; reverse items 5 & 8; sum 0-30   |
-| GAD-7 (Anxiety)         | [docs/labs/weather-wellness/surveys/GAD7.md](surveys/GAD7.md)         | Raw 1-4, convert to 0-3; sum 0-21; severity band          |
-| CogFunc 8a (PROMIS)     | [docs/labs/weather-wellness/surveys/COGFUNC8A.md](surveys/COGFUNC8A.md)   | Raw 1-5, reverse (6-raw) for computed scores; sum + mean  |
+| Backwards Digit Span    | [docs/labs/weather-wellness/weather/DIGITSPAN.md](./DIGITSPAN.md)   | Server-side: total_correct + max_span                     |
+| ULS-8 (Loneliness)      | [docs/labs/weather-wellness/weather/ULS8.md](./ULS8.md)         | Reverse items 3 & 6; mean → 0-100 transform              |
+| CES-D 10 (Depression)   | [docs/labs/weather-wellness/weather/CESD10.md](./CESD10.md)     | Raw 1-4, convert to 0-3; reverse items 5 & 8; sum 0-30   |
+| GAD-7 (Anxiety)         | [docs/labs/weather-wellness/weather/GAD7.md](./GAD7.md)         | Raw 1-4, convert to 0-3; sum 0-21; severity band          |
+| CogFunc 8a (PROMIS)     | [docs/labs/weather-wellness/weather/COGFUNC8A.md](./COGFUNC8A.md)   | Raw 1-5, reverse (6-raw) for computed scores; sum + mean  |
 
 ---
 

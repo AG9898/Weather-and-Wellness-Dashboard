@@ -2493,7 +2493,7 @@
       "id": "T177",
       "group_id": "DOC_RESTRUCTURE_WW",
       "title": "Doc restructure - repair internal relative links",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "summary": "Fix all relative links within the moved and split docs so no link is broken after T176.",
