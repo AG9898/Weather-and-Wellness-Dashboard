@@ -57,15 +57,19 @@ FILES_CHANGED: <comma-separated paths, max 5>
 COMMIT_MSG: <one-line commit message, max 72 chars>
 PUSHED: YES|NO (<sha or reason>)
 FAILURE_REASON: <reason or none>
+WORK_DONE: <brief summary of completed work before stop, or none>
+PRESERVED_CHANGES: YES|NO (<brief worktree state or reason>)
 RALPH-SUMMARY-END
 ```
 
-4. Parse summary block only. If missing, treat as `FAILURE`.
+4. On `FAILURE` or `BLOCKED`, the worker must stop without reverting, discarding, or cleaning up edits. It must use `WORK_DONE` to summarize what changed or what investigation was completed before termination.
+5. Parse summary block only. If missing, treat as `FAILURE`.
 
 ## Publish Policy
 
-- Default: monitor does not commit/push.
-- If user explicitly requested publishing for this run, worker may commit/push only on `SUCCESS` after docs+tests gates pass.
+- Monitor policy: the monitor/orchestrator never creates commits and never pushes.
+- Worker commit policy: workers create local commits when the delegated skill requires commits (for example, `start-task`) and checks pass.
+- Worker push policy: workers never push unless the user explicitly requested publishing for this run; when publishing is requested, push only on `SUCCESS` after docs+tests gates pass.
 
 ## Success Handling
 
@@ -75,14 +79,15 @@ RALPH-SUMMARY-END
 
 ## Failure/Blocked Handling
 
-- `FAILURE`: halt loop, report reason and current non-destructive `git status --short`.
-- `BLOCKED`: halt loop gracefully.
-- Optionally write a concise failure note file only if useful in this repo.
+- `FAILURE`: halt loop, report `FAILURE_REASON`, `WORK_DONE`, `FILES_CHANGED`, `PRESERVED_CHANGES`, and current non-destructive `git status --short`.
+- `BLOCKED`: halt loop gracefully, report the blocker, any completed investigation/work, and current non-destructive `git status --short`.
+- Do not revert, reset, clean, stash, or discard partial worker edits. Leave the worktree intact so the developer can decide whether to continue, keep, commit, or drop the edits.
+- Optionally write a concise failure note file only if useful in this repo, but never use that note as a substitute for the summary trailer.
 
 ## Guardrails
 
 - Monitor never does implementation work.
 - Never auto-discard changes with destructive git commands.
+- Never ask a worker to revert or discard partial edits after `FAILURE` or `BLOCKED`; preserve state for developer review.
 - Never continue past reached threshold.
 - Never treat `SUCCESS` as valid when docs/tests/publish gates fail for a publish-required run.
-

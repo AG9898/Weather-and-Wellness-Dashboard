@@ -21,7 +21,8 @@ Use this skill to complete exactly one task from `docs/workboard.json`.
 9. Add minimum extra validation needed for changed surface if commands are absent/incomplete.
 10. Update authoritative docs affected by behavior changes.
 11. Mark task `done` only after verification passes.
-12. Summarize: task, files changed, validations, docs updated, next startable tasks.
+12. Commit the completed task after all verification passes and the board is updated.
+13. Summarize: task, commit, files changed, validations, docs updated, next startable tasks.
 
 ## Startability Query
 
@@ -63,4 +64,11 @@ jq '
 - Do not bypass dependency checks.
 - Do not invent deprecated board fields from older repo variants.
 - Do not mark `done` before checks pass.
+- Do not push; stop after creating the local commit.
 
+## Commit Phase
+
+- Create one local git commit for the completed task after verification passes and `docs/workboard.json` is updated.
+- Include only the selected task's related code, docs, tests, and targeted board status changes.
+- Do not push the branch or publish the commit.
+- Never add Claude, Codex, or any AI model as a co-author or contributor in commit messages (no `Co-Authored-By: Claude`, `Co-Authored-By: Codex`, or similar trailers).
