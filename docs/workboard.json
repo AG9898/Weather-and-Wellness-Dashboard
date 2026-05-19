@@ -2060,17 +2060,18 @@
     {
       "id": "T164",
       "group_id": "INFRA",
-      "title": "[MANUAL] Auth user migration - recreate RA users on new Supabase project",
-      "status": "todo",
+      "title": "[MANUAL] Auth migration bootstrap - admin account and new-env invite tooling",
+      "status": "done",
       "priority": "high",
       "type": "manual",
-      "summary": "Human-supervised: recreate all RA and admin users on the new Supabase project with correct role and lab metadata, coordinating with the lab team on re-onboarding.",
-      "description": "This task requires human decisions and lab team coordination. Supabase auth.users records cannot be cleanly moved between projects via pg_dump. The project owner must: (1) list all active RA/admin users from the old project (Supabase Dashboard \u2192 Authentication \u2192 Users); (2) decide whether to use the app-owned invite flow (backend/admin_cli/invite_user.py) to re-invite each user, or use the Supabase management API to recreate accounts directly; (3) for each user, confirm the correct role (admin/ra) and lab_name from app_metadata in the old project; (4) recreate each user on the new project with matching app_metadata; (5) notify each user that they will receive a new invite link or need to reset their password. The ra_invitations table data is covered by T163 (pg_dump) but the auth.users entries are separate.",
+      "summary": "Bootstrap the new Supabase Auth project for migration by promoting the owner admin account and preparing the app-owned invite CLI to write/send through the Railway + ca-central-1 stack.",
+      "description": "Supabase auth.users records cannot be cleanly moved between projects via pg_dump. This task now covers the pre-cutover bootstrap only: create/promote the project owner account in the new Supabase Auth project with unrestricted admin metadata, verify the retained T162 smoke-test RA user remains available for smoke checks, and update the app-owned invite CLI so local invite batches can deliberately load Railway backend env and write to the new ca-central-1 ra_invitations table. Sending production RA invites is deferred to T166 after the production frontend is switched to the new backend/Supabase stack.",
       "acceptance_criteria": [
-        "All active RA and admin users exist on the new Supabase project with correct app_metadata (role + lab_name)",
-        "Each user can log in to the preview stack and reach /dashboard",
-        "Project owner has confirmed the user list and notified the lab team",
-        "No user is silently dropped or has incorrect role/lab metadata"
+        "Project owner auth user exists in the new Supabase project with app_metadata.role=admin and unrestricted app_metadata.lab_name=\"\"",
+        "Invite CLI supports loading Railway backend env via --use-railway-env so local invite batches target the new Supabase database and Resend config",
+        "Railway backend env has DATABASE_URL and SUPABASE_URL pointing at the new ubcpsych Supabase project plus a present RESEND_API_KEY and ADMIN_EMAIL_FROM=team@ubcpsych.com",
+        "Targeted invite CLI tests pass",
+        "Full RA invite sending and lab-team re-onboarding are explicitly handed off to T166 after production frontend cutover"
       ],
       "depends_on": [
         "T163"
@@ -2084,15 +2085,15 @@
         "docs/ENV_VARS.md"
       ],
       "notes": [
-        "MANUAL TASK \u2014 requires human decision on re-invite vs management API approach, and direct lab team coordination.",
-        "The app-owned invite flow (invite_user.py) is the safest path: it writes ra_invitations, sends a custom email, and sets app_metadata correctly.",
-        "If using the invite flow, users will receive a new invite email to /set-password \u2014 communicate this to the lab team in advance.",
-        "Verify app_metadata.role and app_metadata.lab_name for every user after migration \u2014 wrong metadata silently breaks dashboard access and lab isolation.",
-        "Do not hard-delete users from the old project until T166 (production cutover) is complete.",
-        "The retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`) already exists in the new project with `app_metadata.role=ra` and `app_metadata.lab_name=ww`; keep or remove it deliberately during auth migration. Local-only credentials live in `.supabase-migration-secrets/t162-smoke-user.txt`."
+        "Completed 2026-05-18: promoted `aden219898@gmail.com` in the new Supabase Auth project to `app_metadata.role=admin` with unrestricted `app_metadata.lab_name=\"\"`; user id `5f77f0a4-6cbb-4544-b249-35809e48dff7`.",
+        "Completed 2026-05-18: `backend/admin_cli/invite_user.py` supports `--use-railway-env`, which reads the linked Railway `backend` production env before creating/sending app-owned invites.",
+        "Railway env check showed `DATABASE_URL` and `SUPABASE_URL` point to new project ref `gqtsjkqugvhmidzdghsr`; `RESEND_API_KEY` is present; `ADMIN_EMAIL_FROM=team@ubcpsych.com`; `SITE_URL=https://ubcpsych.com`.",
+        "Do not send the remaining RA production invites until T166 switches the production frontend to the new Supabase/Railway stack; after cutover, run the invite CLI with `--use-railway-env` and `--created-by-lab-member-id 5f77f0a4-6cbb-4544-b249-35809e48dff7`.",
+        "The retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`) already exists in the new project with `app_metadata.role=ra` and `app_metadata.lab_name=ww`; keep or remove it deliberately during T166/T167. Local-only credentials live in `.supabase-migration-secrets/t162-smoke-user.txt`."
       ],
       "commands": [
-        "python backend/admin_cli/invite_user.py --email <user> --role <role> --lab-name <lab> --site-url https://ubcpsych.com"
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_admin_invite_cli.py",
+        "cd backend && PYTHONPATH=. .venv/bin/python admin_cli/invite_user.py --use-railway-env --email <user> --role <role> --lab-name <lab> --site-url https://ubcpsych.com --created-by-lab-member-id 5f77f0a4-6cbb-4544-b249-35809e48dff7"
       ],
       "estimate": "M"
     },
@@ -2140,13 +2141,16 @@
       "priority": "high",
       "type": "manual",
       "summary": "Human-approved: switch Vercel production environment variables from Render/old-Supabase to Railway/new-Supabase, redeploy, and verify the live site is healthy.",
-      "description": "This is the go/no-go cutover step and requires explicit project owner approval. Prerequisites T163 (data migrated), T164 (auth users migrated), and T165 (storage migrated) must all be complete and verified. Once approved: (1) update NEXT_PUBLIC_API_URL in Vercel Production env to the Railway service URL; (2) update NEXT_PUBLIC_SUPABASE_URL in Vercel Production env to the new ca-central-1 project URL; (3) update NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel Production env to the new project anon key; (4) also update WEATHER_INGEST_BASE_URL in GitHub Actions secrets to the Railway URL; (5) trigger a Vercel production redeployment; (6) verify the live site at https://ubcpsych.com is healthy (login works, dashboard loads, /health on Railway returns 200). If any check fails, revert the Vercel env vars to the old values immediately.",
+      "description": "This is the go/no-go cutover step and requires explicit project owner approval. Prerequisites T163 (data migrated), T164 (auth bootstrap/new-env invite tooling complete), and T165 (storage migrated) must all be complete and verified. Once approved: (1) update NEXT_PUBLIC_API_URL in Vercel Production env to the Railway service URL; (2) update NEXT_PUBLIC_SUPABASE_URL in Vercel Production env to the new ca-central-1 project URL; (3) update NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel Production env to the new project anon key; (4) also update WEATHER_INGEST_BASE_URL in GitHub Actions secrets to the Railway URL; (5) trigger a Vercel production redeployment; (6) verify the live site at https://ubcpsych.com is healthy (login works for the migrated owner admin, dashboard loads, /health on Railway returns 200); (7) then send production RA/admin invites through the app-owned invite CLI using --use-railway-env so users onboard against the new stack. If any check fails, revert the Vercel env vars to the old values immediately.",
       "acceptance_criteria": [
         "Project owner has explicitly approved the cutover after reviewing T163/T164/T165 completion",
         "Vercel Production env vars point to Railway and new ca-central-1 Supabase",
         "WEATHER_INGEST_BASE_URL GitHub Actions secret updated to Railway URL",
         "https://ubcpsych.com loads without errors post-redeployment",
-        "RA login succeeds against the new Supabase project on production",
+        "Owner admin login succeeds against the new Supabase project on production and /dashboard is reachable",
+        "Active RA/admin invite list is confirmed from the old project before sending production invites",
+        "Production RA/admin invites are sent through `backend/admin_cli/invite_user.py --use-railway-env` with matching role/lab metadata",
+        "At least one invited RA can accept the invite, set a password, log in, and reach /dashboard on production",
         "GET /health on Railway returns 200 from the live production path",
         "Rollback procedure is documented before cutover begins"
       ],
@@ -2166,6 +2170,7 @@
         "Rollback plan: if the production site is unhealthy after cutover, revert NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY to old values and redeploy. The old Render service must remain live until this task completes.",
         "Update WEATHER_INGEST_BASE_URL in GitHub Actions secrets (repo Settings \u2192 Secrets) to the Railway URL, or the daily weather ingestion job will keep hitting Render.",
         "Do not decommission Render or the old Supabase project until T167 is done.",
+        "T164 handoff: after production env cutover is healthy, send RA/admin invites with `cd backend && PYTHONPATH=. .venv/bin/python admin_cli/invite_user.py --use-railway-env --email <user> --role <role> --lab-name <lab> --site-url https://ubcpsych.com --created-by-lab-member-id 5f77f0a4-6cbb-4544-b249-35809e48dff7`; verify metadata and login before considering auth migration complete.",
         "Before approving production cutover, decide whether to keep, disable, or delete the retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`). Credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`."
       ],
       "commands": [
@@ -2174,7 +2179,8 @@
         "vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production",
         "vercel deploy --prod",
         "curl https://ubcpsych.com",
-        "curl https://<railway-url>/health"
+        "curl https://<railway-url>/health",
+        "cd backend && PYTHONPATH=. .venv/bin/python admin_cli/invite_user.py --use-railway-env --email <user> --role <role> --lab-name <lab> --site-url https://ubcpsych.com --created-by-lab-member-id 5f77f0a4-6cbb-4544-b249-35809e48dff7"
       ],
       "estimate": "S"
     },
