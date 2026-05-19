@@ -6,11 +6,13 @@ export type MisokinesiaLaunchStatsState = "replica" | "empty" | "error";
 
 interface MisokinesiaLaunchPageProps {
   loading?: boolean;
-  trialLoading?: boolean;
+  shortTrialLoading?: boolean;
+  fullTrialLoading?: boolean;
   error?: string | null;
   statsState?: MisokinesiaLaunchStatsState;
   onStart?: () => void;
-  onStartTrial?: () => void;
+  onStartShortTrial?: () => void;
+  onStartFullTrial?: () => void;
 }
 
 const statsCopy: Record<MisokinesiaLaunchStatsState, string> = {
@@ -21,13 +23,15 @@ const statsCopy: Record<MisokinesiaLaunchStatsState, string> = {
 
 export default function MisokinesiaLaunchPage({
   loading = false,
-  trialLoading = false,
+  shortTrialLoading = false,
+  fullTrialLoading = false,
   error = null,
   statsState = "replica",
   onStart,
-  onStartTrial,
+  onStartShortTrial,
+  onStartFullTrial,
 }: MisokinesiaLaunchPageProps) {
-  const disabled = loading || trialLoading;
+  const disabled = loading || shortTrialLoading || fullTrialLoading;
 
   return (
     <PageContainer>
@@ -65,11 +69,21 @@ export default function MisokinesiaLaunchPage({
               size="lg"
               variant="outline"
               disabled={disabled}
-              onClick={onStartTrial}
+              onClick={onStartShortTrial}
               className="rounded-xl px-6 font-semibold"
             >
               <FlaskConical className="mr-2 size-4" />
-              {trialLoading ? "Starting…" : "Run Short Trial"}
+              {shortTrialLoading ? "Starting..." : "Run Short Trial"}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={disabled}
+              onClick={onStartFullTrial}
+              className="rounded-xl px-6 font-semibold"
+            >
+              <FlaskConical className="mr-2 size-4" />
+              {fullTrialLoading ? "Starting..." : "Run Full Trial"}
             </Button>
             <p className="text-left text-xs leading-relaxed text-muted-foreground sm:text-right">
               Test trials use local fake ids and do not write research data.

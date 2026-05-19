@@ -73,10 +73,21 @@ describe("trial-mode launch controls", () => {
     const pageSource = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
     const componentSource = readFrontendFile("src/lib/components/MisokinesiaLaunchPage.tsx");
 
-    expect(pageSource).toContain("createTrialRunState(\"misokinesia\", \"short\")");
-    expect(pageSource).toContain("getMisokinesiaTrialManifest()");
+    expect(pageSource).toContain('startTrial("short")');
+    expect(pageSource).toContain("createTrialRunState(\"misokinesia\", mode)");
+    expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
     expect(componentSource).toContain("Run Short Trial");
-    expect(componentSource).toContain("onStartTrial");
+    expect(componentSource).toContain("onStartShortTrial");
+  });
+
+  it("keeps the Misokinesia Run Full Trial launch control on the launch surface", () => {
+    const pageSource = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
+    const componentSource = readFrontendFile("src/lib/components/MisokinesiaLaunchPage.tsx");
+
+    expect(pageSource).toContain("createTrialRunState(\"misokinesia\", mode)");
+    expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
+    expect(componentSource).toContain("Run Full Trial");
+    expect(componentSource).toContain("onStartFullTrial");
   });
 
   it("keeps Misokinesia playback on the shared video player path", () => {
@@ -291,7 +302,7 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
     );
     expect(source).toContain("TRIAL_MKAQ_ITEM_COUNT");
     expect(source).toContain("MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT)");
-    expect(source).toContain("trialMode ?");
+    expect(source).toContain('trialModeType === "short"');
   });
 
   it("TRIAL_MKAQ_ITEM_COUNT is 10", () => {
@@ -324,7 +335,28 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
 
   it("launch page creates a local short trial survey order", () => {
     const source = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
-    expect(source).toContain("createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, \"short\")");
+    expect(source).toContain("createTrialRunMisokinesiaManifest(");
+    expect(source).toContain("trialManifest.clips");
+    expect(source).toContain("mode");
+  });
+
+  it("trial manifest records whether it was created for short or full mode", () => {
+    const state = createTrialRunState("misokinesia", "full");
+    const manifest = createTrialRunMisokinesiaManifest(
+      state,
+      [
+        {
+          stimulus_id: "11111111-1111-1111-1111-111111111111",
+          public_url:
+            "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/a.mp4",
+          sort_order: 1,
+          duration_ms: 15000,
+        },
+      ],
+      "full"
+    );
+
+    expect(manifest.trial_mode).toBe("full");
   });
 
   it("routes through the randomized post-video survey order", () => {

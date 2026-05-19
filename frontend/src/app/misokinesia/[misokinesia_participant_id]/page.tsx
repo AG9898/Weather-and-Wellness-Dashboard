@@ -9,7 +9,11 @@ import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm"
 import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
 import MisokinesiaGAD7Form from "@/lib/components/MisokinesiaGAD7Form";
 import MisokinesiaMAQForm from "@/lib/components/MisokinesiaMAQForm";
-import { TRIAL_MAQ_ITEM_COUNT, TRIAL_MKAQ_ITEM_COUNT } from "@/lib/trial-mode";
+import {
+  TRIAL_MAQ_ITEM_COUNT,
+  TRIAL_MKAQ_ITEM_COUNT,
+  type MisokinesiaTrialMode,
+} from "@/lib/trial-mode";
 import {
   patchSessionStatus,
   getParticipantErrorMessage,
@@ -56,6 +60,7 @@ export default function MisokinesiaTaskPage() {
 
   const [manifest, setManifest] = useState<MisokinesiaManifest | null>(null);
   const [trialMode, setTrialMode] = useState(false);
+  const [trialModeType, setTrialModeType] = useState<MisokinesiaTrialMode | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -94,6 +99,9 @@ export default function MisokinesiaTaskPage() {
           setManifest(m);
           setSurveyOrder(parseSurveyOrder(m.post_survey_order));
           setTrialMode(Boolean(activeTrial));
+          setTrialModeType(
+            activeTrial ? resolveTrialModeType(m, trialState?.misokinesia_trial_mode) : null
+          );
           setPhase("intro");
           return;
         }
@@ -330,22 +338,25 @@ export default function MisokinesiaTaskPage() {
     }
 
     if (activeSurvey === "maq") {
+      const maqItemCount = trialModeType === "short" ? TRIAL_MAQ_ITEM_COUNT : undefined;
       return (
         <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
           <MisokinesiaMAQForm
             submitting={surveySubmitting === "maq"}
             error={surveyError}
-            itemCount={trialMode ? TRIAL_MAQ_ITEM_COUNT : undefined}
+            itemCount={maqItemCount}
             onSubmit={(answers) => handleSurveyComplete("maq", answers)}
           />
         </div>
       );
     }
 
+    const mkaqItems =
+      trialModeType === "short" ? MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT) : MKAQ_ITEMS;
     return (
       <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
         <MisokinesiaMkaqForm
-          items={trialMode ? MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT) : MKAQ_ITEMS}
+          items={mkaqItems}
           onComplete={(answers) => handleSurveyComplete("mkaq", answers)}
         />
       </div>
@@ -466,6 +477,19 @@ function Screen({ children }: { children: React.ReactNode }) {
       <div className="w-full max-w-md text-center">{children}</div>
     </div>
   );
+}
+
+function resolveTrialModeType(
+  manifest: MisokinesiaManifest,
+  stateMode?: MisokinesiaTrialMode
+): MisokinesiaTrialMode {
+  if (manifest.trial_mode === "full" || manifest.trial_mode === "short") {
+    return manifest.trial_mode;
+  }
+  if (stateMode === "full" || stateMode === "short") {
+    return stateMode;
+  }
+  return manifest.clips.length > 5 ? "full" : "short";
 }
 
 function ProgressIndicator({

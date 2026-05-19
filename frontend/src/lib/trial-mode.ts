@@ -32,6 +32,7 @@ export interface TrialRunMisokinesiaManifest {
   misokinesia_participant_id: string;
   misokinesia_participant_number: number;
   session_id: string;
+  trial_mode?: MisokinesiaTrialMode;
   post_survey_order: string;
   clips: TrialRunMisokinesiaClip[];
 }
@@ -119,7 +120,6 @@ export function createTrialRunMisokinesiaManifest(
   clips: TrialRunMisokinesiaClip[],
   mode: MisokinesiaTrialMode = state.misokinesia_trial_mode ?? "short"
 ): TrialRunMisokinesiaManifest {
-  void mode;
   if (state.flow !== "misokinesia" || !state.session_id || !state.misokinesia_participant_id) {
     throw new Error("Misokinesia trial mode requires fake session and participant ids.");
   }
@@ -129,6 +129,7 @@ export function createTrialRunMisokinesiaManifest(
     misokinesia_participant_id: state.misokinesia_participant_id,
     misokinesia_participant_number: 0,
     session_id: state.session_id,
+    trial_mode: mode,
     post_survey_order: postSurveyOrder.join(","),
     clips: clips.map((clip) => ({ ...clip })),
   };

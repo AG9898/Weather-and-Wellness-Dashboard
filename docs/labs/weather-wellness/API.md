@@ -28,7 +28,7 @@
 
 ## Trial Run Mode (No-write Rehearsal)
 
-- "Run Test Trial" is an RA-facing frontend rehearsal mode for WW and Misokinesia.
+- "Run Test Trial" is an RA-facing frontend rehearsal mode for WW; Misokinesia exposes separate "Run Short Trial" and "Run Full Trial" controls.
 - Canonical trial-mode behavior (fake ID format, consent rules, and module boundaries) is documented in `docs/TRIAL_MODE.md`.
 - In trial mode, frontend uses fake ids and local simulated submit success transitions.
 - WW trial mode is frontend-only and must not call `/sessions/start`, survey submit endpoints, or `/digitspan/runs`.
@@ -1098,7 +1098,7 @@
 
 ### GET /misokinesia/trial-manifest
 - **Auth:** RA required
-- **Status:** implemented (T143); `?full=true` param planned (T168)
+- **Status:** implemented (T143); `?full=true` full-trial mode implemented (T172)
 - **Routing inventory note (T143):** This endpoint should also appear in the routing inventory in `docs/ARCHITECTURE.md`. Known gap as of 2026-04-21: that inventory does not yet list `/misokinesia/trial-manifest`.
 - **Query params:** `full` (boolean, optional, default `false`) — when `true`, returns all active stimuli instead of a 5-clip sample
 - **Request body:** none

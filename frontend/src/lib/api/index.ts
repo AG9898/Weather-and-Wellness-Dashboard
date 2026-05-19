@@ -5,6 +5,7 @@
 
 import { supabase } from "@/lib/supabase";
 import type { PostSurveyKey } from "@/lib/misokinesia-phase";
+import type { MisokinesiaTrialMode } from "@/lib/trial-mode";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -900,6 +901,7 @@ export interface MisokinesiaManifest {
   misokinesia_participant_id: string;
   misokinesia_participant_number: number;
   session_id: string;
+  trial_mode?: MisokinesiaTrialMode;
   post_survey_order: string;
   clips: MisokinesiaClipMeta[];
 }
