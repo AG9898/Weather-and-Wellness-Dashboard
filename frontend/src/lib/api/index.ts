@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import type { PostSurveyKey } from "@/lib/misokinesia-phase";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -903,10 +904,8 @@ export interface MisokinesiaManifest {
   clips: MisokinesiaClipMeta[];
 }
 
-export type SurveyKey = "mkaq" | "gad7" | "maq";
-
-export function parseSurveyOrder(postSurveyOrder: string): SurveyKey[] {
-  return postSurveyOrder.split(",").filter((k): k is SurveyKey =>
+export function parseSurveyOrder(postSurveyOrder: string): PostSurveyKey[] {
+  return postSurveyOrder.split(",").filter((k): k is PostSurveyKey =>
     k === "mkaq" || k === "gad7" || k === "maq"
   );
 }
@@ -989,6 +988,61 @@ export async function submitMisokinesiaMkaq(
 ): Promise<MisokinesiaMkaqResponse> {
   return apiPost<MisokinesiaMkaqResponse>(
     `/misokinesia/participants/${participantId}/mkaq`,
+    payload
+  );
+}
+
+/** Miso-isolated GAD-7 request payload. All items required, each valued 1-4. */
+export interface MisokinesiaGAD7Request {
+  r1: number;
+  r2: number;
+  r3: number;
+  r4: number;
+  r5: number;
+  r6: number;
+  r7: number;
+}
+
+/** GAD-7 response returned by POST /misokinesia/participants/{id}/gad7. */
+export interface MisokinesiaGAD7Response {
+  response_id: string;
+  total_score: number;
+  severity_band: string;
+}
+
+/** Submit the required post-video GAD-7 survey. Server computes total_score and severity_band. */
+export async function submitMisokinesiaGAD7(
+  participantId: string,
+  payload: MisokinesiaGAD7Request
+): Promise<MisokinesiaGAD7Response> {
+  return apiPost<MisokinesiaGAD7Response>(
+    `/misokinesia/participants/${participantId}/gad7`,
+    payload
+  );
+}
+
+/** MAQ 21-item request payload. All items required, each valued 0-3. */
+export interface MisokinesiaMAQRequest {
+  q1: number; q2: number; q3: number; q4: number; q5: number;
+  q6: number; q7: number; q8: number; q9: number; q10: number;
+  q11: number; q12: number; q13: number; q14: number; q15: number;
+  q16: number; q17: number; q18: number; q19: number; q20: number;
+  q21: number;
+}
+
+/** MAQ response returned by POST /misokinesia/participants/{id}/maq. */
+export interface MisokinesiaMAQResponse {
+  response_id: string;
+  total_score: number;
+}
+
+/** Submit the required 21-item MAQ. Server computes total_score. */
+export async function submitMisokinesiaMAQ(
+  participantId: string,
+  payload: MisokinesiaMAQRequest
+): Promise<MisokinesiaMAQResponse> {
+  return apiPost<MisokinesiaMAQResponse>(
+    `/misokinesia/participants/${participantId}/maq`,
     payload
   );
 }
