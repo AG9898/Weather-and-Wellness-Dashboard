@@ -63,6 +63,7 @@ _STIMULUS_ID_3 = uuid.UUID("33333333-3333-3333-3333-333333333333")
 _STIMULUS_ID_4 = uuid.UUID("44444444-4444-4444-4444-444444444444")
 _STIMULUS_ID_5 = uuid.UUID("55555555-5555-5555-5555-555555555555")
 _STIMULUS_ID_6 = uuid.UUID("66666666-6666-6666-6666-666666666666")
+_SEEDED_MISOKINESIA_STIMULUS_COUNT = 29
 _RESPONSE_ID = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 _NOW = datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc)
 
@@ -274,6 +275,17 @@ class _SequencedDB:
 
 
 class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
+    def _make_stimuli(self, total: int = _SEEDED_MISOKINESIA_STIMULUS_COUNT) -> list[_FakeStimulus]:
+        return [
+            _FakeStimulus(
+                stimulus_id=uuid.UUID(f"00000000-0000-0000-0000-{index + 1:012d}"),
+                sort_order=index + 1,
+                storage_path=f"clip_{index + 1:02d}.mp4",
+                duration_ms=15000 + (index * 1000),
+            )
+            for index in range(total)
+        ]
+
     def _db_for_start(
         self,
         test_set: _FakeTestSet | None = None,
@@ -326,6 +338,29 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
         self.assertEqual(len(result.clips), 2)
         self.assertEqual(result.clips[0].sort_order, 1)
         self.assertEqual(result.clips[1].sort_order, 2)
+        self.assertTrue(db.committed)
+
+    async def test_production_start_returns_all_29_seeded_stimuli(self) -> None:
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        stimuli = self._make_stimuli()
+        db = self._db_for_start(stimuli=stimuli)
+
+        fake_participant = _FakeParticipant()
+        fake_session = _FakeSession()
+        fake_miso = _FakeMisoParticipant()
+
+        with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
+             patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
+             patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso), \
+             patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
+            result = await start_misokinesia_session(db=db)
+
+        self.assertEqual(len(result.clips), _SEEDED_MISOKINESIA_STIMULUS_COUNT)
+        self.assertEqual(result.clips[0].sort_order, 1)
+        self.assertEqual(result.clips[-1].sort_order, _SEEDED_MISOKINESIA_STIMULUS_COUNT)
         self.assertTrue(db.committed)
 
     async def test_clips_contain_public_supabase_url(self) -> None:
@@ -442,22 +477,26 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
 
 class GetTrialManifestTests(IsolatedAsyncioTestCase):
     def _make_stimuli(self, total: int = 6) -> list[_FakeStimulus]:
-        stimulus_ids = [
+        fixed_stimulus_ids = [
             _STIMULUS_ID_1,
             _STIMULUS_ID_2,
             _STIMULUS_ID_3,
             _STIMULUS_ID_4,
             _STIMULUS_ID_5,
             _STIMULUS_ID_6,
-        ][:total]
+        ]
         return [
             _FakeStimulus(
-                stimulus_id=stimulus_id,
+                stimulus_id=(
+                    fixed_stimulus_ids[index]
+                    if index < len(fixed_stimulus_ids)
+                    else uuid.UUID(f"00000000-0000-0000-0000-{index + 1:012d}")
+                ),
                 sort_order=index + 1,
                 storage_path=f"clip_{index + 1:02d}.mp4",
                 duration_ms=15000 + (index * 1000),
             )
-            for index, stimulus_id in enumerate(stimulus_ids)
+            for index in range(total)
         ]
 
     def _db_for_trial_manifest(
@@ -554,18 +593,20 @@ class GetTrialManifestTests(IsolatedAsyncioTestCase):
         self.assertNotEqual(first_ids, second_ids)
 
     async def test_full_trial_returns_all_stimuli_with_no_writes(self) -> None:
-        """full=True must return all active stimuli in shuffled order with no DB writes."""
+        """full=True must return all 29 seeded stimuli in shuffled order with no DB writes."""
         import os
         from unittest.mock import patch
 
         os.environ["SUPABASE_URL"] = "https://test.supabase.co"
-        stimuli = self._make_stimuli(total=6)
+        stimuli = self._make_stimuli(total=_SEEDED_MISOKINESIA_STIMULUS_COUNT)
         db = self._db_for_trial_manifest(stimuli=stimuli)
 
         with patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
             result = await get_trial_manifest(full=True, db=db)
 
-        self.assertEqual(len(result.clips), 6)
+        self.assertEqual(len(result.clips), _SEEDED_MISOKINESIA_STIMULUS_COUNT)
+        self.assertEqual(result.clips[0].sort_order, 1)
+        self.assertEqual(result.clips[-1].sort_order, _SEEDED_MISOKINESIA_STIMULUS_COUNT)
         self.assertFalse(db.committed, "Full trial manifest must not perform writes")
         self.assertTrue(_is_valid_survey_order(result.post_survey_order))
 

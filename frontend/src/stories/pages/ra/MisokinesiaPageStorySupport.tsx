@@ -74,7 +74,16 @@ function MisokinesiaLaunchMock({ state }: { state: MisokinesiaStoryState }) {
               className="rounded-xl px-6 font-semibold"
             >
               <FlaskConical className="mr-2 size-4" />
-              Run Test Trial
+              Run Short Trial
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={loading}
+              className="rounded-xl px-6 font-semibold"
+            >
+              <FlaskConical className="mr-2 size-4" />
+              Run Full Trial
             </Button>
             <p className="text-left text-xs leading-relaxed text-muted-foreground sm:text-right">
               Test trials use local fake ids and do not write research data.

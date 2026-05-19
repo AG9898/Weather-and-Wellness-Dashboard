@@ -79,7 +79,7 @@
 ### Misokinesia module
 - **No media through FastAPI.** Video clips are served directly from Supabase Storage CDN. Never proxy video bytes through the backend.
 - **Manifest-first.** `POST /misokinesia/start` returns all 29 clip CDN URLs in one response. The frontend fetches clips directly from these URLs — no per-clip backend round-trips.
-- **Read-only trial manifest.** Misokinesia "Run Test Trial" uses a read-only RA endpoint to fetch 5 randomly sampled active clip CDN URLs, then combines them with frontend fake ids. The trial manifest endpoint must not create participant, session, or result rows.
+- **Read-only trial manifest.** Misokinesia short trials use a read-only RA endpoint to fetch 5 randomly sampled active clip CDN URLs, then combine them with frontend fake ids. Misokinesia full trials call the same endpoint with `?full=true` and receive all active clip URLs (the seeded set is 29). The trial manifest endpoint must not create participant, session, or result rows.
 - **Participant task endpoints are no-auth.** `POST /responses` and `PATCH /end-of-task` require no JWT. Validate by participant row existence only (404 if not found).
 - **`completed_at` is server-side only.** Backend sets `misokinesia_participants.completed_at` automatically on the final stimulus response. The frontend must not set or infer this value.
 - **Public Supabase Storage bucket.** `misokinesia-stimuli` is public. CDN URLs require no signing. Do not introduce signed URL generation without an explicit decision (see `docs/DECISIONS.md` OPEN-02).

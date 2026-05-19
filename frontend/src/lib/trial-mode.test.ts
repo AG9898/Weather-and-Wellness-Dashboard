@@ -83,11 +83,24 @@ describe("trial-mode launch controls", () => {
   it("keeps the Misokinesia Run Full Trial launch control on the launch surface", () => {
     const pageSource = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
     const componentSource = readFrontendFile("src/lib/components/MisokinesiaLaunchPage.tsx");
+    const apiSource = readFrontendFile("src/lib/api/index.ts");
 
     expect(pageSource).toContain("createTrialRunState(\"misokinesia\", mode)");
     expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
+    expect(pageSource).toContain("Full trial manifest returned only");
+    expect(apiSource).toContain('"/misokinesia/trial-manifest?full=true"');
     expect(componentSource).toContain("Run Full Trial");
     expect(componentSource).toContain("onStartFullTrial");
+  });
+
+  it("keeps Misokinesia video tallies tied to the manifest clip count", () => {
+    const pageSource = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+
+    expect(pageSource).toContain("const totalClips = manifest?.clips.length ?? 0");
+    expect(pageSource).toContain("<p>You will watch {totalClips} short video clips.</p>");
+    expect(pageSource).toContain("Clip {clipNumber} of {totalClips}");
   });
 
   it("keeps Misokinesia playback on the shared video player path", () => {

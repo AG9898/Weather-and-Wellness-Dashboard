@@ -64,7 +64,8 @@ Full specification: [docs/labs/weather-wellness/tasks/MISOKINESIA.md](tasks/MISO
 1. Navigate to `/misokinesia` via floating dock
 2. Choose launch mode:
    - **Start Misokinesia Session** — backend atomically creates anonymous participant + session
-   - **Run Test Trial** — frontend creates fake ids and loads a read-only 5-clip trial manifest (no backend start/write call)
+   - **Run Short Trial** — frontend creates fake ids and loads a read-only 5-clip trial manifest (no backend start/write call)
+   - **Run Full Trial** — frontend creates fake ids and loads the read-only full trial manifest (`?full=true`, 29 clips when seeded) with the same no-write behavior
 3. App navigates to `/misokinesia/[id]` participant task page (same device, no login required)
 
 **Participant task:**

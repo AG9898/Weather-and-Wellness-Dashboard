@@ -154,7 +154,8 @@ Pure utility modules that hold logic extracted from components for testability:
 - Trial-mode flow branching for participant pages (`production` vs `trial`) including:
   - launch controls for "Run Test Trial" on WW and Misokinesia launch pages
   - no participant write API wrapper calls when trial mode is active
-  - Misokinesia trial launch calls only the read-only trial manifest API and receives exactly 5 real clip URLs
+  - Misokinesia short trial launch calls only the read-only trial manifest API and receives exactly 5 real clip URLs
+  - Misokinesia full trial launch calls `GET /misokinesia/trial-manifest?full=true`, receives the full active clip set (29 when seeded), and keeps the participant-page video tally derived from the manifest length
   - Misokinesia trial playback uses sampled Supabase Storage URLs instead of local placeholder clips
   - expected local progression to completion in trial mode
   - WW participant pages render the centered top-screen `"Trial Run"` watermark in trial mode, while the Misokinesia participant task page does not

@@ -18,6 +18,7 @@ import {
 } from "@/lib/trial-mode";
 
 const MISOKINESIA_MANIFEST_KEY = "misokinesia_manifest";
+const SHORT_TRIAL_CLIP_COUNT = 5;
 
 export default function MisokinesiaPage() {
   const router = useRouter();
@@ -53,6 +54,11 @@ export default function MisokinesiaPage() {
     try {
       const trialState = createTrialRunState("misokinesia", mode);
       const trialManifest = await getMisokinesiaTrialManifest(mode === "full");
+      if (mode === "full" && trialManifest.clips.length <= SHORT_TRIAL_CLIP_COUNT) {
+        throw new Error(
+          `Full trial manifest returned only ${trialManifest.clips.length} clips. Expected the full active stimulus set.`
+        );
+      }
       const manifest = createTrialRunMisokinesiaManifest(
         trialState,
         trialManifest.clips,
@@ -67,6 +73,8 @@ export default function MisokinesiaPage() {
       setError(
         err instanceof ApiError
           ? `Trial launch failed (${err.status}): ${err.message}`
+          : err instanceof Error
+            ? err.message
           : "Failed to start trial mode. Please try again."
       );
       if (mode === "full") {
