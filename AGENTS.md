@@ -118,12 +118,12 @@ cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
 All backend commands must be run from the repo root using the `cd backend && PYTHONPATH=.` prefix pattern shown above.
 Copy `backend/.env.example` → `backend/.env`.
 See `docs/ENV_VARS.md` for the full variable reference (including conditional requirements).
-If `backend/.env.example` is missing, derive required variables from the Render/current backend sections in `docs/ARCHITECTURE.md` and `docs/ENV_VARS.md`; Railway remains planned only until the infrastructure cutover is funded and approved.
+If `backend/.env.example` is missing, derive required variables from the Railway/current backend sections in `docs/ARCHITECTURE.md` and `docs/ENV_VARS.md`.
 Never commit `backend/.env`.
 
 ### Operational Tooling
 
-For service or infrastructure debugging, assume the project may already have the Vercel, Supabase, and Render CLIs configured locally. Agents may use them for log inspection, environment checks, deployment status, or service diagnostics when relevant. These tools are optional aids, not required validation steps.
+For service or infrastructure debugging, assume the project may already have the Vercel, Supabase, and Railway CLIs configured locally. Agents may use them for log inspection, environment checks, deployment status, or service diagnostics when relevant. These tools are optional aids, not required validation steps.
 
 ---
 

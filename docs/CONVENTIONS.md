@@ -77,7 +77,7 @@
 - With SQLAlchemy asyncpg in this repo, use `ssl=require` query param (not `sslmode=require`)
 
 ### Misokinesia module
-- **No media through FastAPI.** Video clips are served directly from Supabase Storage CDN. Never proxy video bytes through a Render endpoint.
+- **No media through FastAPI.** Video clips are served directly from Supabase Storage CDN. Never proxy video bytes through the backend.
 - **Manifest-first.** `POST /misokinesia/start` returns all 29 clip CDN URLs in one response. The frontend fetches clips directly from these URLs — no per-clip backend round-trips.
 - **Read-only trial manifest.** Misokinesia "Run Test Trial" uses a read-only RA endpoint to fetch 5 randomly sampled active clip CDN URLs, then combines them with frontend fake ids. The trial manifest endpoint must not create participant, session, or result rows.
 - **Participant task endpoints are no-auth.** `POST /responses` and `PATCH /end-of-task` require no JWT. Validate by participant row existence only (404 if not found).
@@ -131,13 +131,13 @@
 
 - Caching is implemented only in **Next.js Route Handlers** under `src/app/api/` (server-side only).
 - RA-only cached endpoints must **verify Supabase JWTs** before returning cached data (no auth bypass).
-- Cache is strictly for **read** performance; all canonical validation/scoring and all DB writes remain in FastAPI on Render.
+- Cache is strictly for **read** performance; all canonical validation/scoring and all DB writes remain in FastAPI on Railway.
 - Cache keys must use a clear prefix (e.g. `ww:`) and be versioned (e.g. `...:v1`) to allow safe invalidation on schema changes.
 - Cached values must not include direct identifiers (participants are anonymous) and must not include any secrets.
 - JWT verification in Route Handlers uses `jose`: ES256 via JWKS (`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`) as primary; HS256 with `SUPABASE_JWT_SECRET` as fallback.
 - Redis client (`@upstash/redis`) is instantiated only when either the `KV_REST_API_URL` / `KV_REST_API_TOKEN` pair or the `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` pair is set; handlers degrade gracefully without them. Use the shared `getRedisClient()` helper instead of constructing clients per handler.
 - Redis writes should be awaited in Route Handlers; fire-and-forget writes can be dropped in serverless runtimes.
-- Route Handler calls from Vercel to Render should use explicit request timeouts (current standard: 15s per backend fetch) so UI paths fail fast instead of hanging on backend stalls. This applies to live-only handlers as well as cached handlers. Use the shared backend fetch helper instead of ad-hoc `AbortController` code per handler.
+- Route Handler calls from Vercel to Railway should use explicit request timeouts (current standard: 15s per backend fetch) so UI paths fail fast instead of hanging on backend stalls. This applies to live-only handlers as well as cached handlers. Use the shared backend fetch helper instead of ad-hoc `AbortController` code per handler.
 - Shared date validation for Route Handlers should go through `readRequiredDateRange()` / `isIsoDate()` in `src/lib/server/route-handler-validation.ts` instead of duplicating regex checks inline.
 - For cached endpoints, `mode=live` should attempt a stale-cache fallback when backend fetches fail, and expose cache-state diagnostics via `x-ww-cache` response headers.
 - Same-origin bundle contracts must stay aligned with rendered UI. Do not keep backend reads in a Route Handler bundle unless the owning screen actually renders that data.

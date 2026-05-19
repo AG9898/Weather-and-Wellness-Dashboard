@@ -6,8 +6,6 @@
 > Deployment state:
 > - **Current live state:** Vercel frontend + Railway backend + Canada-region Supabase
 >   (`ca-central-1`).
-> - **Legacy rollback stack:** the old Render backend and East US Supabase project remain
->   available until the post-cutover decommission task is complete.
 
 ---
 
@@ -286,32 +284,17 @@ Full inventory, conventions, and guidance for adding new tests: **`docs/TESTING.
 
 > Canonical feature spec: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
 
-Two scheduled jobs are active.
+No GitHub Actions scheduled jobs are currently active.
 
 **1. Daily UBC EOS weather ingestion** (Phase 2)
 
 - Scheduler: **GitHub Actions only** (explicitly excluding Supabase `pg_cron` for now).
 - Workflow file: `.github/workflows/weather-ingest.yml`
 - Trigger: GitHub Actions calls a protected backend endpoint.
-- Schedule: `cron: '0 14 * * *'` (14:00 UTC daily) + `workflow_dispatch` for manual runs.
+- Current state: manually disabled in GitHub Actions; when enabled, it targets the Railway backend through `WEATHER_INGEST_BASE_URL`.
+- Configured schedule: `cron: '0 14 * * *'` (14:00 UTC daily) + `workflow_dispatch` for manual runs.
 - Reliability: ingestion is idempotent so duplicate runs are safe. Retry policy can remain for transient backend/network failures during the transition.
 - Exit policy: 2xx → success; 409/429 → exit 0 (expected control-flow responses); all other non-2xx → retry, then exit 1 (loud failure in Actions UI).
-
-### Legacy Backend Deployment (Render)
-
-Render remains available only as the legacy rollback backend until the post-cutover
-decommission task is complete. Do not route new production traffic to Render unless
-rolling back the cutover.
-
-**Render keep-alive ping**
-
-- Workflow file: `.github/workflows/render-keepalive.yml`
-- Trigger: `cron: '0/14 * * * *'` (every 14 minutes, around the clock) + `workflow_dispatch` for manual runs.
-- Purpose: Previously prevented Render free-tier cold starts while Render was the live backend host.
-- Secret: historically reused `WEATHER_INGEST_BASE_URL`; after cutover this secret points to Railway for weather ingestion.
-- Pings `GET /health`. Exit policy: always exits 0 — a missed or non-2xx ping is not a failure; the next ping will resume keep-alive.
-- Remove or retire this workflow during the post-cutover Render decommission task.
-- Current Render service configuration reference: `docs/devSteps.md` under "T27 Runbook — Backend Deployment Service".
 
 ### Secrets ownership
 

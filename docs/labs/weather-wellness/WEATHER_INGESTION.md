@@ -242,10 +242,13 @@ Rules:
 
 ## Scheduler (GitHub Actions Only)
 
-GitHub Actions is the primary and only scheduler in this phase.
+GitHub Actions is the primary and only scheduler in this phase, but the
+`Daily Weather Ingestion` workflow is currently manually disabled. Keep the
+workflow configured to target the Railway backend so it is ready if scheduling
+is re-enabled.
 
-- Schedule: once per day at a stable UTC time.
-- Implement retries (Render cold starts / transient failures).
+- Configured schedule: once per day at a stable UTC time.
+- Implement retries for transient backend or network failures.
 - Auth: shared secret header (`X-WW-Weather-Ingest-Secret`); never a LabMember JWT.
 
 See `docs/ARCHITECTURE.md` for secret ownership boundaries and required GitHub secrets.

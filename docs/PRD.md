@@ -6,7 +6,7 @@
 > |---|---|
 > | Shipped | Phase 1 instruments/scoring, Misokinesia task flow, and RA import/export workflows are implemented. |
 > | In Progress | None on the active `docs/workboard.json` queue (all listed tasks are currently marked `done`). |
-> | Planned | Deployment cutover direction (Railway backend + Canada Supabase) and broader multi-lab expansion remain planned. |
+> | Planned | Broader multi-lab expansion remains planned. |
 
 ## Objective
 Internal lab-operated web app to:
@@ -48,6 +48,6 @@ Internal lab-operated web app to:
 - Lab team can view stored results via Supabase Studio
 
 ## Infrastructure Direction
-- Current deployment: Vercel frontend + Render FastAPI backend + existing Supabase project
-- Planned deployment after the funded infrastructure migration: Vercel frontend + Railway backend + Supabase project in Canada Central (`ca-central-1`)
+- Current deployment: Vercel frontend + Railway FastAPI backend + Supabase project in Canada Central (`ca-central-1`)
+- Deployment cutover to Railway backend + Canada-region Supabase is complete.
 - The pending multi-lab schema redesign remains out of scope for this PRD update

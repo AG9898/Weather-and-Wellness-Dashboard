@@ -359,10 +359,10 @@ The KPI cards row has been removed from the shipped dashboard. The “Recent Ses
 - This flow is intended for accidental test runs / obvious supervised-entry mistakes, not arbitrary historical record deletion.
 
 **Data loading (T41–T43, implemented):**
-- Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then (optionally) refresh from the live Render backend and update the UI when fresh data arrives. The dashboard avoids triggering a live refresh on every visit when cached data is still recent (prevents waking the Render backend unnecessarily).
+- Dashboard uses a stale-while-revalidate pattern via a same-origin Route Handler (`/api/ra/dashboard`): attempt to render quickly from cache first, then (optionally) refresh from the live Railway backend and update the UI when fresh data arrives. The dashboard avoids triggering a live refresh on every visit when cached data is still recent.
 - The cached/live dashboard bundle includes only today's weather data (`WeatherDailyResponse`) because the shipped page no longer renders operational KPI summary cards.
 - `WeatherUnifiedCard` receives the base `weather` prop from the bundle (for current-day summary display) — no independent on-mount fetch for the summary. The chart section fetches its own range data internally.
-- Route handlers enforce backend fetch timeouts (15s) and use stale-cache fallback when `mode=live` fails, so dashboard loading does not hang indefinitely on Render outages.
+- Route handlers enforce backend fetch timeouts (15s) and use stale-cache fallback when `mode=live` fails, so dashboard loading does not hang indefinitely on backend outages.
 
 **Analytics loading (implemented through T123):**
 - Statistical dashboard content uses a separate analytics payload and cache key

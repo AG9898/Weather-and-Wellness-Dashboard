@@ -15,7 +15,7 @@
 | Environment | URL |
 |-------------|-----|
 | Development | `http://localhost:8000` |
-| Production  | `https://weather-and-wellness-dashboard.onrender.com` |
+| Production  | `https://backend-production-5809.up.railway.app` |
 
 ---
 
@@ -41,7 +41,7 @@
 
 ## Routing Surfaces
 
-- This document is the canonical reference for **FastAPI endpoints on Render** only.
+- This document is the canonical reference for **FastAPI endpoints on the Railway backend** only.
 - Same-origin Next.js Route Handlers under `/api/ra/*` are a separate routing layer on Vercel. Their topology and cache behavior are documented in `docs/ARCHITECTURE.md`.
 - The single dashboard routing inventory and deprecation map lives in `docs/ARCHITECTURE.md` under `Canonical Dashboard Routing Inventory`.
 - Archived reliability fix playbook: `docs/ROUTING_CLEANUP.md` (historical context only, not an active task board). Current canonical behavior is documented in `docs/ARCHITECTURE.md` and this API reference.

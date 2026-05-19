@@ -2193,7 +2193,7 @@
       "id": "T167",
       "group_id": "INFRA",
       "title": "Infra - Decommission Render service, remove keep-alive workflow, update docs",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "summary": "Remove the Render keep-alive GitHub Actions workflow, decommission the Render service, and update ARCHITECTURE.md and ENV_VARS.md to reflect the Railway + ca-central-1 Supabase as the live stack.",
@@ -2220,9 +2220,10 @@
       ],
       "notes": [
         "Only run this task after T166 (production cutover) is confirmed healthy.",
-        "The weather-ingest.yml workflow is NOT removed \u2014 it continues to run against Railway.",
+        "The weather-ingest.yml workflow is NOT removed; per project-owner direction it remains manually disabled but configured to target Railway if re-enabled.",
         "After removing render-keepalive.yml, verify .github/workflows/ has no other Render references.",
-        "If the retained T162 smoke-test RA user was not removed during T166, clean it up or document why it remains before decommissioning old infrastructure."
+        "If the retained T162 smoke-test RA user was not removed during T166, clean it up or document why it remains before decommissioning old infrastructure.",
+        "Completed 2026-05-19: deleted Render service `srv-d6fahkfgi27c73cqd33g` (`Weather-and-Wellness-Dashboard`) via Render API and verified it returns 404; removed `.github/workflows/render-keepalive.yml`; disabled the remote Render Keep-Alive workflow; kept Daily Weather Ingestion disabled while preserving its Railway-backed `WEATHER_INGEST_BASE_URL`; updated active docs for Railway + Canada Supabase as the live stack; ran `cd frontend && npm run build` successfully."
       ],
       "commands": [
         "git rm .github/workflows/render-keepalive.yml",

@@ -77,15 +77,15 @@ Troubleshooting:
 
 Use this runbook when re-deploying or reconfiguring the backend service.
 
-### Current Setup (Render)
+### Current Setup (Railway)
 
 | Setting | Value |
 |---|---|
-| Host | Render |
+| Host | Railway |
 | Root Directory | `backend` |
 | Runtime | Python 3 |
-| Build Command | `pip install -r requirements.txt` |
-| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Build Command | defined by Railway service configuration |
+| Start Command | defined by `backend/Procfile` |
 | Health Check Path | `/health` |
 
 ### Required backend environment variables
@@ -97,13 +97,12 @@ deployment ownership.
 
 ### Optional service CLIs
 
-For infrastructure debugging, local workstations may already have the Vercel, Supabase, and Render CLIs authenticated for this project. Use them when they help inspect logs, env vars, deployment status, or service health. Do not treat CLI checks as required validation unless a task specifically asks for infrastructure diagnostics.
+For infrastructure debugging, local workstations may already have the Vercel, Supabase, and Railway CLIs authenticated for this project. Use them when they help inspect logs, env vars, deployment status, or service health. Do not treat CLI checks as required validation unless a task specifically asks for infrastructure diagnostics.
 
-### Planned Reference (Railway cutover)
+### Historical Render Cutover Note
 
-- Railway is the planned backend host after funding and project-owner approval.
-- The current Render keep-alive workflow is `.github/workflows/render-keepalive.yml`; remove it only after the Railway cutover is complete.
-- Treat Render settings above as canonical for active deployment work until that cutover happens.
+Railway is now the current backend host. The Render keep-alive workflow has been
+removed; current deployment guidance lives in `docs/ARCHITECTURE.md`.
 
 ## Admin Import/Export Setup (Phase 3 — T46+)
 

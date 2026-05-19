@@ -9,7 +9,7 @@ If any other doc conflicts with this file, update that doc to point here.
 - **Frontend runtime** — Vercel project env (set via Vercel Dashboard or `vercel env add`) + `frontend/.env.local` for dev.
 - `backend/.env.example` documents the canonical set of backend vars with placeholder values.
 
-Current production uses Vercel for the frontend, Railway for the FastAPI backend, and the Canada-region Supabase project. The old Render backend and East US Supabase project remain available only for rollback until the post-cutover decommission task is complete.
+Current production uses Vercel for the frontend, Railway for the FastAPI backend, and the Canada-region Supabase project.
 
 JWT verification note: same-origin Route Handlers use ES256/JWKS as the primary path and only fall back
 to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth section) for full topology.
@@ -32,7 +32,7 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 | `SITE_URL` | Conditional (invite flow) | — | App base URL used to build invite acceptance links (`/set-password?invite=<token>`). | `https://ubcpsych.com` (production) or `http://localhost:3000` (dev) |
 | `ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID` | Conditional (admin invite CLI) | — | Supabase Auth UUID recorded as `created_by_lab_member_id` when `backend/admin_cli/invite_user.py` creates app-owned invites without an interactive admin JWT. Can be overridden with `--created-by-lab-member-id`. | Use the admin Auth user UUID responsible for the batch invite run |
 | `DAYLIGHT_START_LOCAL_TIME` | Optional | `06:00` | Local `HH:MM` clock time for computing `daylight_exposure_minutes` in study timezone. | Hardcode or omit to accept default |
-| `WEATHER_INGEST_SHARED_SECRETS` | Conditional (weather ingest) | — | Comma-separated shared secrets for `POST /weather/ingest/ubc-eos` (supports key rotation). | Generate a random UUID per environment; store in Render and GitHub Actions secrets |
+| `WEATHER_INGEST_SHARED_SECRETS` | Conditional (weather ingest) | — | Comma-separated shared secrets for `POST /weather/ingest/ubc-eos` (supports key rotation). | Generate a random UUID per environment; store in Railway and GitHub Actions secrets |
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | Optional | `600` | Per-station weather ingestion cooldown window in seconds. | Hardcode or omit to accept default |
 
 ---
@@ -64,13 +64,15 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 
 ## Operational / Local-only Variables
 
-These live in the root `.env` (never in Render or Vercel).
+These live in the root `.env` only and are never set on deployed services.
 
-| Variable | Description | How to obtain |
-|---|---|---|
-| `RENDER_API_KEY` | Render API key for legacy rollback/decommission scripts and diagnostics against the old Render service. | Render Dashboard → Account Settings → API Keys |
+No current production-only operational variables are required beyond the
+runtime variables listed above.
 
-For operational debugging, local workstations may already have the `vercel`, `supabase`, `railway`, and `render` CLIs authenticated for this project. They are useful for log inspection, environment checks, deployment status, and service diagnostics when relevant, but they are not mandatory validation steps.
+For operational debugging, local workstations may already have the `vercel`,
+`supabase`, and `railway` CLIs authenticated for this project. They are useful
+for log inspection, environment checks, deployment status, and service
+diagnostics when relevant, but they are not mandatory validation steps.
 
 Admin invite migration note: `backend/admin_cli/invite_user.py` loads root `.env`
 by default for local batches. For production batches, use `--use-railway-env`
@@ -83,7 +85,7 @@ targets.
 
 ## Quick-reference: where each var lives
 
-| Variable | Root `.env` | Backend (Render) | Frontend (Vercel) | GitHub Secrets |
+| Variable | Root `.env` | Backend (Railway) | Frontend (Vercel) | GitHub Secrets |
 |---|:---:|:---:|:---:|:---:|
 | `DATABASE_URL` | ✓ | ✓ | | |
 | `SUPABASE_URL` | ✓ | ✓ | | |
@@ -108,4 +110,3 @@ targets.
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | | ✓ | | |
 | `WEATHER_INGEST_BASE_URL` | | | | ✓ |
 | `WEATHER_INGEST_SHARED_SECRET` | | | | ✓ |
-| `RENDER_API_KEY` | ✓ | | | |

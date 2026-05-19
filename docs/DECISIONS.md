@@ -208,6 +208,9 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 
 Auth is optional. If enabled, Next.js obtains a Supabase JWT and sends `Authorization: Bearer <JWT>` to FastAPI for validation. Alembic migrations run as a deploy step/one-off command, not on every startup.
 
+**Superseded:** RESOLVED-16 changes the current backend host from Render to Railway and the
+current Supabase project to Canada Central.
+
 **Why:** This split cleanly separates UI, API, and data layers; keeps deployment straightforward for a small lab team; and preserves server-side canonical scoring while using managed Postgres.
 
 **Affects:** docs/ARCHITECTURE.md (canonical), docs/CONVENTIONS.md, docs/labs/weather-wellness/API.md, docs/devSteps.md.
@@ -226,9 +229,8 @@ Auth is optional. If enabled, Next.js obtains a Supabase JWT and sends `Authoriz
 This supersedes the **hosting target** from RESOLVED-06 while keeping Supabase as the managed
 platform chosen in RESOLVED-01.
 
-**Current status:** This remains a planned cutover. The live stack is still Vercel frontend,
-Render FastAPI backend, and the existing Supabase project until funding and project-owner
-approval unblock the migration.
+**Current status:** Completed on 2026-05-19. The live stack is Vercel frontend,
+Railway FastAPI backend, and the Canada Central Supabase project.
 
 **Why:** Railway removes the Render cold-start problem on write paths, and Supabase's Canada
 Central region satisfies the current database residency requirement without introducing a second
@@ -439,7 +441,7 @@ set-password route.
 - **Session flow:** RA navigates to `/misokinesia` via dock → clicks "Start Misokinesia Session" → backend atomically creates anonymous participant + session + misokinesia_participants row → app navigates to `/misokinesia/[id]` participant task page (same device, no external URL handoff).
 - **Response submission:** Per-trial, one POST per clip. `completed_at` set server-side automatically on final response. No client-side complete endpoint.
 
-**Why:** Keeps video delivery on Supabase CDN (avoiding Render cold-start on media paths), uses existing participant/session model, and matches the existing per-instrument column schema style.
+**Why:** Keeps video delivery on Supabase CDN (avoiding backend startup or bandwidth bottlenecks on media paths), uses existing participant/session model, and matches the existing per-instrument column schema style.
 
 **Affects:** `docs/labs/weather-wellness/tasks/MISOKINESIA.md`, `docs/SCHEMA.md`, `docs/labs/weather-wellness/API.md`, `docs/ARCHITECTURE.md`.
 

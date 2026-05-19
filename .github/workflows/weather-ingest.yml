@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Call weather ingest endpoint (with retry for Render cold start)
+      - name: Call weather ingest endpoint (with retry for transient backend failures)
         env:
           WEATHER_INGEST_BASE_URL: ${{ secrets.WEATHER_INGEST_BASE_URL }}
           WEATHER_INGEST_SHARED_SECRET: ${{ secrets.WEATHER_INGEST_SHARED_SECRET }}
@@ -86,7 +86,7 @@ jobs:
             else
               echo "WARN: Unexpected status ${HTTP_STATUS}."
               if [ $ATTEMPT -lt $MAX_RETRIES ]; then
-                echo "Waiting ${RETRY_DELAY}s before retry (Render may be cold-starting)..."
+                echo "Waiting ${RETRY_DELAY}s before retry..."
                 sleep $RETRY_DELAY
               fi
             fi
