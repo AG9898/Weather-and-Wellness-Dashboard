@@ -7,13 +7,20 @@ import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
 import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
+import MisokinesiaGAD7Form from "@/lib/components/MisokinesiaGAD7Form";
+import MisokinesiaMAQForm from "@/lib/components/MisokinesiaMAQForm";
 import { TRIAL_MKAQ_ITEM_COUNT } from "@/lib/trial-mode";
 import {
   patchSessionStatus,
   getParticipantErrorMessage,
+  parseSurveyOrder,
+  submitMisokinesiaGAD7,
+  submitMisokinesiaMAQ,
   submitMisokinesiaMkaq,
   type MisokinesiaManifest,
   type MisokinesiaTrialResponseResult,
+  type MisokinesiaGAD7Request,
+  type MisokinesiaMAQRequest,
   type MisokinesiaMkaqRequest,
 } from "@/lib/api";
 import {
@@ -23,8 +30,9 @@ import {
 } from "@/lib/trial-mode";
 import {
   getPhaseAfterBegin,
-  getPhaseAfterMkaqComplete,
-  getPhaseAfterQuestionnaireComplete,
+  getPhaseAfterVideoComplete,
+  getNextPostSurveyPhase,
+  type PostSurveyKey,
 } from "@/lib/misokinesia-phase";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
@@ -33,6 +41,8 @@ type Phase =
   | "loading"
   | "intro"
   | "mkaq"
+  | "gad7"
+  | "maq"
   | "playing"
   | "questionnaire"
   | "end_of_task"
@@ -55,11 +65,16 @@ export default function MisokinesiaTaskPage() {
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
 
-  // MkAQ submission state
-  const [mkaqSubmitTrigger, setMkaqSubmitTrigger] = useState(0);
-  const [mkaqSubmitting, setMkaqSubmitting] = useState(false);
-  const [mkaqError, setMkaqError] = useState<string | null>(null);
-  const [mkaqPendingAnswers, setMkaqPendingAnswers] = useState<Record<string, number> | null>(null);
+  // Post-video survey submission state
+  const [surveyOrder, setSurveyOrder] = useState<PostSurveyKey[]>([]);
+  const [surveyIndex, setSurveyIndex] = useState(0);
+  const [surveySubmitTrigger, setSurveySubmitTrigger] = useState(0);
+  const [surveySubmitting, setSurveySubmitting] = useState<PostSurveyKey | null>(null);
+  const [surveyError, setSurveyError] = useState<string | null>(null);
+  const [pendingSurvey, setPendingSurvey] = useState<{
+    key: PostSurveyKey;
+    answers: Record<string, number>;
+  } | null>(null);
 
   // ── Load manifest from sessionStorage on mount ──
   useEffect(() => {
@@ -77,6 +92,7 @@ export default function MisokinesiaTaskPage() {
         const m = JSON.parse(raw) as MisokinesiaManifest;
         if (m.misokinesia_participant_id === participantId) {
           setManifest(m);
+          setSurveyOrder(parseSurveyOrder(m.post_survey_order));
           setTrialMode(Boolean(activeTrial));
           setPhase("intro");
           return;
@@ -115,31 +131,51 @@ export default function MisokinesiaTaskPage() {
     };
   }, [sessionPatchAttempt, manifest, trialMode]);
 
-  // ── Submit MkAQ when trigger fires ──
+  // ── Submit the active post-video survey when trigger fires ──
   useEffect(() => {
-    if (mkaqSubmitTrigger === 0 || !mkaqPendingAnswers || !manifest) return;
+    if (surveySubmitTrigger === 0 || !pendingSurvey || !manifest) return;
     let cancelled = false;
 
     async function run() {
-      setMkaqError(null);
+      setSurveyError(null);
       try {
         await runTrialAwareSubmit(getMisokinesiaSubmitMode(trialMode), {
           production: async () => {
-            await submitMisokinesiaMkaq(
+            if (pendingSurvey!.key === "mkaq") {
+              await submitMisokinesiaMkaq(
+                participantId,
+                pendingSurvey!.answers as unknown as MisokinesiaMkaqRequest
+              );
+              return;
+            }
+            if (pendingSurvey!.key === "gad7") {
+              await submitMisokinesiaGAD7(
+                participantId,
+                pendingSurvey!.answers as unknown as MisokinesiaGAD7Request
+              );
+              return;
+            }
+            await submitMisokinesiaMAQ(
               participantId,
-              mkaqPendingAnswers as unknown as MisokinesiaMkaqRequest
+              pendingSurvey!.answers as unknown as MisokinesiaMAQRequest
             );
           },
           trial: () => {},
         });
         if (!cancelled) {
-          setMkaqSubmitting(false);
-          setPhase(getPhaseAfterMkaqComplete());
+          const nextPhase = getNextPostSurveyPhase(surveyOrder, surveyIndex);
+          setSurveySubmitting(null);
+          setPendingSurvey(null);
+          setSurveyError(null);
+          if (nextPhase !== "end_of_task") {
+            setSurveyIndex((index) => index + 1);
+          }
+          setPhase(nextPhase);
         }
       } catch (err) {
         if (!cancelled) {
-          setMkaqError(getParticipantErrorMessage(err));
-          setMkaqSubmitting(false);
+          setSurveyError(getParticipantErrorMessage(err));
+          setSurveySubmitting(null);
         }
       }
     }
@@ -147,7 +183,15 @@ export default function MisokinesiaTaskPage() {
     return () => {
       cancelled = true;
     };
-  }, [mkaqSubmitTrigger, mkaqPendingAnswers, manifest, trialMode, participantId]);
+  }, [
+    surveySubmitTrigger,
+    pendingSurvey,
+    manifest,
+    trialMode,
+    participantId,
+    surveyOrder,
+    surveyIndex,
+  ]);
 
   const totalClips = manifest?.clips.length ?? 0;
   const currentClip = manifest?.clips[currentClipIndex];
@@ -164,25 +208,26 @@ export default function MisokinesiaTaskPage() {
   }
 
   function handleQuestionnaireComplete(result: MisokinesiaTrialResponseResult) {
-    const nextPhase = getPhaseAfterQuestionnaireComplete(
-      result.is_complete,
-      manifest?.post_survey_order
-    );
-    if (nextPhase === "playing") {
+    if (!result.is_complete) {
       setCurrentClipIndex((prev) => prev + 1);
+      setPhase("playing");
+      return;
     }
-    setPhase(nextPhase);
+
+    setSurveyIndex(0);
+    setPhase(getPhaseAfterVideoComplete(surveyOrder));
   }
 
-  function handleMkaqComplete(answers: Record<string, number>) {
-    setMkaqPendingAnswers(answers);
-    setMkaqSubmitting(true);
-    setMkaqSubmitTrigger((n) => n + 1);
+  function handleSurveyComplete(key: PostSurveyKey, answers: Record<string, number>) {
+    setPendingSurvey({ key, answers });
+    setSurveySubmitting(key);
+    setSurveySubmitTrigger((n) => n + 1);
   }
 
-  function handleMkaqRetry() {
-    setMkaqSubmitting(true);
-    setMkaqSubmitTrigger((n) => n + 1);
+  function handleSurveyRetry() {
+    if (!pendingSurvey) return;
+    setSurveySubmitting(pendingSurvey.key);
+    setSurveySubmitTrigger((n) => n + 1);
   }
 
   function handleEndOfTaskComplete() {
@@ -245,8 +290,10 @@ export default function MisokinesiaTaskPage() {
     );
   }
 
-  if (phase === "mkaq") {
-    if (mkaqSubmitting) {
+  if (phase === "mkaq" || phase === "gad7" || phase === "maq") {
+    const activeSurvey = phase;
+
+    if (surveySubmitting === activeSurvey) {
       return (
         <Screen>
           <p className="text-sm text-muted-foreground">Submitting questionnaire…</p>
@@ -254,14 +301,14 @@ export default function MisokinesiaTaskPage() {
       );
     }
 
-    if (mkaqError) {
+    if (surveyError && pendingSurvey?.key === activeSurvey) {
       return (
         <Screen>
           <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-            {mkaqError}
+            {surveyError}
           </div>
           <Button
-            onClick={handleMkaqRetry}
+            onClick={handleSurveyRetry}
             className="rounded-xl px-8 text-primary-foreground"
           >
             Retry
@@ -270,11 +317,35 @@ export default function MisokinesiaTaskPage() {
       );
     }
 
+    if (activeSurvey === "gad7") {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+          <MisokinesiaGAD7Form
+            submitting={surveySubmitting === "gad7"}
+            error={surveyError}
+            onSubmit={(answers) => handleSurveyComplete("gad7", answers)}
+          />
+        </div>
+      );
+    }
+
+    if (activeSurvey === "maq") {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+          <MisokinesiaMAQForm
+            submitting={surveySubmitting === "maq"}
+            error={surveyError}
+            onSubmit={(answers) => handleSurveyComplete("maq", answers)}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
         <MisokinesiaMkaqForm
           items={trialMode ? MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT) : MKAQ_ITEMS}
-          onComplete={handleMkaqComplete}
+          onComplete={(answers) => handleSurveyComplete("mkaq", answers)}
         />
       </div>
     );

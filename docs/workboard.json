@@ -2392,7 +2392,7 @@
       "id": "T175",
       "group_id": "MISO_SURVEYS",
       "title": "Miso post-video surveys - GAD-7 form and participant page wiring",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Create frontend/src/lib/components/MisokinesiaGAD7Form.tsx using the shared SurveyForm component (src/lib/components/SurveyForm.tsx). Props: onSubmit(answers): void; submitting: boolean; error: string | null. Items and scale match the GAD-7 items in docs/labs/weather-wellness/tasks/MISOKINESIA.md (7 items, scale 1-4). Then update frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx: add Phase variants 'gad7' and 'maq'; add surveyOrder: PostSurveyKey[] and surveyIndex: number state; on manifest load call parseSurveyOrder(manifest.post_survey_order) \u2192 setSurveyOrder; replace the getPhaseAfterBegin(mkaqAdministration) call with getPhaseAfterBegin(); after is_complete=true from clip responses call getPhaseAfterVideoComplete(surveyOrder) and set phase; after each survey submit call getNextPostSurveyPhase(surveyOrder, surveyIndex) and increment surveyIndex; render MisokinesiaGAD7Form when phase='gad7' and MisokinesiaMAQForm when phase='maq'; remove all mkaqAdministration references.",
       "acceptance_criteria": [
