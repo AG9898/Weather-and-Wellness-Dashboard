@@ -206,7 +206,7 @@ Do not duplicate env var requirements here; update the canonical table instead.
 
 ## Weather Ingestion (Planned)
 
-> Canonical feature spec: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
+> Canonical feature spec: `docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`
 
 Rules:
 - Weather ingestion is **day-level** (local day `America/Vancouver`), not hourly-series.

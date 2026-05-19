@@ -27,33 +27,37 @@ data export. RA dashboard is read-only for data review; all bulk exports go thro
 `weather-wellness` — used as `app_metadata.lab` value in Supabase Auth and as `labs.slug`
 in the database.
 
-## Key Documents
+## Component Docs
 
 Global routing map: [`docs/INDEX.md`](../../INDEX.md)
+
+This lab is organized by component. Component-specific API contracts, UX specs,
+task docs, and operational references live under the component directory. Lab-level
+docs cover cross-component concerns only.
+
+### Weather
 
 | Document | Purpose |
 |---|---|
 | [`weather/API.md`](weather/API.md) | FastAPI contracts — WW dashboard, sessions, surveys, admin, auth |
-| [`misokinesia/API.md`](misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
 | [`weather/DESIGN_SPEC.md`](weather/DESIGN_SPEC.md) | WW participant and RA UX flows |
-| [`misokinesia/DESIGN_SPEC.md`](misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`weather/SCORING.md`](weather/SCORING.md) | Server-side scoring rules for all instruments |
 | [`weather/ANALYTICS.md`](weather/ANALYTICS.md) | Analytics architecture — MLM model, KPIs, snapshot system |
 | [`weather/WEATHER_INGESTION.md`](weather/WEATHER_INGESTION.md) | Weather data ingestion via UBC EOS station |
 | [`weather/HISTORICAL_WEATHER_BACKFILL.md`](weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill procedure |
-| [`weather/`](weather/) | Instrument specifications (ULS8, CESD10, GAD7, CogFunc8a) |
+| [`weather/DIGITSPAN.md`](weather/DIGITSPAN.md) | Digit Span task specification |
+| [`weather/ULS8.md`](weather/ULS8.md) | ULS-8 instrument specification |
+| [`weather/CESD10.md`](weather/CESD10.md) | CES-D 10 instrument specification |
+| [`weather/GAD7.md`](weather/GAD7.md) | GAD-7 instrument specification |
+| [`weather/COGFUNC8A.md`](weather/COGFUNC8A.md) | CogFunc 8a instrument specification |
 
-### Survey Specs
+### Misokinesia
 
-- [`weather/ULS8.md`](weather/ULS8.md)
-- [`weather/CESD10.md`](weather/CESD10.md)
-- [`weather/GAD7.md`](weather/GAD7.md)
-- [`weather/COGFUNC8A.md`](weather/COGFUNC8A.md)
-
-### Task Specs
-
-- [`weather/DIGITSPAN.md`](weather/DIGITSPAN.md)
-- [`misokinesia/MISOKINESIA.md`](misokinesia/MISOKINESIA.md)
+| Document | Purpose |
+|---|---|
+| [`misokinesia/API.md`](misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
+| [`misokinesia/DESIGN_SPEC.md`](misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
+| [`misokinesia/MISOKINESIA.md`](misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 
 ## Reference Materials
 

@@ -19,7 +19,7 @@
 - **Backend (Railway current)**: Long-lived FastAPI service. All scoring, validation, and DB writes live here for production.
 - **Database (Supabase current)**: Managed Postgres in the Canada Central (`ca-central-1`) Supabase project. Lab reads data via Supabase Studio.
 - **Admin data ops**: RA-only Import/Export endpoints on the backend service support legacy imports and controlled CSV/XLSX exports.
-- **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/labs/weather-wellness/ANALYTICS.md`.
+- **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 - **Session safety tool**: a narrow RA-only undo action for the latest native session is live on `/dashboard`, implemented as transactional hard delete plus audit log rather than soft delete.
 
 ## Dashboard Read Topology
@@ -170,7 +170,7 @@ Standardized same-origin diagnostics:
 
 ## Analytics Snapshot Architecture
 
-Canonical analysis spec: `docs/labs/weather-wellness/ANALYTICS.md`
+Canonical analysis spec: `docs/labs/weather-wellness/weather/ANALYTICS.md`
 
 The dashboard's statistical KPI layer now uses a hybrid read path for frontend reads, while the dashboard UI surfaces remain in progress:
 
@@ -283,7 +283,7 @@ Full inventory, conventions, and guidance for adding new tests: **`docs/TESTING.
 
 ## Scheduled Jobs (GitHub Actions)
 
-> Canonical feature spec: `docs/labs/weather-wellness/WEATHER_INGESTION.md`
+> Canonical feature spec: `docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`
 
 No GitHub Actions scheduled jobs are currently active.
 
@@ -333,5 +333,5 @@ defaults, and ownership by environment.
 - Participants are anonymous: do not collect or store names or other direct identifiers.
 - Day-level semantics (study days, weather day linking, dashboard filtering) use the study timezone `America/Vancouver`.
 - Schema details live in `docs/SCHEMA.md`.
-- Analytics dataset rules live in `docs/labs/weather-wellness/ANALYTICS.md`.
+- Analytics dataset rules live in `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 - Undo-last-session behavior removes only session-domain rows and must not mutate weather-domain rows.

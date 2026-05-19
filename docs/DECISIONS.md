@@ -105,7 +105,7 @@ This decision remains true for **Phase 1** scope only.
 admin download workflow. This remains internal-only, RA-authenticated, and does not create any participant-facing
 data export surface. PII rules still apply (participants are anonymous; do not introduce names/signatures).
 
-**Affects:** Phase 3 tasks that add admin endpoints/UI and DB mapping tables. Update `AGENTS.md`, `docs/labs/weather-wellness/API.md`,
+**Affects:** Phase 3 tasks that add admin endpoints/UI and DB mapping tables. Update `AGENTS.md`, `docs/labs/weather-wellness/weather/API.md`,
 `docs/SCHEMA.md`, `docs/DESIGN_SPEC.md`, and `docs/devSteps.md` before implementation.
 
 ---
@@ -126,7 +126,7 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 
 **Why:** Day-level analyses and UI filtering should match a single local day boundary. Daylight exposure is a derived participant attribute based on the session start time relative to a fixed local "daylight start".
 
-**Affects:** docs/labs/weather-wellness/WEATHER_INGESTION.md, docs/SCHEMA.md, docs/labs/weather-wellness/API.md, docs/DESIGN_SPEC.md, backend weather/session day-linking logic, Phase 3 import/start-session implementations.
+**Affects:** docs/labs/weather-wellness/weather/WEATHER_INGESTION.md, docs/SCHEMA.md, docs/labs/weather-wellness/weather/API.md, docs/DESIGN_SPEC.md, backend weather/session day-linking logic, Phase 3 import/start-session implementations.
 
 ---
 
@@ -143,7 +143,7 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 
 **Why:** The alternative — storing imported data only in `imported_session_measures` — would exclude it from analysis queries and exports that join canonical tables. Adding `data_source` and legacy columns preserves both native and imported rows in the same table while making the distinction explicit and queryable. The `imported_session_measures` table remains the full audit trail via `source_row_json`.
 
-**Affects:** `docs/SCHEMA.md`, `docs/labs/weather-wellness/API.md`, `backend/app/models/digitspan.py`, `backend/app/models/surveys.py`, migration `20260301_000010`.
+**Affects:** `docs/SCHEMA.md`, `docs/labs/weather-wellness/weather/API.md`, `backend/app/models/digitspan.py`, `backend/app/models/surveys.py`, migration `20260301_000010`.
 
 ---
 
@@ -157,7 +157,7 @@ data export surface. PII rules still apply (participants are anonymous; do not i
 
 **Why:** Demographics are required for the experiment but must remain participant-anonymous. Collecting them at session start makes the workflow consistent and removes the need for separate participant-edit screens.
 
-**Affects:** docs/DESIGN_SPEC.md, docs/labs/weather-wellness/API.md (`POST /sessions/start`), docs/SCHEMA.md (`participants` columns), frontend dashboard start flow.
+**Affects:** docs/DESIGN_SPEC.md, docs/labs/weather-wellness/weather/API.md (`POST /sessions/start`), docs/SCHEMA.md (`participants` columns), frontend dashboard start flow.
 
 ---
 
@@ -213,7 +213,7 @@ current Supabase project to Canada Central.
 
 **Why:** This split cleanly separates UI, API, and data layers; keeps deployment straightforward for a small lab team; and preserves server-side canonical scoring while using managed Postgres.
 
-**Affects:** docs/ARCHITECTURE.md (canonical), docs/CONVENTIONS.md, docs/labs/weather-wellness/API.md, docs/devSteps.md.
+**Affects:** docs/ARCHITECTURE.md (canonical), docs/CONVENTIONS.md, docs/labs/weather-wellness/weather/API.md, docs/devSteps.md.
 
 ---
 
@@ -253,7 +253,7 @@ Supabase `pg_cron` is explicitly excluded for now.
 **Why:** Keeps scheduling simple and portable, avoids database-side cron complexity, and fits free-tier
 constraints while preserving idempotent ingestion behavior.
 
-**Affects:** docs/labs/weather-wellness/WEATHER_INGESTION.md, docs/ARCHITECTURE.md, docs/labs/weather-wellness/API.md.
+**Affects:** docs/labs/weather-wellness/weather/WEATHER_INGESTION.md, docs/ARCHITECTURE.md, docs/labs/weather-wellness/weather/API.md.
 
 ---
 
@@ -268,7 +268,7 @@ constraints while preserving idempotent ingestion behavior.
 **Why:** Maximizes relational consistency for day-level analyses and avoids fragile computed-date joins
 while keeping sessions linkable even if weather ingestion is missing for a day.
 
-**Affects:** docs/labs/weather-wellness/WEATHER_INGESTION.md, docs/SCHEMA.md.
+**Affects:** docs/labs/weather-wellness/weather/WEATHER_INGESTION.md, docs/SCHEMA.md.
 
 ---
 
@@ -280,7 +280,7 @@ while keeping sessions linkable even if weather ingestion is missing for a day.
 
 **Why:** Reduces PII handling burden and aligns the app with anonymity requirements while keeping relational integrity via UUID keys.
 
-**Affects:** docs/PRD.md, docs/SCHEMA.md, docs/labs/weather-wellness/API.md, docs/DESIGN_SPEC.md.
+**Affects:** docs/PRD.md, docs/SCHEMA.md, docs/labs/weather-wellness/weather/API.md, docs/DESIGN_SPEC.md.
 
 ---
 
@@ -292,7 +292,7 @@ while keeping sessions linkable even if weather ingestion is missing for a day.
 
 **Why:** Matches the desired supervised lab workflow and enables a single one-click launch into Survey 1 without intermediate digit span instructions.
 
-**Affects:** docs/DESIGN_SPEC.md, docs/labs/weather-wellness/API.md.
+**Affects:** docs/DESIGN_SPEC.md, docs/labs/weather-wellness/weather/API.md.
 
 ---
 
@@ -319,7 +319,7 @@ correctness surface for little benefit.
 - weather tables are never touched
 - deletion is transactional and audit-logged
 
-**Affects:** docs/labs/weather-wellness/API.md, docs/SCHEMA.md, docs/DESIGN_SPEC.md,
+**Affects:** docs/labs/weather-wellness/weather/API.md, docs/SCHEMA.md, docs/DESIGN_SPEC.md,
 docs/ARCHITECTURE.md.
 
 ---
@@ -409,8 +409,8 @@ auditable control over onboarding while keeping the existing Supabase Auth
 tables, JWT validation, and role/lab claims.
 
 **Affects:** `docs/ARCHITECTURE.md`, `docs/SCHEMA.md`,
-`docs/ENV_VARS.md`, `docs/labs/weather-wellness/API.md`,
-`docs/labs/weather-wellness/DESIGN_SPEC.md`, `backend/admin_cli/invite_user.py`,
+`docs/ENV_VARS.md`, `docs/labs/weather-wellness/weather/API.md`,
+`docs/labs/weather-wellness/weather/DESIGN_SPEC.md`, `backend/admin_cli/invite_user.py`,
 `backend/app/auth.py`, admin routers/services, frontend RA navigation, and the
 set-password route.
 
@@ -443,7 +443,7 @@ set-password route.
 
 **Why:** Keeps video delivery on Supabase CDN (avoiding backend startup or bandwidth bottlenecks on media paths), uses existing participant/session model, and matches the existing per-instrument column schema style.
 
-**Affects:** `docs/labs/weather-wellness/tasks/MISOKINESIA.md`, `docs/SCHEMA.md`, `docs/labs/weather-wellness/API.md`, `docs/ARCHITECTURE.md`.
+**Affects:** `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`, `docs/SCHEMA.md`, `docs/labs/weather-wellness/misokinesia/API.md`, `docs/ARCHITECTURE.md`.
 
 ---
 

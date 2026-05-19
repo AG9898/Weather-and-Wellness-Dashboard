@@ -52,6 +52,7 @@ Participant.
 - Start with `docs/INDEX.md` for the canonical documentation routing map.
 - For platform-wide concerns (architecture, conventions, decisions, schema, testing), use `docs/` root files.
 - For lab-specific API contracts, design specs, and scoring rules, use `docs/labs/<lab-slug>/`.
+- **Lab component structure.** Each lab under `docs/labs/<lab-slug>/` is organized by component. The lab `README.md` is the navigation hub. Each component lives in its own subdirectory (`docs/labs/<lab-slug>/<component>/`) and contains its own `API.md`, `DESIGN_SPEC.md`, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: `weather/` and `misokinesia/`.
 - For study-specific research instruments and analysis scripts, use `reference/labs/<lab-slug>/`.
 - For universal UI assets (branding, logos, component mockups), use `reference/UI Reference/`.
 - For UI style, `docs/styleguide.md` is the canonical reference.
@@ -103,7 +104,7 @@ These rules are not optional and apply to every task, not just doc-specific task
   already covered. If it is, extend the existing doc. Duplication is a bug.
 
 - **Path format.** All doc references use paths relative to the repo root
-  (e.g. `docs/labs/weather-wellness/API.md`). Never use bare filenames or leading slashes.
+  (e.g. `docs/labs/weather-wellness/weather/API.md`). Never use bare filenames or leading slashes.
 
 ---
 

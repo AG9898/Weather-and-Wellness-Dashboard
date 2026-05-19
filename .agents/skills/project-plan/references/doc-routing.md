@@ -20,6 +20,12 @@ Open only the docs implied by the proposal. The specific docs available in this 
 | Work planning and sequencing | Workboard usage contract, workboard schema, targeted workboard data |
 | Engineering guardrails or patterns | Conventions, testing strategy |
 
+## Weather-Wellness Component Routing
+
+- Weather-Wellness dashboard, weather, analytics, surveys, Digit Span, RA workflow, and import/export proposals route to `docs/labs/weather-wellness/weather/`.
+- Weather-Wellness Misokinesia task proposals route to `docs/labs/weather-wellness/misokinesia/`.
+- Cross-component Weather-Wellness proposals start at the lab navigation hub in `docs/labs/weather-wellness/`, then open the relevant component docs only.
+
 ## Selection Rules
 
 - Read one doc per concern rather than preloading everything.

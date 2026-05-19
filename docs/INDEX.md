@@ -37,20 +37,30 @@ stub docs that only redirect to lab-specific paths.
 | Path | Purpose |
 |---|---|
 | [`docs/labs/weather-wellness/README.md`](labs/weather-wellness/README.md) | Lab overview and doc index |
+
+#### Weather Component
+
+| Path | Purpose |
+|---|---|
 | [`docs/labs/weather-wellness/weather/API.md`](labs/weather-wellness/weather/API.md) | FastAPI contracts — Weather-Wellness dashboard, sessions, surveys, admin, auth |
-| [`docs/labs/weather-wellness/misokinesia/API.md`](labs/weather-wellness/misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
 | [`docs/labs/weather-wellness/weather/ANALYTICS.md`](labs/weather-wellness/weather/ANALYTICS.md) | Analytics snapshot/modeling design |
 | [`docs/labs/weather-wellness/weather/DESIGN_SPEC.md`](labs/weather-wellness/weather/DESIGN_SPEC.md) | WW participant and RA UX specifications |
-| [`docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`](labs/weather-wellness/misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`docs/labs/weather-wellness/weather/SCORING.md`](labs/weather-wellness/weather/SCORING.md) | Instrument scoring rules |
 | [`docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`](labs/weather-wellness/weather/WEATHER_INGESTION.md) | Live weather ingest and reconciliation |
 | [`docs/labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md`](labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill process |
 | [`docs/labs/weather-wellness/weather/DIGITSPAN.md`](labs/weather-wellness/weather/DIGITSPAN.md) | Digit Span task specification |
-| [`docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`](labs/weather-wellness/misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 | [`docs/labs/weather-wellness/weather/ULS8.md`](labs/weather-wellness/weather/ULS8.md) | ULS-8 instrument spec |
 | [`docs/labs/weather-wellness/weather/CESD10.md`](labs/weather-wellness/weather/CESD10.md) | CES-D 10 instrument spec |
 | [`docs/labs/weather-wellness/weather/GAD7.md`](labs/weather-wellness/weather/GAD7.md) | GAD-7 instrument spec |
 | [`docs/labs/weather-wellness/weather/COGFUNC8A.md`](labs/weather-wellness/weather/COGFUNC8A.md) | CogFunc 8a instrument spec |
+
+#### Misokinesia Component
+
+| Path | Purpose |
+|---|---|
+| [`docs/labs/weather-wellness/misokinesia/API.md`](labs/weather-wellness/misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
+| [`docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`](labs/weather-wellness/misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
+| [`docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`](labs/weather-wellness/misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 
 ## Archive Docs (Historical Context Only)
 
