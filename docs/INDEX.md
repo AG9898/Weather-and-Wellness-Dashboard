@@ -39,22 +39,26 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/labs/weather-wellness/README.md`](labs/weather-wellness/README.md) | Lab overview and doc index |
 | [`docs/labs/weather-wellness/weather/API.md`](labs/weather-wellness/weather/API.md) | FastAPI contracts — Weather-Wellness dashboard, sessions, surveys, admin, auth |
 | [`docs/labs/weather-wellness/misokinesia/API.md`](labs/weather-wellness/misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
-| [`docs/labs/weather-wellness/ANALYTICS.md`](labs/weather-wellness/ANALYTICS.md) | Analytics snapshot/modeling design |
-| [`docs/labs/weather-wellness/DESIGN_SPEC.md`](labs/weather-wellness/DESIGN_SPEC.md) | Participant and RA UX specifications |
-| [`docs/labs/weather-wellness/SCORING.md`](labs/weather-wellness/SCORING.md) | Instrument scoring rules |
+| [`docs/labs/weather-wellness/weather/ANALYTICS.md`](labs/weather-wellness/weather/ANALYTICS.md) | Analytics snapshot/modeling design |
+| [`docs/labs/weather-wellness/weather/DESIGN_SPEC.md`](labs/weather-wellness/weather/DESIGN_SPEC.md) | WW participant and RA UX specifications |
+| [`docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`](labs/weather-wellness/misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
+| [`docs/labs/weather-wellness/weather/SCORING.md`](labs/weather-wellness/weather/SCORING.md) | Instrument scoring rules |
 | [`docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`](labs/weather-wellness/weather/WEATHER_INGESTION.md) | Live weather ingest and reconciliation |
 | [`docs/labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md`](labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill process |
 | [`docs/labs/weather-wellness/weather/DIGITSPAN.md`](labs/weather-wellness/weather/DIGITSPAN.md) | Digit Span task specification |
 | [`docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`](labs/weather-wellness/misokinesia/MISOKINESIA.md) | Misokinesia task specification |
-| [`docs/labs/weather-wellness/surveys/`](labs/weather-wellness/surveys/) | Survey instrument specs (ULS8, CESD10, GAD7, CogFunc8a) |
+| [`docs/labs/weather-wellness/weather/ULS8.md`](labs/weather-wellness/weather/ULS8.md) | ULS-8 instrument spec |
+| [`docs/labs/weather-wellness/weather/CESD10.md`](labs/weather-wellness/weather/CESD10.md) | CES-D 10 instrument spec |
+| [`docs/labs/weather-wellness/weather/GAD7.md`](labs/weather-wellness/weather/GAD7.md) | GAD-7 instrument spec |
+| [`docs/labs/weather-wellness/weather/COGFUNC8A.md`](labs/weather-wellness/weather/COGFUNC8A.md) | CogFunc 8a instrument spec |
 
 ## Archive Docs (Historical Context Only)
 
 | Path | Purpose |
 |---|---|
 | [`docs/progress/PROGRESS_LOG.md`](progress/PROGRESS_LOG.md) | Archive-only historical progress log; active queue is `docs/workboard.json` |
-| [`docs/ROUTING_CLEANUP.md`](ROUTING_CLEANUP.md) | Completed backend reliability playbook archive; canonical behavior lives in `docs/ARCHITECTURE.md` and `docs/labs/weather-wellness/ANALYTICS.md` |
-| [`docs/labs/weather-wellness/tasks/working-misokinesia-add.md`](labs/weather-wellness/tasks/working-misokinesia-add.md) | Completed planning archive; current task spec is `docs/labs/weather-wellness/tasks/MISOKINESIA.md` |
+| [`docs/ROUTING_CLEANUP.md`](ROUTING_CLEANUP.md) | Completed backend reliability playbook archive; canonical behavior lives in `docs/ARCHITECTURE.md` and `docs/labs/weather-wellness/weather/ANALYTICS.md` |
+| `docs/labs/weather-wellness/tasks/working-misokinesia-add.md` | Completed planning archive (file removed); current task spec is `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md` |
 
 ## Maintenance Rules
 

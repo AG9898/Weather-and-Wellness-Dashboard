@@ -35,19 +35,20 @@ Global routing map: [`docs/INDEX.md`](../../INDEX.md)
 |---|---|
 | [`weather/API.md`](weather/API.md) | FastAPI contracts — WW dashboard, sessions, surveys, admin, auth |
 | [`misokinesia/API.md`](misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
-| [`DESIGN_SPEC.md`](DESIGN_SPEC.md) | Participant and RA UX flows |
+| [`weather/DESIGN_SPEC.md`](weather/DESIGN_SPEC.md) | WW participant and RA UX flows |
+| [`misokinesia/DESIGN_SPEC.md`](misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`weather/SCORING.md`](weather/SCORING.md) | Server-side scoring rules for all instruments |
 | [`weather/ANALYTICS.md`](weather/ANALYTICS.md) | Analytics architecture — MLM model, KPIs, snapshot system |
 | [`weather/WEATHER_INGESTION.md`](weather/WEATHER_INGESTION.md) | Weather data ingestion via UBC EOS station |
 | [`weather/HISTORICAL_WEATHER_BACKFILL.md`](weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill procedure |
-| [`surveys/`](surveys/) | Instrument specifications (ULS8, CESD10, GAD7, CogFunc8a) |
+| [`weather/`](weather/) | Instrument specifications (ULS8, CESD10, GAD7, CogFunc8a) |
 
 ### Survey Specs
 
-- [`surveys/ULS8.md`](surveys/ULS8.md)
-- [`surveys/CESD10.md`](surveys/CESD10.md)
-- [`surveys/GAD7.md`](surveys/GAD7.md)
-- [`surveys/COGFUNC8A.md`](surveys/COGFUNC8A.md)
+- [`weather/ULS8.md`](weather/ULS8.md)
+- [`weather/CESD10.md`](weather/CESD10.md)
+- [`weather/GAD7.md`](weather/GAD7.md)
+- [`weather/COGFUNC8A.md`](weather/COGFUNC8A.md)
 
 ### Task Specs
 

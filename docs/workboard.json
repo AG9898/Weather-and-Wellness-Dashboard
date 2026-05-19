@@ -2673,7 +2673,7 @@
       "group_id": "DOC_RESTRUCTURE_WW",
       "title": "Doc restructure - split DESIGN_SPEC.md into weather/ and misokinesia/",
       "type": "implementation",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "summary": "Split DESIGN_SPEC.md at line 59 (## Misokinesia Flow) into weather/DESIGN_SPEC.md and misokinesia/DESIGN_SPEC.md.",
       "description": "Read docs/labs/weather-wellness/DESIGN_SPEC.md (556 lines). Split at line 59 (## Misokinesia Flow header). Write docs/labs/weather-wellness/weather/DESIGN_SPEC.md with lines 1-58. Write docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md with lines 59 to end. Delete the original docs/labs/weather-wellness/DESIGN_SPEC.md after both split files are confirmed present.",
