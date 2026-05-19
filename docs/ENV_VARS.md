@@ -5,18 +5,18 @@ If any other doc conflicts with this file, update that doc to point here.
 
 **Where set:** vars are consumed at runtime by the service that needs them.
 - **Root `.env`** — repo-root file, admin CLI and local dev only. Never committed.
-- **Backend runtime** — Render service env (set via Render Dashboard or API) + local `backend/.env` for dev.
+- **Backend runtime** — Railway service env + local `backend/.env` for dev.
 - **Frontend runtime** — Vercel project env (set via Vercel Dashboard or `vercel env add`) + `frontend/.env.local` for dev.
 - `backend/.env.example` documents the canonical set of backend vars with placeholder values.
 
-Current production uses Vercel for the frontend, Render for the FastAPI backend, and the existing Supabase project. Vercel Preview is wired to the Railway backend and Canada-region Supabase project for pre-cutover testing; production stays on Render/existing Supabase until the infrastructure cutover is explicitly approved.
+Current production uses Vercel for the frontend, Railway for the FastAPI backend, and the Canada-region Supabase project. The old Render backend and East US Supabase project remain available only for rollback until the post-cutover decommission task is complete.
 
 JWT verification note: same-origin Route Handlers use ES256/JWKS as the primary path and only fall back
 to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth section) for full topology.
 
 ---
 
-## Backend Variables (Render / `backend/.env`)
+## Backend Variables (Railway / `backend/.env`)
 
 | Variable | Required | Default | Description | How to obtain |
 |---|---|---|---|---|
@@ -43,7 +43,7 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 |---|---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | — | Browser-visible Supabase project URL for the frontend auth client. | Supabase Dashboard → Project Settings → API → Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | — | Browser-visible Supabase anon key for the frontend auth client. | Supabase Dashboard → Project Settings → API → `anon` key |
-| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000` | Base URL of the FastAPI backend. Frontend API wrappers prepend this to all requests. | Set to the Render service URL in production, e.g. `https://weather-and-wellness-dashboard.onrender.com`; Vercel Preview points to the Railway service during migration testing; `http://localhost:8000` for local dev |
+| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000` | Base URL of the FastAPI backend. Frontend API wrappers prepend this to all requests. | Set to the Railway service URL in production, e.g. `https://backend-production-5809.up.railway.app`; `http://localhost:8000` for local dev |
 | `KV_REST_API_URL` | Conditional (cache enabled) | — | Vercel KV / Upstash REST URL for same-origin cache helpers. | Vercel Dashboard → Storage → KV instance → `.env.local` tab, or `vercel env pull` |
 | `KV_REST_API_TOKEN` | Conditional (cache enabled) | — | Vercel KV / Upstash REST token (read-write) for same-origin cache helpers. | Same as `KV_REST_API_URL` source |
 | `KV_REST_API_READ_ONLY_TOKEN` | Conditional (cache, read-only path) | — | Read-only variant of the KV token for public-safe cache reads. | Same as `KV_REST_API_URL` source |
@@ -57,7 +57,7 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 
 | Variable | Description | How to obtain |
 |---|---|---|
-| `WEATHER_INGEST_BASE_URL` | Backend base URL used by scheduled/manual weather ingestion workflows. | Render service URL, e.g. `https://weather-and-wellness-dashboard.onrender.com` |
+| `WEATHER_INGEST_BASE_URL` | Backend base URL used by scheduled/manual weather ingestion workflows. | Railway service URL, e.g. `https://backend-production-5809.up.railway.app` |
 | `WEATHER_INGEST_SHARED_SECRET` | Single shared secret header value sent by weather ingest workflows. Must match one value in `WEATHER_INGEST_SHARED_SECRETS` on the backend. | Copy one of the values set in the backend `WEATHER_INGEST_SHARED_SECRETS` var |
 
 ---
@@ -68,16 +68,16 @@ These live in the root `.env` (never in Render or Vercel).
 
 | Variable | Description | How to obtain |
 |---|---|---|
-| `RENDER_API_KEY` | Render API key for admin scripts and CLI automation against the Render service. | Render Dashboard → Account Settings → API Keys |
+| `RENDER_API_KEY` | Render API key for legacy rollback/decommission scripts and diagnostics against the old Render service. | Render Dashboard → Account Settings → API Keys |
 
-For operational debugging, local workstations may already have the `vercel`, `supabase`, and `render` CLIs authenticated for this project. They are useful for log inspection, environment checks, deployment status, and service diagnostics when relevant, but they are not mandatory validation steps.
+For operational debugging, local workstations may already have the `vercel`, `supabase`, `railway`, and `render` CLIs authenticated for this project. They are useful for log inspection, environment checks, deployment status, and service diagnostics when relevant, but they are not mandatory validation steps.
 
 Admin invite migration note: `backend/admin_cli/invite_user.py` loads root `.env`
-by default for local batches. During the Railway + Canada Supabase migration,
-use `--use-railway-env` to read the linked Railway backend env, or pass
-`--env-file <path>` for a local migration-only env file, so invites write to
-the intended `ra_invitations` table instead of whichever database root `.env`
-currently targets.
+by default for local batches. For production batches, use `--use-railway-env`
+to read the linked Railway backend env, or pass `--env-file <path>` for a
+local migration-only env file, so invites write to the intended
+`ra_invitations` table instead of whichever database root `.env` currently
+targets.
 
 ---
 

@@ -2141,7 +2141,7 @@
       "id": "T166",
       "group_id": "INFRA",
       "title": "[MANUAL] Approve and execute production Vercel env cutover",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "manual",
       "summary": "Human-approved: switch Vercel production environment variables from Render/old-Supabase to Railway/new-Supabase, redeploy, and verify the live site is healthy.",
@@ -2175,7 +2175,8 @@
         "Update WEATHER_INGEST_BASE_URL in GitHub Actions secrets (repo Settings \u2192 Secrets) to the Railway URL, or the daily weather ingestion job will keep hitting Render.",
         "Do not decommission Render or the old Supabase project until T167 is done.",
         "T164 handoff: after production env cutover is healthy, send RA/admin invites with `cd backend && PYTHONPATH=. .venv/bin/python admin_cli/invite_user.py --use-railway-env --email <user> --role <role> --lab-name <lab> --site-url https://ubcpsych.com --created-by-lab-member-id 5f77f0a4-6cbb-4544-b249-35809e48dff7`; verify metadata and login before considering auth migration complete.",
-        "Before approving production cutover, decide whether to keep, disable, or delete the retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`). Credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`."
+        "Before approving production cutover, decide whether to keep, disable, or delete the retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`). Credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`.",
+        "Completed 2026-05-19: project owner approved the live switch; removed both retained new-project smoke users; updated Vercel Production NEXT_PUBLIC_API_URL/NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY to Railway/new Supabase; updated GitHub Actions WEATHER_INGEST_BASE_URL to Railway; redeployed and aliased https://ubcpsych.com; verified Railway /health returns 200, https://ubcpsych.com/login loads, the live frontend bundle references new Supabase project gqtsjkqugvhmidzdghsr and no longer references old project viwqgwydrtpicovclllb, and /set-password is reachable. Project owner manually verified admin login, dashboard, app-facing RA invite creation, RA invite acceptance/password setup, RA login, and RA /dashboard access."
       ],
       "commands": [
         "vercel env add NEXT_PUBLIC_API_URL production",
