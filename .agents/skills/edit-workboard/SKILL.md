@@ -275,42 +275,46 @@ ID naming rule: split IDs must use underscore-plus-digit suffixes: `ORIG-ID_1`, 
 
 First split inherits original `depends_on`. Each subsequent split depends on the previous split. All splits inherit `group_id` and `priority` unless explicitly overridden.
 
-Run as one atomic jq expression:
+Write the splits to a temp file first (the quoted heredoc delimiter prevents shell interpolation, so single quotes and special characters in descriptions are safe), then run the atomic jq expression:
 
 ```bash
+cat > /tmp/splits.json << 'SPLITS_EOF'
+[
+  {
+    "id": "ORIG-ID_1",
+    "title": "...",
+    "description": "...",
+    "status": "todo",
+    "priority": "...",
+    "group_id": "...",
+    "depends_on": [],
+    "blocked_by": [],
+    "acceptance_criteria": ["..."],
+    "docs": [],
+    "files": [],
+    "commands": []
+  },
+  {
+    "id": "ORIG-ID_2",
+    "title": "...",
+    "description": "...",
+    "status": "todo",
+    "priority": "...",
+    "group_id": "...",
+    "depends_on": ["ORIG-ID_1"],
+    "blocked_by": [],
+    "acceptance_criteria": ["..."],
+    "docs": [],
+    "files": [],
+    "commands": []
+  }
+]
+SPLITS_EOF
+
 jq \
   --arg orig "ORIG-ID" \
   --arg last "ORIG-ID_2" \
-  --argjson splits '[
-    {
-      "id": "ORIG-ID_1",
-      "title": "...",
-      "description": "...",
-      "status": "todo",
-      "priority": "...",
-      "group_id": "...",
-      "depends_on": [...original depends_on here...],
-      "blocked_by": [],
-      "acceptance_criteria": ["..."],
-      "docs": [],
-      "files": [],
-      "commands": []
-    },
-    {
-      "id": "ORIG-ID_2",
-      "title": "...",
-      "description": "...",
-      "status": "todo",
-      "priority": "...",
-      "group_id": "...",
-      "depends_on": ["ORIG-ID_1"],
-      "blocked_by": [],
-      "acceptance_criteria": ["..."],
-      "docs": [],
-      "files": [],
-      "commands": []
-    }
-  ]' \
+  --slurpfile splits /tmp/splits.json \
 '.last_updated = "YYYY-MM-DD" |
  .tasks = (
    [ .tasks[] |
@@ -318,9 +322,11 @@ jq \
      if (.depends_on | contains([$orig]))
      then .depends_on = (.depends_on | map(if . == $orig then $last else . end))
      else . end
-   ] + $splits
+   ] + $splits[0]
  )' \
 docs/workboard.json > /tmp/wb.json && mv /tmp/wb.json docs/workboard.json
+
+rm -f /tmp/splits.json
 ```
 
 Step 5: Validate using Shared Write Protocol steps 3 and 4.
