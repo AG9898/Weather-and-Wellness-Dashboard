@@ -2274,7 +2274,7 @@
       "id": "T169",
       "group_id": "MISO_SURVEYS",
       "title": "Miso post-video surveys - New schemas, models, and survey endpoints",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Add Pydantic schemas to backend/app/schemas/misokinesia.py: MisoGAD7Create (r1-r7, int 1-4), MisoGAD7Response (response_id, total_score, severity_band), MisoMAQCreate (q1-q21, int 0-3), MisoMAQResponse (response_id, total_score). Add ORM models to backend/app/models/misokinesia.py: MisokinesiaGAD7Response and MisokinesiaMAQResponse (matching the planned tables in docs/SCHEMA.md). Add POST /misokinesia/participants/{id}/gad7 endpoint: guard requires completed_at set, reuse backend/app/scoring/gad7.py::score_gad7(), write to misokinesia_gad7_responses, return 409 on duplicate. Add POST /misokinesia/participants/{id}/maq endpoint: guard requires completed_at set, total_score = sum(q1..q21), write to misokinesia_maq_responses, return 409 on duplicate. Do not change existing endpoint guards in this task \u2014 those are in T173.",
       "acceptance_criteria": [

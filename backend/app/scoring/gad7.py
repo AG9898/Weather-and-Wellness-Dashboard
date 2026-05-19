@@ -28,3 +28,7 @@ def score(raw: list[int]) -> GAD7Scored:
         band = "severe"
 
     return GAD7Scored(total_score=total, severity_band=band)
+
+
+def score_gad7(raw: list[int]) -> GAD7Scored:
+    return score(raw)

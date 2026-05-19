@@ -13,6 +13,8 @@ from app.auth import get_current_lab_member
 from app.db import get_session
 from app.models.misokinesia import (
     MisokinesiaAqResponse as MisokinesiaAqResponseModel,
+    MisokinesiaGAD7Response as MisokinesiaGAD7ResponseModel,
+    MisokinesiaMAQResponse as MisokinesiaMAQResponseModel,
     MisokinesiaParticipant,
     MisokinesiaStimulus,
     MisokinesiaTestSet,
@@ -21,6 +23,10 @@ from app.models.misokinesia import (
 from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
 from app.schemas.misokinesia import (
+    MisoGAD7Create,
+    MisoGAD7Response,
+    MisoMAQCreate,
+    MisoMAQResponse,
     MisokinesiaAqCreate,
     MisokinesiaAqResponse,
     MisokinesiaClipMeta,
@@ -31,10 +37,13 @@ from app.schemas.misokinesia import (
     MisokinesiaTrialResponseCreate,
     MisokinesiaTrialResponseResponse,
 )
+from app.scoring import gad7 as gad7_scoring
 
 router = APIRouter(prefix="/misokinesia", tags=["misokinesia"])
 _TRIAL_MANIFEST_CLIP_COUNT = 5
 _MKAQ_DUPLICATE_CONSTRAINT = "uq_misokinesia_mkaq_responses_participant"
+_GAD7_DUPLICATE_CONSTRAINT = "uq_misokinesia_gad7_responses_participant"
+_MAQ_DUPLICATE_CONSTRAINT = "uq_misokinesia_maq_responses_participant"
 _SURVEY_KEYS = ["mkaq", "gad7", "maq"]
 
 
@@ -78,6 +87,33 @@ def _matches_constraint(exc: sa_exc.IntegrityError, constraint_name: str) -> boo
         return True
 
     return constraint_name in f"{exc} {exc.orig}"
+
+
+async def _get_post_video_participant(
+    participant_id: UUID,
+    db: AsyncSession,
+    *,
+    survey_name: str,
+) -> MisokinesiaParticipant:
+    mp_result = await db.execute(
+        select(MisokinesiaParticipant).where(
+            MisokinesiaParticipant.misokinesia_participant_id == participant_id
+        )
+    )
+    miso_participant = mp_result.scalar_one_or_none()
+    if miso_participant is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Misokinesia participant not found.",
+        )
+
+    if miso_participant.completed_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"All per-clip responses must be submitted before {survey_name}.",
+        )
+
+    return miso_participant
 
 
 @router.post(
@@ -407,6 +443,116 @@ async def submit_mkaq(
         session_id=response_row.session_id,
         total_score=response_row.total_score,
         created_at=response_row.created_at,
+    )
+
+
+@router.post(
+    "/participants/{participant_id}/gad7",
+    response_model=MisoGAD7Response,
+    status_code=status.HTTP_201_CREATED,
+)
+async def submit_miso_gad7(
+    participant_id: UUID,
+    payload: MisoGAD7Create,
+    db: AsyncSession = Depends(get_session),
+) -> MisoGAD7Response:
+    """Participant-facing (no auth). Submit post-video GAD-7 once."""
+
+    miso_participant = await _get_post_video_participant(
+        participant_id,
+        db,
+        survey_name="GAD-7",
+    )
+
+    raw_scores = [getattr(payload, f"r{i}") for i in range(1, 8)]
+    scored = gad7_scoring.score_gad7(raw_scores)
+    response_row = MisokinesiaGAD7ResponseModel(
+        misokinesia_participant_id=miso_participant.misokinesia_participant_id,
+        session_id=miso_participant.session_id,
+        participant_uuid=miso_participant.participant_uuid,
+        r1=payload.r1,
+        r2=payload.r2,
+        r3=payload.r3,
+        r4=payload.r4,
+        r5=payload.r5,
+        r6=payload.r6,
+        r7=payload.r7,
+        total_score=scored.total_score,
+        severity_band=scored.severity_band,
+    )
+    db.add(response_row)
+    try:
+        await db.flush()
+    except sa_exc.IntegrityError as exc:
+        await db.rollback()
+        if _matches_constraint(exc, _GAD7_DUPLICATE_CONSTRAINT):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A GAD-7 response for this participant already exists.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to persist GAD-7 response due to data integrity constraints.",
+        )
+
+    await db.commit()
+    await db.refresh(response_row)
+
+    return MisoGAD7Response(
+        response_id=response_row.response_id,
+        total_score=response_row.total_score,
+        severity_band=response_row.severity_band,
+    )
+
+
+@router.post(
+    "/participants/{participant_id}/maq",
+    response_model=MisoMAQResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def submit_miso_maq(
+    participant_id: UUID,
+    payload: MisoMAQCreate,
+    db: AsyncSession = Depends(get_session),
+) -> MisoMAQResponse:
+    """Participant-facing (no auth). Submit post-video MAQ once."""
+
+    miso_participant = await _get_post_video_participant(
+        participant_id,
+        db,
+        survey_name="MAQ",
+    )
+
+    item_scores = {f"q{i}": getattr(payload, f"q{i}") for i in range(1, 22)}
+    total_score = sum(item_scores.values())
+    response_row = MisokinesiaMAQResponseModel(
+        misokinesia_participant_id=miso_participant.misokinesia_participant_id,
+        session_id=miso_participant.session_id,
+        participant_uuid=miso_participant.participant_uuid,
+        **item_scores,
+        total_score=total_score,
+    )
+    db.add(response_row)
+    try:
+        await db.flush()
+    except sa_exc.IntegrityError as exc:
+        await db.rollback()
+        if _matches_constraint(exc, _MAQ_DUPLICATE_CONSTRAINT):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A MAQ response for this participant already exists.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to persist MAQ response due to data integrity constraints.",
+        )
+
+    await db.commit()
+    await db.refresh(response_row)
+
+    return MisoMAQResponse(
+        response_id=response_row.response_id,
+        total_score=response_row.total_score,
     )
 
 

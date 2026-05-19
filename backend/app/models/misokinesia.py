@@ -149,7 +149,7 @@ class MisokinesiaAqResponse(Base):
     )
 
 
-class MisokinesiaGad7Response(Base):
+class MisokinesiaGAD7Response(Base):
     __tablename__ = "misokinesia_gad7_responses"
     __table_args__ = (
         UniqueConstraint(
@@ -187,7 +187,7 @@ class MisokinesiaGad7Response(Base):
     )
 
 
-class MisokinesiaMaqResponse(Base):
+class MisokinesiaMAQResponse(Base):
     __tablename__ = "misokinesia_maq_responses"
     __table_args__ = (
         UniqueConstraint(

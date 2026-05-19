@@ -13,6 +13,8 @@ Covers:
   completed_at null 409, mkaq-not-submitted 409, stronger_responses_timing/stronger_responses mismatch 422
 - POST /misokinesia/participants/{id}/mkaq: happy path, 404, duplicate 409,
   clips-not-complete 409 (always post-video), server-side score computation
+- POST /misokinesia/participants/{id}/gad7 and /maq: happy path, clips-not-complete 409,
+  duplicate 409, server-side score computation
 - Schema: router registered at correct paths with correct auth dependencies
 """
 from __future__ import annotations
@@ -34,10 +36,14 @@ from app.routers.misokinesia import (
     router,
     start_misokinesia_session,
     submit_end_of_task,
+    submit_miso_gad7,
+    submit_miso_maq,
     submit_mkaq,
     submit_trial_response,
 )
 from app.schemas.misokinesia import (
+    MisoGAD7Create,
+    MisoMAQCreate,
     MisokinesiaAqCreate,
     MisokinesiaEndOfTaskCreate,
     MisokinesiaTrialResponseCreate,
@@ -137,6 +143,8 @@ class _FakeResponseRow:
 
 
 _MKAQ_RESPONSE_ID = uuid.UUID("ffffffff-ffff-ffff-ffff-ffffffffffff")
+_GAD7_RESPONSE_ID = uuid.UUID("abababab-abab-abab-abab-abababababab")
+_MAQ_RESPONSE_ID = uuid.UUID("cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd")
 
 
 class _FakeMkaqResponseRow:
@@ -145,6 +153,23 @@ class _FakeMkaqResponseRow:
     session_id = _SESSION_ID
     administration = "post"
     total_score = 21
+    created_at = _NOW
+
+
+class _FakeGad7ResponseRow:
+    response_id = _GAD7_RESPONSE_ID
+    misokinesia_participant_id = _MISO_PARTICIPANT_ID
+    session_id = _SESSION_ID
+    total_score = 9
+    severity_band = "mild"
+    created_at = _NOW
+
+
+class _FakeMaqResponseRow:
+    response_id = _MAQ_RESPONSE_ID
+    misokinesia_participant_id = _MISO_PARTICIPANT_ID
+    session_id = _SESSION_ID
+    total_score = 42
     created_at = _NOW
 
 
@@ -1075,3 +1100,189 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
             dep_calls,
             "MkAQ endpoint should not require lab-member auth",
         )
+
+
+# ---------------------------------------------------------------------------
+# Class 6 — submit_miso_gad7 and submit_miso_maq
+# ---------------------------------------------------------------------------
+
+
+class SubmitPostVideoSurveyTests(IsolatedAsyncioTestCase):
+    def _db_for_post_survey(
+        self,
+        miso_participant: _FakeMisoParticipant | None = None,
+        integrity_error_on_flush: sa_exc.IntegrityError | None = None,
+    ) -> _SequencedDB:
+        if miso_participant is None:
+            miso_participant = _FakeMisoParticipant(completed_at=_NOW)
+        return _SequencedDB(
+            execute_returns=[miso_participant],
+            integrity_error_on_flush=integrity_error_on_flush,
+        )
+
+    def _valid_gad7_payload(self) -> MisoGAD7Create:
+        return MisoGAD7Create(r1=1, r2=2, r3=3, r4=4, r5=2, r6=3, r7=4)
+
+    def _valid_maq_payload(self) -> MisoMAQCreate:
+        return MisoMAQCreate(**{f"q{i}": i % 4 for i in range(1, 22)})
+
+    async def test_gad7_happy_path_scores_and_returns_response(self) -> None:
+        db = self._db_for_post_survey()
+        payload = self._valid_gad7_payload()
+        captured: dict[str, Any] = {}
+        from unittest.mock import patch
+
+        def capture_gad7_row(**kwargs: Any) -> _FakeGad7ResponseRow:
+            captured.update(kwargs)
+            row = _FakeGad7ResponseRow()
+            row.total_score = kwargs["total_score"]
+            row.severity_band = kwargs["severity_band"]
+            return row
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaGAD7ResponseModel",
+            side_effect=capture_gad7_row,
+        ):
+            result = await submit_miso_gad7(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=payload,
+                db=db,
+            )
+
+        self.assertEqual(result.response_id, _GAD7_RESPONSE_ID)
+        self.assertEqual(result.total_score, 12)
+        self.assertEqual(result.severity_band, "moderate")
+        self.assertEqual(captured["r7"], 4)
+        self.assertTrue(db.committed)
+
+    async def test_gad7_raises_409_when_clips_not_complete(self) -> None:
+        db = self._db_for_post_survey(
+            miso_participant=_FakeMisoParticipant(completed_at=None)
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_miso_gad7(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_gad7_payload(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("per-clip responses", ctx.exception.detail)
+
+    async def test_gad7_raises_409_on_duplicate_submission(self) -> None:
+        db = self._db_for_post_survey(
+            integrity_error_on_flush=_make_integrity_error(
+                message="duplicate key value violates unique constraint",
+                constraint_name="uq_misokinesia_gad7_responses_participant",
+            )
+        )
+        from unittest.mock import patch
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaGAD7ResponseModel",
+            return_value=_FakeGad7ResponseRow(),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                await submit_miso_gad7(
+                    participant_id=_MISO_PARTICIPANT_ID,
+                    payload=self._valid_gad7_payload(),
+                    db=db,
+                )
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("already exists", ctx.exception.detail)
+
+    async def test_gad7_values_outside_1_4_rejected_by_schema(self) -> None:
+        base = {f"r{i}": 1 for i in range(1, 8)}
+
+        with self.assertRaises(ValidationError):
+            MisoGAD7Create(**{**base, "r1": 0})
+
+        with self.assertRaises(ValidationError):
+            MisoGAD7Create(**{**base, "r1": 5})
+
+    async def test_maq_happy_path_scores_and_returns_response(self) -> None:
+        db = self._db_for_post_survey()
+        payload = self._valid_maq_payload()
+        captured: dict[str, Any] = {}
+        from unittest.mock import patch
+
+        def capture_maq_row(**kwargs: Any) -> _FakeMaqResponseRow:
+            captured.update(kwargs)
+            row = _FakeMaqResponseRow()
+            row.total_score = kwargs["total_score"]
+            return row
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaMAQResponseModel",
+            side_effect=capture_maq_row,
+        ):
+            result = await submit_miso_maq(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=payload,
+                db=db,
+            )
+
+        self.assertEqual(result.response_id, _MAQ_RESPONSE_ID)
+        self.assertEqual(result.total_score, sum(i % 4 for i in range(1, 22)))
+        self.assertEqual(captured["q21"], 1)
+        self.assertTrue(db.committed)
+
+    async def test_maq_raises_409_when_clips_not_complete(self) -> None:
+        db = self._db_for_post_survey(
+            miso_participant=_FakeMisoParticipant(completed_at=None)
+        )
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_miso_maq(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_maq_payload(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("per-clip responses", ctx.exception.detail)
+
+    async def test_maq_raises_409_on_duplicate_submission(self) -> None:
+        db = self._db_for_post_survey(
+            integrity_error_on_flush=_make_integrity_error(
+                message="duplicate key value violates unique constraint",
+                constraint_name="uq_misokinesia_maq_responses_participant",
+            )
+        )
+        from unittest.mock import patch
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaMAQResponseModel",
+            return_value=_FakeMaqResponseRow(),
+        ):
+            with self.assertRaises(HTTPException) as ctx:
+                await submit_miso_maq(
+                    participant_id=_MISO_PARTICIPANT_ID,
+                    payload=self._valid_maq_payload(),
+                    db=db,
+                )
+        self.assertEqual(ctx.exception.status_code, 409)
+        self.assertIn("already exists", ctx.exception.detail)
+
+    async def test_maq_values_outside_0_3_rejected_by_schema(self) -> None:
+        base = {f"q{i}": 1 for i in range(1, 22)}
+
+        with self.assertRaises(ValidationError):
+            MisoMAQCreate(**{**base, "q1": -1})
+
+        with self.assertRaises(ValidationError):
+            MisoMAQCreate(**{**base, "q1": 4})
+
+    async def test_new_survey_routes_have_no_auth_dependency(self) -> None:
+        for path_part in ("/gad7", "/maq"):
+            route = next(
+                (
+                    r
+                    for r in router.routes
+                    if isinstance(r, APIRoute)
+                    and path_part in (r.path or "")
+                    and "POST" in (r.methods or set())
+                ),
+                None,
+            )
+            self.assertIsNotNone(route, f"POST {path_part} route not registered")
+            assert route is not None
+            dep_calls = {d.call for d in route.dependant.dependencies}
+            self.assertNotIn(get_current_lab_member, dep_calls)

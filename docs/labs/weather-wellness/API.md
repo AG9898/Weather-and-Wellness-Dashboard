@@ -95,8 +95,8 @@
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
-| POST   | /misokinesia/participants/{participant_id}/gad7 | None | planned (T169) | |
-| POST   | /misokinesia/participants/{participant_id}/maq | None | planned (T169) | |
+| POST   | /misokinesia/participants/{participant_id}/gad7 | None | implemented | T169 |
+| POST   | /misokinesia/participants/{participant_id}/maq | None | implemented | T169 |
 | PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
 
 ---
@@ -1253,7 +1253,7 @@
 
 ### POST /misokinesia/participants/{participant_id}/gad7
 - **Auth:** None (participant-facing)
-- **Status:** planned (T169)
+- **Status:** implemented (T169)
 - **Request body:** `MisoGAD7Create`
   ```json
   {
@@ -1288,7 +1288,7 @@
 
 ### POST /misokinesia/participants/{participant_id}/maq
 - **Auth:** None (participant-facing)
-- **Status:** planned (T169)
+- **Status:** implemented (T169)
 - **Request body:** `MisoMAQCreate`
   ```json
   {

@@ -157,6 +157,55 @@ class MisokinesiaAqResponse(BaseModel):
     created_at: datetime
 
 
+class MisoGAD7Create(BaseModel):
+    r1: int = Field(..., ge=1, le=4)
+    r2: int = Field(..., ge=1, le=4)
+    r3: int = Field(..., ge=1, le=4)
+    r4: int = Field(..., ge=1, le=4)
+    r5: int = Field(..., ge=1, le=4)
+    r6: int = Field(..., ge=1, le=4)
+    r7: int = Field(..., ge=1, le=4)
+
+
+class MisoGAD7Response(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    response_id: UUID
+    total_score: int
+    severity_band: str
+
+
+class MisoMAQCreate(BaseModel):
+    q1: int = Field(..., ge=0, le=3)
+    q2: int = Field(..., ge=0, le=3)
+    q3: int = Field(..., ge=0, le=3)
+    q4: int = Field(..., ge=0, le=3)
+    q5: int = Field(..., ge=0, le=3)
+    q6: int = Field(..., ge=0, le=3)
+    q7: int = Field(..., ge=0, le=3)
+    q8: int = Field(..., ge=0, le=3)
+    q9: int = Field(..., ge=0, le=3)
+    q10: int = Field(..., ge=0, le=3)
+    q11: int = Field(..., ge=0, le=3)
+    q12: int = Field(..., ge=0, le=3)
+    q13: int = Field(..., ge=0, le=3)
+    q14: int = Field(..., ge=0, le=3)
+    q15: int = Field(..., ge=0, le=3)
+    q16: int = Field(..., ge=0, le=3)
+    q17: int = Field(..., ge=0, le=3)
+    q18: int = Field(..., ge=0, le=3)
+    q19: int = Field(..., ge=0, le=3)
+    q20: int = Field(..., ge=0, le=3)
+    q21: int = Field(..., ge=0, le=3)
+
+
+class MisoMAQResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    response_id: UUID
+    total_score: int
+
+
 __all__ = [
     "MisokinesiaClipMeta",
     "MisokinesiaManifestResponse",
@@ -168,4 +217,8 @@ __all__ = [
     "MisokinesiaEndOfTaskResponse",
     "MisokinesiaAqCreate",
     "MisokinesiaAqResponse",
+    "MisoGAD7Create",
+    "MisoGAD7Response",
+    "MisoMAQCreate",
+    "MisoMAQResponse",
 ]
