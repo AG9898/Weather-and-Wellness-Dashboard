@@ -2601,7 +2601,7 @@
       "group_id": "DOC_RESTRUCTURE_WW",
       "title": "Doc restructure - create subdirs and move simple files",
       "type": "implementation",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "summary": "Create weather/ and misokinesia/ subdirs and git-mv all files that need no content changes into their new locations.",
       "description": "Create docs/labs/weather-wellness/weather/ and docs/labs/weather-wellness/misokinesia/. Use git mv to preserve history. Move into weather/: SCORING.md, WEATHER_INGESTION.md, HISTORICAL_WEATHER_BACKFILL.md, ANALYTICS.md, all 4 survey docs (surveys/CESD10.md, surveys/COGFUNC8A.md, surveys/GAD7.md, surveys/ULS8.md), tasks/DIGITSPAN.md. Move tasks/MISOKINESIA.md -> misokinesia/MISOKINESIA.md. Delete docs/labs/weather-wellness/tasks/working-misokinesia-add.md (stale draft). Remove the now-empty tasks/ directory. Do NOT touch API.md or DESIGN_SPEC.md — those are split in T176_2 and T176_3.",
