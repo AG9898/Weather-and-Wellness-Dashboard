@@ -797,20 +797,28 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
         self,
         completed_at: datetime | None = _NOW,
         mkaq_row: Any = "_DEFAULT_",
+        gad7_row: Any = "_DEFAULT_",
+        maq_row: Any = "_DEFAULT_",
     ) -> _SequencedDB:
         """Build fake DB for submit_end_of_task.
 
         execute() call order when completed_at is set:
           0. select(MisokinesiaParticipant) → miso_participant
-          1. select(MisokinesiaAqResponseModel) → mkaq_row (always checked now)
+          1. select(MisokinesiaAqResponseModel) → mkaq_row
+          2. select(MisokinesiaGAD7ResponseModel) → gad7_row
+          3. select(MisokinesiaMAQResponseModel) → maq_row
 
-        When completed_at is None, the router raises 409 before the mkaq check.
+        When completed_at is None, the router raises 409 before the survey checks.
         """
         miso = _FakeMisoParticipant(completed_at=completed_at)
         execute_returns: list[Any] = [miso]
         if completed_at is not None:
-            execute_returns.append(
-                _FakeMkaqResponseRow() if mkaq_row == "_DEFAULT_" else mkaq_row
+            execute_returns.extend(
+                [
+                    _FakeMkaqResponseRow() if mkaq_row == "_DEFAULT_" else mkaq_row,
+                    _FakeGad7ResponseRow() if gad7_row == "_DEFAULT_" else gad7_row,
+                    _FakeMaqResponseRow() if maq_row == "_DEFAULT_" else maq_row,
+                ]
             )
         return _SequencedDB(execute_returns=execute_returns)
 
@@ -908,8 +916,7 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
         )
 
     async def test_raises_409_without_mkaq_submission(self) -> None:
-        """End-of-task requires MkAQ to be submitted first (always post-video)."""
-        # [0]=participant (completed_at set), [1]=mkaq guard → None (not submitted)
+        """End-of-task requires MkAQ to be submitted first."""
         db = self._db_for_eot(completed_at=_NOW, mkaq_row=None)
         with self.assertRaises(HTTPException) as ctx:
             await submit_end_of_task(
@@ -919,9 +926,36 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
             )
         self.assertEqual(ctx.exception.status_code, 409)
 
-    async def test_can_submit_end_of_task_after_mkaq(self) -> None:
-        """Participant with MkAQ submitted can proceed to end-of-task."""
-        db = self._db_for_eot(completed_at=_NOW, mkaq_row=_FakeMkaqResponseRow())
+    async def test_raises_409_without_gad7_submission(self) -> None:
+        """End-of-task requires GAD-7 to be submitted first."""
+        db = self._db_for_eot(completed_at=_NOW, gad7_row=None)
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_end_of_task(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=MisokinesiaEndOfTaskCreate(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    async def test_raises_409_without_maq_submission(self) -> None:
+        """End-of-task requires MAQ to be submitted first."""
+        db = self._db_for_eot(completed_at=_NOW, maq_row=None)
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_end_of_task(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=MisokinesiaEndOfTaskCreate(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    async def test_can_submit_end_of_task_after_all_post_video_surveys(self) -> None:
+        """Participant with MkAQ, GAD-7, and MAQ submitted can proceed."""
+        db = self._db_for_eot(
+            completed_at=_NOW,
+            mkaq_row=_FakeMkaqResponseRow(),
+            gad7_row=_FakeGad7ResponseRow(),
+            maq_row=_FakeMaqResponseRow(),
+        )
         result = await submit_end_of_task(
             participant_id=_MISO_PARTICIPANT_ID,
             payload=MisokinesiaEndOfTaskCreate(),

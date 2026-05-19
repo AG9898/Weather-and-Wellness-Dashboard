@@ -589,13 +589,27 @@ async def submit_end_of_task(
             detail="All per-clip responses must be submitted before the end-of-task questionnaire.",
         )
 
-    # 3. Require MkAQ to be submitted (always post-video)
+    # 3. Require all post-video surveys to be submitted.
     mkaq_check = await db.execute(
         select(MisokinesiaAqResponseModel).where(
             MisokinesiaAqResponseModel.misokinesia_participant_id == participant_id
         )
     )
-    if mkaq_check.scalar_one_or_none() is None:
+    gad7_check = await db.execute(
+        select(MisokinesiaGAD7ResponseModel).where(
+            MisokinesiaGAD7ResponseModel.misokinesia_participant_id == participant_id
+        )
+    )
+    maq_check = await db.execute(
+        select(MisokinesiaMAQResponseModel).where(
+            MisokinesiaMAQResponseModel.misokinesia_participant_id == participant_id
+        )
+    )
+    if (
+        mkaq_check.scalar_one_or_none() is None
+        or gad7_check.scalar_one_or_none() is None
+        or maq_check.scalar_one_or_none() is None
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="All post-video surveys must be submitted before the end-of-task questionnaire.",

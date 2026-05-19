@@ -2308,7 +2308,7 @@
       "id": "T173",
       "group_id": "MISO_SURVEYS",
       "title": "Miso post-video surveys - Guard updates and test coverage",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "Update three existing guards in backend/app/routers/misokinesia.py: (1) POST /misokinesia/participants/{id}/responses \u2014 remove the mkaq_administration='pre' guard entirely; (2) POST /misokinesia/participants/{id}/mkaq \u2014 remove the null-administration 409 guard; unconditionally require completed_at (MkAQ is always post-video now); (3) PATCH /misokinesia/participants/{id}/end-of-task \u2014 replace the mkaq_administration='post' MkAQ check with a check that all three response rows exist (mkaq + gad7 + maq). Write or update tests in backend/tests/test_misokinesia.py to cover: new gad7 endpoint (happy path, 409 guard, 409 duplicate), new maq endpoint (happy path, 409 guard, 409 duplicate), mkaq guard now always requires completed_at, end-of-task now requires all three surveys.",
       "acceptance_criteria": [
