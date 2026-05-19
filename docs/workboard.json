@@ -2488,6 +2488,152 @@
       "commands": [
         "cd frontend && npm run build"
       ]
+    },
+    {
+      "id": "T176",
+      "group_id": "DOC_RESTRUCTURE_WW",
+      "title": "Doc restructure - structural file moves and splits",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Create weather/ and misokinesia/ component subdirs under docs/labs/weather-wellness/ and move/split all files into the correct location.",
+      "description": "Create docs/labs/weather-wellness/weather/ and docs/labs/weather-wellness/misokinesia/. Use git mv to preserve history where possible. Move: SCORING.md, WEATHER_INGESTION.md, HISTORICAL_WEATHER_BACKFILL.md, ANALYTICS.md, surveys/ (all 4 survey docs), tasks/DIGITSPAN.md → into weather/. Move tasks/MISOKINESIA.md → misokinesia/MISOKINESIA.md. Split API.md at line 1062 (## Misokinesia header): weather/API.md gets lines 1–1061 plus a note in the Endpoint Index that miso endpoints live in misokinesia/API.md; misokinesia/API.md gets a brief header (Base URL, Auth, Trial Run Mode — with back-link to weather/API.md for full context) plus the full ## Misokinesia section and Error/CORS/Error Codes sections. Split DESIGN_SPEC.md at line 59 (## Misokinesia Flow): weather/DESIGN_SPEC.md gets lines 1–58; misokinesia/DESIGN_SPEC.md gets lines 59–end. Delete docs/labs/weather-wellness/tasks/working-misokinesia-add.md (stale working draft). Delete original API.md and DESIGN_SPEC.md after splits are confirmed. Remove now-empty tasks/ directory.",
+      "acceptance_criteria": [
+        "find docs/labs/weather-wellness -type f -name '*.md' shows new structure with weather/ and misokinesia/ subdirs",
+        "weather/API.md exists and contains the Dashboard, Participants, Sessions, Surveys, Digitspan, Weather, Admin, Auth sections",
+        "misokinesia/API.md exists and contains only the Misokinesia section plus a back-link header",
+        "weather/DESIGN_SPEC.md exists and ends before ## Misokinesia Flow",
+        "misokinesia/DESIGN_SPEC.md exists and starts at ## Misokinesia Flow",
+        "Original docs/labs/weather-wellness/API.md and DESIGN_SPEC.md are removed",
+        "working-misokinesia-add.md is deleted",
+        "All moved files are present in their new locations"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/SCORING.md",
+        "docs/labs/weather-wellness/ANALYTICS.md",
+        "docs/labs/weather-wellness/WEATHER_INGESTION.md",
+        "docs/labs/weather-wellness/HISTORICAL_WEATHER_BACKFILL.md",
+        "docs/labs/weather-wellness/surveys/",
+        "docs/labs/weather-wellness/tasks/",
+        "docs/labs/weather-wellness/weather/",
+        "docs/labs/weather-wellness/misokinesia/"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/API.md",
+        "docs/labs/weather-wellness/DESIGN_SPEC.md"
+      ],
+      "notes": "API.md miso seam is at line 1062 (## Misokinesia). DESIGN_SPEC.md miso seam is at line 59 (## Misokinesia Flow). Error/CORS/Error Codes sections at the end of API.md are platform-shared — include them in weather/API.md and add a cross-reference note in misokinesia/API.md.",
+      "commands": [
+        "find docs/labs/weather-wellness -type f -name '*.md' | sort",
+        "grep -c 'Misokinesia' docs/labs/weather-wellness/weather/API.md",
+        "test -f docs/labs/weather-wellness/misokinesia/API.md && echo exists"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T177",
+      "group_id": "DOC_RESTRUCTURE_WW",
+      "title": "Doc restructure - repair internal relative links",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Fix all relative links within the moved and split docs so no link is broken after T176.",
+      "description": "After T176 moves files into subdirectories, relative links inside those files must be updated. Key fixes: weather/SCORING.md links to tasks/DIGITSPAN.md and surveys/*.md remain valid (same subdirectory tree, no change needed — verify). weather/WEATHER_INGESTION.md ref to HISTORICAL_WEATHER_BACKFILL.md → ./HISTORICAL_WEATHER_BACKFILL.md (same dir, verify). weather/HISTORICAL_WEATHER_BACKFILL.md ref to API.md → ./API.md. misokinesia/MISOKINESIA.md refs to API.md → ./API.md. misokinesia/DESIGN_SPEC.md ref to tasks/MISOKINESIA.md → ./MISOKINESIA.md; ref to tasks/DIGITSPAN.md → ../weather/tasks/DIGITSPAN.md. weather/DESIGN_SPEC.md refs to tasks/DIGITSPAN.md → ./tasks/DIGITSPAN.md and tasks/MISOKINESIA.md → ../misokinesia/MISOKINESIA.md. weather/API.md ref to ANALYTICS.md → ./ANALYTICS.md and WEATHER_INGESTION.md → ./WEATHER_INGESTION.md. Also verify survey docs' relative links (they reference each other and SCORING.md from within weather/surveys/ — depths changed).",
+      "acceptance_criteria": [
+        "grep -r 'tasks/MISOKINESIA.md' docs/labs/weather-wellness/weather/ returns no hits",
+        "grep -r 'tasks/DIGITSPAN.md' docs/labs/weather-wellness/misokinesia/ returns no hits",
+        "All relative links in moved files resolve to existing files (manual spot-check of 5 links)"
+      ],
+      "depends_on": ["T176"],
+      "blocked_by": [],
+      "files": [
+        "docs/labs/weather-wellness/weather/API.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/weather/SCORING.md",
+        "docs/labs/weather-wellness/weather/WEATHER_INGESTION.md",
+        "docs/labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md",
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "docs": [],
+      "notes": "surveys/ moves wholesale into weather/surveys/ — relative paths within survey docs (e.g. links back to SCORING.md) need depth adjustment from ../../SCORING.md to ../SCORING.md.",
+      "commands": [
+        "grep -rn '\\.\\./' docs/labs/weather-wellness/weather/ | grep -v '.git'",
+        "grep -rn '\\.\\./' docs/labs/weather-wellness/misokinesia/ | grep -v '.git'"
+      ],
+      "estimate": "S"
+    },
+    {
+      "id": "T178",
+      "group_id": "DOC_RESTRUCTURE_WW",
+      "title": "Doc restructure - update platform doc cross-references",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Update all references to old flat weather-wellness paths in ARCHITECTURE.md, CONVENTIONS.md, DECISIONS.md, TESTING.md, and SCHEMA.md.",
+      "description": "Replace stale paths in five platform-level docs. ARCHITECTURE.md: 3x refs to API.md → route WW refs to weather/API.md and miso refs to misokinesia/API.md; 2x ANALYTICS.md → weather/ANALYTICS.md; 2x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md. CONVENTIONS.md: 3x API.md refs → weather/API.md; 1x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md. DECISIONS.md: 8x API.md refs — update each by context (WW decision impacts → weather/API.md, miso decision impacts → misokinesia/API.md); 2x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md; 1x tasks/MISOKINESIA.md → misokinesia/MISOKINESIA.md; 1x DESIGN_SPEC.md → weather/DESIGN_SPEC.md or misokinesia/DESIGN_SPEC.md by context. TESTING.md: 1x API.md → weather/API.md; 1x ANALYTICS.md → weather/ANALYTICS.md. SCHEMA.md: 1x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md; 1x ANALYTICS.md → weather/ANALYTICS.md.",
+      "acceptance_criteria": [
+        "grep 'labs/weather-wellness/API.md' docs/ARCHITECTURE.md docs/CONVENTIONS.md docs/DECISIONS.md docs/TESTING.md docs/SCHEMA.md returns zero hits",
+        "grep 'labs/weather-wellness/ANALYTICS.md' docs/ARCHITECTURE.md docs/TESTING.md docs/SCHEMA.md returns zero hits",
+        "grep 'labs/weather-wellness/WEATHER_INGESTION.md' docs/ARCHITECTURE.md docs/CONVENTIONS.md docs/DECISIONS.md docs/SCHEMA.md returns zero hits",
+        "grep 'labs/weather-wellness/tasks/MISOKINESIA.md' docs/DECISIONS.md returns zero hits"
+      ],
+      "depends_on": ["T176"],
+      "blocked_by": [],
+      "files": [
+        "docs/ARCHITECTURE.md",
+        "docs/CONVENTIONS.md",
+        "docs/DECISIONS.md",
+        "docs/TESTING.md",
+        "docs/SCHEMA.md"
+      ],
+      "docs": [],
+      "notes": "Read each file fully before editing — DECISIONS.md has 8 API.md refs and each must be routed to the correct component doc by decision context.",
+      "commands": [
+        "grep -n 'labs/weather-wellness/API.md' docs/ARCHITECTURE.md docs/CONVENTIONS.md docs/DECISIONS.md docs/TESTING.md docs/SCHEMA.md",
+        "grep -rn 'labs/weather-wellness/ANALYTICS.md\\|labs/weather-wellness/WEATHER_INGESTION.md\\|tasks/MISOKINESIA.md' docs/ARCHITECTURE.md docs/CONVENTIONS.md docs/DECISIONS.md docs/TESTING.md docs/SCHEMA.md"
+      ],
+      "estimate": "M"
+    },
+    {
+      "id": "T179",
+      "group_id": "DOC_RESTRUCTURE_WW",
+      "title": "Doc restructure - update INDEX.md, lab README, AGENTS.md, and doc-routing",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "summary": "Update the four navigation and standards docs so all routing points to the new component structure and the lab component pattern is documented as the canonical standard.",
+      "description": "INDEX.md: replace the flat weather-wellness doc table with two subsections (Weather component, Misokinesia component), each listing their docs with new paths. docs/labs/weather-wellness/README.md: rewrite as a navigation hub with two component sections — Weather and Misokinesia — each with a doc table matching the new structure; remove the old flat doc table. AGENTS.md (canonical source; CLAUDE.md is a symlink — edit AGENTS.md only): (1) update the example path in the 'Path format' rule in Documentation Maintenance from the old flat API.md path to weather/API.md; (2) add a 'Lab component structure' bullet to the Docs and References section: 'Each lab under docs/labs/<lab-slug>/ is organized by component. The lab README.md is the navigation hub. Each component lives in its own subdirectory (docs/labs/<lab-slug>/<component>/) and contains its own API.md, DESIGN_SPEC.md, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: weather/ and misokinesia/.' .agents/skills/project-plan/references/doc-routing.md: replace the three weather-wellness routing lines with component-scoped paths (weather/ for WW docs, misokinesia/ for miso docs).",
+      "acceptance_criteria": [
+        "docs/INDEX.md contains entries for docs/labs/weather-wellness/weather/API.md and docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/README.md has distinct Weather and Misokinesia sections with correct paths",
+        "AGENTS.md contains 'Lab component structure' bullet in Docs and References",
+        "grep 'labs/weather-wellness/API.md' AGENTS.md returns zero hits (old flat path gone)",
+        ".agents/skills/project-plan/references/doc-routing.md no longer references the flat labs/weather-wellness/*.md paths"
+      ],
+      "depends_on": ["T176"],
+      "blocked_by": [],
+      "files": [
+        "docs/INDEX.md",
+        "docs/labs/weather-wellness/README.md",
+        "AGENTS.md",
+        ".agents/skills/project-plan/references/doc-routing.md"
+      ],
+      "docs": [
+        "docs/INDEX.md",
+        "docs/labs/weather-wellness/README.md"
+      ],
+      "notes": "CLAUDE.md is a symlink to AGENTS.md — edit AGENTS.md only. Do not edit CLAUDE.md directly.",
+      "commands": [
+        "grep -n 'weather-wellness/API.md' docs/INDEX.md AGENTS.md .agents/skills/project-plan/references/doc-routing.md",
+        "grep -n 'Lab component structure' AGENTS.md"
+      ],
+      "estimate": "S"
     }
   ]
 }
