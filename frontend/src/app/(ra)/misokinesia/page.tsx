@@ -41,13 +41,13 @@ export default function MisokinesiaPage() {
     }
   }
 
-  async function handleStartTrial() {
+  async function handleStartShortTrial() {
     setTrialLoading(true);
     setError(null);
     try {
-      const trialState = createTrialRunState("misokinesia");
+      const trialState = createTrialRunState("misokinesia", "short");
       const trialManifest = await getMisokinesiaTrialManifest();
-      const manifest = createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, trialManifest.post_survey_order);
+      const manifest = createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, "short");
       persistTrialRunState(trialState);
       sessionStorage.setItem(MISOKINESIA_MANIFEST_KEY, JSON.stringify(manifest));
       router.push(
@@ -69,7 +69,7 @@ export default function MisokinesiaPage() {
       trialLoading={trialLoading}
       error={error}
       onStart={handleStart}
-      onStartTrial={handleStartTrial}
+      onStartTrial={handleStartShortTrial}
     />
   );
 }

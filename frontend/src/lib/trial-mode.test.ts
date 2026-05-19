@@ -7,6 +7,7 @@ import { buildMkaqPanes, MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm
 import { buildMaqPanes, MAQ_ITEMS } from "@/lib/components/MisokinesiaMAQForm";
 
 import {
+  TRIAL_MAQ_ITEM_COUNT,
   TRIAL_MKAQ_ITEM_COUNT,
   TRIAL_RUN_ID_PREFIX,
   adoptTrialRunStateFromLocation,
@@ -14,6 +15,7 @@ import {
   clearTrialRunState,
   createTrialRunMisokinesiaManifest,
   createTrialRunState,
+  createTrialSurveyOrder,
   getMisokinesiaSubmitMode,
   getTrialRunWatermarkLabel,
   getWeatherWellnessSubmitMode,
@@ -24,8 +26,9 @@ import {
 } from "@/lib/trial-mode";
 import {
   getPhaseAfterBegin,
-  getPhaseAfterMkaqComplete,
   getPhaseAfterQuestionnaireComplete,
+  getPhaseAfterVideoComplete,
+  getNextPostSurveyPhase,
 } from "@/lib/misokinesia-phase";
 import { parseSurveyOrder } from "@/lib/api";
 
@@ -66,13 +69,13 @@ describe("trial-mode launch controls", () => {
     expect(source).toContain("buildTrialRunPath(`/session/${trialState.session_id}/uls8`)");
   });
 
-  it("keeps the Misokinesia Run Test Trial launch control on the launch surface", () => {
+  it("keeps the Misokinesia Run Short Trial launch control on the launch surface", () => {
     const pageSource = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
     const componentSource = readFrontendFile("src/lib/components/MisokinesiaLaunchPage.tsx");
 
-    expect(pageSource).toContain("createTrialRunState(\"misokinesia\")");
+    expect(pageSource).toContain("createTrialRunState(\"misokinesia\", \"short\")");
     expect(pageSource).toContain("getMisokinesiaTrialManifest()");
-    expect(componentSource).toContain("Run Test Trial");
+    expect(componentSource).toContain("Run Short Trial");
     expect(componentSource).toContain("onStartTrial");
   });
 
@@ -230,8 +233,8 @@ describe("MkAQ production participant flow placement", () => {
     );
     expect(source).toContain('"mkaq"');
     expect(source).toContain("getPhaseAfterBegin");
-    expect(source).toContain("getPhaseAfterQuestionnaireComplete");
-    expect(source).toContain("getPhaseAfterMkaqComplete");
+    expect(source).toContain("getPhaseAfterVideoComplete");
+    expect(source).toContain("getNextPostSurveyPhase");
   });
 
   it("participant page calls submitMisokinesiaMkaq for production submissions", () => {
@@ -278,8 +281,8 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
       duration_ms: 15000,
     }));
 
-    const manifest = createTrialRunMisokinesiaManifest(state, clips, "mkaq,gad7,maq");
-    expect(manifest.post_survey_order).toBe("mkaq,gad7,maq");
+    const manifest = createTrialRunMisokinesiaManifest(state, clips, "short");
+    expect(parseSurveyOrder(manifest.post_survey_order)).toHaveLength(3);
   });
 
   it("participant page uses 10-item subset for trial mode MkAQ", () => {
@@ -295,6 +298,17 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
     expect(TRIAL_MKAQ_ITEM_COUNT).toBe(10);
   });
 
+  it("TRIAL_MAQ_ITEM_COUNT is 10", () => {
+    expect(TRIAL_MAQ_ITEM_COUNT).toBe(10);
+  });
+
+  it("createTrialSurveyOrder returns a three-survey permutation", () => {
+    const order = createTrialSurveyOrder();
+
+    expect(order).toHaveLength(3);
+    expect(new Set(order)).toEqual(new Set(["mkaq", "gad7", "maq"]));
+  });
+
   it("trial MkAQ submit does not call mkaq backend endpoint", async () => {
     const submitMkaq = vi.fn();
     const localAdvance = vi.fn();
@@ -308,14 +322,15 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
     expect(localAdvance).toHaveBeenCalledOnce();
   });
 
-  it("launch page uses post_survey_order from trial manifest", () => {
+  it("launch page creates a local short trial survey order", () => {
     const source = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
-    expect(source).toContain("trialManifest.post_survey_order");
-    expect(source).toContain("createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, trialManifest.post_survey_order)");
+    expect(source).toContain("createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, \"short\")");
   });
 
-  it("routes mkaq completion to end_of_task", () => {
-    expect(getPhaseAfterMkaqComplete()).toBe("end_of_task");
+  it("routes through the randomized post-video survey order", () => {
+    expect(getPhaseAfterVideoComplete(["gad7", "mkaq", "maq"])).toBe("gad7");
+    expect(getNextPostSurveyPhase(["gad7", "mkaq", "maq"], 0)).toBe("mkaq");
+    expect(getNextPostSurveyPhase(["gad7", "mkaq", "maq"], 2)).toBe("end_of_task");
   });
 });
 
@@ -370,38 +385,42 @@ describe("MAQ post-video survey carousel (T174)", () => {
 describe("trial-mode identity and watermark state", () => {
   it("generates clearly fake local-only ids and manifests", () => {
     const state = createTrialRunState("misokinesia");
-    const manifest = createTrialRunMisokinesiaManifest(state, [
-      {
-        stimulus_id: "11111111-1111-1111-1111-111111111111",
-        public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/a.mp4",
-        sort_order: 1,
-        duration_ms: 15000,
-      },
-      {
-        stimulus_id: "22222222-2222-2222-2222-222222222222",
-        public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/b.mp4",
-        sort_order: 2,
-        duration_ms: 15000,
-      },
-      {
-        stimulus_id: "33333333-3333-3333-3333-333333333333",
-        public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/c.mp4",
-        sort_order: 3,
-        duration_ms: 15000,
-      },
-      {
-        stimulus_id: "44444444-4444-4444-4444-444444444444",
-        public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/d.mp4",
-        sort_order: 4,
-        duration_ms: 15000,
-      },
-      {
-        stimulus_id: "55555555-5555-5555-5555-555555555555",
-        public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/e.mp4",
-        sort_order: 5,
-        duration_ms: 15000,
-      },
-    ], "mkaq,gad7,maq");
+    const manifest = createTrialRunMisokinesiaManifest(
+      state,
+      [
+        {
+          stimulus_id: "11111111-1111-1111-1111-111111111111",
+          public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/a.mp4",
+          sort_order: 1,
+          duration_ms: 15000,
+        },
+        {
+          stimulus_id: "22222222-2222-2222-2222-222222222222",
+          public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/b.mp4",
+          sort_order: 2,
+          duration_ms: 15000,
+        },
+        {
+          stimulus_id: "33333333-3333-3333-3333-333333333333",
+          public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/c.mp4",
+          sort_order: 3,
+          duration_ms: 15000,
+        },
+        {
+          stimulus_id: "44444444-4444-4444-4444-444444444444",
+          public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/d.mp4",
+          sort_order: 4,
+          duration_ms: 15000,
+        },
+        {
+          stimulus_id: "55555555-5555-5555-5555-555555555555",
+          public_url: "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/e.mp4",
+          sort_order: 5,
+          duration_ms: 15000,
+        },
+      ],
+      "short"
+    );
 
     expect(isTrialRunId(state.session_id)).toBe(true);
     expect(isTrialRunId(state.misokinesia_participant_id)).toBe(true);

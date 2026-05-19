@@ -1,3 +1,5 @@
+import type { PostSurveyKey } from "@/lib/misokinesia-phase";
+
 export const TRIAL_RUN_QUERY_PARAM = "trial";
 export const TRIAL_RUN_QUERY_VALUE = "1";
 export const TRIAL_RUN_STORAGE_KEY = "ww:trial-run";
@@ -5,10 +7,12 @@ export const TRIAL_RUN_ID_PREFIX = "trial-local";
 
 export type TrialRunFlow = "weather-wellness" | "misokinesia";
 export type TrialSubmitMode = "production" | "trial";
+export type MisokinesiaTrialMode = "short" | "full";
 
 export interface TrialRunState {
   mode: "trial";
   flow: TrialRunFlow;
+  misokinesia_trial_mode?: MisokinesiaTrialMode;
   session_id?: string;
   misokinesia_participant_id?: string;
   created_at: string;
@@ -22,6 +26,7 @@ export interface TrialRunMisokinesiaClip {
 }
 
 export const TRIAL_MKAQ_ITEM_COUNT = 10;
+export const TRIAL_MAQ_ITEM_COUNT = 10;
 
 export interface TrialRunMisokinesiaManifest {
   misokinesia_participant_id: string;
@@ -41,12 +46,16 @@ interface TrialRunLocation {
  * fake id, persist the matching TrialRunState, then navigate with ?trial=1 so
  * participant pages can recover the signal after route transitions.
  */
-export function createTrialRunState(flow: TrialRunFlow): TrialRunState {
+export function createTrialRunState(
+  flow: TrialRunFlow,
+  misokinesiaTrialMode: MisokinesiaTrialMode = "short"
+): TrialRunState {
   const createdAt = new Date().toISOString();
   if (flow === "misokinesia") {
     return {
       mode: "trial",
       flow,
+      misokinesia_trial_mode: misokinesiaTrialMode,
       session_id: createTrialRunSessionId(),
       misokinesia_participant_id: createTrialRunMisokinesiaParticipantId(),
       created_at: createdAt,
@@ -108,19 +117,30 @@ export function clearTrialRunState(): void {
 export function createTrialRunMisokinesiaManifest(
   state: TrialRunState,
   clips: TrialRunMisokinesiaClip[],
-  postSurveyOrder: string
+  mode: MisokinesiaTrialMode = state.misokinesia_trial_mode ?? "short"
 ): TrialRunMisokinesiaManifest {
+  void mode;
   if (state.flow !== "misokinesia" || !state.session_id || !state.misokinesia_participant_id) {
     throw new Error("Misokinesia trial mode requires fake session and participant ids.");
   }
+  const postSurveyOrder = createTrialSurveyOrder();
 
   return {
     misokinesia_participant_id: state.misokinesia_participant_id,
     misokinesia_participant_number: 0,
     session_id: state.session_id,
-    post_survey_order: postSurveyOrder,
+    post_survey_order: postSurveyOrder.join(","),
     clips: clips.map((clip) => ({ ...clip })),
   };
+}
+
+export function createTrialSurveyOrder(): PostSurveyKey[] {
+  const order: PostSurveyKey[] = ["mkaq", "gad7", "maq"];
+  for (let i = order.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
 }
 
 export function getWeatherWellnessSubmitMode(sessionId: string): TrialSubmitMode {
@@ -184,6 +204,7 @@ export function adoptTrialRunStateFromLocation(location: TrialRunLocation): Tria
       ? {
           mode: "trial",
           flow,
+          misokinesia_trial_mode: "short",
           session_id: createTrialRunSessionId(),
           misokinesia_participant_id: routeId,
           created_at: new Date().toISOString(),
@@ -231,6 +252,13 @@ function isTrialRunState(value: unknown): value is TrialRunState {
   const candidate = value as Partial<TrialRunState>;
   if (candidate.mode !== "trial") return false;
   if (candidate.flow !== "weather-wellness" && candidate.flow !== "misokinesia") return false;
+  if (
+    candidate.misokinesia_trial_mode !== undefined &&
+    candidate.misokinesia_trial_mode !== "short" &&
+    candidate.misokinesia_trial_mode !== "full"
+  ) {
+    return false;
+  }
   if (typeof candidate.created_at !== "string") return false;
   if (candidate.session_id !== undefined && !isTrialRunId(candidate.session_id)) return false;
   if (

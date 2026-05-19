@@ -9,7 +9,7 @@ import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm"
 import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
 import MisokinesiaGAD7Form from "@/lib/components/MisokinesiaGAD7Form";
 import MisokinesiaMAQForm from "@/lib/components/MisokinesiaMAQForm";
-import { TRIAL_MKAQ_ITEM_COUNT } from "@/lib/trial-mode";
+import { TRIAL_MAQ_ITEM_COUNT, TRIAL_MKAQ_ITEM_COUNT } from "@/lib/trial-mode";
 import {
   patchSessionStatus,
   getParticipantErrorMessage,
@@ -335,6 +335,7 @@ export default function MisokinesiaTaskPage() {
           <MisokinesiaMAQForm
             submitting={surveySubmitting === "maq"}
             error={surveyError}
+            itemCount={trialMode ? TRIAL_MAQ_ITEM_COUNT : undefined}
             onSubmit={(answers) => handleSurveyComplete("maq", answers)}
           />
         </div>

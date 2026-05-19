@@ -69,7 +69,7 @@ export default function MisokinesiaLaunchPage({
               className="rounded-xl px-6 font-semibold"
             >
               <FlaskConical className="mr-2 size-4" />
-              {trialLoading ? "Starting…" : "Run Test Trial"}
+              {trialLoading ? "Starting…" : "Run Short Trial"}
             </Button>
             <p className="text-left text-xs leading-relaxed text-muted-foreground sm:text-right">
               Test trials use local fake ids and do not write research data.

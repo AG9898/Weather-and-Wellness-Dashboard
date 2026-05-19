@@ -2423,7 +2423,7 @@
       "id": "T171",
       "group_id": "MISO_SURVEYS",
       "title": "Miso post-video surveys - Short Trial mode updates",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "description": "Update frontend/src/lib/trial-mode.ts: remove createTrialMkaqAdministration(); add MisokinesiaTrialMode = 'short' | 'full' type; add createTrialSurveyOrder(): PostSurveyKey[] (random permutation of ['mkaq','gad7','maq']); add TRIAL_MAQ_ITEM_COUNT = 10; update createTrialRunMisokinesiaManifest() to accept mode param and use post_survey_order from createTrialSurveyOrder(). Update RA launch page frontend/src/app/(ra)/misokinesia/page.tsx: rename handleStartTrial() \u2192 handleStartShortTrial() and wire it to the 'Run Short Trial' button (button label update only \u2014 full trial button added in T172). In participant page, pass TRIAL_MKAQ_ITEM_COUNT to MisokinesiaMkaqForm and TRIAL_MAQ_ITEM_COUNT to MisokinesiaMAQForm when trialMode is true (short trial). GAD-7 shows all 7 items in short trial \u2014 no itemCount restriction needed.",
       "acceptance_criteria": [
