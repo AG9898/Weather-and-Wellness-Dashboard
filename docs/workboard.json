@@ -2022,7 +2022,7 @@
       "id": "T163",
       "group_id": "INFRA",
       "title": "[MANUAL] Data migration - pg_dump old Supabase and pg_restore to ca-central-1",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "manual",
       "summary": "Human-supervised: pick a freeze window, dump all session/participant/result data from the old Supabase project, and restore it to the new ca-central-1 project with row-count verification.",
