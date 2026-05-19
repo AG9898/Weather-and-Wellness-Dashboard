@@ -2101,7 +2101,7 @@
       "id": "T165",
       "group_id": "INFRA",
       "title": "[MANUAL] Supabase Storage migration - copy misokinesia video assets to new project",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "manual",
       "summary": "Human-supervised: copy all 29 misokinesia video clips from the old project's misokinesia-stimuli bucket to the new ca-central-1 project's bucket and verify all CDN URLs resolve.",
@@ -2125,7 +2125,11 @@
         "This task can run in parallel with T163 and T164 since it does not depend on the data migration.",
         "If the new project CDN URL format differs from the old one, a one-off SQL UPDATE on misokinesia_participants.stimulus_url may be needed before production cutover.",
         "The supabase CLI `supabase storage cp` command can bulk-copy objects between projects if both are accessible.",
-        "The retained T162 smoke-test RA user can be used for preview verification after storage copy if RA auth is needed; credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`."
+        "The retained T162 smoke-test RA user can be used for preview verification after storage copy if RA auth is needed; credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`.",
+        "Completed 2026-05-18: old project `viwqgwydrtpicovclllb` bucket listed exactly 29 `video/mp4` objects; new project `gqtsjkqugvhmidzdghsr` bucket was empty before copy and listed exactly the same 29 objects after copy.",
+        "All 29 new public CDN URLs returned HTTP 200 with `video/mp4` content type via `https://gqtsjkqugvhmidzdghsr.supabase.co/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.",
+        "Old session URL rewrite decision: no rewrite needed. The new schema has no `misokinesia_participants.stimulus_url` column and the new project currently has zero `misokinesia_participants` rows; manifests generate URLs from `SUPABASE_URL` plus `misokinesia_stimuli.storage_path`.",
+        "Verified Railway preview `/misokinesia/trial-manifest` with the retained T162 smoke RA user returns new-project CDN URLs; `POST /misokinesia/start` uses the same backend URL builder."
       ],
       "commands": [
         "supabase storage ls ss://misokinesia-stimuli --project-ref <old-project-ref>",
