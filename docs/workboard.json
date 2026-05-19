@@ -2236,7 +2236,7 @@
       "id": "T168",
       "group_id": "MISO_SURVEYS",
       "title": "Miso post-video surveys - Schema migration & session-start changes",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "description": "CONTINUATION TASK — all implementation files are already modified (uncommitted changes in working tree). Do NOT re-implement from scratch. The migration file exists at backend/alembic/versions/20260518_000001_miso_post_survey_schema.py, all backend and frontend files are updated, and the frontend build is clean. Only 2 tests are failing in GetTrialManifestTests. Root cause: get_trial_manifest has `full: bool = Query(False)` in its signature; when tests call the function directly (bypassing FastAPI), `full` receives the FieldInfo object which is truthy — so _shuffle_stimuli runs instead of _sample_trial_stimuli. Fix: change the signature to `full: bool = False` (plain default) and add `full: bool = Query(False)` as a separate FastAPI route-level annotation, OR simply change to `full: bool = False` since Query() is not needed for direct-call testability. After fixing, verify: (1) test_raises_409_when_fewer_than_five_active_stimuli_exist passes, (2) test_returns_five_sampled_clips_with_public_urls_and_no_writes passes. Then run `cd backend && PYTHONPATH=. alembic upgrade head` to apply the migration against the real database. Then commit all staged changes (migration file + all modified files) as one commit and mark T168 done.",
       "acceptance_criteria": [

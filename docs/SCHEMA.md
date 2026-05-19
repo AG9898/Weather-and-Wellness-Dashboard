@@ -16,7 +16,7 @@
 - **FKs:** Enforced at DB level, not just application level
 
 > Migration head check: `alembic current -v` should report
-> `Rev: 20260512_000001 (head)`.
+> `Rev: 20260518_000001 (head)`.
 > Keep this value in sync after every new migration.
 
 > Planned statistical analysis rules derived from `reference/Weather_MLM.R` are

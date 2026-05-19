@@ -4,7 +4,7 @@ import os
 import random
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -168,7 +168,7 @@ async def start_misokinesia_session(
     dependencies=[Depends(get_current_lab_member)],
 )
 async def get_trial_manifest(
-    full: bool = Query(False),
+    full: bool = False,
     db: AsyncSession = Depends(get_session),
 ) -> MisokinesiaTrialManifestResponse:
     """RA-only read endpoint for trial mode clip sampling. Performs no writes.
