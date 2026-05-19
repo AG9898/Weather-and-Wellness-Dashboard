@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -32,6 +34,10 @@ def _args(**overrides: object) -> argparse.Namespace:
         "site_url": None,
         "redirect_to": None,
         "created_by_lab_member_id": str(_CREATOR_ID),
+        "env_file": None,
+        "use_railway_env": False,
+        "railway_service": "backend",
+        "railway_environment": "production",
     }
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
@@ -128,6 +134,65 @@ def test_cli_requires_creator_id(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(SystemExit, match="Missing creator UUID"):
         asyncio.run(invite_user._run_invite(_args(created_by_lab_member_id=None)))
+
+
+def test_cli_can_load_explicit_env_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env_file = tmp_path / "invite.env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "DATABASE_URL=postgresql+asyncpg://new-target",
+                "SITE_URL=https://new.test",
+                "RESEND_API_KEY=new-resend-key",
+                "ADMIN_EMAIL_FROM=team@new.test",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://old-target")
+
+    invite_user._load_cli_environment(_args(env_file=str(env_file)))
+
+    assert invite_user.os.environ["DATABASE_URL"] == "postgresql+asyncpg://new-target"
+    assert invite_user.os.environ["SITE_URL"] == "https://new.test"
+
+
+def test_cli_can_load_railway_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = {
+        "DATABASE_URL": "postgresql+asyncpg://railway-target",
+        "SITE_URL": "https://ubcpsych.com",
+        "RESEND_API_KEY": "railway-resend-key",
+        "ADMIN_EMAIL_FROM": "team@ubcpsych.com",
+    }
+    fake_run = SimpleNamespace(stdout=json.dumps(payload))
+    run_mock = Mock(return_value=fake_run)
+    monkeypatch.setattr(invite_user.subprocess, "run", run_mock)
+
+    invite_user._load_cli_environment(_args(use_railway_env=True))
+
+    run_mock.assert_called_once()
+    command = run_mock.call_args.args[0]
+    assert command == [
+        "railway",
+        "variable",
+        "list",
+        "--service",
+        "backend",
+        "--environment",
+        "production",
+        "--json",
+    ]
+    assert invite_user.os.environ["DATABASE_URL"] == "postgresql+asyncpg://railway-target"
+
+
+def test_cli_rejects_env_file_with_railway_env() -> None:
+    with pytest.raises(SystemExit, match="either --env-file or --use-railway-env"):
+        invite_user._load_cli_environment(
+            _args(env_file=".env", use_railway_env=True)
+        )
 
 
 def test_cli_no_longer_uses_supabase_generate_link() -> None:

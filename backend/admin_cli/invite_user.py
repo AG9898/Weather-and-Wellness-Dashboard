@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Create and send an app-owned RA/admin invitation.
 
-Env vars are loaded automatically from the project root `.env` file.
+Env vars are loaded from the project root `.env` file by default. Use
+`--env-file` or `--use-railway-env` to target another environment.
 
 Usage (run from repo root or backend/):
     python backend/admin_cli/invite_user.py \\
@@ -16,6 +17,13 @@ Usage (run from repo root or backend/):
         --lab-name "" \\
         --site-url https://ubcpsych.com
 
+    python backend/admin_cli/invite_user.py \\
+        --use-railway-env \\
+        --email user@example.com \\
+        --role ra \\
+        --lab-name ww \\
+        --site-url https://ubcpsych.com
+
 Required env vars:
     DATABASE_URL                      Database URL for the app-owned invite row
     RESEND_API_KEY                    Email provider API key when provider=resend
@@ -28,7 +36,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
+import subprocess
 import sys
 import uuid
 from pathlib import Path
@@ -49,8 +59,65 @@ from app.services.admin_invite_service import (  # noqa: E402
 
 
 _ROOT_ENV = _BACKEND_DIR.parent / ".env"
-if _ROOT_ENV.exists():
-    load_dotenv(_ROOT_ENV, override=False)
+
+
+def _load_env_file(path: Path) -> None:
+    if not path.exists():
+        sys.exit(f"ERROR: Env file does not exist: {path}")
+    load_dotenv(path, override=True)
+
+
+def _load_railway_env(service: str, environment: str) -> None:
+    command = [
+        "railway",
+        "variable",
+        "list",
+        "--service",
+        service,
+        "--environment",
+        environment,
+        "--json",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        sys.exit("ERROR: railway CLI is not installed or not on PATH.")
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout).strip()
+        sys.exit(f"ERROR: railway variable list failed: {detail}")
+
+    try:
+        variables = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        sys.exit(f"ERROR: railway variable list returned invalid JSON: {exc}")
+
+    if not isinstance(variables, dict):
+        sys.exit("ERROR: railway variable list returned an unexpected payload.")
+
+    for key, value in variables.items():
+        if isinstance(value, str):
+            os.environ[key] = value
+
+
+def _load_cli_environment(args: argparse.Namespace) -> None:
+    if args.env_file and args.use_railway_env:
+        sys.exit("ERROR: Use either --env-file or --use-railway-env, not both.")
+
+    if args.env_file:
+        _load_env_file(Path(args.env_file).expanduser())
+        return
+
+    if args.use_railway_env:
+        _load_railway_env(args.railway_service, args.railway_environment)
+        return
+
+    if _ROOT_ENV.exists():
+        load_dotenv(_ROOT_ENV, override=False)
 
 
 def _require_env(name: str) -> str:
@@ -177,12 +244,40 @@ def build_parser() -> argparse.ArgumentParser:
             "(default: ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID)."
         ),
     )
+    parser.add_argument(
+        "--env-file",
+        dest="env_file",
+        default=None,
+        help=(
+            "Load env vars from this file instead of the repo-root .env. Values in "
+            "the file override existing process env vars."
+        ),
+    )
+    parser.add_argument(
+        "--use-railway-env",
+        action="store_true",
+        help=(
+            "Load backend env vars from Railway before creating the invite. "
+            "Useful during migration when root .env still points to the old backend."
+        ),
+    )
+    parser.add_argument(
+        "--railway-service",
+        default="backend",
+        help="Railway service to read when --use-railway-env is set.",
+    )
+    parser.add_argument(
+        "--railway-environment",
+        default="production",
+        help="Railway environment to read when --use-railway-env is set.",
+    )
     return parser
 
 
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+    _load_cli_environment(args)
     raise SystemExit(asyncio.run(_run_invite(args)))
 
 

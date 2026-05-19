@@ -72,6 +72,13 @@ These live in the root `.env` (never in Render or Vercel).
 
 For operational debugging, local workstations may already have the `vercel`, `supabase`, and `render` CLIs authenticated for this project. They are useful for log inspection, environment checks, deployment status, and service diagnostics when relevant, but they are not mandatory validation steps.
 
+Admin invite migration note: `backend/admin_cli/invite_user.py` loads root `.env`
+by default for local batches. During the Railway + Canada Supabase migration,
+use `--use-railway-env` to read the linked Railway backend env, or pass
+`--env-file <path>` for a local migration-only env file, so invites write to
+the intended `ra_invitations` table instead of whichever database root `.env`
+currently targets.
+
 ---
 
 ## Quick-reference: where each var lives
