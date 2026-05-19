@@ -899,11 +899,20 @@ export interface MisokinesiaManifest {
   misokinesia_participant_id: string;
   misokinesia_participant_number: number;
   session_id: string;
-  mkaq_administration: "pre" | "post";
+  post_survey_order: string;
   clips: MisokinesiaClipMeta[];
 }
 
+export type SurveyKey = "mkaq" | "gad7" | "maq";
+
+export function parseSurveyOrder(postSurveyOrder: string): SurveyKey[] {
+  return postSurveyOrder.split(",").filter((k): k is SurveyKey =>
+    k === "mkaq" || k === "gad7" || k === "maq"
+  );
+}
+
 export interface MisokinesiaTrialManifest {
+  post_survey_order: string;
   clips: MisokinesiaClipMeta[];
 }
 
@@ -938,11 +947,10 @@ export async function startMisokinesiaSession(): Promise<MisokinesiaManifest> {
   return apiPost<MisokinesiaManifest>("/misokinesia/start", {}, { auth: true });
 }
 
-/** RA-triggered: returns 5 sampled active clips for read-only trial mode. */
-export async function getMisokinesiaTrialManifest(): Promise<MisokinesiaTrialManifest> {
-  return apiGet<MisokinesiaTrialManifest>("/misokinesia/trial-manifest", {
-    auth: true,
-  });
+/** RA-triggered: returns sampled or full active clips for read-only trial mode. */
+export async function getMisokinesiaTrialManifest(full?: boolean): Promise<MisokinesiaTrialManifest> {
+  const path = full ? "/misokinesia/trial-manifest?full=true" : "/misokinesia/trial-manifest";
+  return apiGet<MisokinesiaTrialManifest>(path, { auth: true });
 }
 
 /** Submit one per-clip questionnaire response (participant-facing, no auth). */
@@ -970,7 +978,6 @@ export interface MisokinesiaMkaqResponse {
   response_id: string;
   misokinesia_participant_id: string;
   session_id: string;
-  administration: "pre" | "post";
   total_score: number;
   created_at: string;
 }

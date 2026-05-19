@@ -11,7 +11,6 @@ import {
   adoptTrialRunStateFromLocation,
   buildTrialRunPath,
   clearTrialRunState,
-  createTrialMkaqAdministration,
   createTrialRunMisokinesiaManifest,
   createTrialRunState,
   getMisokinesiaSubmitMode,
@@ -27,6 +26,7 @@ import {
   getPhaseAfterMkaqComplete,
   getPhaseAfterQuestionnaireComplete,
 } from "@/lib/misokinesia-phase";
+import { parseSurveyOrder } from "@/lib/api";
 
 function createFakeSessionStorage(): Storage {
   const values = new Map<string, string>();
@@ -247,34 +247,28 @@ describe("MkAQ production participant flow placement", () => {
     expect(source).not.toMatch(/\bfetch\s*\(/);
   });
 
-  it("routes begin phase to mkaq only for pre assignment", () => {
-    expect(getPhaseAfterBegin("pre")).toBe("mkaq");
-    expect(getPhaseAfterBegin("post")).toBe("playing");
-    expect(getPhaseAfterBegin(undefined)).toBe("playing");
+  it("routes begin phase directly to playing", () => {
+    expect(getPhaseAfterBegin()).toBe("playing");
   });
 
-  it("routes final questionnaire completion to mkaq only for post assignment", () => {
-    expect(getPhaseAfterQuestionnaireComplete(true, "post")).toBe("mkaq");
-    expect(getPhaseAfterQuestionnaireComplete(true, "pre")).toBe("end_of_task");
-    expect(getPhaseAfterQuestionnaireComplete(true, undefined)).toBe("end_of_task");
-    expect(getPhaseAfterQuestionnaireComplete(false, "post")).toBe("playing");
-    expect(getPhaseAfterQuestionnaireComplete(false, "pre")).toBe("playing");
+  it("routes final questionnaire completion to mkaq when clips are complete", () => {
+    expect(getPhaseAfterQuestionnaireComplete(true, "mkaq,gad7,maq")).toBe("mkaq");
+    expect(getPhaseAfterQuestionnaireComplete(true, undefined)).toBe("mkaq");
+    expect(getPhaseAfterQuestionnaireComplete(false, "mkaq,gad7,maq")).toBe("playing");
+    expect(getPhaseAfterQuestionnaireComplete(false, undefined)).toBe("playing");
   });
 });
 
 describe("MkAQ Trial Run shortened carousel (T149)", () => {
-  it("createTrialMkaqAdministration returns pre or post", () => {
-    const seen = new Set<string>();
-    // Run enough times to observe both values
-    for (let i = 0; i < 200; i++) {
-      seen.add(createTrialMkaqAdministration());
-    }
-    expect(seen.has("pre")).toBe(true);
-    expect(seen.has("post")).toBe(true);
-    expect(seen.size).toBe(2);
+  it("parseSurveyOrder returns a valid permutation of survey keys", () => {
+    const order = parseSurveyOrder("mkaq,gad7,maq");
+    expect(order).toHaveLength(3);
+    expect(order).toContain("mkaq");
+    expect(order).toContain("gad7");
+    expect(order).toContain("maq");
   });
 
-  it("trial manifest includes mkaq_administration", () => {
+  it("trial manifest includes post_survey_order", () => {
     const state = createTrialRunState("misokinesia");
     const clips = Array.from({ length: 5 }, (_, i) => ({
       stimulus_id: `${"0".repeat(8)}-0000-0000-0000-${"0".repeat(11)}${i + 1}`,
@@ -283,11 +277,8 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
       duration_ms: 15000,
     }));
 
-    const manifest = createTrialRunMisokinesiaManifest(state, clips, "pre");
-    expect(manifest.mkaq_administration).toBe("pre");
-
-    const manifest2 = createTrialRunMisokinesiaManifest(state, clips, "post");
-    expect(manifest2.mkaq_administration).toBe("post");
+    const manifest = createTrialRunMisokinesiaManifest(state, clips, "mkaq,gad7,maq");
+    expect(manifest.post_survey_order).toBe("mkaq,gad7,maq");
   });
 
   it("participant page uses 10-item subset for trial mode MkAQ", () => {
@@ -316,20 +307,14 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
     expect(localAdvance).toHaveBeenCalledOnce();
   });
 
-  it("launch page assigns mkaq_administration before building trial manifest", () => {
+  it("launch page uses post_survey_order from trial manifest", () => {
     const source = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
-    expect(source).toContain("createTrialMkaqAdministration()");
-    expect(source).toContain("mkaqAdministration");
-    expect(source).toContain("createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, mkaqAdministration)");
+    expect(source).toContain("trialManifest.post_survey_order");
+    expect(source).toContain("createTrialRunMisokinesiaManifest(trialState, trialManifest.clips, trialManifest.post_survey_order)");
   });
 
-  it("routes mkaq completion to clip playback for pre assignment", () => {
-    expect(getPhaseAfterMkaqComplete("pre")).toBe("playing");
-  });
-
-  it("routes mkaq completion to end_of_task for post assignment", () => {
-    expect(getPhaseAfterMkaqComplete("post")).toBe("end_of_task");
-    expect(getPhaseAfterMkaqComplete(undefined)).toBe("end_of_task");
+  it("routes mkaq completion to end_of_task", () => {
+    expect(getPhaseAfterMkaqComplete()).toBe("end_of_task");
   });
 });
 
@@ -367,7 +352,7 @@ describe("trial-mode identity and watermark state", () => {
         sort_order: 5,
         duration_ms: 15000,
       },
-    ]);
+    ], "mkaq,gad7,maq");
 
     expect(isTrialRunId(state.session_id)).toBe(true);
     expect(isTrialRunId(state.misokinesia_participant_id)).toBe(true);

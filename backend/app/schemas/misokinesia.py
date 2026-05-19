@@ -26,13 +26,14 @@ class MisokinesiaManifestResponse(BaseModel):
     misokinesia_participant_id: UUID
     misokinesia_participant_number: int
     session_id: UUID
-    mkaq_administration: str
+    post_survey_order: str
     clips: list[MisokinesiaClipMeta]
 
 
 class MisokinesiaTrialManifestResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    post_survey_order: str
     clips: list[MisokinesiaClipMeta]
 
 
@@ -122,9 +123,6 @@ class MisokinesiaEndOfTaskResponse(BaseModel):
 # MkAQ (Misokinesia Assessment Questionnaire)
 # ---------------------------------------------------------------------------
 
-_VALID_MKAQ_ADMINISTRATION = {"pre", "post"}
-
-
 class MisokinesiaAqCreate(BaseModel):
     q1: int = Field(..., ge=0, le=3)
     q2: int = Field(..., ge=0, le=3)
@@ -155,7 +153,6 @@ class MisokinesiaAqResponse(BaseModel):
     response_id: UUID
     misokinesia_participant_id: UUID
     session_id: UUID
-    administration: str
     total_score: int
     created_at: datetime
 

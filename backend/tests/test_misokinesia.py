@@ -1,15 +1,18 @@
-"""Tests for misokinesia router endpoints (T108).
+"""Tests for misokinesia router endpoints (T108, updated T168).
 
 Covers:
-- POST /misokinesia/start: valid manifest response, auth requirement, clip ordering
+- POST /misokinesia/start: valid manifest response (post_survey_order), auth requirement, clip ordering
 - GET /misokinesia/trial-manifest: read-only trial clip sampling, auth requirement,
-  insufficient-stimuli 409, randomized subset behavior
+  insufficient-stimuli 409 (short trial only), full=True returns all stimuli,
+  post_survey_order included in both modes
 - misokinesia_participant_number increments across successive start calls
 - POST /misokinesia/participants/{id}/responses: happy path, no-auth requirement,
   duplicate 409, wrong test-set 422, out-of-range qN 422, completed_at auto-set,
   post-completion 409
 - PATCH /misokinesia/participants/{id}/end-of-task: valid payload 200,
-  completed_at null 409, stronger_responses_timing/stronger_responses mismatch 422
+  completed_at null 409, mkaq-not-submitted 409, stronger_responses_timing/stronger_responses mismatch 422
+- POST /misokinesia/participants/{id}/mkaq: happy path, 404, duplicate 409,
+  clips-not-complete 409 (always post-video), server-side score computation
 - Schema: router registered at correct paths with correct auth dependencies
 """
 from __future__ import annotations
@@ -57,6 +60,15 @@ _STIMULUS_ID_6 = uuid.UUID("66666666-6666-6666-6666-666666666666")
 _RESPONSE_ID = uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 _NOW = datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc)
 
+_VALID_SURVEY_KEYS = {"mkaq", "gad7", "maq"}
+
+
+def _is_valid_survey_order(order: str) -> bool:
+    """Return True if order is a comma-separated permutation of the 3 survey keys."""
+    parts = order.split(",")
+    return len(parts) == 3 and set(parts) == _VALID_SURVEY_KEYS
+
+
 # ---------------------------------------------------------------------------
 # Fake ORM objects (SimpleNamespace-style)
 # ---------------------------------------------------------------------------
@@ -90,7 +102,7 @@ class _FakeMisoParticipant:
         self,
         completed_at: datetime | None = None,
         miso_participant_number: int = 1,
-        mkaq_administration: str = "pre",
+        post_survey_order: str = "mkaq,gad7,maq",
     ) -> None:
         self.misokinesia_participant_id = _MISO_PARTICIPANT_ID
         self.session_id = _SESSION_ID
@@ -100,7 +112,7 @@ class _FakeMisoParticipant:
         self.started_at = _NOW
         self.completed_at = completed_at
         self.created_at = _NOW
-        self.mkaq_administration = mkaq_administration
+        self.post_survey_order = post_survey_order
         self.end_fidgeting_text: str | None = None
         self.end_emotions_text: str | None = None
         self.stronger_responses: bool | None = None
@@ -131,7 +143,7 @@ class _FakeMkaqResponseRow:
     response_id = _MKAQ_RESPONSE_ID
     misokinesia_participant_id = _MISO_PARTICIPANT_ID
     session_id = _SESSION_ID
-    administration = "pre"
+    administration = "post"
     total_score = 21
     created_at = _NOW
 
@@ -260,7 +272,7 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
             ]
         )
 
-    async def test_returns_manifest_with_clips_and_ids(self) -> None:
+    async def test_returns_manifest_with_clips_and_post_survey_order(self) -> None:
         stimuli = [
             _FakeStimulus(stimulus_id=_STIMULUS_ID_1, sort_order=1),
             _FakeStimulus(stimulus_id=_STIMULUS_ID_2, sort_order=2),
@@ -270,12 +282,11 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
         import os
         os.environ["SUPABASE_URL"] = "https://test.supabase.co"
 
-        # Patch participant/session model constructors to return fakes
         from unittest.mock import patch, MagicMock
 
         fake_participant = _FakeParticipant()
         fake_session = _FakeSession()
-        fake_miso = _FakeMisoParticipant(miso_participant_number=1)
+        fake_miso = _FakeMisoParticipant(miso_participant_number=1, post_survey_order="mkaq,gad7,maq")
 
         with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
              patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
@@ -286,7 +297,7 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
         self.assertEqual(result.misokinesia_participant_number, 1)
         self.assertEqual(result.session_id, _SESSION_ID)
-        self.assertIn(result.mkaq_administration, ("pre", "post"))
+        self.assertTrue(_is_valid_survey_order(result.post_survey_order))
         self.assertEqual(len(result.clips), 2)
         self.assertEqual(result.clips[0].sort_order, 1)
         self.assertEqual(result.clips[1].sort_order, 2)
@@ -492,6 +503,7 @@ class GetTrialManifestTests(IsolatedAsyncioTestCase):
         )
         self.assertEqual(result.clips[0].duration_ms, 20000)
         self.assertFalse(db.committed, "Trial manifest endpoint must not perform writes")
+        self.assertTrue(_is_valid_survey_order(result.post_survey_order))
 
     async def test_repeated_calls_can_return_different_subset_or_order(self) -> None:
         import os
@@ -515,6 +527,36 @@ class GetTrialManifestTests(IsolatedAsyncioTestCase):
         first_ids = [clip.stimulus_id for clip in first_result.clips]
         second_ids = [clip.stimulus_id for clip in second_result.clips]
         self.assertNotEqual(first_ids, second_ids)
+
+    async def test_full_trial_returns_all_stimuli_with_no_writes(self) -> None:
+        """full=True must return all active stimuli in shuffled order with no DB writes."""
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        stimuli = self._make_stimuli(total=6)
+        db = self._db_for_trial_manifest(stimuli=stimuli)
+
+        with patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
+            result = await get_trial_manifest(full=True, db=db)
+
+        self.assertEqual(len(result.clips), 6)
+        self.assertFalse(db.committed, "Full trial manifest must not perform writes")
+        self.assertTrue(_is_valid_survey_order(result.post_survey_order))
+
+    async def test_full_trial_does_not_require_five_stimuli_minimum(self) -> None:
+        """full=True does not enforce the 5-clip minimum check."""
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        stimuli = self._make_stimuli(total=4)
+        db = self._db_for_trial_manifest(stimuli=stimuli)
+
+        with patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
+            result = await get_trial_manifest(full=True, db=db)
+
+        self.assertEqual(len(result.clips), 4)
 
 
 # ---------------------------------------------------------------------------
@@ -542,35 +584,22 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
         total_stimuli: int = 2,
         submitted_count: int = 1,
         raise_integrity_on_flush: bool = False,
-        mkaq_row: Any = "_DEFAULT_",
     ) -> _SequencedDB:
         """Build fake DB for submit_trial_response.
 
-        execute() call order for pre participants:
+        execute() call order:
           0. select(MisokinesiaParticipant)              → miso_participant or None
-          1. select(MisokinesiaAqResponseModel)           → mkaq_row (pre guard)
-          2. select(MisokinesiaStimulus)                  → stimulus or None
-          3. select(func.count(MisokinesiaStimulus))      → total_stimuli
-          4. select(func.count(MisokinesiaTrialResponse)) → submitted_count
-
-        For non-pre participants, call 1 (mkaq guard) is skipped.
-        mkaq_row defaults to a fake non-None row (MkAQ already submitted).
-        Pass mkaq_row=None to test the guard-failure path.
+          1. select(MisokinesiaStimulus)                  → stimulus or None
+          2. select(func.count(MisokinesiaStimulus))      → total_stimuli
+          3. select(func.count(MisokinesiaTrialResponse)) → submitted_count
         """
         if miso_participant is None:
             miso_participant = _FakeMisoParticipant()
         if stimulus is None:
             stimulus = _FakeStimulus()
-        if mkaq_row == "_DEFAULT_":
-            mkaq_row = _FakeMkaqResponseRow()
-
-        execute_returns: list[Any] = [miso_participant]
-        if getattr(miso_participant, "mkaq_administration", None) == "pre":
-            execute_returns.append(mkaq_row)
-        execute_returns.extend([stimulus, total_stimuli, submitted_count])
 
         return _SequencedDB(
-            execute_returns=execute_returns,
+            execute_returns=[miso_participant, stimulus, total_stimuli, submitted_count],
             raise_integrity_on_flush=raise_integrity_on_flush,
         )
 
@@ -639,9 +668,9 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.status_code, 409)
 
     async def test_raises_422_when_stimulus_not_in_test_set(self) -> None:
-        miso = _FakeMisoParticipant()  # mkaq_administration="pre"
-        # [0]=participant, [1]=mkaq guard (submitted), [2]=None → stimulus not in test set
-        db = _SequencedDB(execute_returns=[miso, _FakeMkaqResponseRow(), None])
+        miso = _FakeMisoParticipant()
+        # [0]=participant, [1]=None → stimulus not in test set
+        db = _SequencedDB(execute_returns=[miso, None])
         with self.assertRaises(HTTPException) as ctx:
             await submit_trial_response(
                 participant_id=_MISO_PARTICIPANT_ID,
@@ -711,6 +740,27 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
                 q4=3,
             )
 
+    async def test_any_participant_can_submit_responses_without_prior_mkaq(self) -> None:
+        """MkAQ is no longer a prerequisite for per-clip responses (always post-video)."""
+        miso = _FakeMisoParticipant()
+        stimulus = _FakeStimulus()
+        fake_response = _FakeResponseRow()
+        db = _SequencedDB(execute_returns=[miso, stimulus, 2, 1])
+
+        from unittest.mock import patch
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaTrialResponse",
+            return_value=fake_response,
+        ):
+            result = await submit_trial_response(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+        self.assertFalse(result.is_complete)
+        self.assertTrue(db.committed)
+
 
 # ---------------------------------------------------------------------------
 # Class 4 — submit_end_of_task
@@ -721,9 +771,23 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
     def _db_for_eot(
         self,
         completed_at: datetime | None = _NOW,
+        mkaq_row: Any = "_DEFAULT_",
     ) -> _SequencedDB:
+        """Build fake DB for submit_end_of_task.
+
+        execute() call order when completed_at is set:
+          0. select(MisokinesiaParticipant) → miso_participant
+          1. select(MisokinesiaAqResponseModel) → mkaq_row (always checked now)
+
+        When completed_at is None, the router raises 409 before the mkaq check.
+        """
         miso = _FakeMisoParticipant(completed_at=completed_at)
-        return _SequencedDB(execute_returns=[miso])
+        execute_returns: list[Any] = [miso]
+        if completed_at is not None:
+            execute_returns.append(
+                _FakeMkaqResponseRow() if mkaq_row == "_DEFAULT_" else mkaq_row
+            )
+        return _SequencedDB(execute_returns=execute_returns)
 
     async def test_valid_payload_returns_200(self) -> None:
         db = self._db_for_eot(completed_at=_NOW)
@@ -818,11 +882,10 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
             "End-of-task endpoint should not require lab-member auth",
         )
 
-    async def test_raises_409_for_post_participant_without_mkaq(self) -> None:
-        """Post-assigned participants must have MkAQ submitted before end-of-task."""
-        miso = _FakeMisoParticipant(completed_at=_NOW, mkaq_administration="post")
-        # [0]=participant, [1]=mkaq guard → None (not submitted)
-        db = _SequencedDB(execute_returns=[miso, None])
+    async def test_raises_409_without_mkaq_submission(self) -> None:
+        """End-of-task requires MkAQ to be submitted first (always post-video)."""
+        # [0]=participant (completed_at set), [1]=mkaq guard → None (not submitted)
+        db = self._db_for_eot(completed_at=_NOW, mkaq_row=None)
         with self.assertRaises(HTTPException) as ctx:
             await submit_end_of_task(
                 participant_id=_MISO_PARTICIPANT_ID,
@@ -830,13 +893,10 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
                 db=db,
             )
         self.assertEqual(ctx.exception.status_code, 409)
-        self.assertIn("MkAQ", ctx.exception.detail)
 
-    async def test_post_participant_with_mkaq_can_submit_end_of_task(self) -> None:
-        """Post-assigned participant with MkAQ submitted can proceed."""
-        miso = _FakeMisoParticipant(completed_at=_NOW, mkaq_administration="post")
-        # [0]=participant, [1]=mkaq guard → found
-        db = _SequencedDB(execute_returns=[miso, _FakeMkaqResponseRow()])
+    async def test_can_submit_end_of_task_after_mkaq(self) -> None:
+        """Participant with MkAQ submitted can proceed to end-of-task."""
+        db = self._db_for_eot(completed_at=_NOW, mkaq_row=_FakeMkaqResponseRow())
         result = await submit_end_of_task(
             participant_id=_MISO_PARTICIPANT_ID,
             payload=MisokinesiaEndOfTaskCreate(),
@@ -847,60 +907,7 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 5 — submit_trial_response: pre-MkAQ guard
-# ---------------------------------------------------------------------------
-
-
-class SubmitTrialResponsePreGuardTests(IsolatedAsyncioTestCase):
-    def _valid_payload(self) -> MisokinesiaTrialResponseCreate:
-        return MisokinesiaTrialResponseCreate(
-            stimulus_id=_STIMULUS_ID_1,
-            display_order=1,
-            q1=3,
-            q2=2,
-            q3=4,
-            q4=1,
-        )
-
-    async def test_raises_409_for_pre_participant_without_mkaq(self) -> None:
-        """Pre-assigned participants must submit MkAQ before per-clip responses."""
-        miso = _FakeMisoParticipant(mkaq_administration="pre")
-        # [0]=participant, [1]=mkaq guard → None (not submitted)
-        db = _SequencedDB(execute_returns=[miso, None])
-        with self.assertRaises(HTTPException) as ctx:
-            await submit_trial_response(
-                participant_id=_MISO_PARTICIPANT_ID,
-                payload=self._valid_payload(),
-                db=db,
-            )
-        self.assertEqual(ctx.exception.status_code, 409)
-        self.assertIn("MkAQ", ctx.exception.detail)
-
-    async def test_post_participant_can_submit_responses_without_mkaq(self) -> None:
-        """Post-assigned participants can submit per-clip responses before MkAQ."""
-        miso = _FakeMisoParticipant(mkaq_administration="post")
-        stimulus = _FakeStimulus()
-        fake_response = _FakeResponseRow()
-        # [0]=participant (post, no mkaq guard), [1]=stimulus, [2]=total, [3]=submitted
-        db = _SequencedDB(execute_returns=[miso, stimulus, 2, 1])
-
-        from unittest.mock import patch
-
-        with patch(
-            "app.routers.misokinesia.MisokinesiaTrialResponse",
-            return_value=fake_response,
-        ):
-            result = await submit_trial_response(
-                participant_id=_MISO_PARTICIPANT_ID,
-                payload=self._valid_payload(),
-                db=db,
-            )
-        self.assertFalse(result.is_complete)
-        self.assertTrue(db.committed)
-
-
-# ---------------------------------------------------------------------------
-# Class 6 — submit_mkaq
+# Class 5 — submit_mkaq
 # ---------------------------------------------------------------------------
 
 
@@ -915,7 +922,8 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
         integrity_error_on_flush: sa_exc.IntegrityError | None = None,
     ) -> _SequencedDB:
         if miso_participant is None:
-            miso_participant = _FakeMisoParticipant()
+            # MkAQ always requires completed_at to be set (always post-video)
+            miso_participant = _FakeMisoParticipant(completed_at=_NOW)
         return _SequencedDB(
             execute_returns=[miso_participant],
             raise_integrity_on_flush=raise_integrity_on_flush,
@@ -941,7 +949,6 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.response_id, _MKAQ_RESPONSE_ID)
         self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
         self.assertEqual(result.session_id, _SESSION_ID)
-        self.assertEqual(result.administration, "pre")
         self.assertIsInstance(result.total_score, int)
         self.assertTrue(db.committed)
 
@@ -977,8 +984,9 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.status_code, 409)
         self.assertIn("already exists", ctx.exception.detail)
 
-    async def test_raises_409_for_post_participant_before_clip_completion(self) -> None:
-        miso = _FakeMisoParticipant(completed_at=None, mkaq_administration="post")
+    async def test_raises_409_when_clips_not_complete(self) -> None:
+        """MkAQ requires completed_at to be set — always post-video."""
+        miso = _FakeMisoParticipant(completed_at=None)
         db = self._db_for_mkaq(miso_participant=miso)
         with self.assertRaises(HTTPException) as ctx:
             await submit_mkaq(
@@ -1010,18 +1018,6 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
                 )
         self.assertEqual(ctx.exception.status_code, 500)
         self.assertNotIn("already exists", ctx.exception.detail)
-
-    async def test_raises_409_when_no_mkaq_administration_assigned(self) -> None:
-        """Participant with mkaq_administration=None should receive 409."""
-        miso = _FakeMisoParticipant(mkaq_administration=None)
-        db = _SequencedDB(execute_returns=[miso])
-        with self.assertRaises(HTTPException) as ctx:
-            await submit_mkaq(
-                participant_id=_MISO_PARTICIPANT_ID,
-                payload=self._valid_payload(),
-                db=db,
-            )
-        self.assertEqual(ctx.exception.status_code, 409)
 
     async def test_q_values_outside_0_3_rejected_by_schema(self) -> None:
         base = {f"q{i}": 1 for i in range(1, 22)}

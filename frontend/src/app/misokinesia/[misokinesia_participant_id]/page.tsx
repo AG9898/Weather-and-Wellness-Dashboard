@@ -134,7 +134,7 @@ export default function MisokinesiaTaskPage() {
         });
         if (!cancelled) {
           setMkaqSubmitting(false);
-          setPhase(getPhaseAfterMkaqComplete(manifest!.mkaq_administration));
+          setPhase(getPhaseAfterMkaqComplete());
         }
       } catch (err) {
         if (!cancelled) {
@@ -156,7 +156,7 @@ export default function MisokinesiaTaskPage() {
   // ── State transition handlers ──
 
   function handleBegin() {
-    setPhase(getPhaseAfterBegin(manifest?.mkaq_administration));
+    setPhase(getPhaseAfterBegin());
   }
 
   function handleVideoEnded() {
@@ -166,7 +166,7 @@ export default function MisokinesiaTaskPage() {
   function handleQuestionnaireComplete(result: MisokinesiaTrialResponseResult) {
     const nextPhase = getPhaseAfterQuestionnaireComplete(
       result.is_complete,
-      manifest?.mkaq_administration
+      manifest?.post_survey_order
     );
     if (nextPhase === "playing") {
       setCurrentClipIndex((prev) => prev + 1);

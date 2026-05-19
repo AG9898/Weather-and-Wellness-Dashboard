@@ -87,9 +87,9 @@ class MisokinesiaParticipant(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    # Randomized MkAQ timing assignment ('pre' or 'post'); null for legacy rows
-    mkaq_administration: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
-    # End-of-task fields (collected once, after all clips)
+    # Randomized post-video survey order; comma-separated e.g. "mkaq,gad7,maq"
+    post_survey_order: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # End-of-task fields (collected once, after all clips and post-video surveys)
     end_fidgeting_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     end_emotions_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     stronger_responses: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
@@ -122,6 +122,95 @@ class MisokinesiaAqResponse(Base):
         UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
     )
     administration: Mapped[str] = mapped_column(String(4), nullable=False)
+    q1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q4: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q8: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q9: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q10: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q11: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q12: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q13: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q14: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q15: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q16: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q17: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q18: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q19: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q20: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    q21: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    total_score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class MisokinesiaGad7Response(Base):
+    __tablename__ = "misokinesia_gad7_responses"
+    __table_args__ = (
+        UniqueConstraint(
+            "misokinesia_participant_id",
+            name="uq_misokinesia_gad7_responses_participant",
+        ),
+    )
+
+    response_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    misokinesia_participant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("misokinesia_participants.misokinesia_participant_id"),
+        nullable=False,
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.session_id"), nullable=False
+    )
+    participant_uuid: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
+    )
+    # GAD-7 items r1–r7, scale 1–4 (1=Never, 4=Often)
+    r1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    r2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    r3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    r4: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    r5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    r6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    r7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    total_score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    severity_band: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class MisokinesiaMaqResponse(Base):
+    __tablename__ = "misokinesia_maq_responses"
+    __table_args__ = (
+        UniqueConstraint(
+            "misokinesia_participant_id",
+            name="uq_misokinesia_maq_responses_participant",
+        ),
+    )
+
+    response_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    misokinesia_participant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("misokinesia_participants.misokinesia_participant_id"),
+        nullable=False,
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sessions.session_id"), nullable=False
+    )
+    participant_uuid: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
+    )
+    # MAQ items q1–q21, scale 0–3
     q1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     q2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     q3: Mapped[int] = mapped_column(SmallInteger, nullable=False)

@@ -4,7 +4,7 @@ import os
 import random
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +35,7 @@ from app.schemas.misokinesia import (
 router = APIRouter(prefix="/misokinesia", tags=["misokinesia"])
 _TRIAL_MANIFEST_CLIP_COUNT = 5
 _MKAQ_DUPLICATE_CONSTRAINT = "uq_misokinesia_mkaq_responses_participant"
+_SURVEY_KEYS = ["mkaq", "gad7", "maq"]
 
 
 def _supabase_url() -> str:
@@ -119,8 +120,8 @@ async def start_misokinesia_session(
     db.add(session_obj)
     await db.flush()  # assigns session_id
 
-    # 4. Randomly assign MkAQ administration server-side
-    mkaq_administration = random.choice(["pre", "post"])
+    # 4. Randomly assign post-video survey order
+    post_survey_order = ",".join(random.sample(_SURVEY_KEYS, len(_SURVEY_KEYS)))
 
     # 5. Create misokinesia_participants row
     #    misokinesia_participant_number is assigned by the server-side SERIAL sequence
@@ -128,7 +129,7 @@ async def start_misokinesia_session(
         session_id=session_obj.session_id,
         participant_uuid=participant.participant_uuid,
         test_set_id=test_set.test_set_id,
-        mkaq_administration=mkaq_administration,
+        post_survey_order=post_survey_order,
     )
     db.add(miso_participant)
     await db.commit()
@@ -155,7 +156,7 @@ async def start_misokinesia_session(
         misokinesia_participant_id=miso_participant.misokinesia_participant_id,
         misokinesia_participant_number=miso_participant.misokinesia_participant_number,
         session_id=session_obj.session_id,
-        mkaq_administration=miso_participant.mkaq_administration,
+        post_survey_order=miso_participant.post_survey_order,
         clips=clips,
     )
 
@@ -167,9 +168,15 @@ async def start_misokinesia_session(
     dependencies=[Depends(get_current_lab_member)],
 )
 async def get_trial_manifest(
+    full: bool = Query(False),
     db: AsyncSession = Depends(get_session),
 ) -> MisokinesiaTrialManifestResponse:
-    """RA-only read endpoint for trial mode clip sampling. Performs no writes."""
+    """RA-only read endpoint for trial mode clip sampling. Performs no writes.
+
+    full=False (default): returns 5 randomly sampled active clips (short trial).
+    full=True: returns all active clips in a randomized order (full trial).
+    Always returns a locally generated post_survey_order (not persisted).
+    """
 
     ts_result = await db.execute(
         select(MisokinesiaTestSet).where(MisokinesiaTestSet.active.is_(True))
@@ -191,7 +198,7 @@ async def get_trial_manifest(
     )
     stimuli = stim_result.scalars().all()
 
-    if len(stimuli) < _TRIAL_MANIFEST_CLIP_COUNT:
+    if not full and len(stimuli) < _TRIAL_MANIFEST_CLIP_COUNT:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -200,9 +207,15 @@ async def get_trial_manifest(
         )
 
     base_url = _supabase_url()
-    sampled_stimuli = _sample_trial_stimuli(stimuli)
-    clips = [_clip_meta_from_stimulus(s, base_url=base_url) for s in sampled_stimuli]
-    return MisokinesiaTrialManifestResponse(clips=clips)
+    selected_stimuli = _shuffle_stimuli(stimuli) if full else _sample_trial_stimuli(stimuli)
+    clips = [_clip_meta_from_stimulus(s, base_url=base_url) for s in selected_stimuli]
+
+    post_survey_order = ",".join(random.sample(_SURVEY_KEYS, len(_SURVEY_KEYS)))
+
+    return MisokinesiaTrialManifestResponse(
+        post_survey_order=post_survey_order,
+        clips=clips,
+    )
 
 
 @router.post(
@@ -236,19 +249,6 @@ async def submit_trial_response(
             status_code=status.HTTP_409_CONFLICT,
             detail="All stimuli for this participant have already been answered.",
         )
-
-    # 2b. Pre-MkAQ guard: pre participants cannot submit per-clip responses until MkAQ exists
-    if miso_participant.mkaq_administration == "pre":
-        mkaq_check = await db.execute(
-            select(MisokinesiaAqResponseModel).where(
-                MisokinesiaAqResponseModel.misokinesia_participant_id == participant_id
-            )
-        )
-        if mkaq_check.scalar_one_or_none() is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="MkAQ must be submitted before per-clip responses for pre-assigned participants.",
-            )
 
     # 3. Verify stimulus_id belongs to this participant's test_set
     stim_result = await db.execute(
@@ -328,7 +328,9 @@ async def submit_mkaq(
     payload: MisokinesiaAqCreate,
     db: AsyncSession = Depends(get_session),
 ) -> MisokinesiaAqResponse:
-    """Participant-facing (no auth). Submit the required 21-item MkAQ once."""
+    """Participant-facing (no auth). Submit the required 21-item MkAQ once.
+    MkAQ is always post-video; all per-clip responses must be submitted first.
+    """
 
     mp_result = await db.execute(
         select(MisokinesiaParticipant).where(
@@ -342,20 +344,11 @@ async def submit_mkaq(
             detail="Misokinesia participant not found.",
         )
 
-    if miso_participant.mkaq_administration is None:
+    # MkAQ is always post-video; require all per-clip responses first.
+    if miso_participant.completed_at is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This participant has no MkAQ administration assignment.",
-        )
-
-    # Post-assigned participants must finish all per-clip responses first.
-    if (
-        miso_participant.mkaq_administration == "post"
-        and miso_participant.completed_at is None
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="All per-clip responses must be submitted before MkAQ for post-assigned participants.",
+            detail="All per-clip responses must be submitted before MkAQ.",
         )
 
     total_score = sum(
@@ -366,7 +359,7 @@ async def submit_mkaq(
         misokinesia_participant_id=miso_participant.misokinesia_participant_id,
         session_id=miso_participant.session_id,
         participant_uuid=miso_participant.participant_uuid,
-        administration=miso_participant.mkaq_administration,
+        administration="post",
         q1=payload.q1,
         q2=payload.q2,
         q3=payload.q3,
@@ -412,7 +405,6 @@ async def submit_mkaq(
         response_id=response_row.response_id,
         misokinesia_participant_id=response_row.misokinesia_participant_id,
         session_id=response_row.session_id,
-        administration=response_row.administration,
         total_score=response_row.total_score,
         created_at=response_row.created_at,
     )
@@ -428,7 +420,8 @@ async def submit_end_of_task(
     payload: MisokinesiaEndOfTaskCreate,
     db: AsyncSession = Depends(get_session),
 ) -> MisokinesiaEndOfTaskResponse:
-    """Participant-facing (no auth). Submit end-of-task questionnaire after all clips."""
+    """Participant-facing (no auth). Submit end-of-task questionnaire after all clips
+    and post-video surveys are complete."""
 
     # 1. Verify participant row exists
     mp_result = await db.execute(
@@ -450,20 +443,19 @@ async def submit_end_of_task(
             detail="All per-clip responses must be submitted before the end-of-task questionnaire.",
         )
 
-    # 2b. Post-MkAQ guard: post participants cannot submit end-of-task until MkAQ exists
-    if miso_participant.mkaq_administration == "post":
-        mkaq_check = await db.execute(
-            select(MisokinesiaAqResponseModel).where(
-                MisokinesiaAqResponseModel.misokinesia_participant_id == participant_id
-            )
+    # 3. Require MkAQ to be submitted (always post-video)
+    mkaq_check = await db.execute(
+        select(MisokinesiaAqResponseModel).where(
+            MisokinesiaAqResponseModel.misokinesia_participant_id == participant_id
         )
-        if mkaq_check.scalar_one_or_none() is None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="MkAQ must be submitted before the end-of-task form for post-assigned participants.",
-            )
+    )
+    if mkaq_check.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="All post-video surveys must be submitted before the end-of-task questionnaire.",
+        )
 
-    # 3. Write end-of-task fields
+    # 4. Write end-of-task fields
     miso_participant.end_fidgeting_text = payload.end_fidgeting_text
     miso_participant.end_emotions_text = payload.end_emotions_text
     miso_participant.stronger_responses = payload.stronger_responses

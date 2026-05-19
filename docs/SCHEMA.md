@@ -693,7 +693,7 @@ Constraints/indexes:
 - Index (`misokinesia_mkaq_responses(session_id)`)
 - Index (`misokinesia_mkaq_responses(participant_uuid)`)
 
-### Planned Table: `misokinesia_gad7_responses`
+### `misokinesia_gad7_responses`
 
 One GAD-7 (Generalized Anxiety Disorder-7) response per miso participant. Isolated from the weather-wellness `survey_gad7` table. Always submitted after the video loop as part of the randomised post-video survey block.
 
@@ -720,7 +720,7 @@ Constraints/indexes:
 - Index (`misokinesia_gad7_responses(session_id)`)
 - Index (`misokinesia_gad7_responses(participant_uuid)`)
 
-### Planned Table: `misokinesia_maq_responses`
+### `misokinesia_maq_responses`
 
 One Misophonia Assessment Questionnaire (MAQ) response per miso participant. 21-item scale using original "sound issues" wording (source: `reference/labs/Misokinesia/MAQ.pdf` page 1, by Marsha Johnson, revised by Tom Dozier). Always submitted after the video loop as part of the randomised post-video survey block.
 
@@ -789,10 +789,9 @@ Constraints/indexes:
 | 2026-04-20 | T145 | Add `misokinesia_participants.mkaq_administration` column and `misokinesia_mkaq_responses` table |
 | 2026-05-12 | T150 | Add `ra_invitations` table for app-owned RA invitation state |
 | 2026-05-13 | T153 follow-up | Fix active pending invite uniqueness so expired pending rows do not block a fresh invite |
-| pending    | T168 | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables |
+| 2026-05-18 | T168 | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables |
 
-As of 2026-05-13, migration `20260513_000001` is the current invite-management
-head revision.
+As of 2026-05-18, migration `20260518_000001` is the current head revision.
 
 ---
 
