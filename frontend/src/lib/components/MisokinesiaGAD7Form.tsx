@@ -33,7 +33,7 @@ export default function MisokinesiaGAD7Form({
   return (
     <SurveyForm
       title="Anxiety questionnaire"
-      instructions="Please choose the response that best describes how you have been feeling."
+      instructions="Over the last two weeks, how often have you been bothered by the following problems?"
       items={GAD7_ITEMS}
       scale={GAD7_SCALE}
       submitting={submitting}
