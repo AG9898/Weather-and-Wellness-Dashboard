@@ -48,6 +48,7 @@ The workflow stores non-secret project IDs directly in YAML:
 |---|---|
 | Railway project | `b5bcf140-8336-4284-bb6f-4ede7fae9772` |
 | Railway backend service | `a16226f5-dc23-45a3-ab7b-3d2aaa5a3b99` |
+| Railway backend service name | `backend` |
 | Railway production environment | `f0268bd1-5c6e-4b3c-9b4c-f94d92b0a1b2` |
 | Vercel org | `team_plJ8tyDQ3UkNMadXHldcwyea` |
 | Vercel project | `prj_XVvJfNLoaUOoRyMgGKDwmKhJYSVT` |

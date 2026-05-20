@@ -17,6 +17,7 @@ concurrency:
 env:
   RAILWAY_PROJECT_ID: b5bcf140-8336-4284-bb6f-4ede7fae9772
   RAILWAY_SERVICE_ID: a16226f5-dc23-45a3-ab7b-3d2aaa5a3b99
+  RAILWAY_SERVICE_NAME: backend
   RAILWAY_ENVIRONMENT_ID: f0268bd1-5c6e-4b3c-9b4c-f94d92b0a1b2
   BACKEND_BASE_URL: https://backend-production-5809.up.railway.app
   VERCEL_ORG_ID: team_plJ8tyDQ3UkNMadXHldcwyea
@@ -157,12 +158,14 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           railway deployment redeploy \
-            --service "${RAILWAY_SERVICE_ID}" \
+            --service "${RAILWAY_SERVICE_NAME}" \
             --from-source \
             --yes
 
           for attempt in $(seq 1 90); do
-            railway deployment list --json > /tmp/railway-deployments.json
+            railway deployment list \
+              --service "${RAILWAY_SERVICE_NAME}" \
+              --json > /tmp/railway-deployments.json
 
             status="$(
               jq -r --arg sha "${GITHUB_SHA}" \
@@ -195,7 +198,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           railway run \
-            --service "${RAILWAY_SERVICE_ID}" \
+            --service "${RAILWAY_SERVICE_NAME}" \
             --no-local \
             -- bash -lc 'cd backend && PYTHONPATH=. python -m alembic upgrade head'
 
