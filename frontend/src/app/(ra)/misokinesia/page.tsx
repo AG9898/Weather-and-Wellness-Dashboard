@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MisokinesiaLaunchPage from "@/lib/components/MisokinesiaLaunchPage";
 import {
@@ -9,6 +9,12 @@ import {
   type MisokinesiaManifest,
   ApiError,
 } from "@/lib/api";
+import {
+  getMisoDashboard,
+  getMisoVideoScores,
+  type MisoDashboardResponse,
+  type MisoVideoScoresResponse,
+} from "@/lib/api/misokinesia";
 import {
   buildTrialRunPath,
   createTrialRunMisokinesiaManifest,
@@ -26,6 +32,49 @@ export default function MisokinesiaPage() {
   const [shortTrialLoading, setShortTrialLoading] = useState(false);
   const [fullTrialLoading, setFullTrialLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<MisoDashboardResponse | null>(null);
+  const [videoScores, setVideoScores] = useState<MisoVideoScoresResponse | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDashboardData() {
+      setDashboardLoading(true);
+      setDashboardError(null);
+      try {
+        const [dashboardResult, videoScoresResult] = await Promise.all([
+          getMisoDashboard(),
+          getMisoVideoScores(),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        setDashboard(dashboardResult);
+        setVideoScores(videoScoresResult);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        setDashboardError(
+          err instanceof ApiError
+            ? `Dashboard failed to load (${err.status}): ${err.message}`
+            : "Dashboard failed to load. Please refresh and try again."
+        );
+      } finally {
+        if (!cancelled) {
+          setDashboardLoading(false);
+        }
+      }
+    }
+
+    void loadDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleStart() {
     setLoading(true);
@@ -99,6 +148,10 @@ export default function MisokinesiaPage() {
       shortTrialLoading={shortTrialLoading}
       fullTrialLoading={fullTrialLoading}
       error={error}
+      dashboard={dashboard}
+      videoScores={videoScores}
+      dashboardLoading={dashboardLoading}
+      dashboardError={dashboardError}
       onStart={handleStart}
       onStartShortTrial={handleStartShortTrial}
       onStartFullTrial={handleStartFullTrial}

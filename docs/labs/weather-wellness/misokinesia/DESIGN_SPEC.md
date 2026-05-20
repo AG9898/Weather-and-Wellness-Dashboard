@@ -79,6 +79,7 @@ The redesign should remove the current participant-flow ambient glow/card-stack 
 ### `/misokinesia` RA Dashboard
 
 The RA-facing `/misokinesia` page is a lean operational dashboard. All stats are sourced from live backend endpoints (no stub data).
+The frontend loads these values on mount through typed wrappers in `src/lib/api/misokinesia.ts`.
 
 **Layout:**
 - Primary action cluster: start production session, run short trial, run full trial, and no-write trial hint.

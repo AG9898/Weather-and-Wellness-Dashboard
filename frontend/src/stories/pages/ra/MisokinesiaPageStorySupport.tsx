@@ -2,12 +2,72 @@ import type { Decorator } from "@storybook/nextjs-vite";
 import MisokinesiaLaunchPage from "@/lib/components/MisokinesiaLaunchPage";
 import RAFloatingChrome from "@/lib/components/RAFloatingChrome";
 import { RAUserContext } from "@/lib/contexts/RAUserContext";
+import type {
+  MisoDashboardResponse,
+  MisoVideoScoresResponse,
+} from "@/lib/api/misokinesia";
 
 export type MisokinesiaStoryState = "replica" | "loading" | "empty" | "error";
 
 interface MisokinesiaStoryShellProps {
   state?: MisokinesiaStoryState;
 }
+
+const liveDashboardData: MisoDashboardResponse = {
+  active_stimuli_count: 25,
+  recent_sessions: [
+    {
+      misokinesia_participant_number: 149,
+      started_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
+      completed_at: new Date(Date.now() - 30 * 1000).toISOString(),
+      age_band: "25-31",
+      gender: "Woman",
+      country: "Canada",
+      avg_clip_score: 15.5,
+    },
+    {
+      misokinesia_participant_number: 148,
+      started_at: new Date(Date.now() - 72 * 60 * 1000).toISOString(),
+      completed_at: new Date(Date.now() - 38 * 60 * 1000).toISOString(),
+      age_band: "18-24",
+      gender: "Nonbinary person",
+      country: "South Korea",
+      avg_clip_score: 12.9,
+    },
+    {
+      misokinesia_participant_number: 147,
+      started_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+      completed_at: null,
+      age_band: null,
+      gender: null,
+      country: null,
+      avg_clip_score: null,
+    },
+  ],
+};
+
+const liveVideoScores: MisoVideoScoresResponse = {
+  top_5: [
+    { video_label: "Ankle Wagging", avg_score: 17.4, response_count: 24 },
+    { video_label: "Finger Tapping", avg_score: 16.8, response_count: 24 },
+    { video_label: "Pen Clicking", avg_score: 16.1, response_count: 23 },
+  ],
+  bottom_5: [
+    { video_label: "Page Turning", avg_score: 7.2, response_count: 23 },
+    { video_label: "Hair Twirling", avg_score: 8.4, response_count: 24 },
+    { video_label: "Foot Shift", avg_score: 9.1, response_count: 24 },
+  ],
+};
+
+const emptyDashboardData: MisoDashboardResponse = {
+  active_stimuli_count: 25,
+  recent_sessions: [],
+};
+
+const emptyVideoScores: MisoVideoScoresResponse = {
+  top_5: [],
+  bottom_5: [],
+};
 
 export function MisokinesiaStoryShell({
   state = "replica",
@@ -26,7 +86,11 @@ export function MisokinesiaStoryShell({
         <main className="pb-32 sm:pb-36">
           <MisokinesiaLaunchPage
             loading={isLoading}
-            error={errorMsg}
+            dashboard={state === "empty" ? emptyDashboardData : liveDashboardData}
+            videoScores={state === "empty" ? emptyVideoScores : liveVideoScores}
+            dashboardLoading={isLoading}
+            dashboardError={errorMsg}
+            error={state === "error" ? errorMsg : null}
           />
         </main>
         <RAFloatingChrome />

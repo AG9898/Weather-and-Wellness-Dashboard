@@ -174,6 +174,9 @@ describe("dashboard analytics loader", () => {
     );
 
     expect(result.kind).toBe("loaded");
+    if (result.kind !== "loaded") {
+      throw new Error(`Expected loaded result, received ${result.kind}`);
+    }
     expect(result.temperatureSummary).toEqual({ windows: [] });
     expect(fetchBundle).toHaveBeenCalledWith("snapshot", "2026-03-01", "2026-03-12");
   });
@@ -226,6 +229,9 @@ describe("dashboard analytics loader", () => {
     );
 
     expect(result.kind).toBe("loaded");
+    if (result.kind !== "loaded") {
+      throw new Error(`Expected loaded result, received ${result.kind}`);
+    }
     expect(result.response.refresh.state).toBe("recomputing");
     expect(result.response.data?.analytics.temperature_summary).toEqual({ windows: [] });
     expect(fetchBundle).toHaveBeenCalledTimes(1);

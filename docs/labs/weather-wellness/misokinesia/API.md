@@ -373,35 +373,6 @@
 
 ## RA Dashboard Endpoints
 
-### GET /misokinesia/dashboard
-- **Auth:** RA required
-- **Status:** planned (T195)
-- **Request body:** none
-- **Response (HTTP 200):** `MisoDashboardResponse`
-  ```json
-  {
-    "active_stimuli_count": 25,
-    "recent_sessions": [
-      {
-        "misokinesia_participant_number": 149,
-        "started_at": "2026-05-20T14:32:00Z",
-        "completed_at": "2026-05-20T15:10:00Z",
-        "age_band": "18-24",
-        "gender": "Woman",
-        "country": "Canada",
-        "avg_clip_score": 12.4
-      }
-    ]
-  }
-  ```
-- **Notes:**
-  - Returns up to 10 most recent `misokinesia_participants` rows, ordered by `started_at` DESC.
-  - `active_stimuli_count`: count of `misokinesia_stimuli` rows where `active = true` in the active test set.
-  - `avg_clip_score`: mean of `(q1 + q2 + q3 + q4)` summed per row, across all of the participant's `misokinesia_trial_responses` rows. Range 4–20; `null` if the participant has no response rows.
-  - `age_band`, `gender`, `country` are passed through from `misokinesia_participants` nullable columns; any or all may be `null` if the participant did not complete the demographics form.
-  - `completed_at` is `null` for sessions not yet fully completed.
-  - Unauthenticated requests return 401.
-
 ### GET /misokinesia/video-scores
 - **Auth:** RA required
 - **Status:** implemented (T196)

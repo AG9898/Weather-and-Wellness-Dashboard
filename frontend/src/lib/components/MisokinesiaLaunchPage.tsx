@@ -1,59 +1,15 @@
 import { FlaskConical, Play, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageContainer from "@/lib/components/PageContainer";
-
-// ── Stub data types ──────────────────────────────────────────────────────────
-// These are clearly isolated as stubs until backend endpoint support lands.
-// When a dashboard endpoint is available, replace STUB_RECENT_SESSIONS and
-// STUB_SPLIT_DATA with live API calls and wire real data through props.
+import type {
+  MisoDashboardResponse,
+  MisoDashboardSessionItem,
+  MisoVideoScoreItem,
+  MisoVideoScoresResponse,
+} from "@/lib/api/misokinesia";
 
 export type SessionKind = "production" | "short_trial" | "full_trial";
 export type SessionStatus = "complete" | "incomplete" | "rehearsal";
-
-export interface RecentSession {
-  /** RA-facing participant ID label, e.g. "MKP-0149" or "MKP-—" for trials */
-  id: string;
-  /** Human-readable elapsed or clock timestamp */
-  stamp: string;
-  /** Clips completed expressed as "N/M" */
-  clips: string;
-  kind: SessionKind;
-  status: SessionStatus;
-}
-
-export interface SplitData {
-  productionCount: number;
-  trialCount: number;
-  /** Period label, e.g. "30 days" */
-  window: string;
-}
-
-// Stub data — replace with real API props when backend support lands.
-const STUB_RECENT_SESSIONS: RecentSession[] = [
-  { id: "MKP-0149", stamp: "2 min ago",           clips: "25/25", kind: "production",   status: "complete"   },
-  { id: "MKP-0148", stamp: "1h 12m ago",           clips: "25/25", kind: "production",   status: "complete"   },
-  { id: "MKP-—",    stamp: "2h 04m ago",           clips: "5/5",   kind: "short_trial",  status: "rehearsal"  },
-  { id: "MKP-0147", stamp: "3h 51m ago",           clips: "12/25", kind: "production",   status: "incomplete" },
-  { id: "MKP-0146", stamp: "Yesterday · 16:22",    clips: "25/25", kind: "production",   status: "complete"   },
-];
-
-const STUB_SPLIT_DATA: SplitData = {
-  productionCount: 42,
-  trialCount: 16,
-  window: "30 days",
-};
-
-// Active stimuli count is stubbed; replace with real value when available.
-const STUB_ACTIVE_STIMULI = 25;
-
-// ── Kind labels ──────────────────────────────────────────────────────────────
-const KIND_LABEL: Record<SessionKind, string> = {
-  production:  "Production",
-  short_trial: "Short trial",
-  full_trial:  "Full trial",
-};
-
-// ── Component props ──────────────────────────────────────────────────────────
 export type MisokinesiaLaunchStatsState = "replica" | "empty" | "error";
 
 interface MisokinesiaLaunchPageProps {
@@ -61,7 +17,10 @@ interface MisokinesiaLaunchPageProps {
   shortTrialLoading?: boolean;
   fullTrialLoading?: boolean;
   error?: string | null;
-  /** Unused in this version but kept for Storybook/story compatibility. */
+  dashboard?: MisoDashboardResponse | null;
+  videoScores?: MisoVideoScoresResponse | null;
+  dashboardLoading?: boolean;
+  dashboardError?: string | null;
   statsState?: MisokinesiaLaunchStatsState;
   onStart?: () => void;
   onStartShortTrial?: () => void;
@@ -70,7 +29,12 @@ interface MisokinesiaLaunchPageProps {
   onUndoLastSession?: () => void;
 }
 
-// ── StatusBadge ──────────────────────────────────────────────────────────────
+const KIND_LABEL: Record<SessionKind, string> = {
+  production: "Production",
+  short_trial: "Short trial",
+  full_trial: "Full trial",
+};
+
 function StatusBadge({ kind, status }: { kind: SessionKind; status: SessionStatus }) {
   const isComplete = status === "complete";
   const isRehearsal = status === "rehearsal";
@@ -91,28 +55,104 @@ function StatusBadge({ kind, status }: { kind: SessionKind; status: SessionStatu
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+function formatParticipantNumber(value: number): string {
+  return `MKP-${String(value).padStart(4, "0")}`;
+}
+
+function formatRelativeTime(value: string): string {
+  const started = new Date(value);
+  if (Number.isNaN(started.getTime())) {
+    return "—";
+  }
+
+  const now = new Date();
+  const elapsedMs = now.getTime() - started.getTime();
+  const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+
+  if (elapsedMinutes < 1) {
+    return "Just now";
+  }
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} min ago`;
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24 && now.toDateString() === started.toDateString()) {
+    return `${elapsedHours}h ${elapsedMinutes % 60}m ago`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const time = started.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  if (started.toDateString() === yesterday.toDateString()) {
+    return `Yesterday · ${time}`;
+  }
+
+  return `${started.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+  })} · ${time}`;
+}
+
+function formatNullable(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+  return typeof value === "number" ? value.toFixed(1) : value;
+}
+
+function formatDemographics(row: MisoDashboardSessionItem): string {
+  const values = [row.age_band, row.gender, row.country].map((value) => value || "—");
+  return values.join(" · ");
+}
+
+function ScoreRows({ items }: { items: MisoVideoScoreItem[] }) {
+  return (
+    <div className="space-y-2">
+      {items.map((item) => (
+        <div
+          key={`${item.video_label}-${item.avg_score}`}
+          className="flex items-center justify-between gap-4 border-b border-border pb-2 text-[12px] last:border-0 last:pb-0"
+        >
+          <span className="min-w-0 truncate font-medium text-foreground">
+            {item.video_label}
+          </span>
+          <span className="shrink-0 font-semibold tabular-nums text-foreground">
+            {item.avg_score.toFixed(1)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MisokinesiaLaunchPage({
   loading = false,
   shortTrialLoading = false,
   fullTrialLoading = false,
   error = null,
+  dashboard = null,
+  videoScores = null,
+  dashboardLoading = false,
+  dashboardError = null,
   onStart,
   onStartShortTrial,
   onStartFullTrial,
   onUndoLastSession,
 }: MisokinesiaLaunchPageProps) {
   const anyLoading = loading || shortTrialLoading || fullTrialLoading;
-
-  const total = STUB_SPLIT_DATA.productionCount + STUB_SPLIT_DATA.trialCount;
-  const productionPct = total > 0 ? (STUB_SPLIT_DATA.productionCount / total) * 100 : 0;
-  const trialPct = 100 - productionPct;
+  const recentSessions = dashboard?.recent_sessions.slice(0, 10) ?? [];
+  const activeStimuliCount = dashboard?.active_stimuli_count;
+  const topScores = videoScores?.top_5 ?? [];
+  const bottomScores = videoScores?.bottom_5 ?? [];
+  const hasVideoScores = topScores.length > 0 || bottomScores.length > 0;
 
   return (
     <PageContainer>
-      {/* ── Masthead ─────────────────────────────────────────────────── */}
       <div className="mb-9 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        {/* Left: kicker + heading + subtitle */}
         <div className="max-w-[540px] space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Misokinesia Study · Lab Operations
@@ -128,7 +168,6 @@ export default function MisokinesiaLaunchPage({
           </p>
         </div>
 
-        {/* Right: action cluster */}
         <div className="flex shrink-0 flex-col items-start gap-2.5 lg:items-end">
           <Button
             size="lg"
@@ -173,7 +212,12 @@ export default function MisokinesiaLaunchPage({
         </div>
       </div>
 
-      {/* ── Active stimuli card ───────────────────────────────────────── */}
+      {dashboardError && (
+        <div className="mb-6 rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {dashboardError}
+        </div>
+      )}
+
       <div
         className="mb-6 rounded-2xl border border-border px-6 py-5 shadow-[var(--shadow-card)]"
         style={{ background: "var(--card)" }}
@@ -189,7 +233,7 @@ export default function MisokinesiaLaunchPage({
             className="mt-1.5 font-bold tabular-nums text-foreground"
             style={{ fontSize: 30, letterSpacing: "-0.02em" }}
           >
-            {STUB_ACTIVE_STIMULI}
+            {dashboardLoading ? "Loading" : activeStimuliCount ?? "—"}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground" style={{ color: "var(--ink-45)" }}>
             clips available in the active test set
@@ -197,10 +241,7 @@ export default function MisokinesiaLaunchPage({
         </div>
       </div>
 
-      {/* ── Two-column: sessions ledger + trial/production split ──────── */}
       <div className="grid gap-6 lg:grid-cols-[1.8fr_1fr]">
-
-        {/* Recent sessions ledger */}
         <div
           className="rounded-2xl border border-border px-6 py-5 shadow-[var(--shadow-card)]"
           style={{ background: "var(--card)" }}
@@ -220,109 +261,75 @@ export default function MisokinesiaLaunchPage({
             </Button>
           </div>
 
-          {/* Sessions rows */}
           <div className="border-t border-border">
-            {STUB_RECENT_SESSIONS.map((row, i) => (
-              <div
-                key={i}
-                className="grid items-center gap-4 border-b border-border py-3 text-[12px]"
-                style={{ gridTemplateColumns: "110px 1fr 90px 110px" }}
-              >
-                {/* ID */}
-                <span
-                  className="font-semibold tabular-nums text-foreground"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
+            {dashboardLoading ? (
+              <p className="py-6 text-[12px] text-muted-foreground">
+                Loading recent sessions…
+              </p>
+            ) : recentSessions.length === 0 ? (
+              <p className="py-6 text-[12px] text-muted-foreground">
+                No sessions yet.
+              </p>
+            ) : (
+              recentSessions.map((row) => (
+                <div
+                  key={`${row.misokinesia_participant_number}-${row.started_at}`}
+                  className="grid grid-cols-[minmax(92px,0.9fr)_minmax(95px,1fr)] items-center gap-x-4 gap-y-1 border-b border-border py-3 text-[12px] sm:grid-cols-[110px_minmax(120px,1fr)_minmax(150px,1.45fr)_90px]"
                 >
-                  {row.id}
-                </span>
-                {/* Timestamp */}
-                <span className="text-muted-foreground">{row.stamp}</span>
-                {/* Clips */}
-                <span
-                  className="tabular-nums text-muted-foreground"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
-                >
-                  {row.clips}
-                </span>
-                {/* Status badge */}
-                <div>
-                  <StatusBadge kind={row.kind} status={row.status} />
+                  <span
+                    className="font-semibold tabular-nums text-foreground"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {formatParticipantNumber(row.misokinesia_participant_number)}
+                  </span>
+                  <span className="text-muted-foreground">{formatRelativeTime(row.started_at)}</span>
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    {formatDemographics(row)}
+                  </span>
+                  <span
+                    className="tabular-nums text-muted-foreground sm:text-right"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {formatNullable(row.avg_clip_score)}
+                  </span>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-
-          {/* Stub notice */}
-          <p className="mt-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground opacity-60">
-            Stub data · wiring pending
-          </p>
         </div>
 
-        {/* Trial vs Production split */}
         <div
           className="rounded-2xl border border-border px-6 py-5 shadow-[var(--shadow-card)]"
           style={{ background: "var(--card)" }}
         >
           <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Trial vs production · {STUB_SPLIT_DATA.window}
+            Video Score Leaderboard
           </p>
 
-          {/* Stacked bar */}
-          <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="bg-primary"
-              style={{ width: `${productionPct.toFixed(1)}%` }}
-            />
-            <div
-              style={{
-                width: `${trialPct.toFixed(1)}%`,
-                background: "var(--ubc-blue-300)",
-              }}
-            />
-          </div>
-
-          {/* Legend */}
-          <div className="mt-4 flex justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span
-                  className="inline-block h-2 w-2 rounded-sm"
-                  style={{ background: "var(--primary)" }}
-                />
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Production
-                </span>
-              </div>
-              <p
-                className="mt-1 font-bold tabular-nums text-foreground"
-                style={{ fontSize: 22, fontVariantNumeric: "tabular-nums" }}
-              >
-                {STUB_SPLIT_DATA.productionCount}
-              </p>
+          {dashboardLoading ? (
+            <p className="border-t border-border py-6 text-[12px] text-muted-foreground">
+              Loading video scores…
+            </p>
+          ) : !hasVideoScores ? (
+            <p className="border-t border-border py-6 text-[12px] text-muted-foreground">
+              No video score data yet.
+            </p>
+          ) : (
+            <div className="space-y-5 border-t border-border pt-4">
+              <section>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Highest reactivity
+                </p>
+                <ScoreRows items={topScores} />
+              </section>
+              <section>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Lowest reactivity
+                </p>
+                <ScoreRows items={bottomScores} />
+              </section>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span
-                  className="inline-block h-2 w-2 rounded-sm"
-                  style={{ background: "var(--ubc-blue-300)" }}
-                />
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Trial runs
-                </span>
-              </div>
-              <p
-                className="mt-1 font-bold tabular-nums text-foreground"
-                style={{ fontSize: 22, fontVariantNumeric: "tabular-nums" }}
-              >
-                {STUB_SPLIT_DATA.trialCount}
-              </p>
-            </div>
-          </div>
-
-          {/* Stub notice */}
-          <p className="mt-4 border-t border-border pt-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground opacity-60">
-            Stub data · wiring pending
-          </p>
+          )}
         </div>
       </div>
     </PageContainer>
