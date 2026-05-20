@@ -3006,7 +3006,7 @@
       "id": "T190",
       "title": "Miso redesign - MkAQ and MAQ carousel visuals",
       "description": "Apply the A4 carousel template to MkAQ and MAQ forms, preserving each instrument's current production/trial pane structure, answer preservation, and final payload submission.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [

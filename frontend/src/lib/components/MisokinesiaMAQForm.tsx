@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  EditorialKicker,
+  EditorialPaneDots,
+} from "@/lib/components/EditorialPrimitives";
 
 export interface MAQItem {
   id: string;
@@ -47,12 +51,17 @@ export const MAQ_ITEMS: MAQItem[] = [
 ];
 
 const MAQ_SCALE = [
-  { value: 0, label: "0 - Not at all" },
-  { value: 1, label: "1 - A little of the time" },
-  { value: 2, label: "2 - A good deal of the time" },
-  { value: 3, label: "3 - Almost all the time" },
+  { value: 0, label: "Not at all" },
+  { value: 1, label: "A little of the time" },
+  { value: 2, label: "A good deal of the time" },
+  { value: 3, label: "Almost all the time" },
 ] as const;
 
+/**
+ * Builds panes for MAQ.
+ * - itemCount <= 10 (trial): 5-item panes → 5/5
+ * - itemCount = 21 (production): 7-item panes → 7/7/7
+ */
 export function buildMaqPanes<T>(items: T[], itemCount = items.length): T[][] {
   const visibleItems = items.slice(0, itemCount);
   const paneSize = itemCount <= 10 ? 5 : 7;
@@ -86,6 +95,14 @@ export default function MisokinesiaMAQForm({
   const allAnswered = items.every((item) => answers[item.id] !== undefined);
   const answeredCount = items.filter((item) => answers[item.id] !== undefined).length;
 
+  // For the "Items N–M of total" kicker label
+  const firstItemGlobalIdx = items.indexOf(currentPane[0]) + 1;
+  const lastItemGlobalIdx = items.indexOf(currentPane[currentPane.length - 1]) + 1;
+
+  const currentPaneAnswered = currentPane.filter(
+    (item) => answers[item.id] !== undefined
+  ).length;
+
   const handleSelect = (id: string, value: number) => {
     setAnswers((prev) => ({ ...prev, [id]: value }));
   };
@@ -106,123 +123,141 @@ export default function MisokinesiaMAQForm({
   };
 
   return (
-    <div className="relative mx-auto max-w-4xl px-4 py-8 sm:py-12">
-      <div
-        className="pointer-events-none absolute left-0 top-6 h-44 w-44 rounded-full opacity-35 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--ring) 72%, transparent)" }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-0 right-0 h-52 w-52 rounded-full opacity-20 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--primary) 68%, transparent)" }}
-      />
+    <div className="mx-auto max-w-[760px] px-8 py-14">
+      {/* A4 carousel header: instrument label — hairline — pane dots — "Part X / Y" */}
+      <div className="mb-7 flex items-center gap-3">
+        <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          MAQ · Misophonia Assessment
+        </span>
+        <div className="h-px flex-1 bg-border" aria-hidden />
+        <EditorialPaneDots
+          total={panes.length}
+          activeIndex={paneIndex}
+        />
+        <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Part {paneIndex + 1} / {panes.length}
+        </span>
+      </div>
 
-      <div
-        className="relative space-y-6 rounded-[1.6rem] border border-border/90 p-5 shadow-[0_30px_60px_-52px_rgb(0_19_40/0.7)] sm:p-8"
-        style={{ background: "var(--card)" }}
-      >
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Assessment questionnaire - Part {paneIndex + 1} of {panes.length}
-          </p>
-          <h2 className="text-xl font-bold text-foreground sm:text-2xl">
-            Please rate each statement
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            0 = Not at all &nbsp;&bull;&nbsp; 1 = A little of the time &nbsp;&bull;&nbsp;
-            2 = A good deal of the time &nbsp;&bull;&nbsp; 3 = Almost all the time
-          </p>
+      {/* Kicker + heading + scale legend */}
+      <EditorialKicker className="mb-2.5">
+        Items {firstItemGlobalIdx}–{lastItemGlobalIdx} of {items.length}
+      </EditorialKicker>
+      <h2 className="text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
+        Please rate each statement
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        0&nbsp;&bull;&nbsp;Not at all&nbsp;&nbsp;&bull;&nbsp;&nbsp;1&nbsp;&bull;&nbsp;A little&nbsp;&nbsp;&bull;&nbsp;&nbsp;2&nbsp;&bull;&nbsp;A good deal&nbsp;&nbsp;&bull;&nbsp;&nbsp;3&nbsp;&bull;&nbsp;Almost all the time
+      </p>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Item rows */}
+      <form onSubmit={handleSubmit}>
+        <div className="mt-7 flex flex-col gap-3">
           {currentPane.map((item) => {
-            const selected = answers[item.id];
             const globalIdx = items.findIndex((candidate) => candidate.id === item.id);
+            const selected = answers[item.id];
             return (
               <fieldset
                 key={item.id}
-                className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4"
+                className="rounded-[14px] border border-border px-[18px] py-[14px]"
+                style={{ background: "var(--fieldset-bg)" }}
                 disabled={submitting}
               >
                 <legend className="sr-only">
                   {globalIdx + 1}. {item.text}
                 </legend>
-                <p className="text-sm font-medium leading-snug text-foreground">
-                  {globalIdx + 1}. {item.text}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {MAQ_SCALE.map((opt) => {
-                    const isSelected = selected === opt.value;
-                    return (
-                      <label
-                        key={opt.value}
-                        className={cn(
-                          "cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
-                          isSelected
-                            ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                            : "border-border bg-card/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name={`maq-${item.id}`}
-                          value={opt.value}
-                          checked={isSelected}
-                          onChange={() => handleSelect(item.id, opt.value)}
-                          className="sr-only"
-                        />
-                        {opt.label}
-                      </label>
-                    );
-                  })}
+                <div className="grid items-center gap-4" style={{ gridTemplateColumns: "32px 1fr auto" }}>
+                  {/* Item number */}
+                  <span
+                    className="self-start mt-1 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                    aria-hidden
+                  >
+                    {String(globalIdx + 1).padStart(2, "0")}
+                  </span>
+                  {/* Statement */}
+                  <p className="text-[14px] font-medium leading-[1.45] text-foreground">
+                    {item.text}
+                  </p>
+                  {/* Compact numeric chips */}
+                  <div className="flex gap-1.5" role="radiogroup" aria-label={item.text}>
+                    {MAQ_SCALE.map((opt) => {
+                      const isSelected = selected === opt.value;
+                      return (
+                        <label
+                          key={opt.value}
+                          title={opt.label}
+                          className={cn(
+                            "flex min-w-[40px] cursor-pointer items-center justify-center rounded-[10px] border px-2.5 py-2 text-xs font-semibold transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring/60",
+                            isSelected
+                              ? "border-transparent bg-primary text-primary-foreground"
+                              : "border-border bg-card text-muted-foreground hover:border-ring/40 hover:text-foreground",
+                            submitting && "pointer-events-none opacity-50"
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name={`maq-${item.id}`}
+                            value={opt.value}
+                            checked={isSelected}
+                            onChange={() => handleSelect(item.id, opt.value)}
+                            className="sr-only"
+                          />
+                          {opt.value}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               </fieldset>
             );
           })}
+        </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <p className="text-xs text-muted-foreground">
-              {answeredCount}/{items.length} answered
-            </p>
-            <div className="flex gap-3">
-              {!isFirstPane && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={submitting}
-                  className="rounded-xl"
-                >
-                  Previous
-                </Button>
-              )}
-              {!isLastPane ? (
-                <Button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={!currentPaneComplete || submitting}
-                  className="min-w-28 rounded-xl px-6 text-primary-foreground"
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={!allAnswered || submitting}
-                  className="min-w-28 rounded-xl px-6 text-primary-foreground"
-                >
-                  {submitting ? "Submitting..." : "Submit"}
-                </Button>
-              )}
-            </div>
+        {/* Footer */}
+        <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
+          <span className="font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            {currentPaneAnswered}/{currentPane.length} on this part&nbsp;&nbsp;&bull;&nbsp;&nbsp;{answeredCount}/{items.length} overall
+          </span>
+          <div className="flex gap-2">
+            {!isFirstPane && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={submitting}
+                className="min-w-[120px] rounded-xl"
+              >
+                &larr; Previous
+              </Button>
+            )}
+            {!isLastPane ? (
+              <Button
+                type="button"
+                onClick={handleNext}
+                disabled={!currentPaneComplete || submitting}
+                className="min-w-[120px] rounded-xl px-6 text-primary-foreground"
+              >
+                Next &rarr;
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={!allAnswered || submitting}
+                className="min-w-[120px] rounded-xl px-6 text-primary-foreground"
+              >
+                {submitting ? "Submitting..." : "Submit"}
+              </Button>
+            )}
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }
