@@ -8,7 +8,11 @@ before the backend routes and database migrations it depends on.
 Canonical workflow: `.github/workflows/production-release.yml`.
 
 On a push to `main` that changes `backend/**` or `frontend/**`, or on manual
-`workflow_dispatch`, the release runs in this order:
+`workflow_dispatch`, the workflow runs validation first. Push releases deploy
+only the changed service surfaces; manual releases force the full backend,
+migration, smoke-test, and frontend sequence.
+
+For a full release, the workflow runs in this order:
 
 1. Validate backend tests and frontend type-check/build.
 2. Deploy the Railway backend service.
@@ -20,6 +24,11 @@ On a push to `main` that changes `backend/**` or `frontend/**`, or on manual
    - Protected RA routes return `401` without auth, proving the route exists
      and auth is enforced.
 5. Build and deploy the Vercel production frontend.
+
+If a push changes only `frontend/**`, the Railway deploy step is skipped, but
+production migrations and backend smoke tests still run before Vercel deploys.
+If a push changes only `backend/**`, the workflow deploys Railway, runs
+migrations, and smoke tests the backend without redeploying Vercel.
 
 The workflow uses `concurrency: production-release` with
 `cancel-in-progress: false` so production releases run one at a time.
