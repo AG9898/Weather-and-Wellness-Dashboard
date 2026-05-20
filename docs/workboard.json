@@ -3092,7 +3092,7 @@
       "id": "T193",
       "title": "Miso redesign - Lean RA operations page",
       "description": "Redesign /misokinesia as a lean operational dashboard with start/trial actions, active stimuli, recent sessions, and trial-vs-production split using stubbed data where needed.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [
