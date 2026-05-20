@@ -1,0 +1,196 @@
+name: Production Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/production-release.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+env:
+  RAILWAY_PROJECT_ID: b5bcf140-8336-4284-bb6f-4ede7fae9772
+  RAILWAY_SERVICE_ID: a16226f5-dc23-45a3-ab7b-3d2aaa5a3b99
+  RAILWAY_ENVIRONMENT_ID: f0268bd1-5c6e-4b3c-9b4c-f94d92b0a1b2
+  BACKEND_BASE_URL: https://backend-production-5809.up.railway.app
+  VERCEL_ORG_ID: team_plJ8tyDQ3UkNMadXHldcwyea
+  VERCEL_PROJECT_ID: prj_XVvJfNLoaUOoRyMgGKDwmKhJYSVT
+
+jobs:
+  validate:
+    name: Validate Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: python -m pytest
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type-check frontend
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  deploy-backend:
+    name: Deploy Backend and Migrate
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python for Alembic
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies for Alembic
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli
+
+      - name: Deploy Railway backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service "${RAILWAY_SERVICE_ID}" \
+            --ci \
+            --message "GitHub Actions production release ${GITHUB_SHA}"
+
+      - name: Run production migrations
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway run \
+            --service "${RAILWAY_SERVICE_ID}" \
+            --no-local \
+            -- bash -lc 'cd backend && PYTHONPATH=. python -m alembic upgrade head'
+
+      - name: Smoke test backend
+        run: |
+          set -euo pipefail
+
+          curl -fsS "${BACKEND_BASE_URL}/health" >/dev/null
+          curl -fsS "${BACKEND_BASE_URL}/openapi.json" -o /tmp/openapi.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          paths = json.loads(Path("/tmp/openapi.json").read_text())["paths"]
+          required = [
+              "/misokinesia/dashboard",
+              "/misokinesia/video-scores",
+          ]
+          missing = [path for path in required if path not in paths]
+          if missing:
+              raise SystemExit(f"Missing OpenAPI paths: {', '.join(missing)}")
+          PY
+
+          for path in /misokinesia/dashboard /misokinesia/video-scores; do
+            status="$(
+              curl -sS -o /tmp/backend-smoke-response.txt \
+                -w "%{http_code}" \
+                "${BACKEND_BASE_URL}${path}"
+            )"
+            if [ "${status}" != "401" ]; then
+              echo "Expected ${path} to return 401 without auth, got ${status}"
+              cat /tmp/backend-smoke-response.txt
+              exit 1
+            fi
+          done
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+
+      - name: Link Vercel project
+        working-directory: frontend
+        run: |
+          mkdir -p .vercel
+          cat > .vercel/project.json <<JSON
+          {"orgId":"${VERCEL_ORG_ID}","projectId":"${VERCEL_PROJECT_ID}"}
+          JSON
+
+      - name: Pull Vercel production environment
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token "${VERCEL_TOKEN}"
+
+      - name: Build Vercel output
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token "${VERCEL_TOKEN}"
+
+      - name: Deploy Vercel production
+        working-directory: frontend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token "${VERCEL_TOKEN}"

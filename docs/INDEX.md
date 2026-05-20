@@ -12,6 +12,7 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Deployment topology, runtime boundaries, routing architecture |
 | [`docs/CONVENTIONS.md`](CONVENTIONS.md) | Coding and operational conventions |
 | [`docs/DECISIONS.md`](DECISIONS.md) | Open and resolved architectural decisions |
+| [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) | Production release pipeline, Railway/Vercel gates, and deployment secrets |
 | [`docs/ENV_VARS.md`](ENV_VARS.md) | Canonical environment variable matrix and ownership |
 | [`docs/TRIAL_MODE.md`](TRIAL_MODE.md) | Canonical trial-run behavior (IDs, watermark, consent, module boundaries) |
 | [`docs/MULTI_LAB.md`](MULTI_LAB.md) | Multi-lab model and onboarding guidance |

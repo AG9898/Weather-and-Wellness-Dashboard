@@ -57,6 +57,8 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 
 | Variable | Description | How to obtain |
 |---|---|---|
+| `RAILWAY_TOKEN` | Railway token used by the production release workflow to deploy the backend and run Alembic with production backend env vars. | Railway Account/Workspace token with access to project `ubcpsych`; see `docs/DEPLOYMENT.md` |
+| `VERCEL_TOKEN` | Vercel token used by the production release workflow to build and deploy the frontend after backend gates pass. | Vercel Account Settings → Tokens; see `docs/DEPLOYMENT.md` |
 | `WEATHER_INGEST_BASE_URL` | Backend base URL used by scheduled/manual weather ingestion workflows. | Railway service URL, e.g. `https://backend-production-5809.up.railway.app` |
 | `WEATHER_INGEST_SHARED_SECRET` | Single shared secret header value sent by weather ingest workflows. Must match one value in `WEATHER_INGEST_SHARED_SECRETS` on the backend. | Copy one of the values set in the backend `WEATHER_INGEST_SHARED_SECRETS` var |
 
@@ -108,5 +110,7 @@ targets.
 | `REDIS_URL` | | | ✓ | |
 | `WEATHER_INGEST_SHARED_SECRETS` | | ✓ | | |
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | | ✓ | | |
+| `RAILWAY_TOKEN` | | | | ✓ |
+| `VERCEL_TOKEN` | | | | ✓ |
 | `WEATHER_INGEST_BASE_URL` | | | | ✓ |
 | `WEATHER_INGEST_SHARED_SECRET` | | | | ✓ |
