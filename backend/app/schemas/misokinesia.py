@@ -81,12 +81,59 @@ class MisokinesiaTrialResponseResponse(BaseModel):
 # End-of-task questionnaire
 # ---------------------------------------------------------------------------
 
+_VALID_AGE_BANDS = {"Under 18", "18-24", "25-31", "32-38", "Over 38"}
+_VALID_GENDERS = {"Woman", "Man", "Nonbinary person", "Prefer not to say", "Not listed"}
+_VALID_COUNTRIES = {"Canada", "South Korea", "Not listed"}
 _VALID_TIMING_OPTIONS = {
     "Immediately",
     "After 5 seconds",
     "After 10 seconds",
     "At the end of the video",
 }
+
+
+# ---------------------------------------------------------------------------
+# Demographics (participant-facing, PATCH)
+# ---------------------------------------------------------------------------
+
+
+class MisoDemographicsCreate(BaseModel):
+    age_band: Optional[str] = None
+    gender: Optional[str] = None
+    gender_other_text: Optional[str] = None
+    country: Optional[str] = None
+    country_other_text: Optional[str] = None
+    nationality: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_demographics(self) -> "MisoDemographicsCreate":
+        if self.age_band is not None and self.age_band not in _VALID_AGE_BANDS:
+            raise ValueError(
+                f"age_band must be one of: {sorted(_VALID_AGE_BANDS)}"
+            )
+        if self.gender is not None and self.gender not in _VALID_GENDERS:
+            raise ValueError(
+                f"gender must be one of: {sorted(_VALID_GENDERS)}"
+            )
+        if self.country is not None and self.country not in _VALID_COUNTRIES:
+            raise ValueError(
+                f"country must be one of: {sorted(_VALID_COUNTRIES)}"
+            )
+        if self.gender_other_text is not None and self.gender != "Not listed":
+            raise ValueError(
+                "gender_other_text may only be set when gender is 'Not listed'"
+            )
+        if self.country_other_text is not None and self.country != "Not listed":
+            raise ValueError(
+                "country_other_text may only be set when country is 'Not listed'"
+            )
+        return self
+
+
+class MisoDemographicsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    misokinesia_participant_id: UUID
 
 
 class MisokinesiaEndOfTaskCreate(BaseModel):
@@ -221,4 +268,6 @@ __all__ = [
     "MisoGAD7Response",
     "MisoMAQCreate",
     "MisoMAQResponse",
+    "MisoDemographicsCreate",
+    "MisoDemographicsResponse",
 ]

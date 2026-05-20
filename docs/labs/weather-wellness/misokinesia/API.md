@@ -38,7 +38,7 @@
 |--------|------|------|--------|----------------|
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143, T172 |
-| PATCH  | /misokinesia/participants/{participant_id}/demographics | None | planned | T184 |
+| PATCH  | /misokinesia/participants/{participant_id}/demographics | None | implemented | T184 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
 | POST   | /misokinesia/participants/{participant_id}/gad7 | None | implemented | T169 |
@@ -117,7 +117,7 @@
 
 ### PATCH /misokinesia/participants/{participant_id}/demographics
 - **Auth:** None (participant-facing)
-- **Status:** planned (T184)
+- **Status:** implemented (T184)
 - **Request body:** `MisoDemographicsCreate`
   ```json
   {

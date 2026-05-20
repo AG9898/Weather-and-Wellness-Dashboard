@@ -27,6 +27,8 @@ from app.schemas.misokinesia import (
     MisoGAD7Response,
     MisoMAQCreate,
     MisoMAQResponse,
+    MisoDemographicsCreate,
+    MisoDemographicsResponse,
     MisokinesiaAqCreate,
     MisokinesiaAqResponse,
     MisokinesiaClipMeta,
@@ -251,6 +253,48 @@ async def get_trial_manifest(
     return MisokinesiaTrialManifestResponse(
         post_survey_order=post_survey_order,
         clips=clips,
+    )
+
+
+@router.patch(
+    "/participants/{participant_id}/demographics",
+    response_model=MisoDemographicsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def submit_demographics(
+    participant_id: UUID,
+    payload: MisoDemographicsCreate,
+    db: AsyncSession = Depends(get_session),
+) -> MisoDemographicsResponse:
+    """Participant-facing (no auth). Write miso-specific demographics to
+    misokinesia_participants. Idempotent — later calls overwrite earlier values.
+    All fields optional. Returns 404 if participant not found, 422 for invalid
+    categorical values or inconsistent other_text fields (validated by schema).
+    """
+
+    mp_result = await db.execute(
+        select(MisokinesiaParticipant).where(
+            MisokinesiaParticipant.misokinesia_participant_id == participant_id
+        )
+    )
+    miso_participant = mp_result.scalar_one_or_none()
+    if miso_participant is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Misokinesia participant not found.",
+        )
+
+    miso_participant.age_band = payload.age_band
+    miso_participant.gender = payload.gender
+    miso_participant.gender_other_text = payload.gender_other_text
+    miso_participant.country = payload.country
+    miso_participant.country_other_text = payload.country_other_text
+    miso_participant.nationality = payload.nationality
+
+    await db.commit()
+
+    return MisoDemographicsResponse(
+        misokinesia_participant_id=miso_participant.misokinesia_participant_id,
     )
 
 

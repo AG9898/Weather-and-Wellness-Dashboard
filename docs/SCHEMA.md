@@ -16,7 +16,7 @@
 - **FKs:** Enforced at DB level, not just application level
 
 > Migration head check: `alembic current -v` should report
-> `Rev: 20260518_000001 (head)`.
+> `Rev: 20260519_000001 (head)`.
 > Keep this value in sync after every new migration.
 
 > Planned statistical analysis rules derived from `reference/Weather_MLM.R` are
@@ -862,10 +862,10 @@ Constraints/indexes:
 | 2026-05-12 | T150                  | Add `ra_invitations` table for app-owned RA invitation state                                                                                                                                                        |
 | 2026-05-13 | T153 follow-up        | Fix active pending invite uniqueness so expired pending rows do not block a fresh invite                                                                                                                            |
 | 2026-05-18 | T168                  | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables                                                            |
-| planned    | T184                  | Add miso demographics columns to `misokinesia_participants`: `age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality` (all VARCHAR NULLABLE)                                        |
+| 2026-05-19 | T184                  | Add miso demographics columns to `misokinesia_participants`: `age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality` (all VARCHAR NULLABLE)                                        |
 
 
-As of 2026-05-18, migration `20260518_000001` is the current head revision.
+As of 2026-05-19, migration `20260519_000001` is the current head revision.
 
 ---
 

@@ -2782,7 +2782,7 @@
       "id": "T184",
       "title": "Miso demographics — schema + API endpoint",
       "description": "Add 6 miso-specific demographic columns to misokinesia_participants via a new Alembic migration (all VARCHAR NULLABLE): age_band, gender, gender_other_text, country, country_other_text, nationality. Add a new participant-facing PATCH /misokinesia/participants/{id}/demographics endpoint in backend/app/routers/misokinesia.py. The endpoint is no-auth, idempotent (later calls overwrite earlier values), validates categorical fields against allowed sets, and returns 422 when gender_other_text is set without gender=Not listed or country_other_text without country=Not listed. Allowed values: age_band (Under 18 / 18-24 / 25-31 / 32-38 / Over 38), gender (Woman / Man / Nonbinary person / Prefer not to say / Not listed), country (Canada / South Korea / Not listed). Nationality is free text. SCHEMA.md, API.md, and MISOKINESIA.md are already updated with the spec.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [],

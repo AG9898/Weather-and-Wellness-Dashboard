@@ -96,6 +96,13 @@ class MisokinesiaParticipant(Base):
     stronger_responses_timing: Mapped[Optional[str]] = mapped_column(
         String, nullable=True
     )
+    # Miso-specific demographics (T184); collected before intro, all optional
+    age_band: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    gender: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    gender_other_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    country_other_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    nationality: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
 
 class MisokinesiaAqResponse(Base):

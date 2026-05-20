@@ -1,4 +1,4 @@
-"""Tests for misokinesia router endpoints (T108, updated T168).
+"""Tests for misokinesia router endpoints (T108, updated T168, T184).
 
 Covers:
 - POST /misokinesia/start: valid manifest response (post_survey_order), auth requirement, clip ordering
@@ -6,6 +6,9 @@ Covers:
   insufficient-stimuli 409 (short trial only), full=True returns all stimuli,
   post_survey_order included in both modes
 - misokinesia_participant_number increments across successive start calls
+- PATCH /misokinesia/participants/{id}/demographics: happy path 200, 404 for unknown
+  participant, 422 for invalid categorical values, 422 for inconsistent other_text,
+  idempotent overwrite, no auth required (T184)
 - POST /misokinesia/participants/{id}/responses: happy path, no-auth requirement,
   duplicate 409, wrong test-set 422, out-of-range qN 422, completed_at auto-set,
   post-completion 409
@@ -35,6 +38,7 @@ from app.routers.misokinesia import (
     get_trial_manifest,
     router,
     start_misokinesia_session,
+    submit_demographics,
     submit_end_of_task,
     submit_miso_gad7,
     submit_miso_maq,
@@ -44,6 +48,7 @@ from app.routers.misokinesia import (
 from app.schemas.misokinesia import (
     MisoGAD7Create,
     MisoMAQCreate,
+    MisoDemographicsCreate,
     MisokinesiaAqCreate,
     MisokinesiaEndOfTaskCreate,
     MisokinesiaTrialResponseCreate,
@@ -124,6 +129,13 @@ class _FakeMisoParticipant:
         self.end_emotions_text: str | None = None
         self.stronger_responses: bool | None = None
         self.stronger_responses_timing: str | None = None
+        # Demographics (T184)
+        self.age_band: str | None = None
+        self.gender: str | None = None
+        self.gender_other_text: str | None = None
+        self.country: str | None = None
+        self.country_other_text: str | None = None
+        self.nationality: str | None = None
 
 
 class _FakeParticipant:
@@ -626,7 +638,157 @@ class GetTrialManifestTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 3 — submit_trial_response
+# Class 3 — submit_demographics (T184)
+# ---------------------------------------------------------------------------
+
+
+class SubmitDemographicsTests(IsolatedAsyncioTestCase):
+    def _db_for_demographics(
+        self,
+        miso_participant: _FakeMisoParticipant | None = None,
+    ) -> _SequencedDB:
+        """execute() call order: 0 → select(MisokinesiaParticipant)."""
+        if miso_participant is None:
+            miso_participant = _FakeMisoParticipant()
+        return _SequencedDB(execute_returns=[miso_participant])
+
+    async def test_valid_full_payload_returns_200(self) -> None:
+        miso = _FakeMisoParticipant()
+        db = self._db_for_demographics(miso)
+        payload = MisoDemographicsCreate(
+            age_band="18-24",
+            gender="Not listed",
+            gender_other_text="Agender",
+            country="Not listed",
+            country_other_text="Germany",
+            nationality="German",
+        )
+        result = await submit_demographics(
+            participant_id=_MISO_PARTICIPANT_ID,
+            payload=payload,
+            db=db,
+        )
+        self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
+        self.assertTrue(db.committed)
+        # Fields written onto ORM object
+        self.assertEqual(miso.age_band, "18-24")
+        self.assertEqual(miso.gender, "Not listed")
+        self.assertEqual(miso.gender_other_text, "Agender")
+        self.assertEqual(miso.country, "Not listed")
+        self.assertEqual(miso.country_other_text, "Germany")
+        self.assertEqual(miso.nationality, "German")
+
+    async def test_all_null_fields_accepted(self) -> None:
+        miso = _FakeMisoParticipant()
+        db = self._db_for_demographics(miso)
+        payload = MisoDemographicsCreate()  # all None
+        result = await submit_demographics(
+            participant_id=_MISO_PARTICIPANT_ID,
+            payload=payload,
+            db=db,
+        )
+        self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
+        self.assertTrue(db.committed)
+
+    async def test_raises_404_when_participant_not_found(self) -> None:
+        db = _SequencedDB(execute_returns=[None])
+        with self.assertRaises(HTTPException) as ctx:
+            await submit_demographics(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=MisoDemographicsCreate(),
+                db=db,
+            )
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    async def test_invalid_age_band_raises_422(self) -> None:
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(age_band="19-25")
+
+    async def test_invalid_gender_raises_422(self) -> None:
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(gender="Other")
+
+    async def test_invalid_country_raises_422(self) -> None:
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(country="USA")
+
+    async def test_gender_other_text_without_not_listed_raises_422(self) -> None:
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(gender="Woman", gender_other_text="Agender")
+
+    async def test_country_other_text_without_not_listed_raises_422(self) -> None:
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(country="Canada", country_other_text="Germany")
+
+    async def test_gender_other_text_without_gender_set_raises_422(self) -> None:
+        """gender_other_text requires gender='Not listed'; None gender is not allowed."""
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(gender=None, gender_other_text="Something")
+
+    async def test_country_other_text_without_country_set_raises_422(self) -> None:
+        """country_other_text requires country='Not listed'; None country is not allowed."""
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(country=None, country_other_text="Somewhere")
+
+    async def test_idempotent_overwrite(self) -> None:
+        """Second call with different values overwrites earlier demographics."""
+        miso = _FakeMisoParticipant()
+        miso.age_band = "18-24"
+        miso.gender = "Woman"
+        db = self._db_for_demographics(miso)
+        payload = MisoDemographicsCreate(age_band="25-31", gender="Man")
+        await submit_demographics(
+            participant_id=_MISO_PARTICIPANT_ID,
+            payload=payload,
+            db=db,
+        )
+        self.assertEqual(miso.age_band, "25-31")
+        self.assertEqual(miso.gender, "Man")
+        self.assertTrue(db.committed)
+
+    async def test_demographics_route_has_no_auth_dependency(self) -> None:
+        """PATCH /participants/{id}/demographics must not require lab-member auth."""
+        route = next(
+            (
+                r
+                for r in router.routes
+                if isinstance(r, APIRoute)
+                and "demographics" in (r.path or "")
+                and "PATCH" in (r.methods or set())
+            ),
+            None,
+        )
+        self.assertIsNotNone(route, "PATCH /demographics route not registered")
+        assert route is not None
+        dep_calls = {d.call for d in route.dependant.dependencies}
+        self.assertNotIn(
+            get_current_lab_member,
+            dep_calls,
+            "Demographics endpoint should not require lab-member auth",
+        )
+
+    async def test_all_valid_age_bands_accepted(self) -> None:
+        for band in ("Under 18", "18-24", "25-31", "32-38", "Over 38"):
+            payload = MisoDemographicsCreate(age_band=band)
+            self.assertEqual(payload.age_band, band)
+
+    async def test_all_valid_genders_accepted(self) -> None:
+        for g in ("Woman", "Man", "Nonbinary person", "Prefer not to say", "Not listed"):
+            payload = MisoDemographicsCreate(gender=g)
+            self.assertEqual(payload.gender, g)
+
+    async def test_all_valid_countries_accepted(self) -> None:
+        for c in ("Canada", "South Korea", "Not listed"):
+            payload = MisoDemographicsCreate(country=c)
+            self.assertEqual(payload.country, c)
+
+    async def test_nationality_free_text_accepted(self) -> None:
+        payload = MisoDemographicsCreate(nationality="Canadian")
+        self.assertEqual(payload.nationality, "Canadian")
+
+
+# ---------------------------------------------------------------------------
+# Class 4 — submit_trial_response
 # ---------------------------------------------------------------------------
 
 
@@ -829,7 +991,7 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 4 — submit_end_of_task
+# Class 5 — submit_end_of_task
 # ---------------------------------------------------------------------------
 
 
@@ -1007,7 +1169,7 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 5 — submit_mkaq
+# Class 6 — submit_mkaq
 # ---------------------------------------------------------------------------
 
 
@@ -1178,7 +1340,7 @@ class SubmitMkaqTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 6 — submit_miso_gad7 and submit_miso_maq
+# Class 7 — submit_miso_gad7 and submit_miso_maq
 # ---------------------------------------------------------------------------
 
 
