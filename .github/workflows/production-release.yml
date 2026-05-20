@@ -165,20 +165,9 @@ jobs:
             railway deployment list --json > /tmp/railway-deployments.json
 
             status="$(
-              python - <<'PY'
-              import json
-              import os
-              from pathlib import Path
-
-              deployments = json.loads(Path("/tmp/railway-deployments.json").read_text())
-              sha = os.environ["GITHUB_SHA"]
-              for deployment in deployments:
-                  if deployment.get("meta", {}).get("commitHash") == sha:
-                      print(deployment.get("status", "UNKNOWN"))
-                      break
-              else:
-                  print("PENDING")
-              PY
+              jq -r --arg sha "${GITHUB_SHA}" \
+                'map(select(.meta.commitHash == $sha))[0].status // "PENDING"' \
+                /tmp/railway-deployments.json
             )"
 
             echo "Railway deployment status for ${GITHUB_SHA}: ${status}"
