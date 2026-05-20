@@ -2979,7 +2979,7 @@
       "id": "T189",
       "title": "Miso redesign - Per-clip questionnaire",
       "description": "Restyle MisokinesiaQuestionnaire from the A3 template with manifest-derived progress, editorial fieldsets, and flat scale chips while preserving production/trial submit behavior.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [

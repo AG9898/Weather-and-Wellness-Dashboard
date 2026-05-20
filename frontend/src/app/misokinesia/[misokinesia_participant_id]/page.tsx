@@ -615,14 +615,13 @@ export default function MisokinesiaTaskPage() {
 
     if (phase === "questionnaire" && currentClip) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
-          <div className="w-full max-w-2xl">
-            <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
-          </div>
+        <div className="flex min-h-screen flex-col items-center justify-start px-4">
           <MisokinesiaQuestionnaire
             misokinesiaParticipantId={participantId}
             stimulusId={currentClip.stimulus_id}
             displayOrder={clipNumber}
+            clipNumber={clipNumber}
+            totalClips={totalClips}
             trialMode={trialMode}
             isFinalClip={clipNumber === totalClips}
             onComplete={handleQuestionnaireComplete}

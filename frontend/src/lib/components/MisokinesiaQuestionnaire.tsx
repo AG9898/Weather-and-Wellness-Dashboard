@@ -16,6 +16,8 @@ interface MisokinesiaQuestionnaireProps {
   misokinesiaParticipantId: string;
   stimulusId: string;
   displayOrder: number;
+  clipNumber: number;
+  totalClips: number;
   trialMode?: boolean;
   isFinalClip?: boolean;
   onComplete: (result: MisokinesiaTrialResponseResult) => void;
@@ -29,17 +31,19 @@ const QUESTIONS = [
 ];
 
 const SCALE = [
-  { value: 1, label: "1 — Strongly Disagree" },
-  { value: 2, label: "2 — Disagree" },
-  { value: 3, label: "3 — Neutral" },
-  { value: 4, label: "4 — Agree" },
-  { value: 5, label: "5 — Strongly Agree" },
+  { value: 1, label: "Strongly Disagree" },
+  { value: 2, label: "Disagree" },
+  { value: 3, label: "Neutral" },
+  { value: 4, label: "Agree" },
+  { value: 5, label: "Strongly Agree" },
 ];
 
 export default function MisokinesiaQuestionnaire({
   misokinesiaParticipantId,
   stimulusId,
   displayOrder,
+  clipNumber,
+  totalClips,
   trialMode = false,
   isFinalClip = false,
   onComplete,
@@ -55,6 +59,9 @@ export default function MisokinesiaQuestionnaire({
     responses.q4 !== undefined;
 
   const answeredCount = Object.keys(responses).length;
+
+  // Progress strip values
+  const progressPct = totalClips > 0 ? Math.round((clipNumber / totalClips) * 100) : 0;
 
   const handleSelect = (key: "q1" | "q2" | "q3" | "q4", value: number) => {
     setResponses((prev) => ({ ...prev, [key]: value }));
@@ -93,58 +100,70 @@ export default function MisokinesiaQuestionnaire({
   };
 
   return (
-    <div className="relative mx-auto max-w-4xl px-4 py-8 sm:py-12">
-      {/* Ambient glows */}
-      <div
-        className="pointer-events-none absolute left-0 top-6 h-44 w-44 rounded-full opacity-35 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--ring) 72%, transparent)" }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-0 right-0 h-52 w-52 rounded-full opacity-20 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--primary) 68%, transparent)" }}
-      />
-
-      <div
-        className="relative space-y-6 rounded-[1.6rem] border border-border/90 p-5 shadow-[0_30px_60px_-52px_rgb(0_19_40/0.7)] sm:p-8"
-        style={{ background: "var(--card)" }}
-      >
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Per-clip questions
-          </p>
-          <h2 className="text-xl font-bold text-foreground sm:text-2xl">
-            How did you feel about that clip?
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Rate each statement from 1 (Strongly Disagree) to 5 (Strongly Agree).
-          </p>
+    <div className="mx-auto w-full max-w-[760px] px-8 py-14">
+      {/* Progress strip */}
+      <div className="mb-7 flex items-center gap-4">
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+          Clip {clipNumber} of {totalClips}
+        </span>
+        <div className="relative h-0.5 flex-1 overflow-hidden rounded-full bg-muted">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${progressPct}%` }}
+          />
         </div>
+        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
+          {progressPct}%
+        </span>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Kicker + heading + body */}
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        Post-clip · 4 questions
+      </p>
+      <h2 className="mt-2.5 text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
+        How did you feel about that clip?
+      </h2>
+      <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+        Rate each statement from 1 (Strongly Disagree) to 5 (Strongly Agree). There are no right answers.
+      </p>
+
+      <form onSubmit={handleSubmit}>
+        {/* Question fieldsets */}
+        <div className="mt-8 flex flex-col gap-3.5">
           {QUESTIONS.map((q, idx) => {
             const selected = responses[q.key];
             return (
               <fieldset
                 key={q.key}
-                className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4"
+                className="rounded-[14px] border border-border px-4 py-3.5"
+                style={{ background: "var(--fieldset-bg)" }}
               >
                 <legend className="sr-only">
-                  {idx + 1}. {q.text}
+                  Q{idx + 1}: {q.text}
                 </legend>
-                <p className="text-sm font-medium leading-snug text-foreground">
-                  {idx + 1}. {q.text}
-                </p>
-                <div className="flex flex-wrap gap-2">
+                {/* Question label row */}
+                <div className="mb-3 flex items-baseline gap-3">
+                  <span className="min-w-[24px] shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
+                    Q{idx + 1}
+                  </span>
+                  <span className="text-[14px] font-medium leading-[1.45] text-foreground">
+                    {q.text}
+                  </span>
+                </div>
+                {/* Scale chips row */}
+                <div className="flex flex-wrap gap-2 pl-9">
                   {SCALE.map((opt) => {
                     const isSelected = selected === opt.value;
                     return (
                       <label
                         key={opt.value}
                         className={cn(
-                          "cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
+                          "flex cursor-pointer flex-col items-center gap-0.5 rounded-[10px] border px-3 py-2 transition-colors duration-150",
+                          "min-w-[64px] focus-within:ring-2 focus-within:ring-ring/50",
                           isSelected
-                            ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                            : "border-border bg-card/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
+                            ? "border-transparent bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground hover:border-ring hover:text-foreground"
                         )}
                       >
                         <input
@@ -155,7 +174,13 @@ export default function MisokinesiaQuestionnaire({
                           onChange={() => handleSelect(q.key, opt.value)}
                           className="sr-only"
                         />
-                        {opt.label}
+                        <span className="text-[13px] font-semibold leading-none">{opt.value}</span>
+                        <span
+                          className="text-[10px] leading-none"
+                          style={{ opacity: 0.8, letterSpacing: 0, textTransform: "none" }}
+                        >
+                          {opt.label}
+                        </span>
                       </label>
                     );
                   })}
@@ -163,27 +188,27 @@ export default function MisokinesiaQuestionnaire({
               </fieldset>
             );
           })}
+        </div>
 
-          {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <p className="text-xs text-muted-foreground">
-              {answeredCount}/{QUESTIONS.length} answered
-            </p>
-            <Button
-              type="submit"
-              disabled={!allAnswered || submitting}
-              className="min-w-36 rounded-xl px-6 text-primary-foreground"
-            >
-              {submitting ? "Submitting…" : "Continue"}
-            </Button>
+        {error && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+            {error}
           </div>
-        </form>
-      </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">
+            {answeredCount}/{QUESTIONS.length} answered
+          </span>
+          <Button
+            type="submit"
+            disabled={!allAnswered || submitting}
+            className="h-11 min-w-[160px] rounded-xl px-[22px] text-sm text-primary-foreground"
+          >
+            {submitting ? "Submitting…" : "Continue →"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
