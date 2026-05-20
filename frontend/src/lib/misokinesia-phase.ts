@@ -1,18 +1,38 @@
 export type PostSurveyKey = "mkaq" | "gad7" | "maq";
 
+export type TransitionCardPhase =
+  | "transition_mkaq"
+  | "transition_gad7"
+  | "transition_maq";
+
+export function getTransitionPhase(key: PostSurveyKey): TransitionCardPhase {
+  return `transition_${key}` as TransitionCardPhase;
+}
+
+export function getSurveyPhaseFromTransition(
+  transition: TransitionCardPhase
+): PostSurveyKey {
+  return transition.replace("transition_", "") as PostSurveyKey;
+}
+
 export function getPhaseAfterBegin(): "playing" {
   return "playing";
 }
 
-export function getPhaseAfterVideoComplete(order: PostSurveyKey[]): PostSurveyKey {
-  return order[0] ?? "mkaq";
+export function getPhaseAfterVideoComplete(
+  order: PostSurveyKey[]
+): TransitionCardPhase {
+  const first = order[0] ?? "mkaq";
+  return getTransitionPhase(first);
 }
 
 export function getNextPostSurveyPhase(
   order: PostSurveyKey[],
   completedIndex: number
-): PostSurveyKey | "end_of_task" {
-  return order[completedIndex + 1] ?? "end_of_task";
+): TransitionCardPhase | "end_of_task" {
+  const next = order[completedIndex + 1];
+  if (!next) return "end_of_task";
+  return getTransitionPhase(next);
 }
 
 export function getPhaseAfterQuestionnaireComplete(

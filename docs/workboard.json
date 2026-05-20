@@ -2757,7 +2757,7 @@
       "id": "T183",
       "title": "Transition cards before each post-video survey",
       "description": "Insert a transition/intro card state immediately before each of the 3 post-video surveys in the misokinesia task state machine. Each card is keyed to its survey key (mkaq, gad7, maq) and treated as a unit with its survey in the post_survey_order sequence — the card always advances to its paired survey and randomization never separates them. Cards display: survey name, a one-sentence description of what the participant is about to do, and a CTA button (Continue). Placeholder copy is acceptable; stakeholders will review wording. Cards must render inside the fullscreen container (compatible with T181). MISOKINESIA.md state machine notation is already updated.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [],

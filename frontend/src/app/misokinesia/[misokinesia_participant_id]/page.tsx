@@ -36,7 +36,9 @@ import {
   getPhaseAfterBegin,
   getPhaseAfterVideoComplete,
   getNextPostSurveyPhase,
+  getSurveyPhaseFromTransition,
   type PostSurveyKey,
+  type TransitionCardPhase,
 } from "@/lib/misokinesia-phase";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
@@ -44,6 +46,9 @@ const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 type Phase =
   | "loading"
   | "intro"
+  | "transition_mkaq"
+  | "transition_gad7"
+  | "transition_maq"
   | "mkaq"
   | "gad7"
   | "maq"
@@ -226,6 +231,10 @@ export default function MisokinesiaTaskPage() {
     setPhase(getPhaseAfterVideoComplete(surveyOrder));
   }
 
+  function handleTransitionContinue(transition: TransitionCardPhase) {
+    setPhase(getSurveyPhaseFromTransition(transition));
+  }
+
   function handleSurveyComplete(key: PostSurveyKey, answers: Record<string, number>) {
     setPendingSurvey({ key, answers });
     setSurveySubmitting(key);
@@ -295,6 +304,21 @@ export default function MisokinesiaTaskPage() {
           Begin
         </Button>
       </Screen>
+    );
+  }
+
+  if (
+    phase === "transition_mkaq" ||
+    phase === "transition_gad7" ||
+    phase === "transition_maq"
+  ) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-4">
+        <TransitionCard
+          surveyKey={getSurveyPhaseFromTransition(phase as TransitionCardPhase)}
+          onContinue={() => handleTransitionContinue(phase as TransitionCardPhase)}
+        />
+      </div>
     );
   }
 
@@ -503,5 +527,53 @@ function ProgressIndicator({
     <p className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
       Clip {clipNumber} of {totalClips}
     </p>
+  );
+}
+
+const TRANSITION_CARD_COPY: Record<
+  PostSurveyKey,
+  { title: string; description: string }
+> = {
+  mkaq: {
+    title: "Misokinesia Assessment Questionnaire",
+    description:
+      "You will now answer 21 questions about how visual stimuli affect you.",
+  },
+  gad7: {
+    title: "Anxiety Questionnaire",
+    description:
+      "You will now answer 7 questions about feelings of anxiety over the past two weeks.",
+  },
+  maq: {
+    title: "Misophonia Assessment Questionnaire",
+    description:
+      "You will now answer 21 questions about how certain sounds affect you.",
+  },
+};
+
+function TransitionCard({
+  surveyKey,
+  onContinue,
+}: {
+  surveyKey: PostSurveyKey;
+  onContinue: () => void;
+}) {
+  const copy = TRANSITION_CARD_COPY[surveyKey];
+  return (
+    <div className="w-full max-w-md text-center">
+      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+        Next Section
+      </p>
+      <h2 className="text-2xl font-bold text-foreground">{copy.title}</h2>
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+        {copy.description}
+      </p>
+      <Button
+        onClick={onContinue}
+        className="mt-8 rounded-xl px-8 text-primary-foreground"
+      >
+        Continue
+      </Button>
+    </div>
   );
 }
