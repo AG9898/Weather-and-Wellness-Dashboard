@@ -2336,9 +2336,7 @@
       "title": "Miso post-video surveys - Frontend phase logic and API types",
       "status": "done",
       "priority": "high",
-      "description": [
-        "Rewrite frontend/src/lib/misokinesia-phase.ts: remove MisokinesiaMkaqAdministration type; add PostSurveyKey = 'mkaq' | 'gad7' | 'maq'; add getPhaseAfterBegin(): 'playing' (always, no pre-branch); add getPhaseAfterVideoComplete(order: PostSurveyKey[]): PostSurveyKey (returns first survey); add getNextPostSurveyPhase(order: PostSurveyKey[], completedIndex: number): PostSurveyKey | 'end_of_task'. Update MisokinesiaManifest type in src/lib/api/: remove mkaq_administration, add post_survey_order: string. Add parseSurveyOrder(order: string): PostSurveyKey[] helper in src/lib/api/. Add submitMisokinesiaMAQ(participantId, answers) and submitMisokinesiaGAD7(participantId, answers) typed API wrappers in src/lib/api/ following the same pattern as submitMisokinesiaMkaq. No component or participant page changes in this task."
-      ],
+      "description": "Rewrite frontend/src/lib/misokinesia-phase.ts: remove MisokinesiaMkaqAdministration type; add PostSurveyKey = 'mkaq' | 'gad7' | 'maq'; add getPhaseAfterBegin(): 'playing' (always, no pre-branch); add getPhaseAfterVideoComplete(order: PostSurveyKey[]): PostSurveyKey (returns first survey); add getNextPostSurveyPhase(order: PostSurveyKey[], completedIndex: number): PostSurveyKey | 'end_of_task'. Update MisokinesiaManifest type in src/lib/api/: remove mkaq_administration, add post_survey_order: string. Add parseSurveyOrder(order: string): PostSurveyKey[] helper in src/lib/api/. Add submitMisokinesiaMAQ(participantId, answers) and submitMisokinesiaGAD7(participantId, answers) typed API wrappers in src/lib/api/ following the same pattern as submitMisokinesiaMkaq. No component or participant page changes in this task.",
       "acceptance_criteria": [
         "cd frontend && npm run build passes with no TypeScript errors",
         "misokinesia-phase.ts exports PostSurveyKey, getPhaseAfterBegin, getPhaseAfterVideoComplete, getNextPostSurveyPhase",
