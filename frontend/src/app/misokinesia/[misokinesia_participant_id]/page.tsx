@@ -9,6 +9,9 @@ import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm"
 import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
 import MisokinesiaGAD7Form from "@/lib/components/MisokinesiaGAD7Form";
 import MisokinesiaMAQForm from "@/lib/components/MisokinesiaMAQForm";
+import MisokinesiaDemographicsForm, {
+  type DemographicsValues,
+} from "@/lib/components/MisokinesiaDemographicsForm";
 import {
   TRIAL_MAQ_ITEM_COUNT,
   TRIAL_MKAQ_ITEM_COUNT,
@@ -16,6 +19,7 @@ import {
 } from "@/lib/trial-mode";
 import {
   patchSessionStatus,
+  patchMisokinesiaDemographics,
   getParticipantErrorMessage,
   parseSurveyOrder,
   submitMisokinesiaGAD7,
@@ -45,6 +49,7 @@ const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 
 type Phase =
   | "loading"
+  | "demographics"
   | "intro"
   | "transition_mkaq"
   | "transition_gad7"
@@ -69,6 +74,10 @@ export default function MisokinesiaTaskPage() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Demographics submission state
+  const [demographicsSubmitting, setDemographicsSubmitting] = useState(false);
+  const [demographicsError, setDemographicsError] = useState<string | null>(null);
 
   // Complete-phase patch state
   const [sessionPatchAttempt, setSessionPatchAttempt] = useState(0);
@@ -107,7 +116,7 @@ export default function MisokinesiaTaskPage() {
           setTrialModeType(
             activeTrial ? resolveTrialModeType(m, trialState?.misokinesia_trial_mode) : null
           );
-          setPhase("intro");
+          setPhase("demographics");
           return;
         }
       } catch {
@@ -212,6 +221,32 @@ export default function MisokinesiaTaskPage() {
 
   // ── State transition handlers ──
 
+  async function handleDemographicsSubmit(values: DemographicsValues) {
+    setDemographicsError(null);
+    if (trialMode) {
+      // Trial mode: advance locally without calling the API
+      setPhase("intro");
+      return;
+    }
+    if (!manifest) return;
+    setDemographicsSubmitting(true);
+    try {
+      await patchMisokinesiaDemographics(participantId, {
+        age_band: values.age_band ?? undefined,
+        gender: values.gender ?? undefined,
+        gender_other_text: values.gender_other_text ?? undefined,
+        country: values.country ?? undefined,
+        country_other_text: values.country_other_text ?? undefined,
+        nationality: values.nationality ?? undefined,
+      });
+      setPhase("intro");
+    } catch (err) {
+      setDemographicsError(getParticipantErrorMessage(err));
+    } finally {
+      setDemographicsSubmitting(false);
+    }
+  }
+
   function handleBegin() {
     setPhase(getPhaseAfterBegin());
   }
@@ -280,6 +315,18 @@ export default function MisokinesiaTaskPage() {
       <Screen>
         <p className="text-sm text-destructive">{loadError}</p>
       </Screen>
+    );
+  }
+
+  if (phase === "demographics") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+        <MisokinesiaDemographicsForm
+          submitting={demographicsSubmitting}
+          error={demographicsError}
+          onSubmit={handleDemographicsSubmit}
+        />
+      </div>
     );
   }
 

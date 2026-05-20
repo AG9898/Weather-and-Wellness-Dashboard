@@ -1060,6 +1060,27 @@ export async function submitMisokinesiaEndOfTask(
   );
 }
 
+/** Miso demographics PATCH payload. All fields optional; categorical fields must match allowed values. */
+export interface MisokinesiaDemographicsRequest {
+  age_band?: string;
+  gender?: string;
+  gender_other_text?: string;
+  country?: string;
+  country_other_text?: string;
+  nationality?: string;
+}
+
+/** PATCH miso demographics onto an existing misokinesia_participants row (participant-facing, no auth). */
+export async function patchMisokinesiaDemographics(
+  participantId: string,
+  payload: MisokinesiaDemographicsRequest
+): Promise<void> {
+  await apiPatch<unknown>(
+    `/misokinesia/participants/${participantId}/demographics`,
+    payload
+  );
+}
+
 /** Download the admin CSV zip export. Returns the blob and the server-provided filename. */
 export async function exportZip(): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_BASE}/admin/export.zip`, {

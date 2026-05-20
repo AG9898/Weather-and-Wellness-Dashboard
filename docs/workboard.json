@@ -2815,7 +2815,7 @@
       "id": "T185",
       "title": "Miso demographics — participant UI form",
       "description": "Add a miso demographics form as the first screen of the participant task at /misokinesia/[id], shown before the intro screen. The form presents the 4 questions from reference/labs/Misokinesia/Miso-demographics.pdf using preset radio chips for categorical fields (matching SurveyForm chip style) and conditional free-text inputs that appear only when Not listed is selected (for gender and country). All fields are optional; Continue is always enabled with no blocking validation. In production mode, Continue calls PATCH /misokinesia/participants/{id}/demographics via a new typed wrapper in src/lib/api/misokinesia.ts; on 2xx, transitions to the intro screen. In trial mode, Continue advances locally without an API call (consistent with all other trial-mode behaviors). Error state: inline destructive banner; all field state preserved for retry.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [
