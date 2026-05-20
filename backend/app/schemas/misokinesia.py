@@ -61,6 +61,21 @@ class MisoDashboardResponse(BaseModel):
     recent_sessions: list[MisoDashboardSessionItem]
 
 
+class MisoVideoScoreItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    video_label: str
+    avg_score: float
+    response_count: int
+
+
+class MisoVideoScoresResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    top_5: list[MisoVideoScoreItem]
+    bottom_5: list[MisoVideoScoreItem]
+
+
 # ---------------------------------------------------------------------------
 # Per-participant record
 # ---------------------------------------------------------------------------

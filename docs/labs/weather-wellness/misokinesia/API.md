@@ -39,7 +39,7 @@
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143, T172 |
 | GET    | /misokinesia/dashboard | RA | implemented | T195 |
-| GET    | /misokinesia/video-scores | RA | planned | T196 |
+| GET    | /misokinesia/video-scores | RA | implemented | T196 |
 | PATCH  | /misokinesia/participants/{participant_id}/demographics | None | implemented | T184 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
@@ -404,7 +404,7 @@
 
 ### GET /misokinesia/video-scores
 - **Auth:** RA required
-- **Status:** planned (T196)
+- **Status:** implemented (T196)
 - **Request body:** none
 - **Response (HTTP 200):** `MisoVideoScoresResponse`
   ```json

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import random
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -31,6 +32,8 @@ from app.schemas.misokinesia import (
     MisoDashboardSessionItem,
     MisoDemographicsCreate,
     MisoDemographicsResponse,
+    MisoVideoScoreItem,
+    MisoVideoScoresResponse,
     MisokinesiaAqCreate,
     MisokinesiaAqResponse,
     MisokinesiaClipMeta,
@@ -81,6 +84,13 @@ def _clip_meta_from_stimulus(
         sort_order=stimulus.sort_order,
         duration_ms=stimulus.duration_ms,
     )
+
+
+def _video_label_from_filename(filename: str) -> str:
+    stem = os.path.splitext(filename)[0]
+    separated = re.sub(r"[_-]+", " ", stem)
+    separated = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", separated)
+    return separated.title()
 
 
 def _matches_constraint(exc: sa_exc.IntegrityError, constraint_name: str) -> bool:
@@ -359,6 +369,54 @@ async def get_misokinesia_dashboard(
         active_stimuli_count=active_count,
         recent_sessions=sessions,
     )
+
+
+@router.get(
+    "/video-scores",
+    response_model=MisoVideoScoresResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_lab_member)],
+)
+async def get_misokinesia_video_scores(
+    db: AsyncSession = Depends(get_session),
+) -> MisoVideoScoresResponse:
+    """RA-only aggregate reactivity rankings by active stimulus."""
+
+    clip_score = (
+        MisokinesiaTrialResponse.q1
+        + MisokinesiaTrialResponse.q2
+        + MisokinesiaTrialResponse.q3
+        + MisokinesiaTrialResponse.q4
+    )
+    stmt = (
+        select(
+            MisokinesiaStimulus.filename,
+            func.avg(clip_score).label("avg_score"),
+            func.count(MisokinesiaTrialResponse.response_id).label("response_count"),
+        )
+        .join(
+            MisokinesiaTrialResponse,
+            MisokinesiaTrialResponse.stimulus_id
+            == MisokinesiaStimulus.stimulus_id,
+        )
+        .where(MisokinesiaStimulus.active.is_(True))
+        .group_by(MisokinesiaStimulus.stimulus_id, MisokinesiaStimulus.filename)
+    )
+    result = await db.execute(stmt)
+    rows = result.mappings().all()
+
+    scores = [
+        MisoVideoScoreItem(
+            video_label=_video_label_from_filename(row["filename"]),
+            avg_score=float(row["avg_score"]),
+            response_count=int(row["response_count"]),
+        )
+        for row in rows
+    ]
+
+    top_5 = sorted(scores, key=lambda item: item.avg_score, reverse=True)[:5]
+    bottom_5 = sorted(scores, key=lambda item: item.avg_score)[:5]
+    return MisoVideoScoresResponse(top_5=top_5, bottom_5=bottom_5)
 
 
 @router.patch(

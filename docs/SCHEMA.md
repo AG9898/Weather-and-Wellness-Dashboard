@@ -720,6 +720,12 @@ RA dashboard read model (T195): `GET /misokinesia/dashboard` joins recent
 trial response rows surface `avg_clip_score = null`; no schema migration is
 required.
 
+Video score read model (T196): `GET /misokinesia/video-scores` joins active
+`misokinesia_stimuli` rows to `misokinesia_trial_responses`, groups by
+`stimulus_id`, and computes `avg_score = AVG(q1 + q2 + q3 + q4)` plus
+`response_count = COUNT(response_id)`. Stimuli without response rows do not
+appear; no schema migration is required.
+
 ### Table: `misokinesia_mkaq_responses`
 
 One required 21-item Misokinesia Assessment Questionnaire (MkAQ) response per participant. Always submitted after the video loop (post-video only). All MkAQ rows remain session-scoped through both `session_id` and `participant_uuid`.

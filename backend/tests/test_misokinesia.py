@@ -35,7 +35,9 @@ from sqlalchemy import exc as sa_exc
 
 from app.auth import get_current_lab_member
 from app.routers.misokinesia import (
+    _video_label_from_filename,
     get_misokinesia_dashboard,
+    get_misokinesia_video_scores,
     get_trial_manifest,
     router,
     start_misokinesia_session,
@@ -51,6 +53,7 @@ from app.schemas.misokinesia import (
     MisoMAQCreate,
     MisoDashboardResponse,
     MisoDemographicsCreate,
+    MisoVideoScoresResponse,
     MisokinesiaAqCreate,
     MisokinesiaEndOfTaskCreate,
     MisokinesiaTrialResponseCreate,
@@ -756,7 +759,97 @@ class GetMisokinesiaDashboardTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 4 — submit_demographics (T184)
+# Class 4 — get_misokinesia_video_scores
+# ---------------------------------------------------------------------------
+
+
+class GetMisokinesiaVideoScoresTests(IsolatedAsyncioTestCase):
+    async def test_miso_video_scores_route_requires_lab_member_auth(self) -> None:
+        route = next(
+            (
+                r
+                for r in router.routes
+                if isinstance(r, APIRoute)
+                and r.path == "/misokinesia/video-scores"
+                and "GET" in (r.methods or set())
+            ),
+            None,
+        )
+        self.assertIsNotNone(route, "GET /misokinesia/video-scores route not registered")
+        assert route is not None
+        dep_calls = {d.call for d in route.dependant.dependencies}
+        self.assertIn(
+            get_current_lab_member,
+            dep_calls,
+            "GET /misokinesia/video-scores must depend on get_current_lab_member",
+        )
+
+    def test_video_label_from_filename_splits_camel_case(self) -> None:
+        self.assertEqual(_video_label_from_filename("ankleWagging.mp4"), "Ankle Wagging")
+        self.assertEqual(_video_label_from_filename("penClicking.mov"), "Pen Clicking")
+        self.assertEqual(
+            _video_label_from_filename("kneeBouncingFast.mp4"),
+            "Knee Bouncing Fast",
+        )
+
+    async def test_miso_video_scores_returns_empty_lists_when_no_data(self) -> None:
+        db = _DashboardDB(rows=[])
+
+        result = await get_misokinesia_video_scores(db=db)
+
+        self.assertIsInstance(result, MisoVideoScoresResponse)
+        self.assertEqual(result.top_5, [])
+        self.assertEqual(result.bottom_5, [])
+        self.assertEqual(db.execute_calls, 1)
+
+    async def test_miso_video_scores_orders_top_and_bottom_scores(self) -> None:
+        db = _DashboardDB(
+            rows=[
+                {
+                    "filename": "penClicking.mp4",
+                    "avg_score": 8.0,
+                    "response_count": 3,
+                },
+                {
+                    "filename": "ankleWagging.mp4",
+                    "avg_score": 14.5,
+                    "response_count": 2,
+                },
+                {
+                    "filename": "kneeBouncingFast.mp4",
+                    "avg_score": 5.25,
+                    "response_count": 4,
+                },
+            ]
+        )
+
+        result = await get_misokinesia_video_scores(db=db)
+
+        self.assertEqual(
+            [item.video_label for item in result.top_5],
+            ["Ankle Wagging", "Pen Clicking", "Knee Bouncing Fast"],
+        )
+        self.assertEqual(
+            [item.video_label for item in result.bottom_5],
+            ["Knee Bouncing Fast", "Pen Clicking", "Ankle Wagging"],
+        )
+        self.assertEqual(result.top_5[0].avg_score, 14.5)
+        self.assertEqual(result.top_5[0].response_count, 2)
+        self.assertEqual(db.execute_calls, 1)
+
+    async def test_miso_video_scores_query_aggregates_active_stimuli_only(self) -> None:
+        db = _DashboardDB(rows=[])
+
+        await get_misokinesia_video_scores(db=db)
+
+        statement_text = str(db.statements[0])
+        self.assertIn("avg(", statement_text.lower())
+        self.assertIn("GROUP BY", statement_text)
+        self.assertIn("misokinesia_stimuli.active IS true", statement_text)
+
+
+# ---------------------------------------------------------------------------
+# Class 5 — submit_demographics (T184)
 # ---------------------------------------------------------------------------
 
 

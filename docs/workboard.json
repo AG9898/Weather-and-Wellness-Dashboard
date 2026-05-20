@@ -3176,7 +3176,7 @@
       "id": "T196",
       "title": "Backend: GET /misokinesia/video-scores endpoint",
       "description": "Add GET /misokinesia/video-scores to backend/app/routers/misokinesia.py.\n\nResponse shape (MisoVideoScoresResponse):\n- top_5: list of up to 5 MisoVideoScoreItem with highest avg_score (ordered desc)\n- bottom_5: list of up to 5 MisoVideoScoreItem with lowest avg_score (ordered asc)\n\nMisoVideoScoreItem fields:\n- video_label: derived from misokinesia_stimuli.filename — strip extension, split camelCase into title-case words (e.g. ankleWagging.mp4 -> 'Ankle Wagging'). Implement as a pure Python helper function.\n- avg_score: float, mean of (q1+q2+q3+q4) across all misokinesia_trial_responses for that stimulus. Range 4-20.\n- response_count: integer, total response rows for that stimulus.\n\nQuery: aggregate misokinesia_trial_responses GROUP BY stimulus_id, JOIN misokinesia_stimuli on stimulus_id WHERE active=true. A stimulus must have at least one response row to appear. Return empty lists when no data exists.\ntop_5 and bottom_5 may overlap if fewer than 10 stimuli have data; that is acceptable.\nAuth: Depends(get_current_lab_member). Unauthenticated -> 401.\nAdd Pydantic models MisoVideoScoreItem and MisoVideoScoresResponse.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO",
       "depends_on": [
