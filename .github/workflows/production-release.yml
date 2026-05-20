@@ -124,8 +124,7 @@ jobs:
     if: >-
       ${{
         github.event_name == 'workflow_dispatch' ||
-        needs.detect-changes.outputs.backend == 'true' ||
-        needs.detect-changes.outputs.frontend == 'true'
+        needs.detect-changes.outputs.backend == 'true'
       }}
 
     steps:
@@ -241,11 +240,14 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - detect-changes
+      - validate
       - deploy-backend
     if: >-
       ${{
-        github.event_name == 'workflow_dispatch' ||
-        needs.detect-changes.outputs.frontend == 'true'
+        always() &&
+        needs.validate.result == 'success' &&
+        (needs.deploy-backend.result == 'success' || needs.deploy-backend.result == 'skipped') &&
+        (github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.frontend == 'true')
       }}
 
     steps:
