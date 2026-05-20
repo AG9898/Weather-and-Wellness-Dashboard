@@ -37,7 +37,6 @@ import {
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
 import {
-  getPhaseAfterBegin,
   getPhaseAfterVideoComplete,
   getNextPostSurveyPhase,
   getSurveyPhaseFromTransition,
@@ -57,6 +56,7 @@ type Phase =
   | "mkaq"
   | "gad7"
   | "maq"
+  | "pre_play"
   | "playing"
   | "questionnaire"
   | "end_of_task"
@@ -215,6 +215,15 @@ export default function MisokinesiaTaskPage() {
     surveyIndex,
   ]);
 
+  // ── 2-second pre-clip black interstitial ──
+  useEffect(() => {
+    if (phase !== "pre_play") return;
+    const timer = setTimeout(() => {
+      setPhase("playing");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
   const totalClips = manifest?.clips.length ?? 0;
   const currentClip = manifest?.clips[currentClipIndex];
   const clipNumber = currentClipIndex + 1; // 1-based display
@@ -248,7 +257,7 @@ export default function MisokinesiaTaskPage() {
   }
 
   function handleBegin() {
-    setPhase(getPhaseAfterBegin());
+    setPhase("pre_play");
   }
 
   function handleVideoEnded() {
@@ -258,7 +267,7 @@ export default function MisokinesiaTaskPage() {
   function handleQuestionnaireComplete(result: MisokinesiaTrialResponseResult) {
     if (!result.is_complete) {
       setCurrentClipIndex((prev) => prev + 1);
-      setPhase("playing");
+      setPhase("pre_play");
       return;
     }
 
@@ -430,6 +439,23 @@ export default function MisokinesiaTaskPage() {
           items={mkaqItems}
           onComplete={(answers) => handleSurveyComplete("mkaq", answers)}
         />
+      </div>
+    );
+  }
+
+  if (phase === "pre_play" && currentClip) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-black">
+        {/* Hidden video element preloads the clip during the 2-second buffer */}
+        <video
+          key={currentClip.public_url}
+          preload="auto"
+          playsInline
+          aria-hidden="true"
+          className="hidden"
+        >
+          <source src={currentClip.public_url} type="video/mp4" />
+        </video>
       </div>
     );
   }
