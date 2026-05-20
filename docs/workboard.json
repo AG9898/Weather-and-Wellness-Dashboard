@@ -2701,6 +2701,199 @@
       ],
       "estimate": "S",
       "notes": "DESIGN_SPEC.md miso seam is at line 59 (## Misokinesia Flow)."
+    },
+    {
+      "id": "T180",
+      "title": "Decommission 4 stimuli (wristRotation, fingerRolling, penClicking, footTapping)",
+      "description": "Set active=false for wristRotation.mp4, fingerRolling.mp4, penClicking.mp4, and footTapping.mp4 in misokinesia_stimuli via a targeted SQL update. Update backend/admin_cli/seed_misokinesia_stimuli.py to apply decommission flags on re-run against an existing test set (add a DECOMMISSIONED set and UPDATE rather than skip). Verify the decommission table already added to MISOKINESIA.md in the doc sprint is accurate.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "wristRotation.mp4, fingerRolling.mp4, penClicking.mp4, footTapping.mp4 have active=false in DB",
+        "GET /misokinesia/trial-manifest returns only active clips (25 total or ≤5 short trial sample)",
+        "POST /misokinesia/start manifest excludes the 4 decommissioned clips",
+        "Seed script re-run is idempotent and applies decommission flags correctly"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "backend/admin_cli/seed_misokinesia_stimuli.py"
+      ],
+      "commands": [
+        "python backend/admin_cli/seed_misokinesia_stimuli.py",
+        "SELECT filename, active FROM misokinesia_stimuli ORDER BY sort_order;"
+      ]
+    },
+    {
+      "id": "T182",
+      "title": "GAD-7 original wording (miso section)",
+      "description": "Replace the 7 GAD-7 question strings in the miso participant task with the validated original GAD-7 wording from reference/labs/weather-wellness/anxiety-disorder-response.pdf. The response scale (1=Never, 2=Rarely, 3=Sometimes, 4=Often), scoring formula (1-4 to 0-3 per item, summed), severity_band, and API contract are all unchanged — this is a question-text-only change. Update the GAD-7 table in MISOKINESIA.md to show the updated wording and remove the pending-T182 note.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "All 7 GAD-7 items match the exact wording in reference/labs/weather-wellness/anxiety-disorder-response.pdf",
+        "MISOKINESIA.md GAD-7 table updated to reflect new strings with pending note removed",
+        "Scale labels and scoring unchanged",
+        "Trial run displays updated wording"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T183",
+      "title": "Transition cards before each post-video survey",
+      "description": "Insert a transition/intro card state immediately before each of the 3 post-video surveys in the misokinesia task state machine. Each card is keyed to its survey key (mkaq, gad7, maq) and treated as a unit with its survey in the post_survey_order sequence — the card always advances to its paired survey and randomization never separates them. Cards display: survey name, a one-sentence description of what the participant is about to do, and a CTA button (Continue). Placeholder copy is acceptable; stakeholders will review wording. Cards must render inside the fullscreen container (compatible with T181). MISOKINESIA.md state machine notation is already updated.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Each of the 3 post-video surveys is preceded by its corresponding transition card",
+        "post_survey_order randomization does not break card-to-survey pairing",
+        "Transition cards render inside fullscreen container",
+        "Manual trial run: all 3 cards appear, each followed by the correct survey"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T184",
+      "title": "Miso demographics — schema + API endpoint",
+      "description": "Add 6 miso-specific demographic columns to misokinesia_participants via a new Alembic migration (all VARCHAR NULLABLE): age_band, gender, gender_other_text, country, country_other_text, nationality. Add a new participant-facing PATCH /misokinesia/participants/{id}/demographics endpoint in backend/app/routers/misokinesia.py. The endpoint is no-auth, idempotent (later calls overwrite earlier values), validates categorical fields against allowed sets, and returns 422 when gender_other_text is set without gender=Not listed or country_other_text without country=Not listed. Allowed values: age_band (Under 18 / 18-24 / 25-31 / 32-38 / Over 38), gender (Woman / Man / Nonbinary person / Prefer not to say / Not listed), country (Canada / South Korea / Not listed). Nationality is free text. SCHEMA.md, API.md, and MISOKINESIA.md are already updated with the spec.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Migration applies cleanly; alembic current shows new head",
+        "All 6 columns exist on misokinesia_participants as nullable VARCHAR",
+        "PATCH /misokinesia/participants/{id}/demographics returns 200 with valid body",
+        "Returns 404 on unknown participant, 422 on invalid categorical values or inconsistent other_text",
+        "SCHEMA.md migration history row present with planned date replaced by actual date",
+        "API.md documents the endpoint"
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "backend/alembic/versions/",
+        "backend/app/routers/misokinesia.py",
+        "backend/app/schemas/misokinesia.py"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. alembic upgrade head",
+        "cd backend && PYTHONPATH=. alembic current -v",
+        "cd backend && PYTHONPATH=. pytest tests/ -k misokinesia"
+      ]
+    },
+    {
+      "id": "T185",
+      "title": "Miso demographics — participant UI form",
+      "description": "Add a miso demographics form as the first screen of the participant task at /misokinesia/[id], shown before the intro screen. The form presents the 4 questions from reference/labs/Misokinesia/Miso-demographics.pdf using preset radio chips for categorical fields (matching SurveyForm chip style) and conditional free-text inputs that appear only when Not listed is selected (for gender and country). All fields are optional; Continue is always enabled with no blocking validation. In production mode, Continue calls PATCH /misokinesia/participants/{id}/demographics via a new typed wrapper in src/lib/api/misokinesia.ts; on 2xx, transitions to the intro screen. In trial mode, Continue advances locally without an API call (consistent with all other trial-mode behaviors). Error state: inline destructive banner; all field state preserved for retry.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T184"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Demographics form is the first screen for production sessions",
+        "Trial mode shows demographics form but does not call the API; state advances locally",
+        "Conditional free-text inputs appear only when Not listed is selected",
+        "All fields optional; Continue is always enabled",
+        "On API error, banner shows and form state is preserved",
+        "MISOKINESIA.md participant flow reflects demographics as first step"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T181_1",
+      "title": "2-second pre-clip buffer (black interstitial before each video)",
+      "description": "Add a 2-second solid-black interstitial state to the misokinesia video loop before each clip autoplays. When the state machine transitions to the next clip, show a black screen for exactly 2 seconds; the <video> element is loaded with preload=auto during this buffer so playback starts immediately after. The buffer applies to every clip in both production and trial modes. This is a state machine addition within the video loop — no fullscreen or container-level changes.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "2-second black screen appears before every clip autoplay in production mode",
+        "2-second black screen appears before every clip autoplay in trial mode",
+        "Video preloads during the buffer and starts immediately after",
+        "cd frontend && npm run build passes with no type errors"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T181_2",
+      "title": "Fullscreen default on misokinesia task container (Fullscreen API)",
+      "description": "Apply the browser Fullscreen API (requestFullscreen) to the top-level misokinesia task container element — the element wrapping all states: demographics, intro, video player, per-clip questionnaire, transition cards, and post-video surveys. Fullscreen is entered when the participant advances from the demographics screen and must persist across every state transition for the full session. A persistent exit-fullscreen button is visible in a fixed corner in all states (suggested: top-right); pressing Esc or the button exits fullscreen and the button toggles to a re-enter control. No page-shell chrome should be visible inside fullscreen. Handle the fullscreenchange event to keep the button state in sync.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T181_1"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Task container enters fullscreen when participant advances past demographics; questionnaire and surveys render inside fullscreen",
+        "Fullscreen persists across video to questionnaire to video transitions",
+        "Exit-fullscreen button is always visible; clicking it exits fullscreen and shows re-enter control",
+        "fullscreenchange event keeps button state in sync with actual fullscreen state",
+        "No layout breakage at common resolutions in fullscreen mode",
+        "cd frontend && npm run build passes with no type errors"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
     }
   ],
   "last_updated": "2026-05-19"

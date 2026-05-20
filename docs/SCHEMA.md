@@ -677,6 +677,12 @@ One row per participant's task execution. Contains per-participant progress stat
 | end_emotions_text              | TEXT        | NULLABLE      | End-of-task: "Please list any emotional responses felt during the videos not asked in the questionnaire"                                                                       |
 | stronger_responses             | BOOLEAN     | NULLABLE      | End-of-task: "Did viewing the videos create stronger responses over time?" (No=false / Yes=true)                                                                               |
 | stronger_responses_timing      | VARCHAR     | NULLABLE      | One of: "Immediately", "After 5 seconds", "After 10 seconds", "At the end of the video"; only set when stronger_responses=true                                                 |
+| age_band                       | VARCHAR     | NULLABLE      | Miso demographics (T184): "Under 18" / "18-24" / "25-31" / "32-38" / "Over 38"                                                                                               |
+| gender                         | VARCHAR     | NULLABLE      | Miso demographics (T184): "Woman" / "Man" / "Nonbinary person" / "Prefer not to say" / "Not listed"                                                                          |
+| gender_other_text              | VARCHAR     | NULLABLE      | Free text; accepted only when gender = "Not listed"                                                                                                                           |
+| country                        | VARCHAR     | NULLABLE      | Miso demographics (T184): country of current residence — "Canada" / "South Korea" / "Not listed"                                                                             |
+| country_other_text             | VARCHAR     | NULLABLE      | Free text; accepted only when country = "Not listed"                                                                                                                          |
+| nationality                    | VARCHAR     | NULLABLE      | Free text (no preset values). Source: reference/labs/Misokinesia/Miso-demographics.pdf                                                                                       |
 
 
 Indexes: `misokinesia_participants(session_id)`, `misokinesia_participants(participant_uuid)`
@@ -856,6 +862,7 @@ Constraints/indexes:
 | 2026-05-12 | T150                  | Add `ra_invitations` table for app-owned RA invitation state                                                                                                                                                        |
 | 2026-05-13 | T153 follow-up        | Fix active pending invite uniqueness so expired pending rows do not block a fresh invite                                                                                                                            |
 | 2026-05-18 | T168                  | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables                                                            |
+| planned    | T184                  | Add miso demographics columns to `misokinesia_participants`: `age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality` (all VARCHAR NULLABLE)                                        |
 
 
 As of 2026-05-18, migration `20260518_000001` is the current head revision.

@@ -27,7 +27,37 @@ Full specification: [docs/labs/weather-wellness/misokinesia/MISOKINESIA.md](MISO
 - Participants can move backward after advancing; moving forward requires all questions on the current pane to be answered.
 - Final submit is available only after all required answers for the current mode are selected.
 
-Key differences from survey/digit-span flow: fully anonymous (no demographics), single-page state machine, videos served directly from Supabase Storage CDN (not proxied through backend).
+Key differences from survey/digit-span flow: miso-specific demographics collected at task start, single-page state machine, videos served directly from Supabase Storage CDN (not proxied through backend).
+
+### Fullscreen Behavior
+
+- The top-level task container element (wrapping all states: demographics, intro, video player, per-clip questionnaire, transition cards, and post-video surveys) calls `requestFullscreen()` when the participant begins (after demographics submit).
+- Fullscreen persists across every state transition for the duration of the task; the browser does not exit fullscreen between video and questionnaire states.
+- A persistent exit-fullscreen button is rendered in a fixed corner (e.g. top-right) and is visible in every state. Pressing `Esc` or clicking the button exits fullscreen; the button then offers a re-enter control.
+- No page-shell chrome (floating dock, RA nav) is visible inside fullscreen.
+
+### 2-Second Pre-Clip Buffer
+
+- Before each clip autoplays, a solid-black interstitial fills the task container for exactly 2 seconds.
+- The `<video>` element is loaded with `preload="auto"` during the buffer so playback starts immediately when the buffer ends.
+- The buffer applies to every clip in both production and trial modes.
+
+### Transition Cards (before post-video surveys)
+
+- A full-container card is shown before each of the 3 post-video surveys.
+- Each card is keyed to its survey (`mkaq`, `gad7`, `maq`) and is driven by the same `post_survey_order` sequence — the card and its survey are treated as a unit; randomization never separates them.
+- Card contents: survey name heading, one sentence describing what the participant is about to do, and a single CTA button ("Continue" or "Begin").
+- Visual treatment: UBC blue card-shell (`rounded-2xl border border-border bg-card`) centered in the fullscreen container; calm, high-contrast typography matching other task step cards.
+- Advance is explicit (button only); no auto-advance or timer.
+
+### Demographics Screen
+
+- First screen shown after navigation to `/misokinesia/[id]`, before the intro screen.
+- Layout: one question per block, categorical questions rendered as radio chips matching the `SurveyForm` chip style (rounded bordered chips, semantic `primary` fill on selection).
+- Conditional free-text inputs appear below their parent question only when "Not listed" is selected (applies to gender and country).
+- All fields are optional; the "Continue" button is always enabled regardless of completion state.
+- On "Continue": calls `PATCH /misokinesia/participants/{id}/demographics` (production) or advances locally without an API call (trial mode). On 2xx, transitions to the intro screen.
+- Error state: inline destructive banner below the form; all field state preserved so the participant can retry.
 
 ---
 

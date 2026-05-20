@@ -38,6 +38,7 @@
 |--------|------|------|--------|----------------|
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143, T172 |
+| PATCH  | /misokinesia/participants/{participant_id}/demographics | None | planned | T184 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
 | POST   | /misokinesia/participants/{participant_id}/gad7 | None | implemented | T169 |
@@ -73,11 +74,11 @@
   }
   ```
 - **Notes:**
-  - Atomically creates an anonymous `participants` row (no demographics), an `active` session, and a `misokinesia_participants` row.
+  - Atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row.
   - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
   - Assigns a random permutation of `["mkaq", "gad7", "maq"]` as `post_survey_order`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can present the three post-video surveys in the assigned order.
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
-  - `clips` contains all 29 active stimuli for the test set, but the response order is randomized per participant session.
+  - `clips` contains all active stimuli for the test set (25 after 2026-05 decommission), in a randomized per-participant order.
   - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
   - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
   - Unauthenticated requests return 401.
@@ -113,6 +114,39 @@
   - The frontend combines these read-only clips with fake trial ids and performs local-only simulated completions.
   - If fewer than 5 active stimuli exist (short trial only), return a clear non-2xx error rather than silently shortening the trial.
   - Unauthenticated requests return 401.
+
+### PATCH /misokinesia/participants/{participant_id}/demographics
+- **Auth:** None (participant-facing)
+- **Status:** planned (T184)
+- **Request body:** `MisoDemographicsCreate`
+  ```json
+  {
+    "age_band":           "string | null",
+    "gender":             "string | null",
+    "gender_other_text":  "string | null",
+    "country":            "string | null",
+    "country_other_text": "string | null",
+    "nationality":        "string | null"
+  }
+  ```
+- **Response (HTTP 200):** `MisoDemographicsResponse`
+  ```json
+  { "misokinesia_participant_id": "uuid" }
+  ```
+- **Notes:**
+  - No auth required.
+  - Returns 404 if `participant_id` not found.
+  - Returns 422 if `gender_other_text` is set when `gender != "Not listed"`.
+  - Returns 422 if `country_other_text` is set when `country != "Not listed"`.
+  - Returns 422 if a categorical field value is not in the allowed set and is not null. Allowed values:
+    - `age_band`: `"Under 18"`, `"18-24"`, `"25-31"`, `"32-38"`, `"Over 38"`
+    - `gender`: `"Woman"`, `"Man"`, `"Nonbinary person"`, `"Prefer not to say"`, `"Not listed"`
+    - `country`: `"Canada"`, `"South Korea"`, `"Not listed"`
+  - All fields are nullable; participant may skip any or all.
+  - Idempotent — can be called multiple times; later calls overwrite earlier values.
+  - Trial mode must not call this endpoint; demographics screen advances locally.
+
+---
 
 ### POST /misokinesia/participants/{participant_id}/responses
 - **Auth:** None (participant-facing)
