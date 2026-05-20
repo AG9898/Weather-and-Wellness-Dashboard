@@ -73,8 +73,8 @@
   --shadow-card: 0 1px 2px rgb(15 23 42 / 5%), 0 10px 24px rgb(15 23 42 / 6%);
   --shadow-raised: 0 6px 18px rgb(15 23 42 / 8%), 0 24px 48px rgb(15 23 42 / 8%);
 
-  /* Shadcn semantic tokens mapped to a normalized light palette */
-  --background: #f6f7f8;
+  /* Shadcn semantic tokens mapped to paper-toned light palette */
+  --background: #fbfaf6;
   --foreground: #18212b;
   --card: #ffffff;
   --card-foreground: #18212b;
@@ -82,16 +82,22 @@
   --popover-foreground: #18212b;
   --primary: var(--ubc-video-blue);
   --primary-foreground: #f8fafc;
+  --primary-hover: var(--ubc-blue-500);
   --secondary: #eceff2;
   --secondary-foreground: #18212b;
-  --muted: #f1f3f4;
+  --muted: color-mix(in srgb, #fbfaf6 86%, var(--foreground) 6%);
   --muted-foreground: #5d6773;
   --accent: #e7ebee;
   --accent-foreground: #18212b;
   --destructive: #dc2626;
-  --border: rgb(24 33 43 / 10%);
+  --border: rgb(24 33 43 / 16%);
   --input: rgb(24 33 43 / 6%);
   --ring: #36506b;
+  /* Shared semantic additions */
+  --brand-ink: var(--ubc-video-blue);
+  --brand-ink-soft: var(--ubc-blue-500);
+  --hairline: rgb(24 33 43 / 16%);
+  --fieldset-bg: rgb(24 33 43 / 8%);
   --chart-1: #28455d;
   --chart-2: #597188;
   --chart-3: #8a9bab;
@@ -139,6 +145,11 @@
   --chart-3: #5f7387;
   --chart-4: #ced7dd;
   --chart-5: #878343;
+  /* Shared semantic additions (dark) */
+  --brand-ink: #e6edf8;
+  --brand-ink-soft: #cfd7de;
+  --hairline: rgb(255 255 255 / 12%);
+  --fieldset-bg: color-mix(in srgb, white 3%, transparent);
   --sidebar: #151b21;
   --sidebar-foreground: #edf1f5;
   --sidebar-primary: var(--primary);

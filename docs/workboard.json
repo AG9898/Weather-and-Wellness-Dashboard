@@ -2899,7 +2899,7 @@
       "id": "T186",
       "title": "UI theme - Apply global paper light tokens",
       "description": "Update the frontend global light theme to the paper-toned semantic mapping from docs/styleguide.md, add --brand-ink, --brand-ink-soft, --hairline, and --fieldset-bg, preserve the existing dark theme, and update browser themeColor light metadata to #fbfaf6.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "DASHBOARD_POLISH",
       "depends_on": [],
