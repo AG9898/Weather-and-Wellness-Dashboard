@@ -2924,7 +2924,7 @@
       "id": "T187",
       "title": "Miso redesign - Shared editorial task primitives",
       "description": "Create small reusable misokinesia editorial UI primitives for kicker/meta text, step/progress strips, flat choice chips, fieldset shells, and card ledgers using existing Tailwind/shadcn/lucide conventions.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [
