@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Seed script: insert one misokinesia_test_sets row and 29 misokinesia_stimuli rows.
 
-Safe to re-run: skips insertion if an active test set already exists.
+Safe to re-run: if an active test set already exists, synchronises metadata and
+applies decommission flags (active=false) for clips listed in DECOMMISSIONED.
 
 Usage (run from repo root or backend/):
     python backend/admin_cli/seed_misokinesia_stimuli.py
@@ -33,6 +34,16 @@ except ImportError:
     print("ERROR: asyncpg not installed. Run: pip install asyncpg", file=sys.stderr)
     sys.exit(1)
 
+
+# ── Decommissioned clips (active=false) ─────────────────────────────────────
+# Stakeholder decision 2026-05. Rows are retained in DB; active flag set to false.
+# These filenames must still appear in STIMULI so their rows exist on first seed.
+DECOMMISSIONED: frozenset[str] = frozenset({
+    "wristRotation.mp4",
+    "fingerRolling.mp4",
+    "penClicking.mp4",
+    "footTapping.mp4",
+})
 
 # ── 29 production stimuli ───────────────────────────────────────────────────
 # File names and durations come from reference/labs/Misokinesia/videos_on_site.
@@ -115,7 +126,7 @@ async def main() -> None:
         if existing:
             existing_rows = await conn.fetch(
                 """
-                SELECT stimulus_id, sort_order, storage_path, filename, duration_ms
+                SELECT stimulus_id, sort_order, storage_path, filename, duration_ms, active
                 FROM misokinesia_stimuli
                 WHERE test_set_id = $1
                 ORDER BY sort_order
@@ -131,6 +142,7 @@ async def main() -> None:
                 sys.exit(1)
 
             changed_rows = 0
+            decommissioned_applied = 0
             async with conn.transaction():
                 for row in existing_rows:
                     expected = stimuli_by_order.get(row["sort_order"])
@@ -144,30 +156,38 @@ async def main() -> None:
 
                     expected_filename = str(expected["filename"])
                     expected_duration = int(expected["duration_ms"])
-                    if (
-                        row["storage_path"] == expected_filename
-                        and row["filename"] == expected_filename
-                        and row["duration_ms"] == expected_duration
-                    ):
-                        continue
+                    should_be_active = expected_filename not in DECOMMISSIONED
 
-                    await conn.execute(
-                        """
-                        UPDATE misokinesia_stimuli
-                        SET storage_path = $2,
-                            filename = $2,
-                            duration_ms = $3
-                        WHERE stimulus_id = $1
-                        """,
-                        row["stimulus_id"],
-                        expected_filename,
-                        expected_duration,
+                    metadata_changed = (
+                        row["storage_path"] != expected_filename
+                        or row["filename"] != expected_filename
+                        or row["duration_ms"] != expected_duration
                     )
-                    changed_rows += 1
+                    active_changed = bool(row["active"]) != should_be_active
+
+                    if metadata_changed or active_changed:
+                        await conn.execute(
+                            """
+                            UPDATE misokinesia_stimuli
+                            SET storage_path = $2,
+                                filename = $2,
+                                duration_ms = $3,
+                                active = $4
+                            WHERE stimulus_id = $1
+                            """,
+                            row["stimulus_id"],
+                            expected_filename,
+                            expected_duration,
+                            should_be_active,
+                        )
+                        if active_changed and not should_be_active:
+                            decommissioned_applied += 1
+                        changed_rows += 1
 
             print(
                 f"Active test set already exists (id={existing}, {len(existing_rows)} stimuli). "
-                f"Synchronized {changed_rows} stimulus rows."
+                f"Synchronized {changed_rows} stimulus rows "
+                f"({decommissioned_applied} decommissioned)."
             )
             return
 
@@ -188,12 +208,13 @@ async def main() -> None:
             print(f"Inserted test set: {test_set_id}")
 
             for s in STIMULI:
+                is_active = s["filename"] not in DECOMMISSIONED
                 await conn.execute(
                     """
                     INSERT INTO misokinesia_stimuli
                         (stimulus_id, test_set_id, storage_path, filename,
                          duration_ms, mime_type, sort_order, active)
-                    VALUES ($1, $2, $3, $4, $5, 'video/mp4', $6, true)
+                    VALUES ($1, $2, $3, $4, $5, 'video/mp4', $6, $7)
                     """,
                     uuid.uuid4(),
                     test_set_id,
@@ -201,8 +222,13 @@ async def main() -> None:
                     s["filename"],
                     s["duration_ms"],
                     s["sort_order"],
+                    is_active,
                 )
-            print(f"Inserted {len(STIMULI)} stimuli (sort_order 1–{len(STIMULI)}).")
+            active_count = len(STIMULI) - len(DECOMMISSIONED)
+            print(
+                f"Inserted {len(STIMULI)} stimuli (sort_order 1–{len(STIMULI)}); "
+                f"{active_count} active, {len(DECOMMISSIONED)} decommissioned."
+            )
 
         print("Done. Seed complete.")
 

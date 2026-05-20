@@ -281,7 +281,7 @@ The following clips were removed from the active pool by stakeholder decision (2
 | `penClicking.mp4` | 26 | Decommissioned 2026-05 |
 | `footTapping.mp4` | 14 | Decommissioned 2026-05 |
 
-To decommission: run `UPDATE misokinesia_stimuli SET active = false WHERE filename IN (...)` or re-run `backend/admin_cli/seed_misokinesia_stimuli.py` after it is updated to apply decommission flags (T180).
+To decommission additional clips: add the filename to the `DECOMMISSIONED` frozenset in `backend/admin_cli/seed_misokinesia_stimuli.py` and re-run the script. The script is idempotent and applies `active = false` for any filename in `DECOMMISSIONED` on re-run. Alternatively run `UPDATE misokinesia_stimuli SET active = false WHERE filename IN (...)` directly.
 
 ---
 

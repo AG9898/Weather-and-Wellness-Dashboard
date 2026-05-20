@@ -2706,7 +2706,7 @@
       "id": "T180",
       "title": "Decommission 4 stimuli (wristRotation, fingerRolling, penClicking, footTapping)",
       "description": "Set active=false for wristRotation.mp4, fingerRolling.mp4, penClicking.mp4, and footTapping.mp4 in misokinesia_stimuli via a targeted SQL update. Update backend/admin_cli/seed_misokinesia_stimuli.py to apply decommission flags on re-run against an existing test set (add a DECOMMISSIONED set and UPDATE rather than skip). Verify the decommission table already added to MISOKINESIA.md in the doc sprint is accurate.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [],
