@@ -267,7 +267,6 @@ jobs:
         run: npm install --global vercel
 
       - name: Link Vercel project
-        working-directory: frontend
         run: |
           mkdir -p .vercel
           cat > .vercel/project.json <<JSON
@@ -275,19 +274,16 @@ jobs:
           JSON
 
       - name: Pull Vercel production environment
-        working-directory: frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel pull --yes --environment=production --token "${VERCEL_TOKEN}"
 
       - name: Build Vercel output
-        working-directory: frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel build --prod --token "${VERCEL_TOKEN}"
 
       - name: Deploy Vercel production
-        working-directory: frontend
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prebuilt --prod --token "${VERCEL_TOKEN}"
