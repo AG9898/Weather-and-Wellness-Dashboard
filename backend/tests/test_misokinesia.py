@@ -35,6 +35,7 @@ from sqlalchemy import exc as sa_exc
 
 from app.auth import get_current_lab_member
 from app.routers.misokinesia import (
+    get_misokinesia_dashboard,
     get_trial_manifest,
     router,
     start_misokinesia_session,
@@ -48,6 +49,7 @@ from app.routers.misokinesia import (
 from app.schemas.misokinesia import (
     MisoGAD7Create,
     MisoMAQCreate,
+    MisoDashboardResponse,
     MisoDemographicsCreate,
     MisokinesiaAqCreate,
     MisokinesiaEndOfTaskCreate,
@@ -279,6 +281,34 @@ class _SequencedDB:
 
     async def refresh(self, obj: object) -> None:
         pass
+
+
+class _MappingRows:
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self._rows = rows
+
+    def all(self) -> list[dict[str, Any]]:
+        return self._rows
+
+
+class _MappingResult:
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self._rows = rows
+
+    def mappings(self) -> _MappingRows:
+        return _MappingRows(self._rows)
+
+
+class _DashboardDB:
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self.rows = rows
+        self.execute_calls = 0
+        self.statements: list[object] = []
+
+    async def execute(self, stmt: object) -> _MappingResult:
+        self.execute_calls += 1
+        self.statements.append(stmt)
+        return _MappingResult(self.rows)
 
 
 # ---------------------------------------------------------------------------
@@ -638,7 +668,95 @@ class GetTrialManifestTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 3 — submit_demographics (T184)
+# Class 3 — get_misokinesia_dashboard
+# ---------------------------------------------------------------------------
+
+
+class GetMisokinesiaDashboardTests(IsolatedAsyncioTestCase):
+    async def test_miso_dashboard_route_requires_lab_member_auth(self) -> None:
+        route = next(
+            (
+                r
+                for r in router.routes
+                if isinstance(r, APIRoute)
+                and r.path == "/misokinesia/dashboard"
+                and "GET" in (r.methods or set())
+            ),
+            None,
+        )
+        self.assertIsNotNone(route, "GET /misokinesia/dashboard route not registered")
+        assert route is not None
+        dep_calls = {d.call for d in route.dependant.dependencies}
+        self.assertIn(
+            get_current_lab_member,
+            dep_calls,
+            "GET /misokinesia/dashboard must depend on get_current_lab_member",
+        )
+
+    async def test_miso_dashboard_returns_active_count_and_recent_sessions(self) -> None:
+        db = _DashboardDB(
+            rows=[
+                {
+                    "active_stimuli_count": 25,
+                    "misokinesia_participant_number": 12,
+                    "started_at": datetime(2026, 5, 20, 16, 0, tzinfo=timezone.utc),
+                    "completed_at": None,
+                    "age_band": "25-31",
+                    "gender": "Woman",
+                    "country": "Canada",
+                    "avg_clip_score": 15.5,
+                },
+                {
+                    "active_stimuli_count": 25,
+                    "misokinesia_participant_number": 11,
+                    "started_at": datetime(2026, 5, 19, 16, 0, tzinfo=timezone.utc),
+                    "completed_at": datetime(2026, 5, 19, 17, 0, tzinfo=timezone.utc),
+                    "age_band": None,
+                    "gender": None,
+                    "country": None,
+                    "avg_clip_score": None,
+                },
+            ]
+        )
+
+        result = await get_misokinesia_dashboard(db=db)
+
+        self.assertIsInstance(result, MisoDashboardResponse)
+        self.assertEqual(result.active_stimuli_count, 25)
+        self.assertEqual(len(result.recent_sessions), 2)
+        self.assertEqual(result.recent_sessions[0].misokinesia_participant_number, 12)
+        self.assertEqual(result.recent_sessions[0].avg_clip_score, 15.5)
+        self.assertIsNone(result.recent_sessions[1].avg_clip_score)
+        self.assertIsNone(result.recent_sessions[1].age_band)
+        self.assertIsNone(result.recent_sessions[1].gender)
+        self.assertIsNone(result.recent_sessions[1].country)
+        self.assertEqual(db.execute_calls, 1)
+
+    async def test_miso_dashboard_returns_empty_sessions_when_no_participants(self) -> None:
+        db = _DashboardDB(
+            rows=[
+                {
+                    "active_stimuli_count": 25,
+                    "misokinesia_participant_number": None,
+                    "started_at": None,
+                    "completed_at": None,
+                    "age_band": None,
+                    "gender": None,
+                    "country": None,
+                    "avg_clip_score": None,
+                }
+            ]
+        )
+
+        result = await get_misokinesia_dashboard(db=db)
+
+        self.assertEqual(result.active_stimuli_count, 25)
+        self.assertEqual(result.recent_sessions, [])
+        self.assertEqual(db.execute_calls, 1)
+
+
+# ---------------------------------------------------------------------------
+# Class 4 — submit_demographics (T184)
 # ---------------------------------------------------------------------------
 
 

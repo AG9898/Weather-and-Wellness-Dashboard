@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import exc as sa_exc
-from sqlalchemy import func, select
+from sqlalchemy import func, literal, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_lab_member
@@ -27,6 +27,8 @@ from app.schemas.misokinesia import (
     MisoGAD7Response,
     MisoMAQCreate,
     MisoMAQResponse,
+    MisoDashboardResponse,
+    MisoDashboardSessionItem,
     MisoDemographicsCreate,
     MisoDemographicsResponse,
     MisokinesiaAqCreate,
@@ -253,6 +255,109 @@ async def get_trial_manifest(
     return MisokinesiaTrialManifestResponse(
         post_survey_order=post_survey_order,
         clips=clips,
+    )
+
+
+@router.get(
+    "/dashboard",
+    response_model=MisoDashboardResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_lab_member)],
+)
+async def get_misokinesia_dashboard(
+    db: AsyncSession = Depends(get_session),
+) -> MisoDashboardResponse:
+    """RA-only dashboard summary for the misokinesia operations page."""
+
+    active_stimuli_count = (
+        select(func.count(MisokinesiaStimulus.stimulus_id))
+        .join(
+            MisokinesiaTestSet,
+            MisokinesiaStimulus.test_set_id == MisokinesiaTestSet.test_set_id,
+        )
+        .where(
+            MisokinesiaTestSet.active.is_(True),
+            MisokinesiaStimulus.active.is_(True),
+        )
+        .scalar_subquery()
+    )
+
+    recent_participants = (
+        select(
+            MisokinesiaParticipant.misokinesia_participant_id,
+            MisokinesiaParticipant.misokinesia_participant_number,
+            MisokinesiaParticipant.started_at,
+            MisokinesiaParticipant.completed_at,
+            MisokinesiaParticipant.age_band,
+            MisokinesiaParticipant.gender,
+            MisokinesiaParticipant.country,
+        )
+        .order_by(MisokinesiaParticipant.started_at.desc())
+        .limit(10)
+        .subquery()
+    )
+
+    clip_score = (
+        MisokinesiaTrialResponse.q1
+        + MisokinesiaTrialResponse.q2
+        + MisokinesiaTrialResponse.q3
+        + MisokinesiaTrialResponse.q4
+    )
+    one_row = select(literal(1).label("anchor")).subquery()
+    stmt = (
+        select(
+            active_stimuli_count.label("active_stimuli_count"),
+            recent_participants.c.misokinesia_participant_number,
+            recent_participants.c.started_at,
+            recent_participants.c.completed_at,
+            recent_participants.c.age_band,
+            recent_participants.c.gender,
+            recent_participants.c.country,
+            func.avg(clip_score).label("avg_clip_score"),
+        )
+        .select_from(one_row)
+        .outerjoin(recent_participants, true())
+        .outerjoin(
+            MisokinesiaTrialResponse,
+            MisokinesiaTrialResponse.misokinesia_participant_id
+            == recent_participants.c.misokinesia_participant_id,
+        )
+        .group_by(
+            recent_participants.c.misokinesia_participant_id,
+            recent_participants.c.misokinesia_participant_number,
+            recent_participants.c.started_at,
+            recent_participants.c.completed_at,
+            recent_participants.c.age_band,
+            recent_participants.c.gender,
+            recent_participants.c.country,
+        )
+        .order_by(recent_participants.c.started_at.desc().nullslast())
+    )
+    result = await db.execute(stmt)
+    rows = result.mappings().all()
+
+    active_count = int(rows[0]["active_stimuli_count"]) if rows else 0
+    sessions = [
+        MisoDashboardSessionItem(
+            misokinesia_participant_number=row["misokinesia_participant_number"],
+            started_at=row["started_at"],
+            completed_at=row["completed_at"],
+            age_band=row["age_band"],
+            gender=row["gender"],
+            country=row["country"],
+            avg_clip_score=(
+                float(row["avg_clip_score"])
+                if row["avg_clip_score"] is not None
+                else None
+            ),
+        )
+        for row in rows
+        if row["misokinesia_participant_number"] is not None
+    ]
+
+    return MisoDashboardResponse(
+        active_stimuli_count=active_count,
+        recent_sessions=sessions,
     )
 
 

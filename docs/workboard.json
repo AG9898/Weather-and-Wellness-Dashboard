@@ -3147,7 +3147,7 @@
       "id": "T195",
       "title": "Backend: GET /misokinesia/dashboard endpoint",
       "description": "Add GET /misokinesia/dashboard to backend/app/routers/misokinesia.py.\n\nResponse shape (MisoDashboardResponse):\n- active_stimuli_count: count of misokinesia_stimuli rows where active=true in the active test set\n- recent_sessions: list of up to 10 misokinesia_participants rows, ordered by started_at DESC, each containing:\n  - misokinesia_participant_number\n  - started_at (ISO datetime)\n  - completed_at (ISO datetime or null)\n  - age_band, gender, country (nullable strings from misokinesia_participants)\n  - avg_clip_score: mean of (q1+q2+q3+q4) summed per misokinesia_trial_responses row for that participant; null if no responses. Range 4-20.\n\nAuth: Depends(get_current_lab_member). Unauthenticated -> 401.\nUse a single query joining misokinesia_participants with misokinesia_trial_responses via LEFT JOIN + GROUP BY to compute avg_clip_score. Do not issue per-participant queries.\nAdd Pydantic response models MisoDashboardSessionItem and MisoDashboardResponse.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO",
       "depends_on": [],

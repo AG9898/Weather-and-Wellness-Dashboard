@@ -714,6 +714,12 @@ Constraints/indexes:
 - Index (`misokinesia_trial_responses(misokinesia_participant_id)`)
 - Index (`misokinesia_trial_responses(stimulus_id)`)
 
+RA dashboard read model (T195): `GET /misokinesia/dashboard` joins recent
+`misokinesia_participants` rows to `misokinesia_trial_responses` to compute
+`avg_clip_score = AVG(q1 + q2 + q3 + q4)` per participant. Participants with no
+trial response rows surface `avg_clip_score = null`; no schema migration is
+required.
+
 ### Table: `misokinesia_mkaq_responses`
 
 One required 21-item Misokinesia Assessment Questionnaire (MkAQ) response per participant. Always submitted after the video loop (post-video only). All MkAQ rows remain session-scoped through both `session_id` and `participant_uuid`.

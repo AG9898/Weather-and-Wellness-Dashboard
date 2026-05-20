@@ -38,6 +38,30 @@ class MisokinesiaTrialManifestResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# RA dashboard
+# ---------------------------------------------------------------------------
+
+
+class MisoDashboardSessionItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    misokinesia_participant_number: int
+    started_at: datetime
+    completed_at: Optional[datetime]
+    age_band: Optional[str]
+    gender: Optional[str]
+    country: Optional[str]
+    avg_clip_score: Optional[float]
+
+
+class MisoDashboardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    active_stimuli_count: int
+    recent_sessions: list[MisoDashboardSessionItem]
+
+
+# ---------------------------------------------------------------------------
 # Per-participant record
 # ---------------------------------------------------------------------------
 
@@ -257,6 +281,8 @@ __all__ = [
     "MisokinesiaClipMeta",
     "MisokinesiaManifestResponse",
     "MisokinesiaTrialManifestResponse",
+    "MisoDashboardSessionItem",
+    "MisoDashboardResponse",
     "MisokinesiaParticipantResponse",
     "MisokinesiaTrialResponseCreate",
     "MisokinesiaTrialResponseResponse",

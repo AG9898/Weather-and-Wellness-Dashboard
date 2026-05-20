@@ -38,7 +38,7 @@
 |--------|------|------|--------|----------------|
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143, T172 |
-| GET    | /misokinesia/dashboard | RA | planned | T195 |
+| GET    | /misokinesia/dashboard | RA | implemented | T195 |
 | GET    | /misokinesia/video-scores | RA | planned | T196 |
 | PATCH  | /misokinesia/participants/{participant_id}/demographics | None | implemented | T184 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
@@ -115,6 +115,36 @@
   - `public_url` format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`.
   - The frontend combines these read-only clips with fake trial ids and performs local-only simulated completions.
   - If fewer than 5 active stimuli exist (short trial only), return a clear non-2xx error rather than silently shortening the trial.
+  - Unauthenticated requests return 401.
+
+### GET /misokinesia/dashboard
+- **Auth:** RA required
+- **Status:** implemented (T195)
+- **Request body:** none
+- **Response (HTTP 200):** `MisoDashboardResponse`
+  ```json
+  {
+    "active_stimuli_count": 25,
+    "recent_sessions": [
+      {
+        "misokinesia_participant_number": 12,
+        "started_at": "2026-05-20T16:00:00Z",
+        "completed_at": null,
+        "age_band": "25-31",
+        "gender": "Woman",
+        "country": "Canada",
+        "avg_clip_score": 15.5
+      }
+    ]
+  }
+  ```
+- **Notes:**
+  - RA-only summary endpoint for the misokinesia operations page.
+  - `active_stimuli_count` counts active `misokinesia_stimuli` rows in the active test set.
+  - `recent_sessions` returns up to 10 `misokinesia_participants` rows ordered by `started_at DESC`.
+  - Demographics fields are nullable and pass through the values stored on `misokinesia_participants`.
+  - `avg_clip_score` is the mean of `q1 + q2 + q3 + q4` across that participant's per-clip response rows. It is `null` when the participant has not submitted any clip responses.
+  - The backend computes the dashboard with one aggregate query and does not issue per-participant response lookups.
   - Unauthenticated requests return 401.
 
 ### PATCH /misokinesia/participants/{participant_id}/demographics
