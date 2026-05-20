@@ -40,7 +40,7 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 
 ### Pre-Clip Buffer
 
-- Before each clip autoplays, a solid-black interstitial fills the task container for 6 seconds.
+- Before each clip autoplays, a solid-black interstitial fills the task container for 4 seconds.
 - The centered clip progress label is shown during the first 2 seconds of the buffer, then the screen remains black until playback starts.
 - The `<video>` element is loaded with `preload="auto"` during the buffer so playback starts immediately when the buffer ends.
 - The buffer applies to every clip in both production and trial modes.
@@ -76,14 +76,26 @@ Template mapping:
 
 The redesign should remove the current participant-flow ambient glow/card-stack recipe in favor of hairline dividers, flat selected chips, compact metadata, tabular progress text, and intentional whitespace.
 
-### `/misokinesia` RA Dashboard Redesign
+### `/misokinesia` RA Dashboard
 
-The RA-facing `/misokinesia` page should become a lean operational dashboard:
-- Keep the primary action cluster: start production session, run short trial, run full trial, and no-write trial hint.
-- Include active stimuli count, recent sessions ledger, and trial-vs-production split.
-- Do not add completed-session count or average-session-duration metrics in v1.
-- Do not add a module health panel in v1.
-- Recent sessions and trial-vs-production may ship from stub/mock data first if no backend contract is available; do not block participant-flow redesign on dashboard stats.
+The RA-facing `/misokinesia` page is a lean operational dashboard. All stats are sourced from live backend endpoints (no stub data).
+
+**Layout:**
+- Primary action cluster: start production session, run short trial, run full trial, and no-write trial hint.
+- Active stimuli count card: live count from `GET /misokinesia/dashboard`.
+- Recent Sessions ledger (left card, wider): up to 10 rows from `GET /misokinesia/dashboard`, ordered most-recent first.
+- Video Score Leaderboard (right card): top-5 and bottom-5 videos by avg composite per-clip score from `GET /misokinesia/video-scores`.
+
+**Recent Sessions ledger columns:**
+- Participant number (e.g. `MKP-0149`)
+- Relative time since `started_at` (e.g. "2 min ago", "Yesterday · 16:22")
+- Demographics: `age_band`, `gender`, `country` — shown as compact values; `—` when null
+- Avg clip composite score: mean of `(q1+q2+q3+q4)` across all clip responses for the session; range 4–20; `—` when null (incomplete session)
+
+**Video Score Leaderboard:**
+- Two sections within the card: "Highest reactivity" (top 5) and "Lowest reactivity" (bottom 5), clearly labeled.
+- Each row: video label (derived from filename, title-cased) and avg composite score (4–20 range).
+- Empty state when no response data exists yet.
 - Use the same quiet editorial pattern as the participant screens: masthead, hairlines, white cards on paper, compact tabular values, restrained badges, and lucide icons.
 
 ---

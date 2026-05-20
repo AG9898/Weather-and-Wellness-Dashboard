@@ -47,7 +47,7 @@ import {
 } from "@/lib/misokinesia-phase";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
-const PRE_CLIP_BUFFER_MS = 6000;
+const PRE_CLIP_BUFFER_MS = 4000;
 const PRE_CLIP_PROGRESS_MS = 2000;
 
 type Phase =

@@ -18,7 +18,7 @@ The Misokinesia module presents a participant with the active video manifest in 
 4. Participant completes the miso demographics form (all fields optional); frontend submits `PATCH /misokinesia/participants/{id}/demographics`.
 5. Participant sees intro screen and clicks to begin. Task container enters browser-native fullscreen (Fullscreen API) at this point and remains fullscreen through clip playback, per-clip questionnaires, transition cards, and post-video surveys.
 6. For each clip in the returned manifest (session-randomized playback order):
-   - A 6-second solid-black buffer screen is shown; the centered clip progress label appears during the first 2 seconds and the video is preloaded during the buffer.
+   - A 4-second solid-black buffer screen is shown; the centered clip progress label appears during the first 2 seconds and the video is preloaded during the buffer.
    - Video clip autoplays full-bleed on black inside the fullscreen task container.
    - Per-clip questionnaire (4 questions) is shown after the clip, inside the fullscreen container.
    - Frontend submits `POST /misokinesia/participants/{id}/responses`.
@@ -265,7 +265,7 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 - **Independent participant numbering.** `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence and starts from 1, independent of `participants.participant_number`.
 - **Stimuli seeded via seed script.** No admin upload endpoint exists yet; stimulus rows are inserted manually or via a seed script. Decommissioned stimuli have `active = false`; their rows are retained.
 - **Fullscreen.** The task container element (wrapping video, questionnaire, transition cards, and surveys) enters browser-native fullscreen via the Fullscreen API at task start. Fullscreen persists across clip, questionnaire, transition-card, and survey state transitions, then exits when the end-of-task flow reaches completion. An exit-fullscreen button is visible during active task phases.
-- **Pre-clip buffer.** Before each clip autoplays, a 6-second solid-black interstitial is shown. The centered clip progress label appears during the first 2 seconds, and the `<video>` element is loaded (`preload="auto"`) during this buffer so playback starts immediately after.
+- **Pre-clip buffer.** Before each clip autoplays, a 4-second solid-black interstitial is shown. The centered clip progress label appears during the first 2 seconds, then the screen remains black until playback starts. The `<video>` element is loaded (`preload="auto"`) during this buffer so playback starts immediately after.
 - **Demographics are participant-submitted.** Miso demographics are collected via the first screen of the participant task (before intro) and stored on `misokinesia_participants` via `PATCH /misokinesia/participants/{id}/demographics`. All fields are optional. Trial mode shows the screen but does not call the endpoint.
 
 ---

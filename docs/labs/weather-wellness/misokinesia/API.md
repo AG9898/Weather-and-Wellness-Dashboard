@@ -38,6 +38,8 @@
 |--------|------|------|--------|----------------|
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143, T172 |
+| GET    | /misokinesia/dashboard | RA | planned | T195 |
+| GET    | /misokinesia/video-scores | RA | planned | T196 |
 | PATCH  | /misokinesia/participants/{participant_id}/demographics | None | implemented | T184 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
@@ -336,6 +338,66 @@
   - `total_score` is computed server-side as the direct sum of `q1` through `q21` (range 0–63).
   - Production MAQ UI pane grouping (q1–q7, q8–q14, q15–q21) is frontend-only; one complete payload is submitted.
   - Trial mode bypasses this endpoint and performs local-only progression with the shortened `q1` through `q10` rehearsal set.
+
+---
+
+## RA Dashboard Endpoints
+
+### GET /misokinesia/dashboard
+- **Auth:** RA required
+- **Status:** planned (T195)
+- **Request body:** none
+- **Response (HTTP 200):** `MisoDashboardResponse`
+  ```json
+  {
+    "active_stimuli_count": 25,
+    "recent_sessions": [
+      {
+        "misokinesia_participant_number": 149,
+        "started_at": "2026-05-20T14:32:00Z",
+        "completed_at": "2026-05-20T15:10:00Z",
+        "age_band": "18-24",
+        "gender": "Woman",
+        "country": "Canada",
+        "avg_clip_score": 12.4
+      }
+    ]
+  }
+  ```
+- **Notes:**
+  - Returns up to 10 most recent `misokinesia_participants` rows, ordered by `started_at` DESC.
+  - `active_stimuli_count`: count of `misokinesia_stimuli` rows where `active = true` in the active test set.
+  - `avg_clip_score`: mean of `(q1 + q2 + q3 + q4)` summed per row, across all of the participant's `misokinesia_trial_responses` rows. Range 4–20; `null` if the participant has no response rows.
+  - `age_band`, `gender`, `country` are passed through from `misokinesia_participants` nullable columns; any or all may be `null` if the participant did not complete the demographics form.
+  - `completed_at` is `null` for sessions not yet fully completed.
+  - Unauthenticated requests return 401.
+
+### GET /misokinesia/video-scores
+- **Auth:** RA required
+- **Status:** planned (T196)
+- **Request body:** none
+- **Response (HTTP 200):** `MisoVideoScoresResponse`
+  ```json
+  {
+    "top_5": [
+      { "video_label": "Ankle Wagging", "avg_score": 14.2, "response_count": 43 }
+    ],
+    "bottom_5": [
+      { "video_label": "Pen Clicking", "avg_score": 5.1, "response_count": 41 }
+    ]
+  }
+  ```
+- **Notes:**
+  - Aggregates `misokinesia_trial_responses` by `stimulus_id`, joining `misokinesia_stimuli` for the filename.
+  - `avg_score`: mean of `(q1 + q2 + q3 + q4)` across all production participant responses for that stimulus. Range 4–20.
+  - `video_label`: derived server-side from `misokinesia_stimuli.filename` — strips the file extension, then splits camelCase into title-case words (e.g. `ankleWagging.mp4` → `Ankle Wagging`). No schema migration required.
+  - `response_count`: total participant response rows for that stimulus, provided for RA context.
+  - `top_5`: the 5 stimuli with the highest `avg_score`, ordered descending (highest reactivity).
+  - `bottom_5`: the 5 stimuli with the lowest `avg_score`, ordered ascending (lowest reactivity).
+  - Only stimuli with `active = true` are included. Trial runs never write response rows so they are naturally excluded.
+  - Returns `top_5: []` and `bottom_5: []` when no response data exists yet.
+  - If fewer than 5 active stimuli have responses, returns however many exist (may be fewer than 5 in each list).
+  - Unauthenticated requests return 401.
 
 ---
 
