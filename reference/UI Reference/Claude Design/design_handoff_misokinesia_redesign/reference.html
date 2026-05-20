@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Misokinesia · Direction A · Reference Mocks</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    html, body { margin: 0; padding: 0; background: #ececea; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      color: #18212b;
+    }
+    .page {
+      max-width: 1540px;
+      margin: 0 auto;
+      padding: 48px 32px 96px;
+    }
+    .page-header {
+      padding: 16px 0 40px;
+      border-bottom: 1px solid rgba(24,33,43,0.15);
+      margin-bottom: 48px;
+    }
+    .page-header h1 { font-size: 28px; margin: 0; letter-spacing: -0.015em; }
+    .page-header p { font-size: 13px; color: #5d6773; margin: 8px 0 0; max-width: 720px; line-height: 1.6; }
+    .group {
+      margin: 48px 0;
+    }
+    .group-title {
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: #5d6773; font-weight: 600; margin: 0 0 6px;
+    }
+    .group-subtitle {
+      font-size: 13px; color: #18212b; margin: 0 0 24px;
+    }
+    .board {
+      margin: 24px 0 64px;
+    }
+    .board-label {
+      display: flex; align-items: baseline; gap: 12px;
+      margin-bottom: 12px;
+    }
+    .board-label .num {
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: #5d6773; font-weight: 600;
+    }
+    .board-label .name {
+      font-size: 13px; color: #18212b;
+    }
+    .frame {
+      width: 1440px; height: 920px;
+      background: #fff;
+      border: 1px solid rgba(24,33,43,0.18);
+      box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 16px 40px rgba(15,23,42,0.06);
+      overflow: hidden;
+      border-radius: 6px;
+    }
+    @media (max-width: 1540px) {
+      .frame { transform-origin: top left; transform: scale(0.66); margin-bottom: -312px; }
+      .page { max-width: none; padding: 32px 24px 96px; }
+    }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <h1>Misokinesia · Redesign · Direction A</h1>
+      <p>
+        Five surfaces from the Misokinesia module, redesigned in the “Quiet Editorial” direction.
+        Light mode uses a paper-toned palette (warm off-white background, hairline rules);
+        dark mode uses the existing repository <code>.dark</code> theme tokens (1:1 with <code>globals.css</code>).
+        Frames render at 1440×920 desktop, scaled to fit on narrower viewports.
+      </p>
+    </header>
+
+    <div id="root"></div>
+  </div>
+
+  <script type="text/babel" src="direction-a.jsx"></script>
+  <script type="text/babel" data-presets="env,react">
+    function Board({ num, name, children, theme }) {
+      const cls = theme === 'dark' ? 'dark' : 'paper-tone';
+      return (
+        <div className="board">
+          <div className="board-label">
+            <span className="num">{num}</span>
+            <span className="name">{name}</span>
+          </div>
+          <div className="frame">
+            <div className={cls} style={{ width: '100%', height: '100%' }}>
+              {children}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function Reference() {
+      return (
+        <React.Fragment>
+          <section className="group">
+            <h2 className="group-title">Light · Paper palette</h2>
+            <p className="group-subtitle">
+              Warm off-white background (#fbfaf6), hairline rules at 16% ink, white cards lifted on paper.
+              UBC Video Blue (#001328) as the only branded accent.
+            </p>
+            <Board num="A1" name="/misokinesia · RA Operational Dashboard">
+              <SafeLaunch />
+            </Board>
+            <Board num="A2" name="Participant Demographics">
+              <SafeDemographics />
+            </Board>
+            <Board num="A3" name="Per-clip Questionnaire (after each video)">
+              <SafePerClip />
+            </Board>
+            <Board num="A4" name="MkAQ Carousel · Pane 3 of 4 (template for MAQ)">
+              <SafeMkaq />
+            </Board>
+            <Board num="A5" name="Survey Transition Card (template for GAD-7, MAQ)">
+              <SafeTransition />
+            </Board>
+          </section>
+
+          <section className="group">
+            <h2 className="group-title">Dark · Repository .dark tokens</h2>
+            <p className="group-subtitle">
+              1:1 with the existing dark theme in <code>frontend/src/app/globals.css</code> —
+              #12161c background, #181d24 cards, #39556e primary, #9aa5b1 muted ink.
+              Headings flip to #e6edf8 via the <code>--brand-ink</code> token.
+            </p>
+            <Board num="A1" name="/misokinesia · RA Operational Dashboard" theme="dark">
+              <SafeLaunch />
+            </Board>
+            <Board num="A2" name="Participant Demographics" theme="dark">
+              <SafeDemographics />
+            </Board>
+            <Board num="A3" name="Per-clip Questionnaire" theme="dark">
+              <SafePerClip />
+            </Board>
+            <Board num="A4" name="MkAQ Carousel · Pane 3 of 4" theme="dark">
+              <SafeMkaq />
+            </Board>
+            <Board num="A5" name="Survey Transition Card" theme="dark">
+              <SafeTransition />
+            </Board>
+          </section>
+        </React.Fragment>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Reference />);
+  </script>
+</body>
+</html>

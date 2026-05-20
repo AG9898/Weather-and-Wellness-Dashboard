@@ -1,9 +1,14 @@
-# UI Redesign 2026 — Editorial Dashboard Direction
+# UI Redesign 2026 — Historical Editorial Dashboard Notes
 
-> **Status:** Proposed next phase
+> **Status:** Historical reference only
 > **Current baseline:** The 2026 semantic theme re-tone is already implemented in the app
-> **Primary scope:** RA dashboard redesign and dashboard-specific chrome
-> **Out of scope for this phase:** Login/set-password redesign, participant flow redesign, backend changes
+> **Canonical UI guide:** `docs/styleguide.md`
+> **Do not use this file for active implementation tasks.**
+
+This file is retained only as historical context for the earlier editorial dashboard exploration.
+Current UI direction, token rules, light/dark theme guidance, and quiet editorial patterns live in
+`docs/styleguide.md`. Agents should start from `docs/styleguide.md` and the relevant lab design
+spec instead of using this document as a second UI guide.
 
 ---
 

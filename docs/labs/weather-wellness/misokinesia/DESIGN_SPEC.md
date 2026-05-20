@@ -7,18 +7,18 @@ Full specification: [docs/labs/weather-wellness/misokinesia/MISOKINESIA.md](MISO
 2. Choose launch mode:
    - **Start Misokinesia Session** — backend atomically creates anonymous participant + session
    - **Run Short Trial** — frontend creates fake ids and loads a read-only 5-clip trial manifest (no backend start/write call)
-   - **Run Full Trial** — frontend creates fake ids and loads the read-only full trial manifest (`?full=true`, 29 clips when seeded) with the same no-write behavior
+   - **Run Full Trial** — frontend creates fake ids and loads the read-only full active manifest (`?full=true`) with the same no-write behavior
 3. App navigates to `/misokinesia/[id]` participant task page (same device, no login required)
 
 **Participant task:**
-1. Intro screen → click to begin
-2. MkAQ timing is randomized per participant as either pre-trial or post-trial and stored for analysis
-3. If assigned pre-trial: complete MkAQ before the first clip
-4. Production mode: for each of 29 clips (randomized per session): video plays → 4-question per-clip form (scale 1–5) → submit
-5. Trial mode: for each of 5 sampled clips (randomized on launch): video plays → 4-question per-clip form (scale 1–5) → local simulated submit
-6. If assigned post-trial: complete MkAQ after the final clip response and before the end-of-task form
-7. End-of-task form shown once after all clips and the assigned MkAQ position are complete
-8. Completion screen → RA clicks "Back to Misokinesia" (routes to `/misokinesia`)
+1. Demographics screen → optional responses → continue
+2. Intro screen → click to begin and enter fullscreen
+3. For each manifest clip: pre-clip buffer → full-bleed video → 4-question per-clip form (scale 1–5) → submit
+4. After the final clip response, complete the three post-video surveys in `post_survey_order`; each survey is preceded by its paired transition card
+5. End-of-task form shown once after all clips and all three post-video surveys are complete
+6. Completion screen → RA clicks "Back to Misokinesia" (routes to `/misokinesia`)
+
+Progress UI must derive total clip count from the active manifest length at runtime. Do not hardcode `25` or historical seeded counts in participant-facing progress copy.
 
 **MkAQ card carousel:**
 - Production uses all 21 MkAQ items in four panes: `q1`-`q5`, `q6`-`q10`, `q11`-`q15`, `q16`-`q21`.
@@ -49,8 +49,8 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 
 - A full-container card is shown before each of the 3 post-video surveys.
 - Each card is keyed to its survey (`mkaq`, `gad7`, `maq`) and is driven by the same `post_survey_order` sequence — the card and its survey are treated as a unit; randomization never separates them.
-- Card contents: survey name heading, one sentence describing what the participant is about to do, and a single CTA button ("Continue" or "Begin").
-- Visual treatment: UBC blue card-shell (`rounded-2xl border border-border bg-card`) centered in the fullscreen container; calm, high-contrast typography matching other task step cards.
+- Card contents follow the quiet editorial transition-card template from `reference/UI Reference/Claude Design/design_handoff_misokinesia_redesign/`: survey-specific kicker, title, description, metadata ledger, pause note, and one CTA button.
+- Visual treatment: centered white card on the paper/dark semantic background, hairline dividers, compact metadata, and `--fieldset-bg` pause note. Use the template for all three surveys, with survey-specific copy.
 - Advance is explicit (button only); no auto-advance or timer.
 
 ### Demographics Screen
@@ -61,6 +61,30 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 - All fields are optional; the "Continue" button is always enabled regardless of completion state.
 - On "Continue": calls `PATCH /misokinesia/participants/{id}/demographics` (production) or advances locally without an API call (trial mode). On 2xx, transitions to the intro screen.
 - Error state: inline destructive banner below the form; all field state preserved so the participant can retry.
+
+### Quiet Editorial Redesign Templates
+
+Use `docs/styleguide.md` as the canonical UI guide and treat `reference/UI Reference/Claude Design/design_handoff_misokinesia_redesign/` as high-fidelity templates, not production code. Translate the reference into existing Next.js, Tailwind, shadcn, and lucide patterns.
+
+Template mapping:
+- **Demographics:** apply the A2 row-based card layout, step indicator, optional chip groups, and conditional free-text fields.
+- **Intro, end-of-task, completion, loading, and error screens:** apply the same quiet editorial system even though these screens are not explicitly mocked.
+- **Per-clip questionnaire:** apply the A3 progress strip, fieldset, and scale-chip pattern. Clip totals come from the manifest length.
+- **MkAQ and MAQ:** apply the A4 carousel template to both carousel-based instruments. Preserve each instrument's existing pane structure and trial shortening rules from `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`.
+- **GAD-7:** keep it a single-screen survey, but restyle it with the same fieldset/chip visual system instead of converting it to a carousel.
+- **Survey transition cards:** apply the A5 template to MkAQ, GAD-7, and MAQ with survey-specific text and metadata.
+
+The redesign should remove the current participant-flow ambient glow/card-stack recipe in favor of hairline dividers, flat selected chips, compact metadata, tabular progress text, and intentional whitespace.
+
+### `/misokinesia` RA Dashboard Redesign
+
+The RA-facing `/misokinesia` page should become a lean operational dashboard:
+- Keep the primary action cluster: start production session, run short trial, run full trial, and no-write trial hint.
+- Include active stimuli count, recent sessions ledger, and trial-vs-production split.
+- Do not add completed-session count or average-session-duration metrics in v1.
+- Do not add a module health panel in v1.
+- Recent sessions and trial-vs-production may ship from stub/mock data first if no backend contract is available; do not block participant-flow redesign on dashboard stats.
+- Use the same quiet editorial pattern as the participant screens: masthead, hairlines, white cards on paper, compact tabular values, restrained badges, and lucide icons.
 
 ---
 
@@ -122,7 +146,7 @@ All scoring is server-side. See per-instrument docs for full formulas.
 
 # Design System — Phase 2 (T19+) + Phase 4 Theme Toggle (implemented)
 
-> Implemented in T19. All new pages must follow this system.
+> Implemented in T19. All new pages must follow `docs/styleguide.md`; this section records misokinesia-specific application notes only.
 
 ## Design Tokens
 
@@ -154,7 +178,7 @@ All brand and semantic tokens are defined in `frontend/src/app/globals.css`.
 
 ### Shadcn Semantic Token Mapping
 
-Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped to a neutral light/dark theme system with `#001328` as the only branded UI accent family.
+Shadcn semantic tokens (`--background`, `--foreground`, `--card`, etc.) are mapped in `docs/styleguide.md` and `frontend/src/app/globals.css`. The project-wide light theme is the paper-toned mapping from the style guide; do not add a misokinesia-only palette scope.
 - Current implementation keeps the existing theme preference behavior:
   - `:root` = light theme semantic tokens
   - `.dark` = dark theme semantic tokens
@@ -454,7 +478,7 @@ All four surveys use the shared `SurveyForm` component with:
 
 - RA top bar uses the provided logo mark (`frontend/public/ww-mark.png`) and capsule navigation treatment inspired by the navbar references.
 - App icon is wired from `src/app/icon.png` (derived from the provided logo reference).
-- Browser theme colors are declared via `viewport.themeColor` for light and dark modes (`#f6f7f8` / `#12161c`) to keep top-bar coloring aligned with the active theme.
+- Browser theme colors are declared via `viewport.themeColor` for light and dark modes (`#fbfaf6` / `#12161c`) to keep top-bar coloring aligned with the active theme.
 
 ### Completion Page (`/session/[id]/complete`)
 

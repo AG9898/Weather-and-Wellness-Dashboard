@@ -6,23 +6,23 @@
 
 ## Purpose
 
-The Misokinesia module presents a participant with 25 short video clips (each approximately 15 seconds, longest 33 seconds; 4 clips decommissioned 2026-05, rows retained) in a randomized per-session order. Before any clips play, the participant completes a short miso-specific demographics form (optional fields; stored on `misokinesia_participants`). After each clip the participant answers a 4-question per-clip questionnaire. After the final clip response, the participant completes three post-video surveys in a server-assigned randomised order — each preceded by a transition card — covering the 21-item Misokinesia Assessment Questionnaire (MkAQ), the 7-item GAD-7 anxiety scale, and the 21-item Misophonia Assessment Questionnaire (MAQ). After all clip and post-video survey requirements are complete, the participant answers the end-of-task questionnaire. All results are stored anonymously, linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
+The Misokinesia module presents a participant with the active video manifest in a randomized per-session order. The current seeded pool has 25 active short video clips (each approximately 15 seconds, longest 33 seconds; 4 clips decommissioned 2026-05, rows retained), but participant-facing progress must use the returned manifest length rather than a hardcoded count. Before any clips play, the participant completes a short miso-specific demographics form (optional fields; stored on `misokinesia_participants`). After each clip the participant answers a 4-question per-clip questionnaire. After the final clip response, the participant completes three post-video surveys in a server-assigned randomised order — each preceded by a transition card — covering the 21-item Misokinesia Assessment Questionnaire (MkAQ), the 7-item GAD-7 anxiety scale, and the 21-item Misophonia Assessment Questionnaire (MAQ). After all clip and post-video survey requirements are complete, the participant answers the end-of-task questionnaire. All results are stored anonymously, linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
 
 ---
 
 ## Participant Flow
 
 1. RA navigates to `/misokinesia` via the floating dock and clicks "Start Misokinesia Session".
-2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns a `post_survey_order` permutation of `["mkaq", "gad7", "maq"]`, then returns the full clip manifest (all 25 active URLs) plus the survey order.
+2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns a `post_survey_order` permutation of `["mkaq", "gad7", "maq"]`, then returns the full active clip manifest plus the survey order.
 3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required).
 4. Participant completes the miso demographics form (all fields optional); frontend submits `PATCH /misokinesia/participants/{id}/demographics`.
 5. Participant sees intro screen and clicks to begin. Task container enters browser-native fullscreen (Fullscreen API) at this point and remains fullscreen through clip playback, per-clip questionnaires, transition cards, and post-video surveys.
-6. For each of 25 clips (session-randomized playback order):
+6. For each clip in the returned manifest (session-randomized playback order):
    - A 6-second solid-black buffer screen is shown; the centered clip progress label appears during the first 2 seconds and the video is preloaded during the buffer.
    - Video clip autoplays full-bleed on black inside the fullscreen task container.
    - Per-clip questionnaire (4 questions) is shown after the clip, inside the fullscreen container.
    - Frontend submits `POST /misokinesia/participants/{id}/responses`.
-   - When `is_complete: true` is returned (25th submission), backend has set `completed_at` server-side.
+   - When `is_complete: true` is returned on the final manifest clip submission, backend has set `completed_at` server-side.
 7. Participant completes the three post-video surveys in the order given by `post_survey_order`. Before each survey, a transition card is shown describing the next task; the card is keyed to its survey so randomization does not break the pairing:
    - **[transition card → MkAQ]** — 21-item card carousel; `POST /misokinesia/participants/{id}/mkaq`
    - **[transition card → GAD-7]** — 7-item radio form; `POST /misokinesia/participants/{id}/gad7`
@@ -32,7 +32,7 @@ The Misokinesia module presents a participant with 25 short video clips (each ap
 10. Frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'` (reuses existing endpoint, same pattern as digitspan).
 11. Completion screen shown; RA clicks "Back to Misokinesia" to return to `/misokinesia`.
 
-State machine: `demographics → intro → playing → questionnaire → (loop × 25) → [transition_card → post_survey] × 3 → end_of_task → complete`
+State machine: `demographics → intro → playing → questionnaire → (loop × manifest clips) → [transition_card → post_survey] × 3 → end_of_task → complete`
 
 ## Trial mode (Run Test Trial)
 
@@ -57,7 +57,7 @@ Short trial state machine: `demographics → intro → playing → questionnaire
 - Per-clip questionnaire, all survey, and end-of-task submits are local-only simulated transitions.
 - Designed to let the RA rehearse the complete production experience end-to-end.
 
-Full trial state machine: `demographics → intro → playing → questionnaire → (loop × 25 clips) → [transition_card → post_survey full] × 3 → end_of_task → complete`
+Full trial state machine: `demographics → intro → playing → questionnaire → (loop × active manifest clips) → [transition_card → post_survey full] × 3 → end_of_task → complete`
 
 ### Shared trial constraints (both modes)
 
@@ -98,7 +98,7 @@ Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.p
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full 25-clip manifest (active stimuli) in a randomized playback order plus `post_survey_order` |
+| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full active stimulus manifest in a randomized playback order plus `post_survey_order` |
 | `GET` | `/misokinesia/trial-manifest` | RA required | Read-only rehearsal endpoint; returns 5 randomly sampled active clip URLs and a locally generated `post_survey_order` without creating any rows |
 | `PATCH` | `/misokinesia/participants/{participant_id}/demographics` | None (participant-facing) | Writes miso-specific demographics to `misokinesia_participants`; idempotent; all fields optional |
 | `POST` | `/misokinesia/participants/{participant_id}/responses` | None (participant-facing) | Submits one per-clip questionnaire; sets `completed_at` server-side on final submission; returns `is_complete` flag |
@@ -240,7 +240,7 @@ Same card carousel pattern as MkAQ:
 
 ## End-of-task Questionnaire
 
-Three items shown once after all 29 per-clip questionnaires and all three post-video surveys are complete, before the completion screen. Stored as columns on `misokinesia_participants`.
+Three items shown once after all per-clip questionnaires for the returned manifest and all three post-video surveys are complete, before the completion screen. Stored as columns on `misokinesia_participants`.
 
 | Column | Type | Question / Notes |
 |---|---|---|
@@ -256,7 +256,7 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 ## Architecture Notes
 
 - **Videos served from Supabase Storage public CDN.** Bucket: `misokinesia-stimuli`. URL format: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli/{storage_path}`. No signing, no expiry. Never proxied through FastAPI.
-- **Manifest-first pattern.** All 25 active clip URLs are returned in a single `POST /misokinesia/start` response in the randomized order used for that participant. The frontend plays clips directly from those URLs; no per-clip backend round-trip for media.
+- **Manifest-first pattern.** All active clip URLs are returned in a single `POST /misokinesia/start` response in the randomized order used for that participant. The frontend plays clips directly from those URLs; no per-clip backend round-trip for media.
 - **Trial manifest is read-only.** `GET /misokinesia/trial-manifest` returns only clip metadata and public CDN URLs for 5 randomly sampled active stimuli. It must not create or mutate `participants`, `sessions`, `misokinesia_participants`, or response rows.
 - **Post-video survey order is randomized and persisted.** Production starts assign a random permutation of `["mkaq", "gad7", "maq"]` as `post_survey_order` server-side, persist it on `misokinesia_participants`, and return it in the manifest so the frontend drives all three post-video surveys in the correct sequence.
 - **Transition cards are frontend-only.** A transition/intro card is shown before each post-video survey. Each card is keyed to its survey key (`mkaq`, `gad7`, `maq`) and paired with it in the `post_survey_order` sequence. No backend involvement; no new API call.

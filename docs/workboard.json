@@ -2894,7 +2894,257 @@
       "commands": [
         "cd frontend && npm run build"
       ]
+    },
+    {
+      "id": "T186",
+      "title": "UI theme - Apply global paper light tokens",
+      "description": "Update the frontend global light theme to the paper-toned semantic mapping from docs/styleguide.md, add --brand-ink, --brand-ink-soft, --hairline, and --fieldset-bg, preserve the existing dark theme, and update browser themeColor light metadata to #fbfaf6.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "DASHBOARD_POLISH",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Light mode uses the paper background, stronger hairline border, and fieldset token project-wide.",
+        "Dark mode remains visually and token-wise unchanged except for the new shared semantic additions.",
+        "No misokinesia-only paper-tone scope is needed in app code."
+      ],
+      "docs": [
+        "docs/styleguide.md"
+      ],
+      "files": [
+        "frontend/src/app/globals.css",
+        "frontend/src/app/layout.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T187",
+      "title": "Miso redesign - Shared editorial task primitives",
+      "description": "Create small reusable misokinesia editorial UI primitives for kicker/meta text, step/progress strips, flat choice chips, fieldset shells, and card ledgers using existing Tailwind/shadcn/lucide conventions.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T186"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Primitives consume semantic tokens only and do not hardcode paper/dark colors.",
+        "Chips support selected, hover, disabled, and focus-visible states.",
+        "Primitives are narrow enough to support demographics, questionnaires, survey panes, and transitions without owning business logic."
+      ],
+      "docs": [
+        "docs/styleguide.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T188",
+      "title": "Miso redesign - Demographics and intro screens",
+      "description": "Restyle the misokinesia demographics form and intro screen using the A2 template and quiet editorial pattern while preserving optional fields, conditional Not listed inputs, trial behavior, submit flow, and fullscreen entry timing.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T187"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Demographics uses row-based layout, step indicator, flat chips, and paper/dark semantic surfaces.",
+        "All existing demographics payload behavior and error preservation remain unchanged.",
+        "Intro screen matches the same editorial system even though it was not explicitly mocked."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaDemographicsForm.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T189",
+      "title": "Miso redesign - Per-clip questionnaire",
+      "description": "Restyle MisokinesiaQuestionnaire from the A3 template with manifest-derived progress, editorial fieldsets, and flat scale chips while preserving production/trial submit behavior.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T187"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Progress text and percentage derive from runtime clipNumber and totalClips, not hardcoded counts.",
+        "All four Likert questions keep existing wording, values, validation, and submit behavior.",
+        "Error and submitting states remain accessible and theme-aware."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaQuestionnaire.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T190",
+      "title": "Miso redesign - MkAQ and MAQ carousel visuals",
+      "description": "Apply the A4 carousel template to MkAQ and MAQ forms, preserving each instrument's current production/trial pane structure, answer preservation, and final payload submission.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T187"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "MkAQ keeps 5/5/5/6 production panes and shortened trial panes.",
+        "MAQ keeps its documented production and trial panes.",
+        "Previous/Next/Submit enablement remains unchanged and all scores remain server-computed."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx",
+        "frontend/src/lib/components/MisokinesiaMAQForm.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T191",
+      "title": "Miso redesign - GAD-7 and survey transition states",
+      "description": "Restyle the misokinesia GAD-7 single-screen form with the shared fieldset/chip system and extract/apply the A5 transition card template for MkAQ, GAD-7, and MAQ with survey-specific copy.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T187"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "GAD-7 remains single-screen and does not become a carousel.",
+        "Each transition card is paired with the randomized survey key and uses survey-specific metadata.",
+        "No backend API or scoring behavior changes."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaGAD7Form.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T192",
+      "title": "Miso redesign - Remaining participant states",
+      "description": "Apply the quiet editorial system to remaining non-video misokinesia states: loading, error, end-of-task, completion, and page-level spacing/integration, without changing pre-clip black buffer or video playback.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T188",
+        "T189",
+        "T190",
+        "T191"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "All non-video participant states share the same editorial rhythm and semantic tokens.",
+        "Pre-clip buffer and full-bleed video remain black and unchanged.",
+        "Completion still exits fullscreen and returns to /misokinesia."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/MisokinesiaEndOfTaskForm.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T193",
+      "title": "Miso redesign - Lean RA operations page",
+      "description": "Redesign /misokinesia as a lean operational dashboard with start/trial actions, active stimuli, recent sessions, and trial-vs-production split using stubbed data where needed.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T186"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Start session, short trial, and full trial behavior is unchanged.",
+        "Completed-session and average-session-duration metrics are not added.",
+        "Module health panel is not added in v1.",
+        "Stubbed recent/split data is clearly isolated for later backend wiring."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/misokinesia/page.tsx",
+        "frontend/src/lib/components/MisokinesiaLaunchPage.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T194",
+      "title": "Miso redesign - Storybook coverage and visual states",
+      "description": "Update or add Storybook page/component stories for the redesigned misokinesia participant and RA surfaces with light, dark, mobile, loading, empty/error, and representative answered states.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "MISO_FEEDBACK",
+      "depends_on": [
+        "T192",
+        "T193"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Stories use mocked data and never call the backend.",
+        "Light and dark states both render with the new semantic tokens.",
+        "Representative participant states cover demographics, per-clip questionnaire, carousel survey, transition card, and completion."
+      ],
+      "docs": [
+        "docs/storybook.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/stories/",
+        "frontend/src/lib/components/"
+      ],
+      "commands": [
+        "cd frontend && npm run build-storybook"
+      ]
     }
   ],
-  "last_updated": "2026-05-19"
+  "last_updated": "2026-05-20"
 }

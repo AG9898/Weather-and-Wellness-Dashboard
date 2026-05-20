@@ -44,7 +44,7 @@ Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It d
   - WW trial mode does not call FastAPI endpoints
   - Misokinesia trial mode may call a read-only RA endpoint for a sampled clip manifest, but never calls write endpoints
   - Never writes rows to `participants`, `sessions`, survey tables, digit span tables, or misokinesia tables
-  - Misokinesia Trial Run locally randomizes MkAQ timing as `"pre"` or `"post"` and never persists that assignment
+  - Misokinesia Trial Run locally generates the post-video survey order and never persists that assignment
 - Misokinesia video behavior:
   - Samples 5 active videos by `stimulus_id` each time "Run Test Trial" is clicked
   - Plays the sampled videos from public Supabase Storage CDN URLs

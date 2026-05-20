@@ -22,7 +22,6 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/styleguide.md`](styleguide.md) | UI style system and visual direction |
 | [`docs/shadcn.md`](shadcn.md) | shadcn usage guidance |
 | [`docs/storybook.md`](storybook.md) | Storybook workflow and review expectations |
-| [`docs/UI_REDESIGN_2026.md`](UI_REDESIGN_2026.md) | 2026 UI direction and redesign scope notes |
 | [`docs/migrations/README.md`](migrations/README.md) | Migration planning/archive docs (Alembic scripts live in `backend/alembic/`) |
 | [`docs/workboard.json`](workboard.json) | Active task queue (canonical board) |
 
@@ -68,6 +67,7 @@ stub docs that only redirect to lab-specific paths.
 |---|---|
 | [`docs/progress/PROGRESS_LOG.md`](progress/PROGRESS_LOG.md) | Archive-only historical progress log; active queue is `docs/workboard.json` |
 | [`docs/ROUTING_CLEANUP.md`](ROUTING_CLEANUP.md) | Completed backend reliability playbook archive; canonical behavior lives in `docs/ARCHITECTURE.md` and `docs/labs/weather-wellness/weather/ANALYTICS.md` |
+| [`docs/UI_REDESIGN_2026.md`](UI_REDESIGN_2026.md) | Historical editorial dashboard notes; active UI guidance lives in `docs/styleguide.md` |
 | `docs/labs/weather-wellness/tasks/working-misokinesia-add.md` | Completed planning archive (file removed); current task spec is `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md` |
 
 ## Maintenance Rules

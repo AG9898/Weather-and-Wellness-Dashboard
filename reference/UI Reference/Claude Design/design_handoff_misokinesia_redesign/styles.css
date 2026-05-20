@@ -1,0 +1,193 @@
+/* Misokinesia Redesign — Shared tokens & base
+   ─────────────────────────────────────────────
+   UBC anchor palette, JetBrains Mono throughout, two visual systems share the
+   same tokens but differ in composition, density, and chrome usage.
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+:root {
+  /* UBC brand anchor + tonal lifts (from style guide) */
+  --ubc-video-blue: #001328;
+  --ubc-navy: #000847;
+  --ubc-blue-700: #001328;
+  --ubc-blue-600: #11263a;
+  --ubc-blue-500: #23415a;
+  --ubc-blue-300: #506a81;
+  --ubc-blue-200: #8e9eaf;
+  --ubc-blue-100: #cfd7de;
+  --ubc-earth: #878343;
+  --ink-100: #e6edf8;
+  --ink-70: #a9b6cc;
+  --ink-45: #6e7c95;
+
+  /* Light theme semantic tokens (paper mapping now intended project-wide) */
+  --background: #fbfaf6;
+  --foreground: #18212b;
+  --card: #ffffff;
+  --muted: color-mix(in srgb, #fbfaf6 86%, var(--foreground) 6%);
+  --muted-foreground: #5d6773;
+  --border: rgb(24 33 43 / 16%);
+  --hairline: rgb(24 33 43 / 16%);
+  --primary: var(--ubc-video-blue);
+  --primary-foreground: #f8fafc;
+  --primary-hover: var(--ubc-blue-500);
+  --ring: #36506b;
+  --destructive: #dc2626;
+  --success: #16a34a;
+
+  /* Brand ink — the colour of high-contrast brand text/headings.
+     Dark anchor in light theme, light readable foreground in dark theme. */
+  --brand-ink: var(--ubc-video-blue);
+  --brand-ink-soft: var(--ubc-blue-500);
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 4%), 0 8px 20px rgb(15 23 42 / 5%);
+  --fieldset-bg: rgb(24 33 43 / 8%);
+
+  /* Bold-direction paper tone (warmer than --background) */
+  --paper: #fbfaf6;
+  --paper-rule: rgb(24 33 43 / 16%);
+  --paper-rule-soft: rgb(24 33 43 / 8%);
+}
+
+/* ─── Paper-tone compatibility scope.
+       The repo now treats this paper mapping as the global light theme.
+       This class remains so reference.html still renders older boards. ── */
+.paper-tone {
+  --background: var(--paper);
+  --card: #ffffff;
+  --border: var(--paper-rule);
+  --hairline: var(--paper-rule);
+  --muted: color-mix(in srgb, var(--paper) 86%, var(--foreground) 6%);
+  --fieldset-bg: var(--paper-rule-soft);
+  --shadow-card: 0 1px 2px rgb(24 33 43 / 4%), 0 10px 24px rgb(24 33 43 / 5%);
+}
+
+/* ─── Dark theme overrides — mirrors repo globals.css .dark ─────── */.dark {
+  --background: #12161c;
+  --foreground: #edf1f5;
+  --card: #181d24;
+  --muted: #1c2229;
+  --muted-foreground: #9aa5b1;
+  --border: rgb(255 255 255 / 10%);
+  --hairline: rgb(255 255 255 / 12%);
+  --primary: #39556e;
+  --primary-foreground: #f8fafc;
+  --primary-hover: #4a6885;
+  --ring: #607f99;
+  --destructive: #f87171;
+  --success: #4ade80;
+
+  /* Headings flip to a light, readable ink */
+  --brand-ink: #e6edf8;
+  --brand-ink-soft: #cfd7de;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 30%), 0 12px 28px rgb(0 0 0 / 40%);
+  --fieldset-bg: color-mix(in srgb, white 3%, transparent);
+
+  /* Bold "paper" becomes a slightly lifted neutral dark surface */
+  --paper: #14181f;
+  --paper-rule: rgb(255 255 255 / 14%);
+  --paper-rule-soft: rgb(255 255 255 / 7%);
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+.font-mono { font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace; }
+
+/* Shared resets for artboards */
+.surface {
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ─── Safe direction ────────────────────────────────── */
+.safe {
+  background: var(--background);
+}
+.safe-kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.safe-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+.safe-h1 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--foreground);
+}
+.safe-h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--foreground);
+}
+.safe-body {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.safe-meta {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+}
+.safe-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 22px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  background: var(--primary); color: var(--primary-foreground);
+  border: 1px solid var(--primary);
+  cursor: pointer; transition: background 180ms ease, transform 180ms ease;
+}
+.safe-btn:hover { background: var(--primary-hover); }
+.safe-btn-ghost {
+  background: transparent; color: var(--foreground);
+  border: 1px solid var(--border);
+}
+.safe-btn-ghost:hover { background: var(--muted); }
+.safe-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 36px; padding: 0 14px;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: var(--card);
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.safe-chip:hover { color: var(--foreground); border-color: var(--ring); }
+.safe-chip[data-selected="true"] {
+  background: var(--primary); color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+.safe-fieldset {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--fieldset-bg);
+  padding: 14px 16px;
+}
+
+/* (Bold direction styles intentionally omitted — not used in Direction A) */
+
+/* shared utility */
+.no-scroll { overflow: hidden; }
+.tabular { font-variant-numeric: tabular-nums; }

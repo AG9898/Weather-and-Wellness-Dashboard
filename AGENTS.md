@@ -55,8 +55,7 @@ Participant.
 - **Lab component structure.** Each lab under `docs/labs/<lab-slug>/` is organized by component. The lab `README.md` is the navigation hub. Each component lives in its own subdirectory (`docs/labs/<lab-slug>/<component>/`) and contains its own `API.md`, `DESIGN_SPEC.md`, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: `weather/` and `misokinesia/`.
 - For study-specific research instruments and analysis scripts, use `reference/labs/<lab-slug>/`.
 - For universal UI assets (branding, logos, component mockups), use `reference/UI Reference/`.
-- For UI style, `docs/styleguide.md` is the canonical reference.
-- For 2026 UI direction and redesign scope context, see `docs/UI_REDESIGN_2026.md` (directional; `docs/styleguide.md` remains the current implementation guide).
+- For UI style, `docs/styleguide.md` is the canonical reference. `docs/UI_REDESIGN_2026.md` is historical context only and is not active implementation guidance.
 - For shadcn component usage and CLI patterns, follow `docs/shadcn.md`.
 - For Storybook-driven isolated UI review, story scope, and story authoring expectations, follow `docs/storybook.md`.
 - For the multi-lab data model and onboarding new labs, see `docs/MULTI_LAB.md`.

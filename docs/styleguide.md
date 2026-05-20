@@ -4,12 +4,16 @@
 
 Use this document as the canonical UI style reference for frontend implementation tasks.
 It defines the shared look-and-feel across pages so individual page work stays consistent.
+Do not use `docs/UI_REDESIGN_2026.md` as active implementation guidance; that file is historical.
 
 ## 1) Source References
 
 - Layout and atmosphere reference (do not clone 1:1):
   - `reference/UI Reference/landingpage.html`
   - `reference/UI Reference/landingpage.png`
+- Quiet editorial task/dashboard reference for the Misokinesia redesign (templates, not production code):
+  - `reference/UI Reference/Claude Design/design_handoff_misokinesia_redesign/reference.html`
+  - `reference/UI Reference/Claude Design/design_handoff_misokinesia_redesign/README.md`
 - Brand palette and typography source:
   - `reference/UI Reference/ubc_colour_guide_august_2025.pdf`
 
@@ -28,9 +32,10 @@ It defines the shared look-and-feel across pages so individual page work stays c
 - Quiet, high-contrast typography tuned for long-form task flow.
 - Minimal, deliberate motion; no excessive animation.
 - Clinical/research tone over marketing tone.
+- Editorial hierarchy should come from asymmetric composition, hairline dividers, compact metadata, and intentional whitespace rather than ambient glow effects or stacked decorative cards.
 
 **Phase 4 (implemented):** System-default light/dark toggle is active (default = system).
-- **Light theme (default):** uses this document’s **hex token set** as the source of truth.
+- **Light theme (default):** uses the paper-toned semantic mapping in this document as the source of truth.
 - **Dark theme:** a **tonal dark theme** derived from the light theme hues (same hue family, darker tones, controlled chroma).
 - Theme preference is persisted in `localStorage` and the stored preference overrides system when set.
 - Toggle control is exposed in RA navigation and applies globally to RA + participant pages.
@@ -80,12 +85,14 @@ Theme switching is implemented by swapping **semantic** tokens (shadcn tokens) i
 Brand tokens (`--ubc-*`, `--ink-*`) remain constant across themes; only the semantic mapping changes.
 
 **Light theme rules (default):**
-- Background uses a near-white neutral canvas.
+- Background uses a warm paper canvas (`#fbfaf6`) rather than a cool gray canvas.
 - Cards, popovers, and sidebars use white or near-white neutral surfaces.
 - Text uses dark neutral ink.
 - Primary actions use `--primary`, mapped to `#001328`.
 - Focus rings use `--ring`, a tonal lift of the same hue family.
 - `secondary`, `accent`, and `muted` stay neutral; they are not blue support fills.
+- Borders and hairlines use a slightly stronger ink line (`rgb(24 33 43 / 16%)`) so white cards stay legible on the paper canvas.
+- Question containers and grouped form rows may use `--fieldset-bg` for a subtle ink wash; do not hardcode one-off translucent fills.
 
 **Dark theme rules:**
 - Background uses a charcoal-neutral surface rather than a navy-heavy surface.
@@ -93,6 +100,12 @@ Brand tokens (`--ubc-*`, `--ink-*`) remain constant across themes; only the sema
 - Text uses a soft off-white neutral.
 - `--primary` may be a tonal lift derived from `#001328` so primary actions remain contrast-safe.
 - `secondary`, `accent`, and `muted` stay neutral in dark mode as well.
+
+**Shared semantic additions:**
+- `--brand-ink`: high-contrast brand heading ink. Light maps to `--ubc-video-blue`; dark maps to `#e6edf8`.
+- `--brand-ink-soft`: secondary brand heading ink. Light maps to `--ubc-blue-500`; dark maps to `#cfd7de`.
+- `--hairline`: a low-noise divider color. Light maps to `rgb(24 33 43 / 16%)`; dark maps to `rgb(255 255 255 / 12%)`.
+- `--fieldset-bg`: subtle grouped-question surface. Light maps to `rgb(24 33 43 / 8%)`; dark maps to `color-mix(in srgb, white 3%, transparent)`.
 
 ## 5) Typography
 
@@ -132,6 +145,17 @@ Rules:
 - Metric cards: compact, aligned label/value hierarchy, consistent icon sizing.
 - Activity/data list: low-noise rows, clear separators, muted timestamps.
 - Forms: high legibility, obvious focus state, clear required/invalid states.
+
+### 7.1 Quiet Editorial Pattern
+
+Use this pattern for task flows and operations pages that need more structure than a basic card stack:
+
+- Start with a masthead or step indicator: small uppercase kicker, concise heading, one supporting sentence, and a hairline or progress element.
+- Prefer white cards lifted on the paper canvas, separated rows, and fieldsets over nested cards.
+- Use tabular metadata for counts, clip progress, pane numbers, timestamps, and response completion text.
+- Chips and scale controls should be flat: neutral border + card fill when idle, `bg-primary text-primary-foreground` when selected, and border/text emphasis on hover.
+- Avoid decorative ambient glows for new work. Use shadows, hairlines, and spacing for depth.
+- Treat user-provided HTML/React design files as templates for layout and states; translate them into existing Next.js, Tailwind, shadcn, and lucide patterns.
 
 ## 8) Motion and Interaction
 
@@ -239,3 +263,24 @@ Re-read on theme change by watching `document.documentElement.classList` (via `M
 ```
 
 This token block is a starter; treat these hex values as canonical and map shadcn semantic tokens to a neutral light/dark system with `#001328` as the only branded UI accent family.
+
+The light semantic mapping should use the current paper theme:
+
+```css
+:root {
+  --background: #fbfaf6;
+  --foreground: #18212b;
+  --card: #ffffff;
+  --muted: color-mix(in srgb, #fbfaf6 86%, var(--foreground) 6%);
+  --muted-foreground: #5d6773;
+  --border: rgb(24 33 43 / 16%);
+  --hairline: rgb(24 33 43 / 16%);
+  --primary: var(--ubc-video-blue);
+  --primary-foreground: #f8fafc;
+  --primary-hover: var(--ubc-blue-500);
+  --ring: #36506b;
+  --brand-ink: var(--ubc-video-blue);
+  --brand-ink-soft: var(--ubc-blue-500);
+  --fieldset-bg: rgb(24 33 43 / 8%);
+}
+```
