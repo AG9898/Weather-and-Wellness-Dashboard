@@ -121,7 +121,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Build a standalone backend helper that computes overall and seasonal day-level temperature summaries, histograms, and hot/cold groups.",
-      "description": "Add a dedicated analytics helper module for `temperature_summary` that works from the canonical analytics dataset rows without changing the mixed-model path. The helper should generate `overall`, `fall_winter`, and `spring_summer` windows, count temperature frequencies by unique day using 1\u00b0C bins, and compute strict hot/cold groups from window-specific day-level temperature z-scores.",
+      "description": "Add a dedicated analytics helper module for `temperature_summary` that works from the canonical analytics dataset rows without changing the mixed-model path. The helper should generate `overall`, `fall_winter`, and `spring_summer` windows, count temperature frequencies by unique day using 1°C bins, and compute strict hot/cold groups from window-specific day-level temperature z-scores.",
       "acceptance_criteria": [
         "A standalone backend helper returns `overall`, `fall_winter`, and `spring_summer` summary windows from canonical analytics dataset rows",
         "Frequency bins count unique days rather than participant rows",
@@ -632,7 +632,7 @@
       "description": "Update the temperature summary schema and backend helper so each summary window serializes `cold_threshold_temperature_c`, `hot_threshold_temperature_c`, `threshold_method`, and `threshold_z_cutoff` alongside the existing mean, SD, bins, and hot/cold groups. The new fields must stay aligned with the current window-specific day-level z-score method used for `temperature_z < -2` / `temperature_z > 2`, return `null` thresholds when the window has fewer than two unique days or zero variance, and round-trip through snapshot/live analytics responses without changing mixed-model formulas or extreme-day membership.",
       "acceptance_criteria": [
         "Each populated `temperature_summary.windows[]` item includes `cold_threshold_temperature_c`, `hot_threshold_temperature_c`, `threshold_method`, and `threshold_z_cutoff` in the backend schema and frontend typed response models",
-        "Threshold temperatures are computed from the selected window's descriptive day-level summary stats using `mean_temperature_c \u00b1 (2 * sd_temperature_c)`",
+        "Threshold temperatures are computed from the selected window's descriptive day-level summary stats using `mean_temperature_c ± (2 * sd_temperature_c)`",
         "`threshold_method` serializes as `window_day_zscore_v1` and `threshold_z_cutoff` serializes as `2`",
         "Threshold temperatures are `null` when the window has fewer than 2 unique days or zero day-level temperature variance",
         "Existing `cold_group` / `hot_group` membership remains strict (`temperature_z < -2`, `temperature_z > 2`) and regression coverage fails if that behavior changes",
@@ -829,12 +829,12 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Extend histogram bins with participant-session metadata so the temperature summary chart can support hover drilldown without changing its day-level counting semantics.",
-      "description": "Update the analytics dataset and temperature summary backend contract so each `temperature_summary.windows[].frequency_bins[]` item carries additive `participant_sessions[]` metadata for the participant-session rows that fall into that 1\u00b0C bin. Each row should include `participant_uuid`, RA-facing `participant_number`, `session_id`, and `date_local`. Preserve existing `day_count` behavior as a unique-day measure, keep hot/cold grouping logic unchanged, and round-trip the expanded payload through snapshot/live analytics responses.",
+      "description": "Update the analytics dataset and temperature summary backend contract so each `temperature_summary.windows[].frequency_bins[]` item carries additive `participant_sessions[]` metadata for the participant-session rows that fall into that 1°C bin. Each row should include `participant_uuid`, RA-facing `participant_number`, `session_id`, and `date_local`. Preserve existing `day_count` behavior as a unique-day measure, keep hot/cold grouping logic unchanged, and round-trip the expanded payload through snapshot/live analytics responses.",
       "acceptance_criteria": [
         "Each populated `frequency_bins[]` item includes `participant_sessions[]` in the backend analytics schema and serialized dashboard analytics response",
         "Each `participant_sessions[]` entry includes `participant_uuid`, `participant_number`, `session_id`, and `date_local`",
         "Bin `day_count` remains a day-level count and does not change to participant-row counting",
-        "Participant-session rows are assigned to the same 1\u00b0C floor-based binning rule already used for `day_count` aggregation",
+        "Participant-session rows are assigned to the same 1°C floor-based binning rule already used for `day_count` aggregation",
         "Existing hot/cold groups, threshold fields, and overall temperature-summary window stats remain unchanged",
         "Backend regression coverage verifies the new bin metadata and snapshot/live response serialization"
       ],
@@ -917,10 +917,10 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Use Highcharts point events to drive a React hover list for each histogram bin and a pinned participant demographics panel.",
-      "description": "Refactor `AnalyticsTemperatureSummaryCard` so hovering or tapping a histogram bin reveals a React-rendered hover card listing that bin's `participant_sessions[]` rows as `Participant #<number> \u00b7 <date>`. Clicking a row should load participant demographics through the same-origin helper and render a pinned detail panel next to the chart on desktop and below it on mobile. Keep the current summary stats, threshold overlays, compute/recompute flow, and hot/cold day panels intact, and do not implement session timing or score detail in this first version.",
+      "description": "Refactor `AnalyticsTemperatureSummaryCard` so hovering or tapping a histogram bin reveals a React-rendered hover card listing that bin's `participant_sessions[]` rows as `Participant #<number> · <date>`. Clicking a row should load participant demographics through the same-origin helper and render a pinned detail panel next to the chart on desktop and below it on mobile. Keep the current summary stats, threshold overlays, compute/recompute flow, and hot/cold day panels intact, and do not implement session timing or score detail in this first version.",
       "acceptance_criteria": [
         "Hovering a histogram bin reveals the participant-session rows for that bin using the new `participant_sessions[]` payload",
-        "Each interactive row displays `Participant #<participant_number> \u00b7 <date_local>` and is clickable",
+        "Each interactive row displays `Participant #<participant_number> · <date_local>` and is clickable",
         "The hover surface remains usable while the pointer stays over the active bar or the hover card itself, with a touch-friendly tap path on mobile",
         "Clicking a row loads and renders a pinned participant demographics panel, side-by-side on desktop and stacked below on smaller screens",
         "The implementation uses Highcharts point events plus React state rather than relying on a clickable native chart tooltip",
@@ -1876,10 +1876,10 @@
         "docs/ARCHITECTURE.md"
       ],
       "notes": [
-        "DATABASE_URL and SUPABASE_* vars come from the new ca-central-1 project created in T160 \u2014 do T160 first.",
+        "DATABASE_URL and SUPABASE_* vars come from the new ca-central-1 project created in T160 — do T160 first.",
         "ALLOWED_ORIGINS must include both https://ubcpsych.com and the Vercel preview URL.",
         "Do not set any Railway-specific secrets in the repo. All secrets go in Railway service env only.",
-        "Alembic migrations run in T160 \u2014 this task only deploys the app process.",
+        "Alembic migrations run in T160 — this task only deploys the app process.",
         "T160 output: new Supabase project is `ubcpsych` (`gqtsjkqugvhmidzdghsr`) in `ca-central-1`; local-only runtime values are in ignored `.supabase-migration-secrets/t160-new-project-env.txt`.",
         "For Railway `DATABASE_URL`, prefer a direct or session-compatible connection for asyncpg, or add asyncpg prepared-statement cache disabling if using the transaction pooler; verification hit PgBouncer duplicate prepared statement errors through the transaction pooler.",
         "The new Supabase project serves ES256 JWKS at `/auth/v1/.well-known/jwks.json`; the app supports JWKS as the primary auth verification path. `SUPABASE_JWT_SECRET` was not exported by the Management API and is only needed for HS256 fallback.",
@@ -1902,7 +1902,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Create the replacement Supabase project in the Canada Central region, run all Alembic migrations, configure auth settings, and recreate the misokinesia storage bucket.",
-      "description": "Use the Supabase CLI to create a new project in the ca-central-1 region. Copy the new project's DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_JWT_SECRET values and record them for T159 and T161. Run `alembic upgrade head` against the new DATABASE_URL to apply the full schema. In the Supabase Auth dashboard for the new project, disable public sign-ups (Authentication > Providers > Email > disable 'Allow new users to sign up'). Create the `misokinesia-stimuli` public storage bucket in the new project. Do not migrate any data in this task \u2014 data migration is T163 (manual).",
+      "description": "Use the Supabase CLI to create a new project in the ca-central-1 region. Copy the new project's DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_JWT_SECRET values and record them for T159 and T161. Run `alembic upgrade head` against the new DATABASE_URL to apply the full schema. In the Supabase Auth dashboard for the new project, disable public sign-ups (Authentication > Providers > Email > disable 'Allow new users to sign up'). Create the `misokinesia-stimuli` public storage bucket in the new project. Do not migrate any data in this task — data migration is T163 (manual).",
       "acceptance_criteria": [
         "New Supabase project exists in ca-central-1 region",
         "alembic upgrade head completes without errors against the new DATABASE_URL",
@@ -1920,9 +1920,9 @@
         "docs/ARCHITECTURE.md"
       ],
       "notes": [
-        "This task creates an empty schema only \u2014 no data rows are moved here.",
+        "This task creates an empty schema only — no data rows are moved here.",
         "The old Supabase project remains live and untouched until T166 (manual cutover) completes.",
-        "Auth user records are NOT migrated here \u2014 that is T164 (manual).",
+        "Auth user records are NOT migrated here — that is T164 (manual).",
         "Storage bucket policy must be public to match the existing misokinesia-stimuli setup (see T115).",
         "Completed 2026-05-17: created Supabase project `ubcpsych` in `ca-central-1` with ref `gqtsjkqugvhmidzdghsr`.",
         "Alembic migrations applied successfully to head `20260513_000001`; all expected public app tables verified present.",
@@ -1945,7 +1945,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Update Vercel preview environment variables to point at the Railway backend and new ca-central-1 Supabase project, then deploy a preview build to confirm it connects.",
-      "description": "Using the Vercel CLI, set the following env vars on the Vercel project for the Preview environment only (do not touch Production until T166): NEXT_PUBLIC_API_URL \u2192 Railway service URL from T159; NEXT_PUBLIC_SUPABASE_URL \u2192 new Supabase project URL from T160; NEXT_PUBLIC_SUPABASE_ANON_KEY \u2192 new Supabase anon key from T160. The KV/Upstash vars (KV_REST_API_URL, KV_REST_API_TOKEN, KV_REST_API_READ_ONLY_TOKEN, KV_URL, REDIS_URL) remain unchanged \u2014 they are managed by the Vercel integration and are not project-specific. Deploy a preview build and confirm the frontend loads without 500 errors and the login page renders.",
+      "description": "Using the Vercel CLI, set the following env vars on the Vercel project for the Preview environment only (do not touch Production until T166): NEXT_PUBLIC_API_URL → Railway service URL from T159; NEXT_PUBLIC_SUPABASE_URL → new Supabase project URL from T160; NEXT_PUBLIC_SUPABASE_ANON_KEY → new Supabase anon key from T160. The KV/Upstash vars (KV_REST_API_URL, KV_REST_API_TOKEN, KV_REST_API_READ_ONLY_TOKEN, KV_URL, REDIS_URL) remain unchanged — they are managed by the Vercel integration and are not project-specific. Deploy a preview build and confirm the frontend loads without 500 errors and the login page renders.",
       "acceptance_criteria": [
         "Vercel Preview env has NEXT_PUBLIC_API_URL pointing to Railway service URL",
         "Vercel Preview env has NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY pointing to new ca-central-1 project",
@@ -1964,7 +1964,7 @@
         "docs/ARCHITECTURE.md"
       ],
       "notes": [
-        "Only touch Preview env \u2014 production cutover is T166 (manual approval required).",
+        "Only touch Preview env — production cutover is T166 (manual approval required).",
         "KV/Upstash vars are injected by the Vercel marketplace integration and are not Supabase-project-specific; do not touch them.",
         "SUPABASE_SERVICE_ROLE_KEY and SUPABASE_JWT_SECRET are backend-only; do not add them to Vercel frontend env.",
         "T160 output: Vercel Preview Supabase values should come from ignored `.supabase-migration-secrets/t160-new-project-env.txt` (`SUPABASE_URL` and `SUPABASE_ANON_KEY`) for project `ubcpsych` / ref `gqtsjkqugvhmidzdghsr`.",
@@ -1989,7 +1989,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Verify the Railway backend and new Supabase project behave correctly end-to-end via the Vercel preview deployment before any production cutover.",
-      "description": "Against the preview stack (Railway backend + new ca-central-1 Supabase), run the following smoke checks: (1) GET /health on Railway returns 200; (2) the backend scoring endpoints return correct results for known fixture inputs using the existing pytest suite; (3) the preview frontend login page can reach the backend (check network tab / CORS); (4) GET /dashboard/study-window returns a valid response; (5) the analytics endpoint returns a typed response (even if no data yet, it must not 500). Do not test with real participant data \u2014 use fixture inputs only. Report any failures before T163 proceeds.",
+      "description": "Against the preview stack (Railway backend + new ca-central-1 Supabase), run the following smoke checks: (1) GET /health on Railway returns 200; (2) the backend scoring endpoints return correct results for known fixture inputs using the existing pytest suite; (3) the preview frontend login page can reach the backend (check network tab / CORS); (4) GET /dashboard/study-window returns a valid response; (5) the analytics endpoint returns a typed response (even if no data yet, it must not 500). Do not test with real participant data — use fixture inputs only. Report any failures before T163 proceeds.",
       "acceptance_criteria": [
         "GET /health on Railway returns 200 {\"status\":\"ok\"}",
         "Backend pytest suite passes against the new DATABASE_URL",
@@ -2007,7 +2007,7 @@
         "docs/TESTING.md"
       ],
       "notes": [
-        "The new DB has no session data yet \u2014 smoke tests should not rely on existing rows.",
+        "The new DB has no session data yet — smoke tests should not rely on existing rows.",
         "If CORS errors appear, verify ALLOWED_ORIGINS on Railway includes the Vercel preview URL.",
         "Do not proceed to T163 if any smoke test fails."
       ],
@@ -2043,10 +2043,10 @@
         "docs/SCHEMA.md"
       ],
       "notes": [
-        "MANUAL TASK \u2014 requires human decision on freeze window timing and lab team coordination.",
-        "Exclude the `auth` schema from pg_dump \u2014 Supabase manages auth.users internally; auth migration is T164.",
+        "MANUAL TASK — requires human decision on freeze window timing and lab team coordination.",
+        "Exclude the `auth` schema from pg_dump — Supabase manages auth.users internally; auth migration is T164.",
         "Use the Transaction pooler DATABASE_URL (not the direct connection) for both dump and restore.",
-        "If row counts do not match, investigate before proceeding \u2014 do not continue with a partial dataset.",
+        "If row counts do not match, investigate before proceeding — do not continue with a partial dataset.",
         "The old Supabase project must remain live and unchanged until T166 completes.",
         "A retained T162 smoke-test RA user exists in the new Supabase project for preview-stack verification: `ww-smoke-1779063058-28916@example.invalid` / user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`. Credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`; do not commit them."
       ],
@@ -2105,7 +2105,7 @@
       "priority": "high",
       "type": "manual",
       "summary": "Human-supervised: copy all 29 misokinesia video clips from the old project's misokinesia-stimuli bucket to the new ca-central-1 project's bucket and verify all CDN URLs resolve.",
-      "description": "The misokinesia-stimuli storage bucket exists in the old Supabase project and cannot be transferred by pg_dump. The project owner must: (1) list all objects in the old project's misokinesia-stimuli bucket (should be 29 video clips); (2) download each object or use supabase CLI / storage API to copy them to the new project's misokinesia-stimuli bucket (created in T160); (3) confirm the new bucket is public and the CDN URLs follow the same path pattern as the old project; (4) spot-check at least 3 clip URLs to confirm they load. The misokinesia_participants.stimulus_url values in the DB (migrated in T163) still point to old CDN URLs \u2014 the project owner must decide whether to run a one-off URL rewrite query or accept that old session rows keep old URLs.",
+      "description": "The misokinesia-stimuli storage bucket exists in the old Supabase project and cannot be transferred by pg_dump. The project owner must: (1) list all objects in the old project's misokinesia-stimuli bucket (should be 29 video clips); (2) download each object or use supabase CLI / storage API to copy them to the new project's misokinesia-stimuli bucket (created in T160); (3) confirm the new bucket is public and the CDN URLs follow the same path pattern as the old project; (4) spot-check at least 3 clip URLs to confirm they load. The misokinesia_participants.stimulus_url values in the DB (migrated in T163) still point to old CDN URLs — the project owner must decide whether to run a one-off URL rewrite query or accept that old session rows keep old URLs.",
       "acceptance_criteria": [
         "All 29 video clips exist in the new project's misokinesia-stimuli bucket",
         "New bucket is public and CDN URLs resolve for spot-checked clips",
@@ -2121,7 +2121,7 @@
         "docs/labs/weather-wellness/tasks/MISOKINESIA.md"
       ],
       "notes": [
-        "MANUAL TASK \u2014 requires human to verify asset counts and CDN URL format match.",
+        "MANUAL TASK — requires human to verify asset counts and CDN URL format match.",
         "This task can run in parallel with T163 and T164 since it does not depend on the data migration.",
         "If the new project CDN URL format differs from the old one, a one-off SQL UPDATE on misokinesia_participants.stimulus_url may be needed before production cutover.",
         "The supabase CLI `supabase storage cp` command can bulk-copy objects between projects if both are accessible.",
@@ -2170,9 +2170,9 @@
         "docs/ENV_VARS.md"
       ],
       "notes": [
-        "MANUAL TASK \u2014 requires explicit project owner go/no-go approval before any production env var is changed.",
+        "MANUAL TASK — requires explicit project owner go/no-go approval before any production env var is changed.",
         "Rollback plan: if the production site is unhealthy after cutover, revert NEXT_PUBLIC_API_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY to old values and redeploy. The old Render service must remain live until this task completes.",
-        "Update WEATHER_INGEST_BASE_URL in GitHub Actions secrets (repo Settings \u2192 Secrets) to the Railway URL, or the daily weather ingestion job will keep hitting Render.",
+        "Update WEATHER_INGEST_BASE_URL in GitHub Actions secrets (repo Settings → Secrets) to the Railway URL, or the daily weather ingestion job will keep hitting Render.",
         "Do not decommission Render or the old Supabase project until T167 is done.",
         "T164 handoff: after production env cutover is healthy, send RA/admin invites with `cd backend && PYTHONPATH=. .venv/bin/python admin_cli/invite_user.py --use-railway-env --email <user> --role <role> --lab-name <lab> --site-url https://ubcpsych.com --created-by-lab-member-id 5f77f0a4-6cbb-4544-b249-35809e48dff7`; verify metadata and login before considering auth migration complete.",
         "Before approving production cutover, decide whether to keep, disable, or delete the retained T162 smoke-test RA user (`ww-smoke-1779063058-28916@example.invalid`, user id `f52b16ea-7c00-4d20-8a8d-28cb27e59b4b`). Credentials are local-only in `.supabase-migration-secrets/t162-smoke-user.txt`.",
@@ -2197,7 +2197,7 @@
       "priority": "medium",
       "type": "implementation",
       "summary": "Remove the Render keep-alive GitHub Actions workflow, decommission the Render service, and update ARCHITECTURE.md and ENV_VARS.md to reflect the Railway + ca-central-1 Supabase as the live stack.",
-      "description": "Now that production is running on Railway and new Supabase (T166 complete): (1) delete `.github/workflows/render-keepalive.yml`; (2) decommission the Render service via the Render CLI or dashboard; (3) update `docs/ARCHITECTURE.md` \u2014 change the deployment state split header to reflect Vercel + Railway + ca-central-1 Supabase as the live stack, remove the 'Render current' labels from the Backend section, remove the 'Current Backend Deployment (Render)' subsection and render-keepalive workflow description, update the Planned Railway Setup section to mark it as the current live setup; (4) update `docs/ENV_VARS.md` \u2014 change 'Where set' note from Render to Railway; (5) commit all changes together.",
+      "description": "Now that production is running on Railway and new Supabase (T166 complete): (1) delete `.github/workflows/render-keepalive.yml`; (2) decommission the Render service via the Render CLI or dashboard; (3) update `docs/ARCHITECTURE.md` — change the deployment state split header to reflect Vercel + Railway + ca-central-1 Supabase as the live stack, remove the 'Render current' labels from the Backend section, remove the 'Current Backend Deployment (Render)' subsection and render-keepalive workflow description, update the Planned Railway Setup section to mark it as the current live setup; (4) update `docs/ENV_VARS.md` — change 'Where set' note from Render to Railway; (5) commit all changes together.",
       "acceptance_criteria": [
         ".github/workflows/render-keepalive.yml no longer exists in the repo",
         "Render service is decommissioned",
@@ -2238,7 +2238,7 @@
       "title": "Miso post-video surveys - Schema migration & session-start changes",
       "status": "done",
       "priority": "high",
-      "description": "CONTINUATION TASK \u2014 all implementation files are already modified (uncommitted changes in working tree). Do NOT re-implement from scratch. The migration file exists at backend/alembic/versions/20260518_000001_miso_post_survey_schema.py, all backend and frontend files are updated, and the frontend build is clean. Only 2 tests are failing in GetTrialManifestTests. Root cause: get_trial_manifest has `full: bool = Query(False)` in its signature; when tests call the function directly (bypassing FastAPI), `full` receives the FieldInfo object which is truthy \u2014 so _shuffle_stimuli runs instead of _sample_trial_stimuli. Fix: change the signature to `full: bool = False` (plain default) and add `full: bool = Query(False)` as a separate FastAPI route-level annotation, OR simply change to `full: bool = False` since Query() is not needed for direct-call testability. After fixing, verify: (1) test_raises_409_when_fewer_than_five_active_stimuli_exist passes, (2) test_returns_five_sampled_clips_with_public_urls_and_no_writes passes. Then run `cd backend && PYTHONPATH=. alembic upgrade head` to apply the migration against the real database. Then commit all staged changes (migration file + all modified files) as one commit and mark T168 done.",
+      "description": "CONTINUATION TASK — all implementation files are already modified (uncommitted changes in working tree). Do NOT re-implement from scratch. The migration file exists at backend/alembic/versions/20260518_000001_miso_post_survey_schema.py, all backend and frontend files are updated, and the frontend build is clean. Only 2 tests are failing in GetTrialManifestTests. Root cause: get_trial_manifest has `full: bool = Query(False)` in its signature; when tests call the function directly (bypassing FastAPI), `full` receives the FieldInfo object which is truthy — so _shuffle_stimuli runs instead of _sample_trial_stimuli. Fix: change the signature to `full: bool = False` (plain default) and add `full: bool = Query(False)` as a separate FastAPI route-level annotation, OR simply change to `full: bool = False` since Query() is not needed for direct-call testability. After fixing, verify: (1) test_raises_409_when_fewer_than_five_active_stimuli_exist passes, (2) test_returns_five_sampled_clips_with_public_urls_and_no_writes passes. Then run `cd backend && PYTHONPATH=. alembic upgrade head` to apply the migration against the real database. Then commit all staged changes (migration file + all modified files) as one commit and mark T168 done.",
       "acceptance_criteria": [
         "alembic upgrade head applies cleanly: misokinesia_participants has post_survey_order column, mkaq_administration is dropped, misokinesia_gad7_responses and misokinesia_maq_responses tables exist",
         "POST /misokinesia/start response includes post_survey_order (comma-separated string) and omits mkaq_administration",
@@ -2276,7 +2276,7 @@
       "title": "Miso post-video surveys - New schemas, models, and survey endpoints",
       "status": "done",
       "priority": "high",
-      "description": "Add Pydantic schemas to backend/app/schemas/misokinesia.py: MisoGAD7Create (r1-r7, int 1-4), MisoGAD7Response (response_id, total_score, severity_band), MisoMAQCreate (q1-q21, int 0-3), MisoMAQResponse (response_id, total_score). Add ORM models to backend/app/models/misokinesia.py: MisokinesiaGAD7Response and MisokinesiaMAQResponse (matching the planned tables in docs/SCHEMA.md). Add POST /misokinesia/participants/{id}/gad7 endpoint: guard requires completed_at set, reuse backend/app/scoring/gad7.py::score_gad7(), write to misokinesia_gad7_responses, return 409 on duplicate. Add POST /misokinesia/participants/{id}/maq endpoint: guard requires completed_at set, total_score = sum(q1..q21), write to misokinesia_maq_responses, return 409 on duplicate. Do not change existing endpoint guards in this task \u2014 those are in T173.",
+      "description": "Add Pydantic schemas to backend/app/schemas/misokinesia.py: MisoGAD7Create (r1-r7, int 1-4), MisoGAD7Response (response_id, total_score, severity_band), MisoMAQCreate (q1-q21, int 0-3), MisoMAQResponse (response_id, total_score). Add ORM models to backend/app/models/misokinesia.py: MisokinesiaGAD7Response and MisokinesiaMAQResponse (matching the planned tables in docs/SCHEMA.md). Add POST /misokinesia/participants/{id}/gad7 endpoint: guard requires completed_at set, reuse backend/app/scoring/gad7.py::score_gad7(), write to misokinesia_gad7_responses, return 409 on duplicate. Add POST /misokinesia/participants/{id}/maq endpoint: guard requires completed_at set, total_score = sum(q1..q21), write to misokinesia_maq_responses, return 409 on duplicate. Do not change existing endpoint guards in this task — those are in T173.",
       "acceptance_criteria": [
         "POST /misokinesia/participants/{id}/gad7 returns 201 with response_id, total_score, severity_band",
         "POST /misokinesia/participants/{id}/maq returns 201 with response_id, total_score",
@@ -2310,7 +2310,7 @@
       "title": "Miso post-video surveys - Guard updates and test coverage",
       "status": "done",
       "priority": "high",
-      "description": "Update three existing guards in backend/app/routers/misokinesia.py: (1) POST /misokinesia/participants/{id}/responses \u2014 remove the mkaq_administration='pre' guard entirely; (2) POST /misokinesia/participants/{id}/mkaq \u2014 remove the null-administration 409 guard; unconditionally require completed_at (MkAQ is always post-video now); (3) PATCH /misokinesia/participants/{id}/end-of-task \u2014 replace the mkaq_administration='post' MkAQ check with a check that all three response rows exist (mkaq + gad7 + maq). Write or update tests in backend/tests/test_misokinesia.py to cover: new gad7 endpoint (happy path, 409 guard, 409 duplicate), new maq endpoint (happy path, 409 guard, 409 duplicate), mkaq guard now always requires completed_at, end-of-task now requires all three surveys.",
+      "description": "Update three existing guards in backend/app/routers/misokinesia.py: (1) POST /misokinesia/participants/{id}/responses — remove the mkaq_administration='pre' guard entirely; (2) POST /misokinesia/participants/{id}/mkaq — remove the null-administration 409 guard; unconditionally require completed_at (MkAQ is always post-video now); (3) PATCH /misokinesia/participants/{id}/end-of-task — replace the mkaq_administration='post' MkAQ check with a check that all three response rows exist (mkaq + gad7 + maq). Write or update tests in backend/tests/test_misokinesia.py to cover: new gad7 endpoint (happy path, 409 guard, 409 duplicate), new maq endpoint (happy path, 409 guard, 409 duplicate), mkaq guard now always requires completed_at, end-of-task now requires all three surveys.",
       "acceptance_criteria": [
         "POST /misokinesia/participants/{id}/responses no longer returns 409 for pre-MkAQ check",
         "POST /misokinesia/participants/{id}/mkaq returns 409 until completed_at is set (regardless of old administration field)",
@@ -2366,7 +2366,7 @@
       "title": "Miso post-video surveys - MisokinesiaMAQForm component",
       "status": "done",
       "priority": "high",
-      "description": "Create frontend/src/lib/components/MisokinesiaMAQForm.tsx. Model it on MisokinesiaMkaqForm.tsx \u2014 same card carousel pattern, same 0-3 scale, same Previous/Next/Submit pane navigation logic. Props: onSubmit(answers: Record<string, number>): void; submitting: boolean; error: string | null; itemCount?: number (default 21, trial short uses 10). Production panes: q1-q7, q8-q14, q15-q21. Trial panes (itemCount=10): q1-q5, q6-q10. Use 'sound issues' wording from the 21 MAQ items listed in docs/labs/weather-wellness/tasks/MISOKINESIA.md. Export MAQ_ITEMS constant (array of {id, text}) for use in tests and trial mode. No participant page wiring in this task.",
+      "description": "Create frontend/src/lib/components/MisokinesiaMAQForm.tsx. Model it on MisokinesiaMkaqForm.tsx — same card carousel pattern, same 0-3 scale, same Previous/Next/Submit pane navigation logic. Props: onSubmit(answers: Record<string, number>): void; submitting: boolean; error: string | null; itemCount?: number (default 21, trial short uses 10). Production panes: q1-q7, q8-q14, q15-q21. Trial panes (itemCount=10): q1-q5, q6-q10. Use 'sound issues' wording from the 21 MAQ items listed in docs/labs/weather-wellness/tasks/MISOKINESIA.md. Export MAQ_ITEMS constant (array of {id, text}) for use in tests and trial mode. No participant page wiring in this task.",
       "acceptance_criteria": [
         "cd frontend && npm run build passes with no TypeScript errors",
         "MisokinesiaMAQForm renders all 21 items in three panes (q1-q7, q8-q14, q15-q21) by default",
@@ -2394,7 +2394,7 @@
       "title": "Miso post-video surveys - GAD-7 form and participant page wiring",
       "status": "done",
       "priority": "high",
-      "description": "Create frontend/src/lib/components/MisokinesiaGAD7Form.tsx using the shared SurveyForm component (src/lib/components/SurveyForm.tsx). Props: onSubmit(answers): void; submitting: boolean; error: string | null. Items and scale match the GAD-7 items in docs/labs/weather-wellness/tasks/MISOKINESIA.md (7 items, scale 1-4). Then update frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx: add Phase variants 'gad7' and 'maq'; add surveyOrder: PostSurveyKey[] and surveyIndex: number state; on manifest load call parseSurveyOrder(manifest.post_survey_order) \u2192 setSurveyOrder; replace the getPhaseAfterBegin(mkaqAdministration) call with getPhaseAfterBegin(); after is_complete=true from clip responses call getPhaseAfterVideoComplete(surveyOrder) and set phase; after each survey submit call getNextPostSurveyPhase(surveyOrder, surveyIndex) and increment surveyIndex; render MisokinesiaGAD7Form when phase='gad7' and MisokinesiaMAQForm when phase='maq'; remove all mkaqAdministration references.",
+      "description": "Create frontend/src/lib/components/MisokinesiaGAD7Form.tsx using the shared SurveyForm component (src/lib/components/SurveyForm.tsx). Props: onSubmit(answers): void; submitting: boolean; error: string | null. Items and scale match the GAD-7 items in docs/labs/weather-wellness/tasks/MISOKINESIA.md (7 items, scale 1-4). Then update frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx: add Phase variants 'gad7' and 'maq'; add surveyOrder: PostSurveyKey[] and surveyIndex: number state; on manifest load call parseSurveyOrder(manifest.post_survey_order) → setSurveyOrder; replace the getPhaseAfterBegin(mkaqAdministration) call with getPhaseAfterBegin(); after is_complete=true from clip responses call getPhaseAfterVideoComplete(surveyOrder) and set phase; after each survey submit call getNextPostSurveyPhase(surveyOrder, surveyIndex) and increment surveyIndex; render MisokinesiaGAD7Form when phase='gad7' and MisokinesiaMAQForm when phase='maq'; remove all mkaqAdministration references.",
       "acceptance_criteria": [
         "cd frontend && npm run build passes with no TypeScript errors",
         "No mkaqAdministration or getPhaseAfterMkaqComplete references remain in the participant page",
@@ -2425,7 +2425,7 @@
       "title": "Miso post-video surveys - Short Trial mode updates",
       "status": "done",
       "priority": "medium",
-      "description": "Update frontend/src/lib/trial-mode.ts: remove createTrialMkaqAdministration(); add MisokinesiaTrialMode = 'short' | 'full' type; add createTrialSurveyOrder(): PostSurveyKey[] (random permutation of ['mkaq','gad7','maq']); add TRIAL_MAQ_ITEM_COUNT = 10; update createTrialRunMisokinesiaManifest() to accept mode param and use post_survey_order from createTrialSurveyOrder(). Update RA launch page frontend/src/app/(ra)/misokinesia/page.tsx: rename handleStartTrial() \u2192 handleStartShortTrial() and wire it to the 'Run Short Trial' button (button label update only \u2014 full trial button added in T172). In participant page, pass TRIAL_MKAQ_ITEM_COUNT to MisokinesiaMkaqForm and TRIAL_MAQ_ITEM_COUNT to MisokinesiaMAQForm when trialMode is true (short trial). GAD-7 shows all 7 items in short trial \u2014 no itemCount restriction needed.",
+      "description": "Update frontend/src/lib/trial-mode.ts: remove createTrialMkaqAdministration(); add MisokinesiaTrialMode = 'short' | 'full' type; add createTrialSurveyOrder(): PostSurveyKey[] (random permutation of ['mkaq','gad7','maq']); add TRIAL_MAQ_ITEM_COUNT = 10; update createTrialRunMisokinesiaManifest() to accept mode param and use post_survey_order from createTrialSurveyOrder(). Update RA launch page frontend/src/app/(ra)/misokinesia/page.tsx: rename handleStartTrial() → handleStartShortTrial() and wire it to the 'Run Short Trial' button (button label update only — full trial button added in T172). In participant page, pass TRIAL_MKAQ_ITEM_COUNT to MisokinesiaMkaqForm and TRIAL_MAQ_ITEM_COUNT to MisokinesiaMAQForm when trialMode is true (short trial). GAD-7 shows all 7 items in short trial — no itemCount restriction needed.",
       "acceptance_criteria": [
         "cd frontend && npm run build passes with no TypeScript errors",
         "MisokinesiaTrialMode type exported from trial-mode.ts",
@@ -2458,7 +2458,7 @@
       "title": "Miso post-video surveys - Full Trial mode & RA launch UI",
       "status": "done",
       "priority": "medium",
-      "description": "Add Full Trial mode to the RA launch page and participant flow. RA launch page (/misokinesia): replace single 'Run Test Trial' button with two distinct buttons \u2014 'Run Short Trial' (existing behaviour) and 'Run Full Trial'. handleStartFullTrial(): call GET /misokinesia/trial-manifest?full=true, build a full manifest with createTrialRunMisokinesiaManifest('full'), navigate to participant page. Participant page: detect trial mode type from manifest (clip count or explicit flag); in full trial mode pass full item counts to MisokinesiaMkaqForm (21) and MisokinesiaMAQForm (21). All submits remain local-only simulated transitions \u2014 no DB writes in full trial.",
+      "description": "Add Full Trial mode to the RA launch page and participant flow. RA launch page (/misokinesia): replace single 'Run Test Trial' button with two distinct buttons — 'Run Short Trial' (existing behaviour) and 'Run Full Trial'. handleStartFullTrial(): call GET /misokinesia/trial-manifest?full=true, build a full manifest with createTrialRunMisokinesiaManifest('full'), navigate to participant page. Participant page: detect trial mode type from manifest (clip count or explicit flag); in full trial mode pass full item counts to MisokinesiaMkaqForm (21) and MisokinesiaMAQForm (21). All submits remain local-only simulated transitions — no DB writes in full trial.",
       "acceptance_criteria": [
         "npm run build passes with no TypeScript errors",
         "/misokinesia RA page shows both 'Run Short Trial' and 'Run Full Trial' buttons",
@@ -2497,7 +2497,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Fix all relative links within the moved and split docs so no link is broken after T176.",
-      "description": "After T176 moves files into subdirectories, relative links inside those files must be updated. Key fixes: weather/SCORING.md links to tasks/DIGITSPAN.md and surveys/*.md remain valid (same subdirectory tree, no change needed \u2014 verify). weather/WEATHER_INGESTION.md ref to HISTORICAL_WEATHER_BACKFILL.md \u2192 ./HISTORICAL_WEATHER_BACKFILL.md (same dir, verify). weather/HISTORICAL_WEATHER_BACKFILL.md ref to API.md \u2192 ./API.md. misokinesia/MISOKINESIA.md refs to API.md \u2192 ./API.md. misokinesia/DESIGN_SPEC.md ref to tasks/MISOKINESIA.md \u2192 ./MISOKINESIA.md; ref to tasks/DIGITSPAN.md \u2192 ../weather/tasks/DIGITSPAN.md. weather/DESIGN_SPEC.md refs to tasks/DIGITSPAN.md \u2192 ./tasks/DIGITSPAN.md and tasks/MISOKINESIA.md \u2192 ../misokinesia/MISOKINESIA.md. weather/API.md ref to ANALYTICS.md \u2192 ./ANALYTICS.md and WEATHER_INGESTION.md \u2192 ./WEATHER_INGESTION.md. Also verify survey docs' relative links (they reference each other and SCORING.md from within weather/surveys/ \u2014 depths changed).",
+      "description": "After T176 moves files into subdirectories, relative links inside those files must be updated. Key fixes: weather/SCORING.md links to tasks/DIGITSPAN.md and surveys/*.md remain valid (same subdirectory tree, no change needed — verify). weather/WEATHER_INGESTION.md ref to HISTORICAL_WEATHER_BACKFILL.md → ./HISTORICAL_WEATHER_BACKFILL.md (same dir, verify). weather/HISTORICAL_WEATHER_BACKFILL.md ref to API.md → ./API.md. misokinesia/MISOKINESIA.md refs to API.md → ./API.md. misokinesia/DESIGN_SPEC.md ref to tasks/MISOKINESIA.md → ./MISOKINESIA.md; ref to tasks/DIGITSPAN.md → ../weather/tasks/DIGITSPAN.md. weather/DESIGN_SPEC.md refs to tasks/DIGITSPAN.md → ./tasks/DIGITSPAN.md and tasks/MISOKINESIA.md → ../misokinesia/MISOKINESIA.md. weather/API.md ref to ANALYTICS.md → ./ANALYTICS.md and WEATHER_INGESTION.md → ./WEATHER_INGESTION.md. Also verify survey docs' relative links (they reference each other and SCORING.md from within weather/surveys/ — depths changed).",
       "acceptance_criteria": [
         "grep -r 'tasks/MISOKINESIA.md' docs/labs/weather-wellness/weather/ returns no hits",
         "grep -r 'tasks/DIGITSPAN.md' docs/labs/weather-wellness/misokinesia/ returns no hits",
@@ -2518,7 +2518,7 @@
         "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
       ],
       "docs": [],
-      "notes": "surveys/ moves wholesale into weather/surveys/ \u2014 relative paths within survey docs (e.g. links back to SCORING.md) need depth adjustment from ../../SCORING.md to ../SCORING.md.",
+      "notes": "surveys/ moves wholesale into weather/surveys/ — relative paths within survey docs (e.g. links back to SCORING.md) need depth adjustment from ../../SCORING.md to ../SCORING.md.",
       "commands": [
         "grep -rn '\\.\\./' docs/labs/weather-wellness/weather/ | grep -v '.git'",
         "grep -rn '\\.\\./' docs/labs/weather-wellness/misokinesia/ | grep -v '.git'"
@@ -2533,7 +2533,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Update all references to old flat weather-wellness paths in ARCHITECTURE.md, CONVENTIONS.md, DECISIONS.md, TESTING.md, and SCHEMA.md.",
-      "description": "Replace stale paths in five platform-level docs. ARCHITECTURE.md: 3x refs to API.md \u2192 route WW refs to weather/API.md and miso refs to misokinesia/API.md; 2x ANALYTICS.md \u2192 weather/ANALYTICS.md; 2x WEATHER_INGESTION.md \u2192 weather/WEATHER_INGESTION.md. CONVENTIONS.md: 3x API.md refs \u2192 weather/API.md; 1x WEATHER_INGESTION.md \u2192 weather/WEATHER_INGESTION.md. DECISIONS.md: 8x API.md refs \u2014 update each by context (WW decision impacts \u2192 weather/API.md, miso decision impacts \u2192 misokinesia/API.md); 2x WEATHER_INGESTION.md \u2192 weather/WEATHER_INGESTION.md; 1x tasks/MISOKINESIA.md \u2192 misokinesia/MISOKINESIA.md; 1x DESIGN_SPEC.md \u2192 weather/DESIGN_SPEC.md or misokinesia/DESIGN_SPEC.md by context. TESTING.md: 1x API.md \u2192 weather/API.md; 1x ANALYTICS.md \u2192 weather/ANALYTICS.md. SCHEMA.md: 1x WEATHER_INGESTION.md \u2192 weather/WEATHER_INGESTION.md; 1x ANALYTICS.md \u2192 weather/ANALYTICS.md.",
+      "description": "Replace stale paths in five platform-level docs. ARCHITECTURE.md: 3x refs to API.md → route WW refs to weather/API.md and miso refs to misokinesia/API.md; 2x ANALYTICS.md → weather/ANALYTICS.md; 2x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md. CONVENTIONS.md: 3x API.md refs → weather/API.md; 1x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md. DECISIONS.md: 8x API.md refs — update each by context (WW decision impacts → weather/API.md, miso decision impacts → misokinesia/API.md); 2x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md; 1x tasks/MISOKINESIA.md → misokinesia/MISOKINESIA.md; 1x DESIGN_SPEC.md → weather/DESIGN_SPEC.md or misokinesia/DESIGN_SPEC.md by context. TESTING.md: 1x API.md → weather/API.md; 1x ANALYTICS.md → weather/ANALYTICS.md. SCHEMA.md: 1x WEATHER_INGESTION.md → weather/WEATHER_INGESTION.md; 1x ANALYTICS.md → weather/ANALYTICS.md.",
       "acceptance_criteria": [
         "grep 'labs/weather-wellness/API.md' docs/ARCHITECTURE.md docs/CONVENTIONS.md docs/DECISIONS.md docs/TESTING.md docs/SCHEMA.md returns zero hits",
         "grep 'labs/weather-wellness/ANALYTICS.md' docs/ARCHITECTURE.md docs/TESTING.md docs/SCHEMA.md returns zero hits",
@@ -2552,7 +2552,7 @@
         "docs/SCHEMA.md"
       ],
       "docs": [],
-      "notes": "Read each file fully before editing \u2014 DECISIONS.md has 8 API.md refs and each must be routed to the correct component doc by decision context.",
+      "notes": "Read each file fully before editing — DECISIONS.md has 8 API.md refs and each must be routed to the correct component doc by decision context.",
       "commands": [
         "grep -n 'labs/weather-wellness/API.md' docs/ARCHITECTURE.md docs/CONVENTIONS.md docs/DECISIONS.md docs/TESTING.md docs/SCHEMA.md",
         "grep -rn 'labs/weather-wellness/ANALYTICS.md\\|labs/weather-wellness/WEATHER_INGESTION.md\\|tasks/MISOKINESIA.md' docs/ARCHITECTURE.md docs/CONVENTIONS.md docs/DECISIONS.md docs/TESTING.md docs/SCHEMA.md"
@@ -2567,7 +2567,7 @@
       "priority": "high",
       "type": "implementation",
       "summary": "Update the four navigation and standards docs so all routing points to the new component structure and the lab component pattern is documented as the canonical standard.",
-      "description": "INDEX.md: replace the flat weather-wellness doc table with two subsections (Weather component, Misokinesia component), each listing their docs with new paths. docs/labs/weather-wellness/README.md: rewrite as a navigation hub with two component sections \u2014 Weather and Misokinesia \u2014 each with a doc table matching the new structure; remove the old flat doc table. AGENTS.md (canonical source; CLAUDE.md is a symlink \u2014 edit AGENTS.md only): (1) update the example path in the 'Path format' rule in Documentation Maintenance from the old flat API.md path to weather/API.md; (2) add a 'Lab component structure' bullet to the Docs and References section: 'Each lab under docs/labs/<lab-slug>/ is organized by component. The lab README.md is the navigation hub. Each component lives in its own subdirectory (docs/labs/<lab-slug>/<component>/) and contains its own API.md, DESIGN_SPEC.md, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: weather/ and misokinesia/.' .agents/skills/project-plan/references/doc-routing.md: replace the three weather-wellness routing lines with component-scoped paths (weather/ for WW docs, misokinesia/ for miso docs).",
+      "description": "INDEX.md: replace the flat weather-wellness doc table with two subsections (Weather component, Misokinesia component), each listing their docs with new paths. docs/labs/weather-wellness/README.md: rewrite as a navigation hub with two component sections — Weather and Misokinesia — each with a doc table matching the new structure; remove the old flat doc table. AGENTS.md (canonical source; CLAUDE.md is a symlink — edit AGENTS.md only): (1) update the example path in the 'Path format' rule in Documentation Maintenance from the old flat API.md path to weather/API.md; (2) add a 'Lab component structure' bullet to the Docs and References section: 'Each lab under docs/labs/<lab-slug>/ is organized by component. The lab README.md is the navigation hub. Each component lives in its own subdirectory (docs/labs/<lab-slug>/<component>/) and contains its own API.md, DESIGN_SPEC.md, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: weather/ and misokinesia/.' .agents/skills/project-plan/references/doc-routing.md: replace the three weather-wellness routing lines with component-scoped paths (weather/ for WW docs, misokinesia/ for miso docs).",
       "acceptance_criteria": [
         "docs/INDEX.md contains entries for docs/labs/weather-wellness/weather/API.md and docs/labs/weather-wellness/misokinesia/API.md",
         "docs/labs/weather-wellness/README.md has distinct Weather and Misokinesia sections with correct paths",
@@ -2589,7 +2589,7 @@
         "docs/INDEX.md",
         "docs/labs/weather-wellness/README.md"
       ],
-      "notes": "CLAUDE.md is a symlink to AGENTS.md \u2014 edit AGENTS.md only. Do not edit CLAUDE.md directly.",
+      "notes": "CLAUDE.md is a symlink to AGENTS.md — edit AGENTS.md only. Do not edit CLAUDE.md directly.",
       "commands": [
         "grep -n 'weather-wellness/API.md' docs/INDEX.md AGENTS.md .agents/skills/project-plan/references/doc-routing.md",
         "grep -n 'Lab component structure' AGENTS.md"
@@ -2604,7 +2604,7 @@
       "status": "done",
       "priority": "high",
       "summary": "Create weather/ and misokinesia/ subdirs and git-mv all files that need no content changes into their new locations.",
-      "description": "Create docs/labs/weather-wellness/weather/ and docs/labs/weather-wellness/misokinesia/. Use git mv to preserve history. Move into weather/: SCORING.md, WEATHER_INGESTION.md, HISTORICAL_WEATHER_BACKFILL.md, ANALYTICS.md, all 4 survey docs (surveys/CESD10.md, surveys/COGFUNC8A.md, surveys/GAD7.md, surveys/ULS8.md), tasks/DIGITSPAN.md. Move tasks/MISOKINESIA.md -> misokinesia/MISOKINESIA.md. Delete docs/labs/weather-wellness/tasks/working-misokinesia-add.md (stale draft). Remove the now-empty tasks/ directory. Do NOT touch API.md or DESIGN_SPEC.md \u2014 those are split in T176_2 and T176_3.",
+      "description": "Create docs/labs/weather-wellness/weather/ and docs/labs/weather-wellness/misokinesia/. Use git mv to preserve history. Move into weather/: SCORING.md, WEATHER_INGESTION.md, HISTORICAL_WEATHER_BACKFILL.md, ANALYTICS.md, all 4 survey docs (surveys/CESD10.md, surveys/COGFUNC8A.md, surveys/GAD7.md, surveys/ULS8.md), tasks/DIGITSPAN.md. Move tasks/MISOKINESIA.md -> misokinesia/MISOKINESIA.md. Delete docs/labs/weather-wellness/tasks/working-misokinesia-add.md (stale draft). Remove the now-empty tasks/ directory. Do NOT touch API.md or DESIGN_SPEC.md — those are split in T176_2 and T176_3.",
       "depends_on": [],
       "blocked_by": [],
       "acceptance_criteria": [
@@ -2631,7 +2631,7 @@
         "test ! -d docs/labs/weather-wellness/tasks && echo tasks-dir-gone"
       ],
       "estimate": "S",
-      "notes": "Pure git mv operations \u2014 no file content changes. API.md and DESIGN_SPEC.md intentionally excluded; handled by T176_2 and T176_3."
+      "notes": "Pure git mv operations — no file content changes. API.md and DESIGN_SPEC.md intentionally excluded; handled by T176_2 and T176_3."
     },
     {
       "id": "T176_2",
@@ -2666,7 +2666,7 @@
         "test ! -f docs/labs/weather-wellness/API.md && echo original-removed"
       ],
       "estimate": "M",
-      "notes": "API.md miso seam is at line 1062 (## Misokinesia). Error/CORS/Error Codes sections at the end of API.md are platform-shared \u2014 include them in weather/API.md and add a cross-reference note in misokinesia/API.md."
+      "notes": "API.md miso seam is at line 1062 (## Misokinesia). Error/CORS/Error Codes sections at the end of API.md are platform-shared — include them in weather/API.md and add a cross-reference note in misokinesia/API.md."
     },
     {
       "id": "T176_3",
@@ -2713,7 +2713,7 @@
       "blocked_by": [],
       "acceptance_criteria": [
         "wristRotation.mp4, fingerRolling.mp4, penClicking.mp4, footTapping.mp4 have active=false in DB",
-        "GET /misokinesia/trial-manifest returns only active clips (25 total or \u22645 short trial sample)",
+        "GET /misokinesia/trial-manifest returns only active clips (25 total or ≤5 short trial sample)",
         "POST /misokinesia/start manifest excludes the 4 decommissioned clips",
         "Seed script re-run is idempotent and applies decommission flags correctly"
       ],
@@ -2731,7 +2731,7 @@
     {
       "id": "T182",
       "title": "GAD-7 original wording (miso section)",
-      "description": "Replace the 7 GAD-7 question strings in the miso participant task with the validated original GAD-7 wording from reference/labs/weather-wellness/anxiety-disorder-response.pdf. The response scale (1=Never, 2=Rarely, 3=Sometimes, 4=Often), scoring formula (1-4 to 0-3 per item, summed), severity_band, and API contract are all unchanged \u2014 this is a question-text-only change. Update the GAD-7 table in MISOKINESIA.md to show the updated wording and remove the pending-T182 note.",
+      "description": "Replace the 7 GAD-7 question strings in the miso participant task with the validated original GAD-7 wording from reference/labs/weather-wellness/anxiety-disorder-response.pdf. The response scale (1=Never, 2=Rarely, 3=Sometimes, 4=Often), scoring formula (1-4 to 0-3 per item, summed), severity_band, and API contract are all unchanged — this is a question-text-only change. Update the GAD-7 table in MISOKINESIA.md to show the updated wording and remove the pending-T182 note.",
       "status": "todo",
       "priority": "medium",
       "group_id": "MISO_FEEDBACK",
@@ -2756,7 +2756,7 @@
     {
       "id": "T183",
       "title": "Transition cards before each post-video survey",
-      "description": "Insert a transition/intro card state immediately before each of the 3 post-video surveys in the misokinesia task state machine. Each card is keyed to its survey key (mkaq, gad7, maq) and treated as a unit with its survey in the post_survey_order sequence \u2014 the card always advances to its paired survey and randomization never separates them. Cards display: survey name, a one-sentence description of what the participant is about to do, and a CTA button (Continue). Placeholder copy is acceptable; stakeholders will review wording. Cards must render inside the fullscreen container (compatible with T181). MISOKINESIA.md state machine notation is already updated.",
+      "description": "Insert a transition/intro card state immediately before each of the 3 post-video surveys in the misokinesia task state machine. Each card is keyed to its survey key (mkaq, gad7, maq) and treated as a unit with its survey in the post_survey_order sequence — the card always advances to its paired survey and randomization never separates them. Cards display: survey name, a one-sentence description of what the participant is about to do, and a CTA button (Continue). Placeholder copy is acceptable; stakeholders will review wording. Cards must render inside the fullscreen container (compatible with T181). MISOKINESIA.md state machine notation is already updated.",
       "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
@@ -2780,7 +2780,7 @@
     },
     {
       "id": "T184",
-      "title": "Miso demographics \u2014 schema + API endpoint",
+      "title": "Miso demographics — schema + API endpoint",
       "description": "Add 6 miso-specific demographic columns to misokinesia_participants via a new Alembic migration (all VARCHAR NULLABLE): age_band, gender, gender_other_text, country, country_other_text, nationality. Add a new participant-facing PATCH /misokinesia/participants/{id}/demographics endpoint in backend/app/routers/misokinesia.py. The endpoint is no-auth, idempotent (later calls overwrite earlier values), validates categorical fields against allowed sets, and returns 422 when gender_other_text is set without gender=Not listed or country_other_text without country=Not listed. Allowed values: age_band (Under 18 / 18-24 / 25-31 / 32-38 / Over 38), gender (Woman / Man / Nonbinary person / Prefer not to say / Not listed), country (Canada / South Korea / Not listed). Nationality is free text. SCHEMA.md, API.md, and MISOKINESIA.md are already updated with the spec.",
       "status": "done",
       "priority": "high",
@@ -2813,7 +2813,7 @@
     },
     {
       "id": "T185",
-      "title": "Miso demographics \u2014 participant UI form",
+      "title": "Miso demographics — participant UI form",
       "description": "Add a miso demographics form as the first screen of the participant task at /misokinesia/[id], shown before the intro screen. The form presents the 4 questions from reference/labs/Misokinesia/Miso-demographics.pdf using preset radio chips for categorical fields (matching SurveyForm chip style) and conditional free-text inputs that appear only when Not listed is selected (for gender and country). All fields are optional; Continue is always enabled with no blocking validation. In production mode, Continue calls PATCH /misokinesia/participants/{id}/demographics via a new typed wrapper in src/lib/api/misokinesia.ts; on 2xx, transitions to the intro screen. In trial mode, Continue advances locally without an API call (consistent with all other trial-mode behaviors). Error state: inline destructive banner; all field state preserved for retry.",
       "status": "done",
       "priority": "high",
@@ -2844,7 +2844,7 @@
     {
       "id": "T181_1",
       "title": "2-second pre-clip buffer (black interstitial before each video)",
-      "description": "Add a 2-second solid-black interstitial state to the misokinesia video loop before each clip autoplays. When the state machine transitions to the next clip, show a black screen for exactly 2 seconds; the <video> element is loaded with preload=auto during this buffer so playback starts immediately after. The buffer applies to every clip in both production and trial modes. This is a state machine addition within the video loop \u2014 no fullscreen or container-level changes.",
+      "description": "Add a 2-second solid-black interstitial state to the misokinesia video loop before each clip autoplays. When the state machine transitions to the next clip, show a black screen for exactly 2 seconds; the <video> element is loaded with preload=auto during this buffer so playback starts immediately after. The buffer applies to every clip in both production and trial modes. This is a state machine addition within the video loop — no fullscreen or container-level changes.",
       "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
@@ -2869,8 +2869,8 @@
     {
       "id": "T181_2",
       "title": "Fullscreen default on misokinesia task container (Fullscreen API)",
-      "description": "Apply the browser Fullscreen API (requestFullscreen) to the top-level misokinesia task container element \u2014 the element wrapping all states: demographics, intro, video player, per-clip questionnaire, transition cards, and post-video surveys. Fullscreen is entered when the participant advances from the demographics screen and must persist across every state transition for the full session. A persistent exit-fullscreen button is visible in a fixed corner in all states (suggested: top-right); pressing Esc or the button exits fullscreen and the button toggles to a re-enter control. No page-shell chrome should be visible inside fullscreen. Handle the fullscreenchange event to keep the button state in sync.",
-      "status": "todo",
+      "description": "Apply the browser Fullscreen API (requestFullscreen) to the top-level misokinesia task container element — the element wrapping all states: demographics, intro, video player, per-clip questionnaire, transition cards, and post-video surveys. Fullscreen is entered when the participant advances from the demographics screen and must persist across every state transition for the full session. A persistent exit-fullscreen button is visible in a fixed corner in all states (suggested: top-right); pressing Esc or the button exits fullscreen and the button toggles to a re-enter control. No page-shell chrome should be visible inside fullscreen. Handle the fullscreenchange event to keep the button state in sync.",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [

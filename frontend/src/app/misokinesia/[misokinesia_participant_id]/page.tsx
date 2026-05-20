@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
@@ -94,6 +94,11 @@ export default function MisokinesiaTaskPage() {
     key: PostSurveyKey;
     answers: Record<string, number>;
   } | null>(null);
+
+  // Fullscreen state
+  const taskContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenStarted, setFullscreenStarted] = useState(false);
 
   // ── Load manifest from sessionStorage on mount ──
   useEffect(() => {
@@ -224,6 +229,37 @@ export default function MisokinesiaTaskPage() {
     return () => clearTimeout(timer);
   }, [phase]);
 
+  // ── Fullscreen: sync button state with actual fullscreen state ──
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  // ── Fullscreen: enter when fullscreenStarted becomes true ──
+  useEffect(() => {
+    if (!fullscreenStarted) return;
+    const el = taskContainerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) return; // already fullscreen
+    el.requestFullscreen().catch(() => {
+      // Fullscreen request rejected (e.g. permissions policy) — proceed without fullscreen
+    });
+  }, [fullscreenStarted]);
+
+  const enterFullscreen = useCallback(() => {
+    const el = taskContainerRef.current;
+    if (!el || document.fullscreenElement) return;
+    el.requestFullscreen().catch(() => {});
+  }, []);
+
+  const exitFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) return;
+    document.exitFullscreen().catch(() => {});
+  }, []);
+
   const totalClips = manifest?.clips.length ?? 0;
   const currentClip = manifest?.clips[currentClipIndex];
   const clipNumber = currentClipIndex + 1; // 1-based display
@@ -234,6 +270,7 @@ export default function MisokinesiaTaskPage() {
     setDemographicsError(null);
     if (trialMode) {
       // Trial mode: advance locally without calling the API
+      setFullscreenStarted(true);
       setPhase("intro");
       return;
     }
@@ -248,6 +285,7 @@ export default function MisokinesiaTaskPage() {
         country_other_text: values.country_other_text ?? undefined,
         nationality: values.nationality ?? undefined,
       });
+      setFullscreenStarted(true);
       setPhase("intro");
     } catch (err) {
       setDemographicsError(getParticipantErrorMessage(err));
@@ -327,243 +365,267 @@ export default function MisokinesiaTaskPage() {
     );
   }
 
-  if (phase === "demographics") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
-        <MisokinesiaDemographicsForm
-          submitting={demographicsSubmitting}
-          error={demographicsError}
-          onSubmit={handleDemographicsSubmit}
-        />
-      </div>
-    );
-  }
+  // ── Task container: wraps all post-demographics phases ──
+  // demographics is rendered outside the container so the container can mount
+  // before fullscreen is requested on demographics submit.
 
-  if (phase === "intro") {
-    return (
-      <Screen>
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-          Misokinesia Task
-        </p>
-        <h1 className="text-2xl font-bold text-foreground">Video Clip Questionnaire</h1>
-
-        <div className="mt-6 space-y-2 text-sm text-muted-foreground text-left">
-          <p>You will watch {totalClips} short video clips.</p>
-          <p>After each clip, you will be asked a few questions about how you felt.</p>
-          <p>There are no right or wrong answers — just answer honestly.</p>
-        </div>
-
-        <Button
-          onClick={handleBegin}
-          className="mt-8 rounded-xl px-8 text-primary-foreground"
-        >
-          Begin
-        </Button>
-      </Screen>
-    );
-  }
-
-  if (
-    phase === "transition_mkaq" ||
-    phase === "transition_gad7" ||
-    phase === "transition_maq"
-  ) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4">
-        <TransitionCard
-          surveyKey={getSurveyPhaseFromTransition(phase as TransitionCardPhase)}
-          onContinue={() => handleTransitionContinue(phase as TransitionCardPhase)}
-        />
-      </div>
-    );
-  }
-
-  if (phase === "mkaq" || phase === "gad7" || phase === "maq") {
-    const activeSurvey = phase;
-
-    if (surveySubmitting === activeSurvey) {
+  function renderPhaseContent() {
+    if (phase === "demographics") {
       return (
-        <Screen>
-          <p className="text-sm text-muted-foreground">Submitting questionnaire…</p>
-        </Screen>
+        <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+          <MisokinesiaDemographicsForm
+            submitting={demographicsSubmitting}
+            error={demographicsError}
+            onSubmit={handleDemographicsSubmit}
+          />
+        </div>
       );
     }
 
-    if (surveyError && pendingSurvey?.key === activeSurvey) {
+    if (phase === "intro") {
       return (
         <Screen>
-          <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-            {surveyError}
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+            Misokinesia Task
+          </p>
+          <h1 className="text-2xl font-bold text-foreground">Video Clip Questionnaire</h1>
+
+          <div className="mt-6 space-y-2 text-sm text-muted-foreground text-left">
+            <p>You will watch {totalClips} short video clips.</p>
+            <p>After each clip, you will be asked a few questions about how you felt.</p>
+            <p>There are no right or wrong answers — just answer honestly.</p>
           </div>
+
           <Button
-            onClick={handleSurveyRetry}
-            className="rounded-xl px-8 text-primary-foreground"
+            onClick={handleBegin}
+            className="mt-8 rounded-xl px-8 text-primary-foreground"
           >
-            Retry
+            Begin
           </Button>
         </Screen>
       );
     }
 
-    if (activeSurvey === "gad7") {
+    if (
+      phase === "transition_mkaq" ||
+      phase === "transition_gad7" ||
+      phase === "transition_maq"
+    ) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
-          <MisokinesiaGAD7Form
-            submitting={surveySubmitting === "gad7"}
-            error={surveyError}
-            onSubmit={(answers) => handleSurveyComplete("gad7", answers)}
+        <div className="flex min-h-screen flex-col items-center justify-center px-4">
+          <TransitionCard
+            surveyKey={getSurveyPhaseFromTransition(phase as TransitionCardPhase)}
+            onContinue={() => handleTransitionContinue(phase as TransitionCardPhase)}
           />
         </div>
       );
     }
 
-    if (activeSurvey === "maq") {
-      const maqItemCount = trialModeType === "short" ? TRIAL_MAQ_ITEM_COUNT : undefined;
-      return (
-        <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
-          <MisokinesiaMAQForm
-            submitting={surveySubmitting === "maq"}
-            error={surveyError}
-            itemCount={maqItemCount}
-            onSubmit={(answers) => handleSurveyComplete("maq", answers)}
-          />
-        </div>
-      );
-    }
+    if (phase === "mkaq" || phase === "gad7" || phase === "maq") {
+      const activeSurvey = phase;
 
-    const mkaqItems =
-      trialModeType === "short" ? MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT) : MKAQ_ITEMS;
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
-        <MisokinesiaMkaqForm
-          items={mkaqItems}
-          onComplete={(answers) => handleSurveyComplete("mkaq", answers)}
-        />
-      </div>
-    );
-  }
+      if (surveySubmitting === activeSurvey) {
+        return (
+          <Screen>
+            <p className="text-sm text-muted-foreground">Submitting questionnaire…</p>
+          </Screen>
+        );
+      }
 
-  if (phase === "pre_play" && currentClip) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-black">
-        {/* Hidden video element preloads the clip during the 2-second buffer */}
-        <video
-          key={currentClip.public_url}
-          preload="auto"
-          playsInline
-          aria-hidden="true"
-          className="hidden"
-        >
-          <source src={currentClip.public_url} type="video/mp4" />
-        </video>
-      </div>
-    );
-  }
+      if (surveyError && pendingSurvey?.key === activeSurvey) {
+        return (
+          <Screen>
+            <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+              {surveyError}
+            </div>
+            <Button
+              onClick={handleSurveyRetry}
+              className="rounded-xl px-8 text-primary-foreground"
+            >
+              Retry
+            </Button>
+          </Screen>
+        );
+      }
 
-  if (phase === "playing" && currentClip) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
-        <div className="w-full max-w-[92rem] space-y-3">
-          <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
-          <MisokinesiaVideoPlayer
-            publicUrl={currentClip.public_url}
-            onEnded={handleVideoEnded}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === "questionnaire" && currentClip) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
-        <div className="w-full max-w-2xl">
-          <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
-        </div>
-        <MisokinesiaQuestionnaire
-          misokinesiaParticipantId={participantId}
-          stimulusId={currentClip.stimulus_id}
-          displayOrder={clipNumber}
-          trialMode={trialMode}
-          isFinalClip={clipNumber === totalClips}
-          onComplete={handleQuestionnaireComplete}
-        />
-      </div>
-    );
-  }
-
-  if (phase === "end_of_task") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
-        <MisokinesiaEndOfTaskForm
-          misokinesiaParticipantId={participantId}
-          trialMode={trialMode}
-          onComplete={handleEndOfTaskComplete}
-        />
-      </div>
-    );
-  }
-
-  if (phase === "complete") {
-    if (completing) {
-      return (
-        <Screen>
-          <p className="text-sm text-muted-foreground">Saving your results…</p>
-        </Screen>
-      );
-    }
-
-    if (completeError) {
-      return (
-        <Screen>
-          <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-            {completeError}
-          </div>
-          <Button
-            onClick={handleRetry}
-            className="rounded-xl px-8 text-primary-foreground"
-          >
-            Retry
-          </Button>
-        </Screen>
-      );
-    }
-
-    return (
-      <Screen>
-        <div
-          className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary"
-        >
-          <svg
-            className="h-8 w-8 text-primary-foreground"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M5 13l4 4L19 7"
+      if (activeSurvey === "gad7") {
+        return (
+          <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+            <MisokinesiaGAD7Form
+              submitting={surveySubmitting === "gad7"}
+              error={surveyError}
+              onSubmit={(answers) => handleSurveyComplete("gad7", answers)}
             />
-          </svg>
+          </div>
+        );
+      }
+
+      if (activeSurvey === "maq") {
+        const maqItemCount = trialModeType === "short" ? TRIAL_MAQ_ITEM_COUNT : undefined;
+        return (
+          <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+            <MisokinesiaMAQForm
+              submitting={surveySubmitting === "maq"}
+              error={surveyError}
+              itemCount={maqItemCount}
+              onSubmit={(answers) => handleSurveyComplete("maq", answers)}
+            />
+          </div>
+        );
+      }
+
+      const mkaqItems =
+        trialModeType === "short" ? MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT) : MKAQ_ITEMS;
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
+          <MisokinesiaMkaqForm
+            items={mkaqItems}
+            onComplete={(answers) => handleSurveyComplete("mkaq", answers)}
+          />
         </div>
-        <h1 className="text-2xl font-bold text-foreground">Thank you</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          The session is complete. Please return this device to the research assistant.
-        </p>
-        <Button
-          onClick={() => router.push("/misokinesia")}
-          className="mt-8 rounded-xl px-8 text-primary-foreground"
-        >
-          Back to Misokinesia
-        </Button>
-      </Screen>
-    );
+      );
+    }
+
+    if (phase === "pre_play" && currentClip) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-black">
+          {/* Hidden video element preloads the clip during the 2-second buffer */}
+          <video
+            key={currentClip.public_url}
+            preload="auto"
+            playsInline
+            aria-hidden="true"
+            className="hidden"
+          >
+            <source src={currentClip.public_url} type="video/mp4" />
+          </video>
+        </div>
+      );
+    }
+
+    if (phase === "playing" && currentClip) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
+          <div className="w-full max-w-[92rem] space-y-3">
+            <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
+            <MisokinesiaVideoPlayer
+              publicUrl={currentClip.public_url}
+              onEnded={handleVideoEnded}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (phase === "questionnaire" && currentClip) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
+          <div className="w-full max-w-2xl">
+            <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
+          </div>
+          <MisokinesiaQuestionnaire
+            misokinesiaParticipantId={participantId}
+            stimulusId={currentClip.stimulus_id}
+            displayOrder={clipNumber}
+            trialMode={trialMode}
+            isFinalClip={clipNumber === totalClips}
+            onComplete={handleQuestionnaireComplete}
+          />
+        </div>
+      );
+    }
+
+    if (phase === "end_of_task") {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
+          <MisokinesiaEndOfTaskForm
+            misokinesiaParticipantId={participantId}
+            trialMode={trialMode}
+            onComplete={handleEndOfTaskComplete}
+          />
+        </div>
+      );
+    }
+
+    if (phase === "complete") {
+      if (completing) {
+        return (
+          <Screen>
+            <p className="text-sm text-muted-foreground">Saving your results…</p>
+          </Screen>
+        );
+      }
+
+      if (completeError) {
+        return (
+          <Screen>
+            <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+              {completeError}
+            </div>
+            <Button
+              onClick={handleRetry}
+              className="rounded-xl px-8 text-primary-foreground"
+            >
+              Retry
+            </Button>
+          </Screen>
+        );
+      }
+
+      return (
+        <Screen>
+          <div
+            className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary"
+          >
+            <svg
+              className="h-8 w-8 text-primary-foreground"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">Thank you</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            The session is complete. Please return this device to the research assistant.
+          </p>
+          <Button
+            onClick={() => router.push("/misokinesia")}
+            className="mt-8 rounded-xl px-8 text-primary-foreground"
+          >
+            Back to Misokinesia
+          </Button>
+        </Screen>
+      );
+    }
+
+    return null;
   }
 
-  return null;
+  return (
+    <div
+      ref={taskContainerRef}
+      className="relative w-full min-h-screen bg-background"
+    >
+      {renderPhaseContent()}
+
+      {/* Fullscreen toggle button — visible in all task phases after demographics advances */}
+      {fullscreenStarted && (
+        <FullscreenButton
+          isFullscreen={isFullscreen}
+          onEnter={enterFullscreen}
+          onExit={exitFullscreen}
+        />
+      )}
+    </div>
+  );
 }
 
 // ── Shared layout components ──
@@ -573,6 +635,79 @@ function Screen({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md text-center">{children}</div>
     </div>
+  );
+}
+
+function FullscreenButton({
+  isFullscreen,
+  onEnter,
+  onExit,
+}: {
+  isFullscreen: boolean;
+  onEnter: () => void;
+  onExit: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={isFullscreen ? onExit : onEnter}
+      aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      className="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {isFullscreen ? (
+        <>
+          <ExitFullscreenIcon />
+          Exit fullscreen
+        </>
+      ) : (
+        <>
+          <EnterFullscreenIcon />
+          Fullscreen
+        </>
+      )}
+    </button>
+  );
+}
+
+function EnterFullscreenIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
+function ExitFullscreenIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+      <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+      <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+      <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+    </svg>
   );
 }
 
