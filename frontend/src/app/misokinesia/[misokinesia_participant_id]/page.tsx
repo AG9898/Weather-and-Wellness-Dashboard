@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
@@ -403,25 +404,96 @@ export default function MisokinesiaTaskPage() {
 
     if (phase === "intro") {
       return (
-        <Screen>
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-            Misokinesia Task
-          </p>
-          <h1 className="text-2xl font-bold text-foreground">Video Clip Questionnaire</h1>
+        <div className="flex min-h-screen flex-col items-center justify-center px-8">
+          <div className="w-full max-w-[620px]">
+            {/* Step indicator */}
+            <div className="mb-9 flex items-center gap-3">
+              <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+                02 / 04
+              </span>
+              <div className="h-px flex-1 bg-border" />
+              <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Demographics → Intro → Task → Surveys
+              </span>
+            </div>
 
-          <div className="mt-6 space-y-2 text-sm text-muted-foreground text-left">
-            <p>You will watch {totalClips} short video clips.</p>
-            <p>After each clip, you will be asked a few questions about how you felt.</p>
-            <p>There are no right or wrong answers — just answer honestly.</p>
+            {/* Card */}
+            <div
+              className="rounded-2xl border border-border px-11 py-10"
+              style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Misokinesia Task
+              </p>
+              <h1 className="mt-3 text-3xl font-bold tracking-[-0.02em] text-foreground">
+                Video Clip Questionnaire
+              </h1>
+              <p className="mt-3.5 text-sm leading-relaxed text-muted-foreground">
+                You will watch {totalClips} short video clips. After each clip,
+                you will be asked a few questions about how you felt. There are
+                no right or wrong answers — just answer honestly.
+              </p>
+
+              {/* Meta ledger */}
+              <div className="mt-7 border-t border-border">
+                {[
+                  { k: "Clips", v: `${totalClips} short video clips` },
+                  { k: "Per clip", v: "4 questions · scale 1–5" },
+                  { k: "After clips", v: "3 short surveys" },
+                  { k: "Estimated", v: "≈ 18 minutes total" },
+                ].map((row, i, arr) => (
+                  <div
+                    key={row.k}
+                    className={cn(
+                      "grid items-center gap-6 py-3",
+                      i < arr.length - 1 && "border-b border-border"
+                    )}
+                    style={{ gridTemplateColumns: "140px 1fr" }}
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {row.k}
+                    </span>
+                    <span className="text-[13px] text-foreground">{row.v}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pause note */}
+              <div
+                className="mt-6 flex items-center gap-2.5 rounded-[10px] px-3.5 py-3"
+                style={{ background: "var(--fieldset-bg)" }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  aria-hidden
+                  className="shrink-0 text-muted-foreground"
+                >
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+                <span className="text-xs leading-relaxed text-muted-foreground">
+                  The task will enter fullscreen when you click Begin. You can
+                  exit at any time using the button in the top corner.
+                </span>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <Button
+                  onClick={handleBegin}
+                  className="h-11 min-w-[200px] rounded-xl px-[22px] text-sm text-primary-foreground"
+                >
+                  Begin →
+                </Button>
+              </div>
+            </div>
           </div>
-
-          <Button
-            onClick={handleBegin}
-            className="mt-8 rounded-xl px-8 text-primary-foreground"
-          >
-            Begin
-          </Button>
-        </Screen>
+        </div>
       );
     }
 

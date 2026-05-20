@@ -23,7 +23,7 @@ const AGE_BANDS = ["Under 18", "18-24", "25-31", "32-38", "Over 38"];
 const GENDERS = ["Woman", "Man", "Nonbinary person", "Prefer not to say", "Not listed"];
 const COUNTRIES = ["Canada", "South Korea", "Not listed"];
 
-function ChipGroup({
+function FlatChipGroup({
   options,
   selected,
   onChange,
@@ -42,10 +42,10 @@ function ChipGroup({
             type="button"
             onClick={() => onChange(opt)}
             className={cn(
-              "rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+              "h-9 rounded-[10px] border px-3.5 text-xs font-medium transition-colors",
               isSelected
-                ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-card/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-muted-foreground hover:border-ring/60 hover:text-foreground"
             )}
           >
             {opt}
@@ -80,123 +80,152 @@ export default function MisokinesiaDemographicsForm({
     });
   }
 
-  return (
-    <div className="relative mx-auto max-w-2xl px-4 py-8 sm:py-12">
-      <div
-        className="pointer-events-none absolute left-0 top-6 h-44 w-44 rounded-full opacity-35 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--ring) 72%, transparent)" }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-0 right-0 h-52 w-52 rounded-full opacity-20 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--primary) 68%, transparent)" }}
-      />
-
-      <div
-        className="relative space-y-6 rounded-[1.6rem] border border-border/90 p-5 shadow-[0_30px_60px_-52px_rgb(0_19_40/0.7)] sm:p-8"
-        style={{ background: "var(--card)" }}
-      >
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Before we begin
-          </p>
-          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
-            About you
-          </h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            All questions are optional. You can skip any you prefer not to answer.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Age band */}
-          <fieldset className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
-            <legend className="sr-only">Age group</legend>
-            <p className="text-sm font-medium leading-snug text-foreground">
-              What is your age group?
-            </p>
-            <ChipGroup
-              options={AGE_BANDS}
-              selected={ageBand}
-              onChange={setAgeBand}
-            />
-          </fieldset>
-
-          {/* Gender */}
-          <fieldset className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
-            <legend className="sr-only">Gender identity</legend>
-            <p className="text-sm font-medium leading-snug text-foreground">
-              What is your gender identity?
-            </p>
-            <ChipGroup
-              options={GENDERS}
-              selected={gender}
-              onChange={setGender}
-            />
-            {gender === "Not listed" && (
-              <input
-                type="text"
-                value={genderOtherText}
-                onChange={(e) => setGenderOtherText(e.target.value)}
-                placeholder="Please describe (optional)"
-                className="mt-2 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
-              />
-            )}
-          </fieldset>
-
-          {/* Country */}
-          <fieldset className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
-            <legend className="sr-only">Country of current residence</legend>
-            <p className="text-sm font-medium leading-snug text-foreground">
-              What is your country of current residence?
-            </p>
-            <ChipGroup
-              options={COUNTRIES}
-              selected={country}
-              onChange={setCountry}
-            />
-            {country === "Not listed" && (
-              <input
-                type="text"
-                value={countryOtherText}
-                onChange={(e) => setCountryOtherText(e.target.value)}
-                placeholder="Please specify (optional)"
-                className="mt-2 w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
-              />
-            )}
-          </fieldset>
-
-          {/* Nationality */}
-          <fieldset className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
-            <legend className="sr-only">Nationality</legend>
-            <p className="text-sm font-medium leading-snug text-foreground">
-              What is your nationality?
-            </p>
+  const rows: Array<{
+    label: string;
+    hint?: string;
+    control: React.ReactNode;
+  }> = [
+    {
+      label: "Age group",
+      control: (
+        <FlatChipGroup
+          options={AGE_BANDS}
+          selected={ageBand}
+          onChange={setAgeBand}
+        />
+      ),
+    },
+    {
+      label: "Gender identity",
+      control: (
+        <div className="space-y-3">
+          <FlatChipGroup
+            options={GENDERS}
+            selected={gender}
+            onChange={setGender}
+          />
+          {gender === "Not listed" && (
             <input
               type="text"
-              value={nationality}
-              onChange={(e) => setNationality(e.target.value)}
-              placeholder="Optional"
-              className="w-full rounded-xl border border-border bg-background/70 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+              value={genderOtherText}
+              onChange={(e) => setGenderOtherText(e.target.value)}
+              placeholder="Please describe (optional)"
+              className="h-10 w-full rounded-[10px] border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
             />
-          </fieldset>
-
-          {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-              {error}
-            </div>
           )}
+        </div>
+      ),
+    },
+    {
+      label: "Country of current residence",
+      control: (
+        <div className="space-y-3">
+          <FlatChipGroup
+            options={COUNTRIES}
+            selected={country}
+            onChange={setCountry}
+          />
+          {country === "Not listed" && (
+            <input
+              type="text"
+              value={countryOtherText}
+              onChange={(e) => setCountryOtherText(e.target.value)}
+              placeholder="Please specify (optional)"
+              className="h-10 w-full rounded-[10px] border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+            />
+          )}
+        </div>
+      ),
+    },
+    {
+      label: "Nationality",
+      hint: "Free text",
+      control: (
+        <input
+          type="text"
+          value={nationality}
+          onChange={(e) => setNationality(e.target.value)}
+          placeholder="Optional"
+          className="h-10 w-full rounded-[10px] border border-border bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+        />
+      ),
+    },
+  ];
 
-          <div className="flex justify-end pt-2">
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="min-w-36 rounded-xl px-6 text-primary-foreground"
-            >
-              {submitting ? "Saving…" : "Continue"}
-            </Button>
-          </div>
-        </form>
+  return (
+    <div className="mx-auto w-full max-w-[760px] px-8 py-16">
+      {/* Step indicator */}
+      <div className="mb-9 flex items-center gap-3">
+        <span className="shrink-0 font-variant-numeric-tabular text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+          01 / 04
+        </span>
+        <div className="h-px flex-1 bg-border" />
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Demographics → Intro → Task → Surveys
+        </span>
       </div>
+
+      {/* Kicker + heading + body */}
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        Before we begin
+      </p>
+      <h1 className="mt-2.5 text-3xl font-bold tracking-[-0.02em] text-foreground">
+        About you
+      </h1>
+      <p className="mt-2.5 max-w-[520px] text-sm leading-relaxed text-muted-foreground">
+        All questions are optional. You can skip any you prefer not to answer.
+        Your answers are stored anonymously.
+      </p>
+
+      {/* Form card */}
+      <form onSubmit={handleSubmit}>
+        <div
+          className="mt-9 rounded-2xl border border-border px-7 py-2"
+          style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
+        >
+          {rows.map((row, i) => (
+            <div
+              key={i}
+              className={cn(
+                "grid items-start gap-8 py-[22px]",
+                i < rows.length - 1 && "border-b border-border"
+              )}
+              style={{ gridTemplateColumns: "200px 1fr" }}
+            >
+              <div>
+                <div className="text-[13px] font-semibold text-foreground">
+                  {row.label}
+                </div>
+                {row.hint && (
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {row.hint}
+                  </div>
+                )}
+              </div>
+              <div>{row.control}</div>
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-7 flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+            Roughly 18 minutes to complete
+          </span>
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="h-11 min-w-[160px] rounded-xl px-[22px] text-sm text-primary-foreground"
+          >
+            {submitting ? "Saving…" : "Continue →"}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

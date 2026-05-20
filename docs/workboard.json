@@ -2951,7 +2951,7 @@
       "id": "T188",
       "title": "Miso redesign - Demographics and intro screens",
       "description": "Restyle the misokinesia demographics form and intro screen using the A2 template and quiet editorial pattern while preserving optional fields, conditional Not listed inputs, trial behavior, submit flow, and fullscreen entry timing.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [
