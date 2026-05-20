@@ -2732,7 +2732,7 @@
       "id": "T182",
       "title": "GAD-7 original wording (miso section)",
       "description": "Replace the 7 GAD-7 question strings in the miso participant task with the validated original GAD-7 wording from reference/labs/weather-wellness/anxiety-disorder-response.pdf. The response scale (1=Never, 2=Rarely, 3=Sometimes, 4=Often), scoring formula (1-4 to 0-3 per item, summed), severity_band, and API contract are all unchanged — this is a question-text-only change. Update the GAD-7 table in MISOKINESIA.md to show the updated wording and remove the pending-T182 note.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [],

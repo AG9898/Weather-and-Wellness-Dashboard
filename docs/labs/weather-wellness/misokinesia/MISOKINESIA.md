@@ -181,21 +181,21 @@ The MkAQ items come from `reference/labs/Misokinesia/41598_2021_96430_MOESM1_ESM
 
 Required 7-item questionnaire shown once per production participant as part of the randomised post-video survey block. Results are stored in the miso-isolated `misokinesia_gad7_responses` table.
 
-> **Wording update (T182):** The 7 question strings must be updated to the original validated GAD-7 wording from `reference/labs/weather-wellness/anxiety-disorder-response.pdf`. The WW-lab wording listed below is the current implementation and will be replaced. The response scale, scoring formula, and API contract are **unchanged**.
-
 Response scale: `1 = Never`, `2 = Rarely`, `3 = Sometimes`, `4 = Often`. All 7 items are required. FastAPI computes `total_score` (0–21, converted 1–4 → 0–3 per item) and `severity_band`; the frontend must not compute scores.
 
 Rendered using the shared `SurveyForm` component — not a card carousel.
 
-| Column | Question (current WW-lab wording — replace per T182) |
+Item wording from the original validated GAD-7 (Spitzer et al., 2006; `reference/labs/weather-wellness/anxiety-disorder-response.pdf`).
+
+| Column | Question |
 |---|---|
-| `r1` | I am feeling nervous, anxious, or on edge. |
-| `r2` | I am not able to stop or control worrying. |
-| `r3` | I am worrying too much about different things. |
-| `r4` | I am having trouble relaxing. |
-| `r5` | I am feeling so restless that it is hard to sit still. |
-| `r6` | I am feeling easily annoyed or irritable. |
-| `r7` | I am feeling afraid, as if something awful might happen. |
+| `r1` | Feeling nervous, anxious, or on edge |
+| `r2` | Not being able to stop or control worrying |
+| `r3` | Worrying too much about different things |
+| `r4` | Trouble relaxing |
+| `r5` | Being so restless that it is hard to sit still |
+| `r6` | Becoming easily annoyed or irritable |
+| `r7` | Feeling afraid, as if something awful might happen |
 
 ---
 

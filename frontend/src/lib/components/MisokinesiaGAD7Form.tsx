@@ -9,13 +9,13 @@ interface MisokinesiaGAD7FormProps {
 }
 
 const GAD7_ITEMS: SurveyItem[] = [
-  { number: 1, text: "I am feeling nervous, anxious, or on edge." },
-  { number: 2, text: "I am not able to stop or control worrying." },
-  { number: 3, text: "I am worrying too much about different things." },
-  { number: 4, text: "I am having trouble relaxing." },
-  { number: 5, text: "I am feeling so restless that it is hard to sit still." },
-  { number: 6, text: "I am feeling easily annoyed or irritable." },
-  { number: 7, text: "I am feeling afraid, as if something awful might happen." },
+  { number: 1, text: "Feeling nervous, anxious, or on edge" },
+  { number: 2, text: "Not being able to stop or control worrying" },
+  { number: 3, text: "Worrying too much about different things" },
+  { number: 4, text: "Trouble relaxing" },
+  { number: 5, text: "Being so restless that it is hard to sit still" },
+  { number: 6, text: "Becoming easily annoyed or irritable" },
+  { number: 7, text: "Feeling afraid, as if something awful might happen" },
 ];
 
 const GAD7_SCALE: ScaleOption[] = [
