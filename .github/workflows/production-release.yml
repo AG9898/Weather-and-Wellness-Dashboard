@@ -156,10 +156,50 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          timeout 15m railway up \
+          railway deployment redeploy \
             --service "${RAILWAY_SERVICE_ID}" \
-            --ci \
-            --message "GitHub Actions production release ${GITHUB_SHA}"
+            --from-source \
+            --yes
+
+          for attempt in $(seq 1 90); do
+            railway deployment list --json > /tmp/railway-deployments.json
+
+            status="$(
+              python - <<'PY'
+              import json
+              import os
+              from pathlib import Path
+
+              deployments = json.loads(Path("/tmp/railway-deployments.json").read_text())
+              sha = os.environ["GITHUB_SHA"]
+              for deployment in deployments:
+                  if deployment.get("meta", {}).get("commitHash") == sha:
+                      print(deployment.get("status", "UNKNOWN"))
+                      break
+              else:
+                  print("PENDING")
+              PY
+            )"
+
+            echo "Railway deployment status for ${GITHUB_SHA}: ${status}"
+
+            case "${status}" in
+              SUCCESS|SKIPPED)
+                exit 0
+                ;;
+              FAILED|CRASHED|REMOVED)
+                echo "Railway deployment ended with status ${status}."
+                cat /tmp/railway-deployments.json
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for Railway deployment for ${GITHUB_SHA}."
+          cat /tmp/railway-deployments.json
+          exit 1
 
       - name: Run production migrations
         env:

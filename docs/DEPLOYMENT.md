@@ -58,8 +58,9 @@ Disable independent production Git autodeploys after the workflow secrets are
 configured and the workflow has been tested manually once.
 
 - Railway backend: turn off automatic production deploys from GitHub, or keep
-  them limited to preview/non-production. The GitHub Actions workflow deploys
-  the backend with `railway up`.
+  them limited to preview/non-production. Keep the GitHub source connection in
+  place; the GitHub Actions workflow deploys the latest source with
+  `railway deployment redeploy --from-source`.
 - Vercel frontend: turn off automatic production deploys from GitHub. The
   GitHub Actions workflow builds and deploys production with `vercel deploy`.
 
