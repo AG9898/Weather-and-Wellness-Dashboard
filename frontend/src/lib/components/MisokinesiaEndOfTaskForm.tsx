@@ -72,39 +72,41 @@ export default function MisokinesiaEndOfTaskForm({
   };
 
   return (
-    <div className="relative mx-auto max-w-4xl px-4 py-8 sm:py-12">
-      {/* Ambient glows */}
-      <div
-        className="pointer-events-none absolute left-0 top-6 h-44 w-44 rounded-full opacity-35 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--ring) 72%, transparent)" }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-0 right-0 h-52 w-52 rounded-full opacity-20 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--primary) 68%, transparent)" }}
-      />
+    <div className="w-full max-w-[760px] px-4 py-8">
+      {/* Step indicator */}
+      <div className="mb-9 flex items-center gap-3">
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+          04 / 04
+        </span>
+        <div className="h-px flex-1 bg-border" />
+        <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Demographics → Intro → Task → Surveys
+        </span>
+      </div>
 
       <div
-        className="relative space-y-6 rounded-[1.6rem] border border-border/90 p-5 shadow-[0_30px_60px_-52px_rgb(0_19_40/0.7)] sm:p-8"
-        style={{ background: "var(--card)" }}
+        className="rounded-2xl border border-border px-8 py-8 sm:px-11 sm:py-10"
+        style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
       >
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Final questions
-          </p>
-          <h2 className="text-xl font-bold text-foreground sm:text-2xl">
-            A few last questions
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            All fields are optional — answer as many as you like.
-          </p>
-        </div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          End of task
+        </p>
+        <h2 className="mt-3 text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
+          A few last questions
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          All fields are optional — answer as many as you like.
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="mt-7 space-y-3">
           {/* Q1 — Fidgeting stimuli */}
-          <div className="space-y-2 rounded-2xl border border-border/80 bg-background/55 p-4">
+          <div
+            className="space-y-3 rounded-[14px] border border-border p-4"
+            style={{ background: "var(--fieldset-bg)" }}
+          >
             <label
               htmlFor="fidgeting-text"
-              className="text-sm font-medium leading-snug text-foreground"
+              className="block text-[14px] font-medium leading-snug text-foreground"
             >
               Please list any fidgeting stimuli that you are bothered by that did not show up in
               the task.
@@ -115,15 +117,18 @@ export default function MisokinesiaEndOfTaskForm({
               onChange={(e) => setFidgetingText(e.target.value)}
               rows={3}
               placeholder="Optional — leave blank if none"
-              className="w-full resize-none rounded-xl border border-border bg-card/70 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+              className="w-full resize-none rounded-[10px] border border-border bg-background px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
             />
           </div>
 
           {/* Q2 — Emotional responses */}
-          <div className="space-y-2 rounded-2xl border border-border/80 bg-background/55 p-4">
+          <div
+            className="space-y-3 rounded-[14px] border border-border p-4"
+            style={{ background: "var(--fieldset-bg)" }}
+          >
             <label
               htmlFor="emotions-text"
-              className="text-sm font-medium leading-snug text-foreground"
+              className="block text-[14px] font-medium leading-snug text-foreground"
             >
               Please list any emotional responses that you felt during the videos that were not
               asked in the questionnaire.
@@ -134,16 +139,19 @@ export default function MisokinesiaEndOfTaskForm({
               onChange={(e) => setEmotionsText(e.target.value)}
               rows={3}
               placeholder="Optional — leave blank if none"
-              className="w-full resize-none rounded-xl border border-border bg-card/70 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+              className="w-full resize-none rounded-[10px] border border-border bg-background px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
             />
           </div>
 
           {/* Q3 — Stronger responses binary */}
-          <div className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4">
-            <p className="text-sm font-medium leading-snug text-foreground">
+          <div
+            className="space-y-3 rounded-[14px] border border-border p-4"
+            style={{ background: "var(--fieldset-bg)" }}
+          >
+            <p className="text-[14px] font-medium leading-snug text-foreground">
               Did viewing the videos create stronger responses over time?
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               {[
                 { label: "No", value: false },
                 { label: "Yes", value: true },
@@ -153,10 +161,10 @@ export default function MisokinesiaEndOfTaskForm({
                   <label
                     key={opt.label}
                     className={cn(
-                      "cursor-pointer rounded-xl border px-4 py-2 text-sm font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
+                      "cursor-pointer rounded-[10px] border px-4 py-2 text-[12px] font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
                       isSelected
-                        ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                        : "border-border bg-card/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:border-ring/60 hover:text-foreground"
                     )}
                   >
                     <input
@@ -178,8 +186,8 @@ export default function MisokinesiaEndOfTaskForm({
 
             {/* Conditional timing options — only shown when stronger_responses is Yes */}
             {strongerResponses === true && (
-              <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="mt-2 space-y-2 border-t border-border pt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                   When did the responses feel stronger?
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -189,10 +197,10 @@ export default function MisokinesiaEndOfTaskForm({
                       <label
                         key={opt}
                         className={cn(
-                          "cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
+                          "cursor-pointer rounded-[10px] border px-3.5 py-2 text-[12px] font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
                           isSelected
-                            ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                            : "border-border bg-card/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground hover:border-ring/60 hover:text-foreground"
                         )}
                       >
                         <input
@@ -218,13 +226,13 @@ export default function MisokinesiaEndOfTaskForm({
             </div>
           )}
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-3">
             <Button
               type="submit"
               disabled={submitting}
-              className="min-w-36 rounded-xl px-6 text-primary-foreground"
+              className="h-11 min-w-[160px] rounded-xl px-[22px] text-sm text-primary-foreground"
             >
-              {submitting ? "Submitting…" : "Finish"}
+              {submitting ? "Submitting…" : "Finish →"}
             </Button>
           </div>
         </form>

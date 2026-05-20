@@ -372,7 +372,15 @@ export default function MisokinesiaTaskPage() {
   if (phase === "loading") {
     return (
       <Screen>
-        <p className="text-sm text-muted-foreground">Loading session…</p>
+        <div
+          className="rounded-2xl border border-border px-10 py-10 text-center"
+          style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Misokinesia Task
+          </p>
+          <p className="mt-4 text-sm text-muted-foreground">Loading session…</p>
+        </div>
       </Screen>
     );
   }
@@ -380,7 +388,15 @@ export default function MisokinesiaTaskPage() {
   if (phase === "error") {
     return (
       <Screen>
-        <p className="text-sm text-destructive">{loadError}</p>
+        <div
+          className="rounded-2xl border border-border px-10 py-10 text-center"
+          style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Session Error
+          </p>
+          <p className="mt-4 text-sm leading-relaxed text-destructive">{loadError}</p>
+        </div>
       </Screen>
     );
   }
@@ -520,7 +536,15 @@ export default function MisokinesiaTaskPage() {
       if (surveySubmitting === activeSurvey) {
         return (
           <Screen>
-            <p className="text-sm text-muted-foreground">Submitting questionnaire…</p>
+            <div
+              className="rounded-2xl border border-border px-10 py-10 text-center"
+              style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Saving
+              </p>
+              <p className="mt-4 text-sm text-muted-foreground">Submitting questionnaire…</p>
+            </div>
           </Screen>
         );
       }
@@ -528,15 +552,23 @@ export default function MisokinesiaTaskPage() {
       if (surveyError && pendingSurvey?.key === activeSurvey) {
         return (
           <Screen>
-            <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-              {surveyError}
-            </div>
-            <Button
-              onClick={handleSurveyRetry}
-              className="rounded-xl px-8 text-primary-foreground"
+            <div
+              className="rounded-2xl border border-border px-10 py-10 text-center"
+              style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
             >
-              Retry
-            </Button>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Submission Error
+              </p>
+              <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+                {surveyError}
+              </div>
+              <Button
+                onClick={handleSurveyRetry}
+                className="mt-6 h-11 rounded-xl px-[22px] text-sm text-primary-foreground"
+              >
+                Retry
+              </Button>
+            </div>
           </Screen>
         );
       }
@@ -634,7 +666,7 @@ export default function MisokinesiaTaskPage() {
 
     if (phase === "end_of_task") {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-start pt-8 px-4">
+        <div className="flex min-h-screen flex-col items-center justify-start px-4 pt-4">
           <MisokinesiaEndOfTaskForm
             misokinesiaParticipantId={participantId}
             trialMode={trialMode}
@@ -648,7 +680,15 @@ export default function MisokinesiaTaskPage() {
       if (completing) {
         return (
           <Screen>
-            <p className="text-sm text-muted-foreground">Saving your results…</p>
+            <div
+              className="rounded-2xl border border-border px-10 py-10 text-center"
+              style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Misokinesia Task
+              </p>
+              <p className="mt-4 text-sm text-muted-foreground">Saving your results…</p>
+            </div>
           </Screen>
         );
       }
@@ -656,15 +696,23 @@ export default function MisokinesiaTaskPage() {
       if (completeError) {
         return (
           <Screen>
-            <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-              {completeError}
-            </div>
-            <Button
-              onClick={handleRetry}
-              className="rounded-xl px-8 text-primary-foreground"
+            <div
+              className="rounded-2xl border border-border px-10 py-10 text-center"
+              style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
             >
-              Retry
-            </Button>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Session Error
+              </p>
+              <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+                {completeError}
+              </div>
+              <Button
+                onClick={handleRetry}
+                className="mt-6 h-11 rounded-xl px-[22px] text-sm text-primary-foreground"
+              >
+                Retry
+              </Button>
+            </div>
           </Screen>
         );
       }
@@ -672,33 +720,44 @@ export default function MisokinesiaTaskPage() {
       return (
         <Screen>
           <div
-            className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary"
+            className="rounded-2xl border border-border px-10 py-12 text-center"
+            style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
           >
-            <svg
-              className="h-8 w-8 text-primary-foreground"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
+            {/* Check mark */}
+            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary">
+              <svg
+                className="h-7 w-7 text-primary-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Session complete
+            </p>
+            <h1 className="mt-3 text-[28px] font-bold tracking-[-0.02em] text-foreground">
+              Thank you
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              The session is complete. Please return this device to the research assistant.
+            </p>
+
+            <Button
+              onClick={() => router.push("/misokinesia")}
+              className="mt-8 h-11 min-w-[200px] rounded-xl px-[22px] text-sm text-primary-foreground"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+              Back to Misokinesia
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Thank you</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            The session is complete. Please return this device to the research assistant.
-          </p>
-          <Button
-            onClick={() => router.push("/misokinesia")}
-            className="mt-8 rounded-xl px-8 text-primary-foreground"
-          >
-            Back to Misokinesia
-          </Button>
         </Screen>
       );
     }

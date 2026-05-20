@@ -3062,7 +3062,7 @@
       "id": "T192",
       "title": "Miso redesign - Remaining participant states",
       "description": "Apply the quiet editorial system to remaining non-video misokinesia states: loading, error, end-of-task, completion, and page-level spacing/integration, without changing pre-clip black buffer or video playback.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [
