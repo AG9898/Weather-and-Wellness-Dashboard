@@ -506,6 +506,8 @@ export default function MisokinesiaTaskPage() {
         <div className="flex min-h-screen flex-col items-center justify-center px-4">
           <TransitionCard
             surveyKey={getSurveyPhaseFromTransition(phase as TransitionCardPhase)}
+            surveyPosition={surveyIndex + 1}
+            totalSurveys={surveyOrder.length || 3}
             onContinue={() => handleTransitionContinue(phase as TransitionCardPhase)}
           />
         </div>
@@ -835,50 +837,197 @@ function ProgressIndicator({
   );
 }
 
-const TRANSITION_CARD_COPY: Record<
-  PostSurveyKey,
-  { title: string; description: string }
-> = {
+// ── A5 Survey Transition Card ──
+
+interface TransitionCardMeta {
+  k: string;
+  v: string;
+}
+
+interface TransitionCardCopy {
+  kicker: (position: number, total: number) => string;
+  title: string;
+  description: string;
+  meta: TransitionCardMeta[];
+  buttonLabel: string;
+}
+
+const TRANSITION_CARD_COPY: Record<PostSurveyKey, TransitionCardCopy> = {
   mkaq: {
-    title: "Misokinesia Assessment Questionnaire",
+    kicker: (pos, total) => `Up next · Survey ${pos} of ${total}`,
+    title: "Misokinesia Assessment",
     description:
-      "You will now answer 21 questions about how visual stimuli affect you.",
+      "A short questionnaire about how certain visual stimuli affect you. Answer based on the past two weeks. There are no right or wrong answers.",
+    meta: [
+      { k: "Items", v: "21 statements" },
+      { k: "Format", v: "4 panes · Previous available" },
+      { k: "Scale", v: "0–3 · Not at all → Almost all" },
+      { k: "Estimated", v: "≈ 5 minutes" },
+    ],
+    buttonLabel: "Begin assessment →",
   },
   gad7: {
+    kicker: (pos, total) => `Up next · Survey ${pos} of ${total}`,
     title: "Anxiety Questionnaire",
     description:
-      "You will now answer 7 questions about feelings of anxiety over the past two weeks.",
+      "Seven short questions about feelings of anxiety. Answer based on the past two weeks. There are no right or wrong answers.",
+    meta: [
+      { k: "Items", v: "7 statements" },
+      { k: "Format", v: "Single screen" },
+      { k: "Scale", v: "1–4 · Never → Often" },
+      { k: "Estimated", v: "≈ 1 minute" },
+    ],
+    buttonLabel: "Begin questionnaire →",
   },
   maq: {
-    title: "Misophonia Assessment Questionnaire",
+    kicker: (pos, total) => `Up next · Survey ${pos} of ${total}`,
+    title: "Misophonia Assessment",
     description:
-      "You will now answer 21 questions about how certain sounds affect you.",
+      "A short questionnaire about how certain sounds affect you. Answer based on the past two weeks. There are no right or wrong answers.",
+    meta: [
+      { k: "Items", v: "21 statements" },
+      { k: "Format", v: "3 panes · Previous available" },
+      { k: "Scale", v: "0–3 · Not at all → Almost all" },
+      { k: "Estimated", v: "≈ 5 minutes" },
+    ],
+    buttonLabel: "Begin assessment →",
   },
 };
 
 function TransitionCard({
   surveyKey,
+  surveyPosition,
+  totalSurveys,
   onContinue,
 }: {
   surveyKey: PostSurveyKey;
+  surveyPosition: number;
+  totalSurveys: number;
   onContinue: () => void;
 }) {
   const copy = TRANSITION_CARD_COPY[surveyKey];
+
   return (
-    <div className="w-full max-w-md text-center">
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-        Next Section
-      </p>
-      <h2 className="text-2xl font-bold text-foreground">{copy.title}</h2>
-      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-        {copy.description}
-      </p>
-      <Button
-        onClick={onContinue}
-        className="mt-8 rounded-xl px-8 text-primary-foreground"
+    <div className="w-full max-w-[620px]">
+      {/* Stage strip: "Clips complete ✓" — hairline — survey dots — "N / M surveys" */}
+      <div className="mb-9 flex items-center gap-2.5">
+        <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Clips complete
+        </span>
+        {/* Check glyph */}
+        <span
+          className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+          style={{ width: 18, height: 18 }}
+          aria-hidden
+        >
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+        </span>
+        <div className="h-px flex-1 bg-border" aria-hidden />
+        {/* Survey dots */}
+        <div className="flex items-center gap-1.5" aria-hidden>
+          {Array.from({ length: totalSurveys }).map((_, i) => (
+            <span
+              key={i}
+              className="block h-1 rounded-full"
+              style={{
+                width: 24,
+                background:
+                  i + 1 === surveyPosition
+                    ? "var(--primary)"
+                    : "var(--muted)",
+              }}
+            />
+          ))}
+        </div>
+        <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {surveyPosition} / {totalSurveys} surveys
+        </span>
+      </div>
+
+      {/* Card */}
+      <div
+        className="rounded-2xl border border-border px-11 py-10"
+        style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
       >
-        Continue
-      </Button>
+        {/* Kicker */}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          {copy.kicker(surveyPosition, totalSurveys)}
+        </p>
+
+        {/* Title */}
+        <h1 className="mt-3 text-[34px] font-bold leading-[1.15] tracking-[-0.02em] text-foreground">
+          {copy.title}
+        </h1>
+
+        {/* Description */}
+        <p className="mt-3.5 text-[14px] leading-relaxed text-muted-foreground">
+          {copy.description}
+        </p>
+
+        {/* Meta ledger */}
+        <div className="mt-7 border-t border-border">
+          {copy.meta.map((row, i) => (
+            <div
+              key={row.k}
+              className={cn(
+                "grid items-center gap-6 py-3",
+                i < copy.meta.length - 1 && "border-b border-border"
+              )}
+              style={{ gridTemplateColumns: "140px 1fr" }}
+            >
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                {row.k}
+              </span>
+              <span className="text-[13px] text-foreground">{row.v}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Pause note */}
+        <div
+          className="mt-6 flex items-center gap-2.5 rounded-[10px] px-3.5 py-3"
+          style={{ background: "var(--fieldset-bg)" }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            aria-hidden
+            className="shrink-0 text-muted-foreground"
+          >
+            <rect x="6" y="4" width="4" height="16" rx="1" />
+            <rect x="14" y="4" width="4" height="16" rx="1" />
+          </svg>
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            Take a breath before continuing — you can pause between questions.
+          </span>
+        </div>
+
+        {/* CTA */}
+        <div className="mt-6 flex justify-end">
+          <Button
+            onClick={onContinue}
+            className="h-11 min-w-[200px] rounded-xl px-[22px] text-sm text-primary-foreground"
+          >
+            {copy.buttonLabel}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
