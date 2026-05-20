@@ -32,13 +32,16 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 ### Fullscreen Behavior
 
 - The top-level task container element (wrapping all states: demographics, intro, video player, per-clip questionnaire, transition cards, and post-video surveys) calls `requestFullscreen()` when the participant begins (after demographics submit).
-- Fullscreen persists across every state transition for the duration of the task; the browser does not exit fullscreen between video and questionnaire states.
-- A persistent exit-fullscreen button is rendered in a fixed corner (e.g. top-right) and is visible in every state. Pressing `Esc` or clicking the button exits fullscreen; the button then offers a re-enter control.
+- Fullscreen persists across video-to-questionnaire, questionnaire-to-video, transition-card, and post-video survey states.
+- During clip playback, the video renders full-bleed on black inside the fullscreen task container rather than inside a card-like frame.
+- When the end-of-task form is complete, the frontend exits fullscreen before showing the completion screen so returning to `/misokinesia` resumes normal browser behavior.
+- A persistent exit-fullscreen button is rendered in a fixed corner (e.g. top-right) and is visible during active task states. Pressing `Esc` or clicking the button exits fullscreen; the button then offers a re-enter control until the task reaches completion.
 - No page-shell chrome (floating dock, RA nav) is visible inside fullscreen.
 
-### 2-Second Pre-Clip Buffer
+### Pre-Clip Buffer
 
-- Before each clip autoplays, a solid-black interstitial fills the task container for exactly 2 seconds.
+- Before each clip autoplays, a solid-black interstitial fills the task container for 6 seconds.
+- The centered clip progress label is shown during the first 2 seconds of the buffer, then the screen remains black until playback starts.
 - The `<video>` element is loaded with `preload="auto"` during the buffer so playback starts immediately when the buffer ends.
 - The buffer applies to every clip in both production and trial modes.
 

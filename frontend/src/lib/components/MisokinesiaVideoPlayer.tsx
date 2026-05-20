@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 interface MisokinesiaVideoPlayerProps {
   publicUrl: string;
   onEnded: () => void;
+  immersive?: boolean;
 }
 
 type WebkitFullscreenDocument = Document & {
@@ -57,6 +58,7 @@ async function exitFullscreen() {
 export default function MisokinesiaVideoPlayer({
   publicUrl,
   onEnded,
+  immersive = false,
 }: MisokinesiaVideoPlayerProps) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -134,19 +136,25 @@ export default function MisokinesiaVideoPlayer({
   const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
 
   return (
-    <div className="w-full">
+    <div className={immersive ? "h-screen w-screen bg-black" : "w-full"}>
       <div
         ref={frameRef}
-        className="relative w-full overflow-hidden rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm"
-        style={{ aspectRatio: "16 / 9" }}
+        className={
+          immersive
+            ? "relative h-full w-full overflow-hidden bg-black"
+            : "relative w-full overflow-hidden rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm"
+        }
+        style={immersive ? undefined : { aspectRatio: "16 / 9" }}
       >
-        <div
-          className="pointer-events-none absolute inset-0 opacity-20"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, var(--ring) 72%, transparent), transparent)",
-          }}
-        />
+        {!immersive && (
+          <div
+            className="pointer-events-none absolute inset-0 opacity-20"
+            style={{
+              background:
+                "radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, var(--ring) 72%, transparent), transparent)",
+            }}
+          />
+        )}
 
         <video
           ref={videoRef}
@@ -176,55 +184,57 @@ export default function MisokinesiaVideoPlayer({
             >
               Play Clip
             </Button>
-          ) : (
+          ) : immersive ? null : (
             <p className="text-xs font-medium text-muted-foreground">
               The questionnaire will appear automatically when the clip ends.
             </p>
           )}
         </div>
 
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon-sm"
-          onClick={handleToggleFullscreen}
-          disabled={!fullscreenSupported}
-          className="absolute bottom-4 right-4 z-20 rounded-lg border border-border/70 bg-background/85 backdrop-blur-sm"
-          aria-label={fullscreenLabel}
-          title={
-            fullscreenSupported
-              ? fullscreenLabel
-              : "Fullscreen is unavailable in this browser"
-          }
-        >
-          {isFullscreen ? (
-            <svg
-              aria-hidden="true"
-              className="size-4"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
-            </svg>
-          ) : (
-            <svg
-              aria-hidden="true"
-              className="size-4"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <path d="M9 9H4V4M15 9h5V4M9 15H4v5M15 15h5v5" />
-            </svg>
-          )}
-        </Button>
+        {!immersive && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon-sm"
+            onClick={handleToggleFullscreen}
+            disabled={!fullscreenSupported}
+            className="absolute bottom-4 right-4 z-20 rounded-lg border border-border/70 bg-background/85 backdrop-blur-sm"
+            aria-label={fullscreenLabel}
+            title={
+              fullscreenSupported
+                ? fullscreenLabel
+                : "Fullscreen is unavailable in this browser"
+            }
+          >
+            {isFullscreen ? (
+              <svg
+                aria-hidden="true"
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
+              </svg>
+            ) : (
+              <svg
+                aria-hidden="true"
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M9 9H4V4M15 9h5V4M9 15H4v5M15 15h5v5" />
+              </svg>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

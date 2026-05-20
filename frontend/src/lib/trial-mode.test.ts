@@ -278,7 +278,7 @@ describe("MkAQ production participant flow placement", () => {
   });
 
   it("routes begin phase directly to playing", () => {
-    expect(getPhaseAfterBegin()).toBe("playing");
+    expect(getPhaseAfterBegin()).toBe("pre_play");
   });
 
   it("routes final questionnaire completion to mkaq when clips are complete", () => {

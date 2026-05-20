@@ -15,8 +15,8 @@ export function getSurveyPhaseFromTransition(
   return transition.replace("transition_", "") as PostSurveyKey;
 }
 
-export function getPhaseAfterBegin(): "playing" {
-  return "playing";
+export function getPhaseAfterBegin(): "pre_play" {
+  return "pre_play";
 }
 
 export function getPhaseAfterVideoComplete(
@@ -39,6 +39,7 @@ export function getPhaseAfterQuestionnaireComplete(
   isComplete: boolean,
   _postSurveyOrder?: string
 ): "mkaq" | "playing" {
+  void _postSurveyOrder;
   return isComplete ? "mkaq" : "playing";
 }
 

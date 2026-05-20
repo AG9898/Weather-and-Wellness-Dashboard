@@ -16,10 +16,10 @@ The Misokinesia module presents a participant with 25 short video clips (each ap
 2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns a `post_survey_order` permutation of `["mkaq", "gad7", "maq"]`, then returns the full clip manifest (all 25 active URLs) plus the survey order.
 3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required).
 4. Participant completes the miso demographics form (all fields optional); frontend submits `PATCH /misokinesia/participants/{id}/demographics`.
-5. Participant sees intro screen and clicks to begin. Task container enters browser-native fullscreen (Fullscreen API) at this point and remains fullscreen for the duration of the task.
+5. Participant sees intro screen and clicks to begin. Task container enters browser-native fullscreen (Fullscreen API) at this point and remains fullscreen through clip playback, per-clip questionnaires, transition cards, and post-video surveys.
 6. For each of 25 clips (session-randomized playback order):
-   - A 2-second solid-black buffer screen is shown; the video is preloaded during this time.
-   - Video clip autoplays.
+   - A 6-second solid-black buffer screen is shown; the centered clip progress label appears during the first 2 seconds and the video is preloaded during the buffer.
+   - Video clip autoplays full-bleed on black inside the fullscreen task container.
    - Per-clip questionnaire (4 questions) is shown after the clip, inside the fullscreen container.
    - Frontend submits `POST /misokinesia/participants/{id}/responses`.
    - When `is_complete: true` is returned (25th submission), backend has set `completed_at` server-side.
@@ -264,8 +264,8 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 - **`completed_at` set server-side.** On each `POST /responses` call the backend counts submitted responses for the participant; when all stimuli are answered it sets `misokinesia_participants.completed_at` automatically and returns `is_complete: true`.
 - **Independent participant numbering.** `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence and starts from 1, independent of `participants.participant_number`.
 - **Stimuli seeded via seed script.** No admin upload endpoint exists yet; stimulus rows are inserted manually or via a seed script. Decommissioned stimuli have `active = false`; their rows are retained.
-- **Fullscreen.** The task container element (wrapping video, questionnaire, transition cards, and surveys) enters browser-native fullscreen via the Fullscreen API at task start. Fullscreen persists across all state transitions. An exit-fullscreen button is visible at all times.
-- **2-second pre-clip buffer.** Before each clip autoplays, a 2-second solid-black interstitial is shown. The `<video>` element is loaded (`preload="auto"`) during this buffer so playback starts immediately after.
+- **Fullscreen.** The task container element (wrapping video, questionnaire, transition cards, and surveys) enters browser-native fullscreen via the Fullscreen API at task start. Fullscreen persists across clip, questionnaire, transition-card, and survey state transitions, then exits when the end-of-task flow reaches completion. An exit-fullscreen button is visible during active task phases.
+- **Pre-clip buffer.** Before each clip autoplays, a 6-second solid-black interstitial is shown. The centered clip progress label appears during the first 2 seconds, and the `<video>` element is loaded (`preload="auto"`) during this buffer so playback starts immediately after.
 - **Demographics are participant-submitted.** Miso demographics are collected via the first screen of the participant task (before intro) and stored on `misokinesia_participants` via `PATCH /misokinesia/participants/{id}/demographics`. All fields are optional. Trial mode shows the screen but does not call the endpoint.
 
 ---

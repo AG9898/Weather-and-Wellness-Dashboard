@@ -37,6 +37,7 @@ import {
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
 import {
+  getPhaseAfterBegin,
   getPhaseAfterVideoComplete,
   getNextPostSurveyPhase,
   getSurveyPhaseFromTransition,
@@ -45,6 +46,8 @@ import {
 } from "@/lib/misokinesia-phase";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
+const PRE_CLIP_BUFFER_MS = 6000;
+const PRE_CLIP_PROGRESS_MS = 2000;
 
 type Phase =
   | "loading"
@@ -73,6 +76,7 @@ export default function MisokinesiaTaskPage() {
   const [trialModeType, setTrialModeType] = useState<MisokinesiaTrialMode | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
+  const [showPreClipProgress, setShowPreClipProgress] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // Demographics submission state
@@ -220,13 +224,20 @@ export default function MisokinesiaTaskPage() {
     surveyIndex,
   ]);
 
-  // ── 2-second pre-clip black interstitial ──
+  // ── Pre-clip black interstitial ──
   useEffect(() => {
     if (phase !== "pre_play") return;
-    const timer = setTimeout(() => {
+    setShowPreClipProgress(true);
+    const progressTimer = setTimeout(() => {
+      setShowPreClipProgress(false);
+    }, PRE_CLIP_PROGRESS_MS);
+    const playTimer = setTimeout(() => {
       setPhase("playing");
-    }, 2000);
-    return () => clearTimeout(timer);
+    }, PRE_CLIP_BUFFER_MS);
+    return () => {
+      clearTimeout(progressTimer);
+      clearTimeout(playTimer);
+    };
   }, [phase]);
 
   // ── Fullscreen: sync button state with actual fullscreen state ──
@@ -259,6 +270,12 @@ export default function MisokinesiaTaskPage() {
     if (!document.fullscreenElement) return;
     document.exitFullscreen().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (phase !== "complete") return;
+    setFullscreenStarted(false);
+    exitFullscreen();
+  }, [phase, exitFullscreen]);
 
   const totalClips = manifest?.clips.length ?? 0;
   const currentClip = manifest?.clips[currentClipIndex];
@@ -295,7 +312,7 @@ export default function MisokinesiaTaskPage() {
   }
 
   function handleBegin() {
-    setPhase("pre_play");
+    setPhase(getPhaseAfterBegin());
   }
 
   function handleVideoEnded() {
@@ -330,6 +347,8 @@ export default function MisokinesiaTaskPage() {
   }
 
   function handleEndOfTaskComplete() {
+    setFullscreenStarted(false);
+    exitFullscreen();
     setPhase("complete");
     if (trialMode) {
       setCompleting(false);
@@ -488,8 +507,15 @@ export default function MisokinesiaTaskPage() {
 
     if (phase === "pre_play" && currentClip) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-black">
-          {/* Hidden video element preloads the clip during the 2-second buffer */}
+        <div className="relative flex min-h-screen flex-col items-center justify-center bg-black">
+          {showPreClipProgress && (
+            <ProgressIndicator
+              clipNumber={clipNumber}
+              totalClips={totalClips}
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/80"
+            />
+          )}
+          {/* Hidden video element preloads the clip during the buffer */}
           <video
             key={currentClip.public_url}
             preload="auto"
@@ -505,14 +531,12 @@ export default function MisokinesiaTaskPage() {
 
     if (phase === "playing" && currentClip) {
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center px-3 py-4 sm:px-4">
-          <div className="w-full max-w-[92rem] space-y-3">
-            <ProgressIndicator clipNumber={clipNumber} totalClips={totalClips} />
-            <MisokinesiaVideoPlayer
-              publicUrl={currentClip.public_url}
-              onEnded={handleVideoEnded}
-            />
-          </div>
+        <div className="flex min-h-screen bg-black">
+          <MisokinesiaVideoPlayer
+            publicUrl={currentClip.public_url}
+            onEnded={handleVideoEnded}
+            immersive
+          />
         </div>
       );
     }
@@ -616,8 +640,8 @@ export default function MisokinesiaTaskPage() {
     >
       {renderPhaseContent()}
 
-      {/* Fullscreen toggle button — visible in all task phases after demographics advances */}
-      {fullscreenStarted && (
+      {/* Fullscreen toggle button — visible in task phases after demographics advances */}
+      {fullscreenStarted && phase !== "complete" && (
         <FullscreenButton
           isFullscreen={isFullscreen}
           onEnter={enterFullscreen}
@@ -727,12 +751,14 @@ function resolveTrialModeType(
 function ProgressIndicator({
   clipNumber,
   totalClips,
+  className = "",
 }: {
   clipNumber: number;
   totalClips: number;
+  className?: string;
 }) {
   return (
-    <p className="mb-2 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+    <p className={`mb-2 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground ${className}`}>
       Clip {clipNumber} of {totalClips}
     </p>
   );
