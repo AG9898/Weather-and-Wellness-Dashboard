@@ -3120,7 +3120,7 @@
       "id": "T194",
       "title": "Miso redesign - Storybook coverage and visual states",
       "description": "Update or add Storybook page/component stories for the redesigned misokinesia participant and RA surfaces with light, dark, mobile, loading, empty/error, and representative answered states.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "MISO_FEEDBACK",
       "depends_on": [
