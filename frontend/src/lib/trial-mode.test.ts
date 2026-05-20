@@ -29,6 +29,8 @@ import {
   getPhaseAfterQuestionnaireComplete,
   getPhaseAfterVideoComplete,
   getNextPostSurveyPhase,
+  getTransitionPhase,
+  getSurveyPhaseFromTransition,
 } from "@/lib/misokinesia-phase";
 import { parseSurveyOrder } from "@/lib/api";
 
@@ -372,9 +374,9 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
     expect(manifest.trial_mode).toBe("full");
   });
 
-  it("routes through the randomized post-video survey order", () => {
-    expect(getPhaseAfterVideoComplete(["gad7", "mkaq", "maq"])).toBe("gad7");
-    expect(getNextPostSurveyPhase(["gad7", "mkaq", "maq"], 0)).toBe("mkaq");
+  it("routes through the randomized post-video survey order via transition cards", () => {
+    expect(getPhaseAfterVideoComplete(["gad7", "mkaq", "maq"])).toBe("transition_gad7");
+    expect(getNextPostSurveyPhase(["gad7", "mkaq", "maq"], 0)).toBe("transition_mkaq");
     expect(getNextPostSurveyPhase(["gad7", "mkaq", "maq"], 2)).toBe("end_of_task");
   });
 });
@@ -510,5 +512,66 @@ describe("trial-mode identity and watermark state", () => {
     expect(buildTrialRunPath("/session/trial-local-session-1/uls8")).toBe(
       "/session/trial-local-session-1/uls8?trial=1"
     );
+  });
+});
+
+describe("T183 transition cards — phase helpers", () => {
+  it("getTransitionPhase maps each post-survey key to its transition phase", () => {
+    expect(getTransitionPhase("mkaq")).toBe("transition_mkaq");
+    expect(getTransitionPhase("gad7")).toBe("transition_gad7");
+    expect(getTransitionPhase("maq")).toBe("transition_maq");
+  });
+
+  it("getSurveyPhaseFromTransition strips the prefix back to the survey key", () => {
+    expect(getSurveyPhaseFromTransition("transition_mkaq")).toBe("mkaq");
+    expect(getSurveyPhaseFromTransition("transition_gad7")).toBe("gad7");
+    expect(getSurveyPhaseFromTransition("transition_maq")).toBe("maq");
+  });
+
+  it("participant page includes all three transition phases in the Phase union", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).toContain('"transition_mkaq"');
+    expect(source).toContain('"transition_gad7"');
+    expect(source).toContain('"transition_maq"');
+  });
+
+  it("participant page renders TransitionCard and calls handleTransitionContinue", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).toContain("TransitionCard");
+    expect(source).toContain("handleTransitionContinue");
+  });
+});
+
+describe("T185 miso demographics — participant UI and trial skip", () => {
+  it("exports patchMisokinesiaDemographics from src/lib/api/index.ts", () => {
+    const source = readFrontendFile("src/lib/api/index.ts");
+    expect(source).toContain("export async function patchMisokinesiaDemographics");
+    expect(source).toContain("MisokinesiaDemographicsRequest");
+  });
+
+  it("participant page includes demographics as the first phase", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).toContain('"demographics"');
+    expect(source).toContain('setPhase("demographics")');
+  });
+
+  it("participant page skips demographics API call in trial mode", () => {
+    const source = readFrontendFile(
+      "src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+    );
+    expect(source).toContain("handleDemographicsSubmit");
+    expect(source).toContain("if (trialMode)");
+    expect(source).toContain("patchMisokinesiaDemographics");
+  });
+
+  it("MisokinesiaDemographicsForm does not use bare fetch", () => {
+    const source = readFrontendFile("src/lib/components/MisokinesiaDemographicsForm.tsx");
+    expect(source).not.toMatch(/\bfetch\s*\(/);
   });
 });

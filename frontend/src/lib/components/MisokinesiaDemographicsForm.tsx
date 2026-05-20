@@ -68,7 +68,7 @@ export default function MisokinesiaDemographicsForm({
   const [countryOtherText, setCountryOtherText] = useState("");
   const [nationality, setNationality] = useState("");
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
     onSubmit({
       age_band: ageBand,
