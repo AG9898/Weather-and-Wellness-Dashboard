@@ -40,7 +40,7 @@
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143, T172 |
 | GET    | /misokinesia/dashboard | RA | implemented | T195 |
 | GET    | /misokinesia/video-scores | RA | implemented | T196 |
-| PATCH  | /misokinesia/participants/{participant_id}/demographics | None | implemented | T184 |
+| PATCH  | /misokinesia/participants/{participant_id}/demographics | None | planned replacement | T184 → Miso demographics v2 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
 | POST   | /misokinesia/participants/{participant_id}/gad7 | None | implemented | T169 |
@@ -130,9 +130,9 @@
         "misokinesia_participant_number": 12,
         "started_at": "2026-05-20T16:00:00Z",
         "completed_at": null,
-        "age_band": "25-31",
-        "gender": "Woman",
-        "country": "Canada",
+        "age": 24,
+        "sex": "Female",
+        "residence_status": "Student Visa",
         "avg_clip_score": 15.5
       }
     ]
@@ -142,23 +142,51 @@
   - RA-only summary endpoint for the misokinesia operations page.
   - `active_stimuli_count` counts active `misokinesia_stimuli` rows in the active test set.
   - `recent_sessions` returns up to 10 `misokinesia_participants` rows ordered by `started_at DESC`.
-  - Demographics fields are nullable and pass through the values stored on `misokinesia_participants`.
+  - Planned demographics summary fields are `age`, `sex`, and `residence_status`, passed through from `misokinesia_participants`. They are nullable for legacy rows and participants who have not reached demographics.
   - `avg_clip_score` is the mean of `q1 + q2 + q3 + q4` across that participant's per-clip response rows. It is `null` when the participant has not submitted any clip responses.
   - The backend computes the dashboard with one aggregate query and does not issue per-participant response lookups.
   - Unauthenticated requests return 401.
 
 ### PATCH /misokinesia/participants/{participant_id}/demographics
 - **Auth:** None (participant-facing)
-- **Status:** implemented (T184)
+- **Status:** planned replacement for T184 sourced from `reference/labs/Misokinesia/Demographics copy2.docx`
 - **Request body:** `MisoDemographicsCreate`
   ```json
   {
-    "age_band":           "string | null",
-    "gender":             "string | null",
-    "gender_other_text":  "string | null",
-    "country":            "string | null",
-    "country_other_text": "string | null",
-    "nationality":        "string | null"
+    "age": 24,
+    "sex": "Female",
+    "gender_identity": "string",
+    "years_lived_canada": 6,
+    "residence_status": "Student Visa",
+    "residence_status_other_text": null,
+    "student_type": "International",
+    "total_years_education": 16,
+    "cumulative_gpa": 4.0,
+    "majors_text": "Psychology",
+    "highest_education_completed": "Bachelors degree",
+    "ethnicity": ["Korean"],
+    "ethnicity_other_text": null,
+    "native_language": "Korean",
+    "english_fluency": "Agree",
+    "fluent_languages": ["Korean"],
+    "fluent_languages_other_text": null,
+    "english_speaking_frequency": "Often",
+    "non_english_schooling": true,
+    "instruction_languages": ["Korean"],
+    "instruction_languages_other_text": null,
+    "diagnosed_disorders": ["N/A"],
+    "diagnosed_disorders_other_text": null,
+    "adhd_diagnosis": false,
+    "adhd_medication": "No",
+    "avid_videogamer": true,
+    "video_game_hours_per_week": 8,
+    "prescription_stimulants": false,
+    "regular_substances": ["Caffeinated Stimulants (coffee, energy drinks, etc.)"],
+    "regular_substances_other_text": null,
+    "relationship_status": "Single",
+    "relationship_status_other_text": null,
+    "occupational_status": "Student",
+    "occupational_status_other_text": null
   }
   ```
 - **Response (HTTP 200):** `MisoDemographicsResponse`
@@ -168,15 +196,32 @@
 - **Notes:**
   - No auth required.
   - Returns 404 if `participant_id` not found.
-  - Returns 422 if `gender_other_text` is set when `gender != "Not listed"`.
-  - Returns 422 if `country_other_text` is set when `country != "Not listed"`.
-  - Returns 422 if a categorical field value is not in the allowed set and is not null. Allowed values:
-    - `age_band`: `"Under 18"`, `"18-24"`, `"25-31"`, `"32-38"`, `"Over 38"`
-    - `gender`: `"Woman"`, `"Man"`, `"Nonbinary person"`, `"Prefer not to say"`, `"Not listed"`
-    - `country`: `"Canada"`, `"South Korea"`, `"Not listed"`
-  - All fields are nullable; participant may skip any or all.
+  - The participant UI must require all visible demographics fields before submission. Database columns remain nullable for legacy rows and trial/no-write behavior.
+  - Slider/input numeric ranges:
+    - `age`, `years_lived_canada`, `total_years_education`, `video_game_hours_per_week`: integer `0`-`100`
+    - `cumulative_gpa`: numeric `0`-`5`
+  - Single-choice allowed values:
+    - `sex`: `"Male"`, `"Female"`
+    - `residence_status`: `"Canadian Citizenship"`, `"Permanent Resident"`, `"Student Visa"`, `"Other"`
+    - `student_type`: `"Domestic"`, `"International"`
+    - `highest_education_completed`: `"Elementary or middle school"`, `"High school or equivalent (e.g., GED)"`, `"College diploma"`, `"Bachelors degree"`, `"Masters degree"`, `"Doctorate degree"`
+    - `english_fluency`: `"Strongly agree"`, `"Agree"`, `"Neither agree nor disagree"`, `"Disagree"`, `"Strongly disagree"`
+    - `english_speaking_frequency`: `"Always"`, `"Often"`, `"Sometimes"`, `"Rarely"`, `"Never"`
+    - `adhd_medication`: `"Yes"`, `"Maybe"`, `"No"`
+    - `relationship_status`: `"Single"`, `"In a relationship"`, `"Married (and not separated)"`, `"Common-law"`, `"Seperated"`, `"Divorced"`, `"Widowed"`, `"Other"`, `"None of the Above"`
+    - `occupational_status`: `"Employed full-time"`, `"Employed part-time"`, `"Out of work but looking for work"`, `"Out of work and not looking for work"`, `"Homemaker"`, `"Student"`, `"Military"`, `"Retired"`, `"Unable to work"`, `"Other"`, `"None of the above"`
+  - Multi-select allowed values:
+    - `ethnicity`: `"European Canadian"`, `"Chinese"`, `"South Asian"`, `"Filipino"`, `"Southeast Asian"`, `"Japanese"`, `"Latin American"`, `"Korean"`, `"Other"`
+    - `fluent_languages`: `"French"`, `"Mandarin"`, `"Cantonese"`, `"Hindi"`, `"Punjabi"`, `"Korean"`, `"None"`, `"Other"`
+    - `instruction_languages`: `"French"`, `"Mandarin"`, `"Cantonese"`, `"Hindi"`, `"Punjabi"`, `"Korean"`, `"Other"`
+    - `diagnosed_disorders`: `"Neurological Disorder"`, `"Generalized Anxiety Disorder"`, `"Depression"`, `"Mood Disorder"`, `"Substance Use Disorder"`, `"Other"`, `"N/A"`
+    - `regular_substances`: `"Alcohol"`, `"Cannabis"`, `"Tobacco"`, `"Vaping"`, `"Caffeinated Stimulants (coffee, energy drinks, etc.)"`, `"Other"`, `"None of the Above"`
+  - Returns 422 when an `*_other_text` value is present without the matching `"Other"` selection, or when `"Other"` is selected without text.
+  - Returns 422 when `instruction_languages` is present while `non_english_schooling` is not `true`.
+  - Returns 422 when `video_game_hours_per_week` is present while `avid_videogamer` is not `true`.
+  - `"None"`, `"N/A"`, and `"None of the Above"` are exclusive in their parent multi-select group.
   - Idempotent — can be called multiple times; later calls overwrite earlier values.
-  - Trial mode must not call this endpoint; demographics screen advances locally.
+  - Trial mode must not call this endpoint; consent and demographics screens advance locally.
 
 ---
 

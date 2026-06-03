@@ -6,7 +6,7 @@
 
 ## Purpose
 
-The Misokinesia module presents a participant with the active video manifest in a randomized per-session order. The current seeded pool has 25 active short video clips (each approximately 15 seconds, longest 33 seconds; 4 clips decommissioned 2026-05, rows retained), but participant-facing progress must use the returned manifest length rather than a hardcoded count. Before any clips play, the participant completes a short miso-specific demographics form (optional fields; stored on `misokinesia_participants`). After each clip the participant answers a 4-question per-clip questionnaire. After the final clip response, the participant completes three post-video surveys in a server-assigned randomised order — each preceded by a transition card — covering the 21-item Misokinesia Assessment Questionnaire (MkAQ), the 7-item GAD-7 anxiety scale, and the 21-item Misophonia Assessment Questionnaire (MAQ). After all clip and post-video survey requirements are complete, the participant answers the end-of-task questionnaire. All results are stored anonymously, linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
+The Misokinesia module presents a participant with the active video manifest in a randomized per-session order. The current seeded pool has 25 active short video clips (each approximately 15 seconds, longest 33 seconds; 4 clips decommissioned 2026-05, rows retained), but participant-facing progress must use the returned manifest length rather than a hardcoded count. Before any clips play, the participant passes a UI-only consent gate and completes the sourced miso-specific demographics form from `reference/labs/Misokinesia/Demographics copy2.docx` (stored on `misokinesia_participants`). After each clip the participant answers a 4-question per-clip questionnaire. After the final clip response, the participant completes three post-video surveys in a server-assigned randomised order — each preceded by a transition card — covering the 21-item Misokinesia Assessment Questionnaire (MkAQ), the 7-item GAD-7 anxiety scale, and the 21-item Misophonia Assessment Questionnaire (MAQ). After all clip and post-video survey requirements are complete, the participant answers the end-of-task questionnaire. All results are stored anonymously, linked to a dedicated `misokinesia_participants` row that references a standard `participants` UUID and `session_id`.
 
 ---
 
@@ -15,24 +15,49 @@ The Misokinesia module presents a participant with the active video manifest in 
 1. RA navigates to `/misokinesia` via the floating dock and clicks "Start Misokinesia Session".
 2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns a `post_survey_order` permutation of `["mkaq", "gad7", "maq"]`, then returns the full active clip manifest plus the survey order.
 3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required).
-4. Participant completes the miso demographics form (all fields optional); frontend submits `PATCH /misokinesia/participants/{id}/demographics`.
-5. Participant sees intro screen and clicks to begin. Task container enters browser-native fullscreen (Fullscreen API) at this point and remains fullscreen through clip playback, per-clip questionnaires, transition cards, and post-video surveys.
-6. For each clip in the returned manifest (session-randomized playback order):
+4. Participant answers the UI-only consent gate. "Yes" opens the sourced demographics carousel; "No" returns to `/misokinesia` without a database write.
+5. Participant completes all visible demographics questions; frontend submits `PATCH /misokinesia/participants/{id}/demographics`.
+6. Participant sees intro screen and clicks to begin. Task container enters browser-native fullscreen (Fullscreen API) at this point and remains fullscreen through clip playback, per-clip questionnaires, transition cards, and post-video surveys.
+7. For each clip in the returned manifest (session-randomized playback order):
    - A 4-second solid-black buffer screen is shown; the centered clip progress label appears during the first 2 seconds and the video is preloaded during the buffer.
    - Video clip autoplays full-bleed on black inside the fullscreen task container.
    - Per-clip questionnaire (4 questions) is shown after the clip, inside the fullscreen container.
    - Frontend submits `POST /misokinesia/participants/{id}/responses`.
    - When `is_complete: true` is returned on the final manifest clip submission, backend has set `completed_at` server-side.
-7. Participant completes the three post-video surveys in the order given by `post_survey_order`. Before each survey, a transition card is shown describing the next task; the card is keyed to its survey so randomization does not break the pairing:
+8. Participant completes the three post-video surveys in the order given by `post_survey_order`. Before each survey, a transition card is shown describing the next task; the card is keyed to its survey so randomization does not break the pairing:
    - **[transition card → MkAQ]** — 21-item card carousel; `POST /misokinesia/participants/{id}/mkaq`
    - **[transition card → GAD-7]** — 7-item radio form; `POST /misokinesia/participants/{id}/gad7`
    - **[transition card → MAQ]** — 21-item card carousel; `POST /misokinesia/participants/{id}/maq`
-8. Frontend transitions to the end-of-task questionnaire (not directly to completion).
-9. Participant completes the end-of-task form; frontend submits `PATCH /misokinesia/participants/{id}/end-of-task`.
-10. Frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'` (reuses existing endpoint, same pattern as digitspan).
-11. Completion screen shown; RA clicks "Back to Misokinesia" to return to `/misokinesia`.
+9. Frontend transitions to the end-of-task questionnaire (not directly to completion).
+10. Participant completes the end-of-task form; frontend submits `PATCH /misokinesia/participants/{id}/end-of-task`.
+11. Frontend calls `PATCH /sessions/{session_id}/status` with `status='complete'` (reuses existing endpoint, same pattern as digitspan).
+12. Completion screen shown; RA clicks "Back to Misokinesia" to return to `/misokinesia`.
 
-State machine: `demographics → intro → playing → questionnaire → (loop × manifest clips) → [transition_card → post_survey] × 3 → end_of_task → complete`
+State machine: `consent_gate → demographics → intro → playing → questionnaire → (loop × manifest clips) → [transition_card → post_survey] × 3 → end_of_task → complete`
+
+## Sourced Demographics Instrument
+
+Source: `reference/labs/Misokinesia/Demographics copy2.docx`.
+
+The DOCX consent item is a UI-only gate and is not stored. Demographics answers are required in production before the intro screen. Database columns remain nullable for legacy rows and no-write trial runs, but the participant UI must not submit an incomplete visible form.
+
+Demographics are displayed as a carousel/card flow with at most 5 questions per pane. Preserve the source block grouping and show block progress.
+
+| Block | Questions |
+|---|---|
+| Block 1 | Age; Sex; Gender Identity |
+| Block 2 | Years lived in Canada; Residence Status; Student Type; Total Years of Education; Cumulative GPA; Major(s); Highest Level of Education Completed |
+| Block 3 | Ethnicity; Native Language; English Fluency; Other Fluent Languages; Everyday English Frequency; Non-English Schooling; Instruction Languages |
+| Block 4 | Diagnosed Disorders; ADHD Diagnosis; ADHD Medication |
+| Block 5 | Avid Videogamer; Weekly Video Game Hours; Prescription Stimulants; Regular Substance Use; Relationship Status; Occupational Status |
+
+Slider questions are rendered as styled slider controls paired with numeric inputs. Both controls must stay synchronized. Ranges are: age `0`-`100`, years in Canada `0`-`100`, total education years `0`-`100`, cumulative GPA `0`-`5`, and weekly video game hours `0`-`100`.
+
+Conditional fields:
+- "Other" answers require matching free text.
+- `instruction_languages` is shown only when non-English schooling is "Yes".
+- `video_game_hours_per_week` is shown only when avid videogamer is "Yes".
+- "None", "N/A", and "None of the Above" options are exclusive in their multi-select groups.
 
 ## Trial mode (Run Test Trial)
 
@@ -47,7 +72,7 @@ Two trial modes are available from the `/misokinesia` RA launch page. Both are n
 - Surveys use shortened rehearsal sets: MkAQ `q1`–`q10` only, MAQ `q1`–`q10` only, GAD-7 all 7 items.
 - Per-clip questionnaire, all survey, and end-of-task submits are local-only simulated transitions.
 
-Short trial state machine: `demographics → intro → playing → questionnaire → (loop × 5 sampled clips) → [transition_card → post_survey shortened] × 3 → end_of_task → complete`
+Short trial state machine: `consent_gate → demographics → intro → playing → questionnaire → (loop × 5 sampled clips) → [transition_card → post_survey shortened] × 3 → end_of_task → complete`
 
 ### Full Trial ("Run Full Trial")
 
@@ -57,7 +82,7 @@ Short trial state machine: `demographics → intro → playing → questionnaire
 - Per-clip questionnaire, all survey, and end-of-task submits are local-only simulated transitions.
 - Designed to let the RA rehearse the complete production experience end-to-end.
 
-Full trial state machine: `demographics → intro → playing → questionnaire → (loop × active manifest clips) → [transition_card → post_survey full] × 3 → end_of_task → complete`
+Full trial state machine: `consent_gate → demographics → intro → playing → questionnaire → (loop × active manifest clips) → [transition_card → post_survey full] × 3 → end_of_task → complete`
 
 ### Shared trial constraints (both modes)
 
@@ -65,7 +90,7 @@ Full trial state machine: `demographics → intro → playing → questionnaire 
 - Trial videos use the same public Supabase Storage CDN URL pattern as production clips.
 - A locally generated `post_survey_order` permutation drives the post-video survey sequence.
 - No calls are made to `/misokinesia/start`, `/misokinesia/participants/{id}/demographics`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, `/misokinesia/participants/{id}/gad7`, `/misokinesia/participants/{id}/maq`, or `/misokinesia/participants/{id}/end-of-task`.
-- No rows are written to `participants`, `sessions`, `misokinesia_participants`, `misokinesia_trial_responses`, `misokinesia_mkaq_responses`, `misokinesia_gad7_responses`, or `misokinesia_maq_responses`. Demographics screen is shown but the demographics PATCH is not called.
+- No rows are written to `participants`, `sessions`, `misokinesia_participants`, `misokinesia_trial_responses`, `misokinesia_mkaq_responses`, `misokinesia_gad7_responses`, or `misokinesia_maq_responses`. Consent and demographics screens are shown, but the demographics PATCH is not called.
 - No `"Trial Run"` watermark is shown on the Misokinesia participant task page in either trial mode.
 
 ## RA Flow
@@ -82,7 +107,7 @@ Four core tables were added by migration `20260317_000001`. The planned MkAQ add
 |---|---|---|
 | `misokinesia_test_sets` | Reusable stimulus configuration / study version | `test_set_id` (UUID PK), `name`, `version`, `active` |
 | `misokinesia_stimuli` | Clip metadata; no video bytes in DB | `stimulus_id` (UUID PK), `test_set_id` (FK), `storage_path`, `sort_order`, `duration_ms`, `active` |
-| `misokinesia_participants` | One row per participant task execution; holds progress state, randomized post-video survey order, and end-of-task responses | `misokinesia_participant_id` (UUID PK), `session_id` (FK), `participant_uuid` (FK), `test_set_id` (FK), `misokinesia_participant_number` (SERIAL), `post_survey_order` (VARCHAR, e.g. `"mkaq,gad7,maq"`), `completed_at` (nullable), end-of-task columns |
+| `misokinesia_participants` | One row per participant task execution; holds progress state, randomized post-video survey order, sourced demographics, and end-of-task responses | `misokinesia_participant_id` (UUID PK), `session_id` (FK), `participant_uuid` (FK), `test_set_id` (FK), `misokinesia_participant_number` (SERIAL), `post_survey_order` (VARCHAR, e.g. `"mkaq,gad7,maq"`), `completed_at` (nullable), demographics columns, end-of-task columns |
 | `misokinesia_trial_responses` | One row per clip per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `stimulus_id` (FK), `display_order`, `q1`–`q4` (SMALLINT), UNIQUE (`misokinesia_participant_id`, `stimulus_id`) |
 | `misokinesia_mkaq_responses` | One MkAQ response per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `q1`–`q21` (SMALLINT 0–3), `total_score` (0–63), UNIQUE (`misokinesia_participant_id`) |
 | `misokinesia_gad7_responses` | One GAD-7 response per participant (miso-isolated table) | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `r1`–`r7` (SMALLINT 1–4), `total_score` (0–21), `severity_band`, UNIQUE (`misokinesia_participant_id`) |
@@ -100,7 +125,7 @@ Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.p
 |---|---|---|---|
 | `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full active stimulus manifest in a randomized playback order plus `post_survey_order` |
 | `GET` | `/misokinesia/trial-manifest` | RA required | Read-only rehearsal endpoint; returns 5 randomly sampled active clip URLs and a locally generated `post_survey_order` without creating any rows |
-| `PATCH` | `/misokinesia/participants/{participant_id}/demographics` | None (participant-facing) | Writes miso-specific demographics to `misokinesia_participants`; idempotent; all fields optional |
+| `PATCH` | `/misokinesia/participants/{participant_id}/demographics` | None (participant-facing) | Writes the sourced miso-specific demographics form to `misokinesia_participants`; idempotent; production UI requires all visible questions |
 | `POST` | `/misokinesia/participants/{participant_id}/responses` | None (participant-facing) | Submits one per-clip questionnaire; sets `completed_at` server-side on final submission; returns `is_complete` flag |
 | `POST` | `/misokinesia/participants/{participant_id}/mkaq` | None (participant-facing) | Submits the required 21-item MkAQ once; server computes and stores `total_score` |
 | `POST` | `/misokinesia/participants/{participant_id}/gad7` | None (participant-facing) | Submits the 7-item GAD-7 once; server computes `total_score` and `severity_band` |
@@ -266,7 +291,7 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 - **Stimuli seeded via seed script.** No admin upload endpoint exists yet; stimulus rows are inserted manually or via a seed script. Decommissioned stimuli have `active = false`; their rows are retained.
 - **Fullscreen.** The task container element (wrapping video, questionnaire, transition cards, and surveys) enters browser-native fullscreen via the Fullscreen API at task start. Fullscreen persists across clip, questionnaire, transition-card, and survey state transitions, then exits when the end-of-task flow reaches completion. An exit-fullscreen button is visible during active task phases.
 - **Pre-clip buffer.** Before each clip autoplays, a 4-second solid-black interstitial is shown. The centered clip progress label appears during the first 2 seconds, then the screen remains black until playback starts. The `<video>` element is loaded (`preload="auto"`) during this buffer so playback starts immediately after.
-- **Demographics are participant-submitted.** Miso demographics are collected via the first screen of the participant task (before intro) and stored on `misokinesia_participants` via `PATCH /misokinesia/participants/{id}/demographics`. All fields are optional. Trial mode shows the screen but does not call the endpoint.
+- **Demographics are participant-submitted.** Miso demographics are collected after the UI-only consent gate and before the intro. Production participants must complete all visible demographics fields before proceeding; trial mode shows consent/demographics but does not call the endpoint.
 
 ---
 
@@ -287,18 +312,48 @@ To decommission additional clips: add the filename to the `DECOMMISSIONED` froze
 
 ## Miso Demographics
 
-Collected at task start before the intro screen. Stored on `misokinesia_participants`. All fields are optional (null accepted). Submitted via `PATCH /misokinesia/participants/{id}/demographics` (T184). Trial mode shows the screen but does not call the endpoint.
+Collected at task start after the UI-only consent gate and before the intro screen. Stored on `misokinesia_participants`. Submitted via `PATCH /misokinesia/participants/{id}/demographics`. Trial mode shows consent/demographics but does not call the endpoint.
 
-| Column | Type | Allowed values |
+The sourced replacement supersedes the earlier T184 six-field form (`age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality`).
+
+| Field | Type | Allowed values / notes |
 |---|---|---|
-| `age_band` | VARCHAR NULLABLE | `"Under 18"` / `"18-24"` / `"25-31"` / `"32-38"` / `"Over 38"` |
-| `gender` | VARCHAR NULLABLE | `"Woman"` / `"Man"` / `"Nonbinary person"` / `"Prefer not to say"` / `"Not listed"` |
-| `gender_other_text` | VARCHAR NULLABLE | Free text; accepted only when `gender = "Not listed"` |
-| `country` | VARCHAR NULLABLE | `"Canada"` / `"South Korea"` / `"Not listed"` (country of current residence) |
-| `country_other_text` | VARCHAR NULLABLE | Free text; accepted only when `country = "Not listed"` |
-| `nationality` | VARCHAR NULLABLE | Free text (no preset values) |
+| `age` | INTEGER NULLABLE | Slider/input, `0`-`100` |
+| `sex` | VARCHAR NULLABLE | `"Male"` / `"Female"` |
+| `gender_identity` | TEXT NULLABLE | Free text |
+| `years_lived_canada` | INTEGER NULLABLE | Slider/input, `0`-`100` |
+| `residence_status` | VARCHAR NULLABLE | `"Canadian Citizenship"` / `"Permanent Resident"` / `"Student Visa"` / `"Other"` |
+| `residence_status_other_text` | TEXT NULLABLE | Required when residence status is `"Other"` |
+| `student_type` | VARCHAR NULLABLE | `"Domestic"` / `"International"` |
+| `total_years_education` | INTEGER NULLABLE | Slider/input, `0`-`100` |
+| `cumulative_gpa` | NUMERIC NULLABLE | Slider/input, `0`-`5` |
+| `majors_text` | TEXT NULLABLE | Free text |
+| `highest_education_completed` | VARCHAR NULLABLE | Source Q27 education-level options |
+| `ethnicity` | TEXT[] NULLABLE | Multi-select source Q11 options |
+| `ethnicity_other_text` | TEXT NULLABLE | Required when ethnicity includes `"Other"` |
+| `native_language` | TEXT NULLABLE | Free text |
+| `english_fluency` | VARCHAR NULLABLE | Source Q13 agreement scale |
+| `fluent_languages` | TEXT[] NULLABLE | Multi-select source Q14 options; `"None"` is exclusive |
+| `fluent_languages_other_text` | TEXT NULLABLE | Required when fluent languages includes `"Other"` |
+| `english_speaking_frequency` | VARCHAR NULLABLE | `"Always"` / `"Often"` / `"Sometimes"` / `"Rarely"` / `"Never"` |
+| `non_english_schooling` | BOOLEAN NULLABLE | Source Q16 yes/no |
+| `instruction_languages` | TEXT[] NULLABLE | Required only when non-English schooling is true |
+| `instruction_languages_other_text` | TEXT NULLABLE | Required when instruction languages includes `"Other"` |
+| `diagnosed_disorders` | TEXT[] NULLABLE | Multi-select source Q18 options; `"N/A"` is exclusive |
+| `diagnosed_disorders_other_text` | TEXT NULLABLE | Required when diagnosed disorders includes `"Other"` |
+| `adhd_diagnosis` | BOOLEAN NULLABLE | Source Q19 yes/no |
+| `adhd_medication` | VARCHAR NULLABLE | `"Yes"` / `"Maybe"` / `"No"` |
+| `avid_videogamer` | BOOLEAN NULLABLE | Source Q21 yes/no |
+| `video_game_hours_per_week` | INTEGER NULLABLE | Slider/input, `0`-`100`; required only when avid videogamer is true |
+| `prescription_stimulants` | BOOLEAN NULLABLE | Source Q22 yes/no |
+| `regular_substances` | TEXT[] NULLABLE | Multi-select source Q23 options; `"None of the Above"` is exclusive |
+| `regular_substances_other_text` | TEXT NULLABLE | Required when regular substances includes `"Other"` |
+| `relationship_status` | VARCHAR NULLABLE | Source Q24 options |
+| `relationship_status_other_text` | TEXT NULLABLE | Required when relationship status is `"Other"` |
+| `occupational_status` | VARCHAR NULLABLE | Source Q25 options |
+| `occupational_status_other_text` | TEXT NULLABLE | Required when occupational status is `"Other"` |
 
-Source questions: `reference/labs/Misokinesia/Miso-demographics.pdf`.
+Source questions: `reference/labs/Misokinesia/Demographics copy2.docx`.
 
 ---
 

@@ -659,7 +659,7 @@ Public URL pattern: `{SUPABASE_URL}/storage/v1/object/public/misokinesia-stimuli
 
 ### Table: `misokinesia_participants`
 
-One row per participant's task execution. Contains per-participant progress state and end-of-task questionnaire responses.
+One row per participant's task execution. Contains per-participant progress state, sourced misokinesia demographics, and end-of-task questionnaire responses.
 
 
 | Column                         | Type        | Constraints   | Notes                                                                                                                                                                          |
@@ -677,15 +677,54 @@ One row per participant's task execution. Contains per-participant progress stat
 | end_emotions_text              | TEXT        | NULLABLE      | End-of-task: "Please list any emotional responses felt during the videos not asked in the questionnaire"                                                                       |
 | stronger_responses             | BOOLEAN     | NULLABLE      | End-of-task: "Did viewing the videos create stronger responses over time?" (No=false / Yes=true)                                                                               |
 | stronger_responses_timing      | VARCHAR     | NULLABLE      | One of: "Immediately", "After 5 seconds", "After 10 seconds", "At the end of the video"; only set when stronger_responses=true                                                 |
-| age_band                       | VARCHAR     | NULLABLE      | Miso demographics (T184): "Under 18" / "18-24" / "25-31" / "32-38" / "Over 38"                                                                                               |
-| gender                         | VARCHAR     | NULLABLE      | Miso demographics (T184): "Woman" / "Man" / "Nonbinary person" / "Prefer not to say" / "Not listed"                                                                          |
-| gender_other_text              | VARCHAR     | NULLABLE      | Free text; accepted only when gender = "Not listed"                                                                                                                           |
-| country                        | VARCHAR     | NULLABLE      | Miso demographics (T184): country of current residence — "Canada" / "South Korea" / "Not listed"                                                                             |
-| country_other_text             | VARCHAR     | NULLABLE      | Free text; accepted only when country = "Not listed"                                                                                                                          |
-| nationality                    | VARCHAR     | NULLABLE      | Free text (no preset values). Source: reference/labs/Misokinesia/Miso-demographics.pdf                                                                                       |
+| age_band                       | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
+| gender                         | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
+| gender_other_text              | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
+| country                        | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
+| country_other_text             | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
+| nationality                    | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
 
 
 Indexes: `misokinesia_participants(session_id)`, `misokinesia_participants(participant_uuid)`
+
+**Planned sourced demographics replacement:** Replace the six T184 columns above with nullable columns sourced from `reference/labs/Misokinesia/Demographics copy2.docx`. Columns remain nullable for legacy/no-write rows, but the production participant UI requires all visible questions before submission.
+
+| Planned column | Type | Notes |
+|---|---|---|
+| age | INTEGER | Slider/input, `0`-`100` |
+| sex | VARCHAR | `"Male"` / `"Female"` |
+| gender_identity | TEXT | Free text |
+| years_lived_canada | INTEGER | Slider/input, `0`-`100` |
+| residence_status | VARCHAR | `"Canadian Citizenship"` / `"Permanent Resident"` / `"Student Visa"` / `"Other"` |
+| residence_status_other_text | TEXT | Required when residence status is `"Other"` |
+| student_type | VARCHAR | `"Domestic"` / `"International"` |
+| total_years_education | INTEGER | Slider/input, `0`-`100` |
+| cumulative_gpa | NUMERIC | Slider/input, `0`-`5` |
+| majors_text | TEXT | Free text |
+| highest_education_completed | VARCHAR | Source Q27 education-level option |
+| ethnicity | TEXT[] | Multi-select source Q11 options |
+| ethnicity_other_text | TEXT | Required when ethnicity includes `"Other"` |
+| native_language | TEXT | Free text |
+| english_fluency | VARCHAR | Source Q13 agreement scale |
+| fluent_languages | TEXT[] | Multi-select source Q14 options; `"None"` exclusive |
+| fluent_languages_other_text | TEXT | Required when fluent languages includes `"Other"` |
+| english_speaking_frequency | VARCHAR | `"Always"` / `"Often"` / `"Sometimes"` / `"Rarely"` / `"Never"` |
+| non_english_schooling | BOOLEAN | Source Q16 yes/no |
+| instruction_languages | TEXT[] | Required only when non-English schooling is true |
+| instruction_languages_other_text | TEXT | Required when instruction languages includes `"Other"` |
+| diagnosed_disorders | TEXT[] | Multi-select source Q18 options; `"N/A"` exclusive |
+| diagnosed_disorders_other_text | TEXT | Required when diagnosed disorders includes `"Other"` |
+| adhd_diagnosis | BOOLEAN | Source Q19 yes/no |
+| adhd_medication | VARCHAR | `"Yes"` / `"Maybe"` / `"No"` |
+| avid_videogamer | BOOLEAN | Source Q21 yes/no |
+| video_game_hours_per_week | INTEGER | Slider/input, `0`-`100`; required only when avid videogamer is true |
+| prescription_stimulants | BOOLEAN | Source Q22 yes/no |
+| regular_substances | TEXT[] | Multi-select source Q23 options; `"None of the Above"` exclusive |
+| regular_substances_other_text | TEXT | Required when regular substances includes `"Other"` |
+| relationship_status | VARCHAR | Source Q24 option |
+| relationship_status_other_text | TEXT | Required when relationship status is `"Other"` |
+| occupational_status | VARCHAR | Source Q25 option |
+| occupational_status_other_text | TEXT | Required when occupational status is `"Other"` |
 
 ### Table: `misokinesia_trial_responses`
 
@@ -875,6 +914,7 @@ Constraints/indexes:
 | 2026-05-13 | T153 follow-up        | Fix active pending invite uniqueness so expired pending rows do not block a fresh invite                                                                                                                            |
 | 2026-05-18 | T168                  | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables                                                            |
 | 2026-05-19 | T184                  | Add miso demographics columns to `misokinesia_participants`: `age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality` (all VARCHAR NULLABLE)                                        |
+| planned    | Miso demographics v2  | Replace T184's six demographics columns with typed sourced-demographics columns from `reference/labs/Misokinesia/Demographics copy2.docx`                                                                                 |
 
 
 As of 2026-05-19, migration `20260519_000001` is the current head revision.

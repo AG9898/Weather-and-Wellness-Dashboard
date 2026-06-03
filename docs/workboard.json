@@ -3266,7 +3266,200 @@
         "cd frontend && npm run build",
         "cd frontend && npx tsc --noEmit"
       ]
+    },
+    {
+      "id": "T199",
+      "title": "Miso demographics v2: schema migration and model",
+      "description": "Add the Alembic migration for the sourced misokinesia demographics replacement. Drop the six superseded T184 columns from misokinesia_participants and add the typed nullable columns documented in docs/SCHEMA.md for Demographics copy2.docx. Update the SQLAlchemy model only for the new columns. Keep this task scoped to schema/model work; do not change router validation, participant UI, dashboard rendering, or Storybook.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "A new Alembic revision follows the current head and replaces the six T184 demographics columns with the sourced demographics v2 columns.",
+        "misokinesia_participants model exposes the new columns with appropriate Python/SQLAlchemy types, including array fields for multi-select answers.",
+        "Existing non-demographics misokinesia columns and constraints are unchanged.",
+        "alembic upgrade head succeeds from the backend directory using the repo-standard command prefix.",
+        "docs/SCHEMA.md remains consistent with the migration."
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "backend/alembic/versions/",
+        "backend/app/models/misokinesia.py",
+        "docs/SCHEMA.md"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. alembic upgrade head",
+        "cd backend && PYTHONPATH=. python -m pytest tests/test_misokinesia.py -k 'start_misokinesia_session or miso_dashboard' -x"
+      ]
+    },
+    {
+      "id": "T200",
+      "title": "Miso demographics v2: backend API contract",
+      "description": "Update the participant-facing demographics PATCH contract and RA dashboard response for the sourced demographics v2 schema. Add Pydantic request validation for numeric ranges, enum values, required Other text, conditional fields, and exclusive None/N/A choices. Update router persistence and dashboard summary fields to age, sex, and residence_status. Keep this task scoped to backend schemas, router logic, and backend tests; do not build frontend UI.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO",
+      "depends_on": [
+        "T199"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "PATCH /misokinesia/participants/{id}/demographics accepts and persists a valid sourced demographics v2 payload.",
+        "PATCH returns 422 for invalid slider ranges, invalid categorical values, missing required Other text, hidden conditional values, and non-exclusive None/N/A selections.",
+        "PATCH still returns 404 for an unknown misokinesia participant.",
+        "GET /misokinesia/dashboard returns age, sex, and residence_status instead of age_band, gender, and country.",
+        "Trial-mode behavior remains frontend-only; no backend trial writes are introduced.",
+        "docs/labs/weather-wellness/misokinesia/API.md remains consistent with implemented request and response shapes."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "backend/app/schemas/misokinesia.py",
+        "backend/app/routers/misokinesia.py",
+        "backend/tests/test_misokinesia.py",
+        "docs/labs/weather-wellness/misokinesia/API.md"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. alembic upgrade head",
+        "cd backend && PYTHONPATH=. python -m pytest tests/test_misokinesia.py -k 'demographics or miso_dashboard' -x"
+      ]
+    },
+    {
+      "id": "T201",
+      "title": "Miso demographics v2: frontend types and question config",
+      "description": "Add the frontend API payload type and a typed sourced-demographics question/config layer for the DOCX form. The config should define blocks, pane grouping constraints, options, conditional relationships, exclusive multi-select choices, slider ranges, and payload field names. Keep this task scoped to typed helpers/config and compile-time integration; do not replace the visible demographics form yet.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "MISO",
+      "depends_on": [
+        "T200"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "MisokinesiaDemographicsRequest matches the backend v2 payload fields.",
+        "Question config represents all five DOCX blocks and supports at most five questions per carousel pane.",
+        "Config captures slider ranges, conditional fields, Other text requirements, and exclusive multi-select options.",
+        "No participant-facing behavior changes are introduced in this task.",
+        "Frontend TypeScript check passes."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/components/MisokinesiaDemographicsForm.tsx",
+        "frontend/src/lib/"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit"
+      ]
+    },
+    {
+      "id": "T202",
+      "title": "Miso demographics v2: participant consent and carousel UI",
+      "description": "Replace the current misokinesia demographics screen with the UI-only consent gate and required sourced-demographics carousel. Reuse the existing quiet editorial carousel visual language where practical, preserve answers when moving back and forward, synchronize slider and numeric input controls, enforce visible required fields, and submit the v2 payload only on final production submit. Keep this task scoped to the participant demographics flow; do not change the RA dashboard or Storybook.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "MISO",
+      "depends_on": [
+        "T201"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Consent Yes advances into demographics and consent No routes back to /misokinesia without a backend write.",
+        "Carousel preserves DOCX block grouping, shows block/pane progress, and renders no more than five questions per pane.",
+        "Next/final submit is blocked until every visible question on the current pane is answered.",
+        "Conditional questions and Other text fields appear, clear, and validate according to the docs.",
+        "Slider controls and numeric inputs stay synchronized for all slider questions.",
+        "Production submits the v2 demographics payload and advances to intro only after a 2xx response; trial mode advances locally without calling PATCH."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/API.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaDemographicsForm.tsx",
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T203",
+      "title": "Miso demographics v2: RA dashboard summary fields",
+      "description": "Update the RA misokinesia dashboard frontend for the backend v2 dashboard response. Replace age_band, gender, and country usage with age, sex, and residence_status in API types, formatting helpers, empty/null display, and stories/support mocks that are directly tied to the RA dashboard. Keep this task scoped to the RA dashboard summary; do not edit the participant demographics carousel.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "MISO",
+      "depends_on": [
+        "T200"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "RA dashboard API types use age, sex, and residence_status for recent session demographics.",
+        "Recent Sessions ledger renders the new fields with stable null fallbacks.",
+        "No references to age_band, gender, or country remain in misokinesia dashboard rendering for recent-session demographics.",
+        "Frontend build and TypeScript check pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/api/misokinesia.ts",
+        "frontend/src/lib/components/MisokinesiaLaunchPage.tsx",
+        "frontend/src/stories/pages/ra/MisokinesiaPage.stories.tsx",
+        "frontend/src/stories/pages/ra/MisokinesiaPageStorySupport.tsx"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T204",
+      "title": "Miso demographics v2: Storybook states",
+      "description": "Add or update Storybook coverage for the sourced demographics v2 participant flow and the updated RA dashboard demographics summary. Cover consent gate, representative block panes, conditional fields, validation blocked states, slider/input interaction state, submitting/API error, mobile layout, and dashboard rows with populated and null summary demographics. Keep stories mocked and isolated from backend calls.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "MISO",
+      "depends_on": [
+        "T202",
+        "T203"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Participant stories cover consent gate, at least one pane from each demographics block, validation blocked state, submitting state, API error state, and mobile layout.",
+        "Stories include a representative conditional Other text case and a slider/input case.",
+        "RA dashboard stories cover populated and null age, sex, and residence_status values.",
+        "Stories use mocked data and never call the backend.",
+        "Storybook build passes."
+      ],
+      "docs": [
+        "docs/storybook.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/stories/pages/ra/MisokinesiaParticipantPage.stories.tsx",
+        "frontend/src/stories/pages/ra/MisokinesiaPage.stories.tsx",
+        "frontend/src/stories/pages/ra/MisokinesiaPageStorySupport.tsx",
+        "frontend/src/lib/components/MisokinesiaDemographicsForm.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run build-storybook"
+      ]
     }
   ],
-  "last_updated": "2026-05-20"
+  "last_updated": "2026-06-03"
 }

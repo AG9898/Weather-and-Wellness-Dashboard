@@ -11,7 +11,7 @@ Full specification: [docs/labs/weather-wellness/misokinesia/MISOKINESIA.md](MISO
 3. App navigates to `/misokinesia/[id]` participant task page (same device, no login required)
 
 **Participant task:**
-1. Demographics screen → optional responses → continue
+1. UI-only consent gate → sourced demographics carousel → continue
 2. Intro screen → click to begin and enter fullscreen
 3. For each manifest clip: pre-clip buffer → full-bleed video → 4-question per-clip form (scale 1–5) → submit
 4. After the final clip response, complete the three post-video surveys in `post_survey_order`; each survey is preceded by its paired transition card
@@ -56,10 +56,25 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 ### Demographics Screen
 
 - First screen shown after navigation to `/misokinesia/[id]`, before the intro screen.
-- Layout: one question per block, categorical questions rendered as radio chips matching the `SurveyForm` chip style (rounded bordered chips, semantic `primary` fill on selection).
-- Conditional free-text inputs appear below their parent question only when "Not listed" is selected (applies to gender and country).
-- All fields are optional; the "Continue" button is always enabled regardless of completion state.
-- On "Continue": calls `PATCH /misokinesia/participants/{id}/demographics` (production) or advances locally without an API call (trial mode). On 2xx, transitions to the intro screen.
+- Source instrument: `reference/labs/Misokinesia/Demographics copy2.docx`.
+- The DOCX Q1 consent item is a UI-only gate. Selecting "Yes" advances into demographics. Selecting "No" routes back to `/misokinesia`. Do not store a consent row, consent column, or consent flag.
+- Layout: use a carousel/card flow similar to the MkAQ/MAQ survey pattern, with local back/next navigation and at most 5 questions per pane.
+- Preserve the DOCX block grouping and show block progress in the step/progress area, e.g. `Block 3 of 5`, plus the pane position when a block spans multiple panes.
+- Render categorical single-choice questions as flat radio chips matching the `SurveyForm` chip style. Render multi-select questions as checkable chips with selected state and keyboard-accessible toggles.
+- All visible demographics questions are required before advancing. Conditional questions are required only when visible.
+- Conditional behavior:
+  - `residence_status_other_text` appears when residence status is "Other".
+  - `ethnicity_other_text`, `fluent_languages_other_text`, `instruction_languages_other_text`, `diagnosed_disorders_other_text`, `regular_substances_other_text`, `relationship_status_other_text`, and `occupational_status_other_text` appear when their parent multi/single-select includes "Other".
+  - `instruction_languages` appears only when non-English schooling is "Yes".
+  - `video_game_hours_per_week` appears only when avid videogamer is "Yes".
+  - "None", "N/A", and "None of the Above" choices are exclusive within their multi-select groups.
+- Slider questions from the DOCX must remain slider-like in functionality but use this app's styling. Each slider is paired with a numeric input; moving either control updates the other. Numeric ranges:
+  - Age: `0`-`100`
+  - Years lived in Canada: `0`-`100`
+  - Total years of education: `0`-`100`
+  - Cumulative GPA: `0`-`5`
+  - Video game hours per week: `0`-`100`
+- On final demographics submit: calls `PATCH /misokinesia/participants/{id}/demographics` (production) or advances locally without an API call (trial mode). On 2xx, transitions to the intro screen.
 - Error state: inline destructive banner below the form; all field state preserved so the participant can retry.
 
 ### Quiet Editorial Redesign Templates
@@ -67,7 +82,7 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 Use `docs/styleguide.md` as the canonical UI guide and treat `reference/UI Reference/Claude Design/design_handoff_misokinesia_redesign/` as high-fidelity templates, not production code. Translate the reference into existing Next.js, Tailwind, shadcn, and lucide patterns.
 
 Template mapping:
-- **Demographics:** apply the A2 row-based card layout, step indicator, optional chip groups, and conditional free-text fields.
+- **Demographics:** apply the A4 carousel interaction pattern to the DOCX-sourced demographics blocks while preserving the quiet editorial step indicator, flat chip groups, conditional free-text fields, and slider/input controls.
 - **Intro, end-of-task, completion, loading, and error screens:** apply the same quiet editorial system even though these screens are not explicitly mocked.
 - **Per-clip questionnaire:** apply the A3 progress strip, fieldset, and scale-chip pattern. Clip totals come from the manifest length.
 - **MkAQ and MAQ:** apply the A4 carousel template to both carousel-based instruments. Preserve each instrument's existing pane structure and trial shortening rules from `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`.
@@ -90,7 +105,7 @@ The frontend loads these values on mount through typed wrappers in `src/lib/api/
 **Recent Sessions ledger columns:**
 - Participant number (e.g. `MKP-0149`)
 - Relative time since `started_at` (e.g. "2 min ago", "Yesterday · 16:22")
-- Demographics: `age_band`, `gender`, `country` — shown as compact values; `—` when null
+- Demographics: compact summary values from the sourced demographics form. Default summary fields are `age`, `sex`, and `residence_status`, shown as `—` when null.
 - Avg clip composite score: mean of `(q1+q2+q3+q4)` across all clip responses for the session; range 4–20; `—` when null (incomplete session)
 
 **Video Score Leaderboard:**
