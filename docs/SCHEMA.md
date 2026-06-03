@@ -16,7 +16,7 @@
 - **FKs:** Enforced at DB level, not just application level
 
 > Migration head check: `alembic current -v` should report
-> `Rev: 20260519_000001 (head)`.
+> `Rev: 20260603_000001 (head)`.
 > Keep this value in sync after every new migration.
 
 > Planned statistical analysis rules derived from `reference/Weather_MLM.R` are
@@ -677,54 +677,48 @@ One row per participant's task execution. Contains per-participant progress stat
 | end_emotions_text              | TEXT        | NULLABLE      | End-of-task: "Please list any emotional responses felt during the videos not asked in the questionnaire"                                                                       |
 | stronger_responses             | BOOLEAN     | NULLABLE      | End-of-task: "Did viewing the videos create stronger responses over time?" (No=false / Yes=true)                                                                               |
 | stronger_responses_timing      | VARCHAR     | NULLABLE      | One of: "Immediately", "After 5 seconds", "After 10 seconds", "At the end of the video"; only set when stronger_responses=true                                                 |
-| age_band                       | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
-| gender                         | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
-| gender_other_text              | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
-| country                        | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
-| country_other_text             | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
-| nationality                    | VARCHAR     | NULLABLE      | Current T184 column, superseded by planned sourced demographics replacement                                                                                                    |
+| age                            | INTEGER     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`100`                                                                                                                              |
+| sex                            | VARCHAR     | NULLABLE      | Sourced demographics v2: `"Male"` / `"Female"`                                                                                                                              |
+| gender_identity                | TEXT        | NULLABLE      | Sourced demographics v2 free text                                                                                                                                            |
+| years_lived_canada             | INTEGER     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`100`                                                                                                                              |
+| residence_status               | VARCHAR     | NULLABLE      | Sourced demographics v2: `"Canadian Citizenship"` / `"Permanent Resident"` / `"Student Visa"` / `"Other"`                                                                    |
+| residence_status_other_text    | TEXT        | NULLABLE      | Required by API/UI when residence_status is `"Other"`                                                                                                                        |
+| student_type                   | VARCHAR     | NULLABLE      | Sourced demographics v2: `"Domestic"` / `"International"`                                                                                                                    |
+| total_years_education          | INTEGER     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`100`                                                                                                                              |
+| cumulative_gpa                 | NUMERIC     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`5`                                                                                                                                |
+| majors_text                    | TEXT        | NULLABLE      | Sourced demographics v2 free text                                                                                                                                            |
+| highest_education_completed    | VARCHAR     | NULLABLE      | Source Q27 education-level option                                                                                                                                            |
+| ethnicity                      | TEXT[]      | NULLABLE      | Multi-select source Q11 options                                                                                                                                              |
+| ethnicity_other_text           | TEXT        | NULLABLE      | Required by API/UI when ethnicity includes `"Other"`                                                                                                                         |
+| native_language                | TEXT        | NULLABLE      | Sourced demographics v2 free text                                                                                                                                            |
+| english_fluency                | VARCHAR     | NULLABLE      | Source Q13 agreement scale                                                                                                                                                   |
+| fluent_languages               | TEXT[]      | NULLABLE      | Multi-select source Q14 options; `"None"` exclusive                                                                                                                          |
+| fluent_languages_other_text    | TEXT        | NULLABLE      | Required by API/UI when fluent_languages includes `"Other"`                                                                                                                  |
+| english_speaking_frequency     | VARCHAR     | NULLABLE      | `"Always"` / `"Often"` / `"Sometimes"` / `"Rarely"` / `"Never"`                                                                                                             |
+| non_english_schooling          | BOOLEAN     | NULLABLE      | Source Q16 yes/no                                                                                                                                                            |
+| instruction_languages          | TEXT[]      | NULLABLE      | Required by API/UI only when non_english_schooling is true                                                                                                                   |
+| instruction_languages_other_text | TEXT      | NULLABLE      | Required by API/UI when instruction_languages includes `"Other"`                                                                                                             |
+| diagnosed_disorders            | TEXT[]      | NULLABLE      | Multi-select source Q18 options; `"N/A"` exclusive                                                                                                                           |
+| diagnosed_disorders_other_text | TEXT        | NULLABLE      | Required by API/UI when diagnosed_disorders includes `"Other"`                                                                                                                |
+| adhd_diagnosis                 | BOOLEAN     | NULLABLE      | Source Q19 yes/no                                                                                                                                                            |
+| adhd_medication                | VARCHAR     | NULLABLE      | `"Yes"` / `"Maybe"` / `"No"`                                                                                                                                                |
+| avid_videogamer                | BOOLEAN     | NULLABLE      | Source Q21 yes/no                                                                                                                                                            |
+| video_game_hours_per_week      | INTEGER     | NULLABLE      | Slider/input, `0`-`100`; required by API/UI only when avid_videogamer is true                                                                                                |
+| prescription_stimulants        | BOOLEAN     | NULLABLE      | Source Q22 yes/no                                                                                                                                                            |
+| regular_substances             | TEXT[]      | NULLABLE      | Multi-select source Q23 options; `"None of the Above"` exclusive                                                                                                             |
+| regular_substances_other_text  | TEXT        | NULLABLE      | Required by API/UI when regular_substances includes `"Other"`                                                                                                                |
+| relationship_status            | VARCHAR     | NULLABLE      | Source Q24 option                                                                                                                                                            |
+| relationship_status_other_text | TEXT        | NULLABLE      | Required by API/UI when relationship_status is `"Other"`                                                                                                                     |
+| occupational_status            | VARCHAR     | NULLABLE      | Source Q25 option                                                                                                                                                            |
+| occupational_status_other_text | TEXT        | NULLABLE      | Required by API/UI when occupational_status is `"Other"`                                                                                                                     |
 
 
 Indexes: `misokinesia_participants(session_id)`, `misokinesia_participants(participant_uuid)`
 
-**Planned sourced demographics replacement:** Replace the six T184 columns above with nullable columns sourced from `reference/labs/Misokinesia/Demographics copy2.docx`. Columns remain nullable for legacy/no-write rows, but the production participant UI requires all visible questions before submission.
-
-| Planned column | Type | Notes |
-|---|---|---|
-| age | INTEGER | Slider/input, `0`-`100` |
-| sex | VARCHAR | `"Male"` / `"Female"` |
-| gender_identity | TEXT | Free text |
-| years_lived_canada | INTEGER | Slider/input, `0`-`100` |
-| residence_status | VARCHAR | `"Canadian Citizenship"` / `"Permanent Resident"` / `"Student Visa"` / `"Other"` |
-| residence_status_other_text | TEXT | Required when residence status is `"Other"` |
-| student_type | VARCHAR | `"Domestic"` / `"International"` |
-| total_years_education | INTEGER | Slider/input, `0`-`100` |
-| cumulative_gpa | NUMERIC | Slider/input, `0`-`5` |
-| majors_text | TEXT | Free text |
-| highest_education_completed | VARCHAR | Source Q27 education-level option |
-| ethnicity | TEXT[] | Multi-select source Q11 options |
-| ethnicity_other_text | TEXT | Required when ethnicity includes `"Other"` |
-| native_language | TEXT | Free text |
-| english_fluency | VARCHAR | Source Q13 agreement scale |
-| fluent_languages | TEXT[] | Multi-select source Q14 options; `"None"` exclusive |
-| fluent_languages_other_text | TEXT | Required when fluent languages includes `"Other"` |
-| english_speaking_frequency | VARCHAR | `"Always"` / `"Often"` / `"Sometimes"` / `"Rarely"` / `"Never"` |
-| non_english_schooling | BOOLEAN | Source Q16 yes/no |
-| instruction_languages | TEXT[] | Required only when non-English schooling is true |
-| instruction_languages_other_text | TEXT | Required when instruction languages includes `"Other"` |
-| diagnosed_disorders | TEXT[] | Multi-select source Q18 options; `"N/A"` exclusive |
-| diagnosed_disorders_other_text | TEXT | Required when diagnosed disorders includes `"Other"` |
-| adhd_diagnosis | BOOLEAN | Source Q19 yes/no |
-| adhd_medication | VARCHAR | `"Yes"` / `"Maybe"` / `"No"` |
-| avid_videogamer | BOOLEAN | Source Q21 yes/no |
-| video_game_hours_per_week | INTEGER | Slider/input, `0`-`100`; required only when avid videogamer is true |
-| prescription_stimulants | BOOLEAN | Source Q22 yes/no |
-| regular_substances | TEXT[] | Multi-select source Q23 options; `"None of the Above"` exclusive |
-| regular_substances_other_text | TEXT | Required when regular substances includes `"Other"` |
-| relationship_status | VARCHAR | Source Q24 option |
-| relationship_status_other_text | TEXT | Required when relationship status is `"Other"` |
-| occupational_status | VARCHAR | Source Q25 option |
-| occupational_status_other_text | TEXT | Required when occupational status is `"Other"` |
+The sourced demographics v2 columns were added by migration `20260603_000001`
+(T199), replacing T184's six superseded columns. Columns remain nullable for
+legacy/no-write rows, but the production participant UI requires all visible
+questions before submission.
 
 ### Table: `misokinesia_trial_responses`
 
@@ -914,10 +908,10 @@ Constraints/indexes:
 | 2026-05-13 | T153 follow-up        | Fix active pending invite uniqueness so expired pending rows do not block a fresh invite                                                                                                                            |
 | 2026-05-18 | T168                  | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables                                                            |
 | 2026-05-19 | T184                  | Add miso demographics columns to `misokinesia_participants`: `age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality` (all VARCHAR NULLABLE)                                        |
-| planned    | Miso demographics v2  | Replace T184's six demographics columns with typed sourced-demographics columns from `reference/labs/Misokinesia/Demographics copy2.docx`                                                                                 |
+| 2026-06-03 | T199                  | Replace T184's six demographics columns with typed sourced-demographics columns from `reference/labs/Misokinesia/Demographics copy2.docx`                                                                                 |
 
 
-As of 2026-05-19, migration `20260519_000001` is the current head revision.
+As of 2026-06-03, migration `20260603_000001` is the current head revision.
 
 ---
 

@@ -314,7 +314,7 @@ To decommission additional clips: add the filename to the `DECOMMISSIONED` froze
 
 Collected at task start after the UI-only consent gate and before the intro screen. Stored on `misokinesia_participants`. Submitted via `PATCH /misokinesia/participants/{id}/demographics`. Trial mode shows consent/demographics but does not call the endpoint.
 
-The sourced replacement supersedes the earlier T184 six-field form (`age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality`).
+The sourced replacement was applied by migration `20260603_000001` (T199) and supersedes the earlier T184 six-field form (`age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality`).
 
 | Field | Type | Allowed values / notes |
 |---|---|---|

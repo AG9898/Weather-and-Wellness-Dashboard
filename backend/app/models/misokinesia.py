@@ -2,10 +2,21 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, SmallInteger, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func, text
 
@@ -96,13 +107,71 @@ class MisokinesiaParticipant(Base):
     stronger_responses_timing: Mapped[Optional[str]] = mapped_column(
         String, nullable=True
     )
-    # Miso-specific demographics (T184); collected before intro, all optional
-    age_band: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    gender: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    gender_other_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    country: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    country_other_text: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    nationality: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    # Sourced misokinesia demographics v2; collected before intro, all optional.
+    age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    sex: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    gender_identity: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    years_lived_canada: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    residence_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    residence_status_other_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    student_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    total_years_education: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    cumulative_gpa: Mapped[Optional[Decimal]] = mapped_column(Numeric, nullable=True)
+    majors_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    highest_education_completed: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )
+    ethnicity: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()), nullable=True)
+    ethnicity_other_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    native_language: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    english_fluency: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    fluent_languages: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text()), nullable=True
+    )
+    fluent_languages_other_text: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )
+    english_speaking_frequency: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )
+    non_english_schooling: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True
+    )
+    instruction_languages: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text()), nullable=True
+    )
+    instruction_languages_other_text: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )
+    diagnosed_disorders: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text()), nullable=True
+    )
+    diagnosed_disorders_other_text: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )
+    adhd_diagnosis: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    adhd_medication: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    avid_videogamer: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    video_game_hours_per_week: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+    prescription_stimulants: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True
+    )
+    regular_substances: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text()), nullable=True
+    )
+    regular_substances_other_text: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )
+    relationship_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    relationship_status_other_text: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )
+    occupational_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    occupational_status_other_text: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+    )
 
 
 class MisokinesiaAqResponse(Base):

@@ -130,9 +130,9 @@
         "misokinesia_participant_number": 12,
         "started_at": "2026-05-20T16:00:00Z",
         "completed_at": null,
-        "age": 24,
-        "sex": "Female",
-        "residence_status": "Student Visa",
+        "age_band": null,
+        "gender": null,
+        "country": null,
         "avg_clip_score": 15.5
       }
     ]
@@ -142,7 +142,7 @@
   - RA-only summary endpoint for the misokinesia operations page.
   - `active_stimuli_count` counts active `misokinesia_stimuli` rows in the active test set.
   - `recent_sessions` returns up to 10 `misokinesia_participants` rows ordered by `started_at DESC`.
-  - Planned demographics summary fields are `age`, `sex`, and `residence_status`, passed through from `misokinesia_participants`. They are nullable for legacy rows and participants who have not reached demographics.
+  - After T199, the response keeps the legacy `age_band`, `gender`, and `country` keys for frontend compatibility, but the backend returns `null` for them because the T184 columns were replaced. T200 will replace these with the v2 summary fields `age`, `sex`, and `residence_status`.
   - `avg_clip_score` is the mean of `q1 + q2 + q3 + q4` across that participant's per-clip response rows. It is `null` when the participant has not submitted any clip responses.
   - The backend computes the dashboard with one aggregate query and does not issue per-participant response lookups.
   - Unauthenticated requests return 401.

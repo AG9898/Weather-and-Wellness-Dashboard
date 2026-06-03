@@ -298,9 +298,9 @@ async def get_misokinesia_dashboard(
             MisokinesiaParticipant.misokinesia_participant_number,
             MisokinesiaParticipant.started_at,
             MisokinesiaParticipant.completed_at,
-            MisokinesiaParticipant.age_band,
-            MisokinesiaParticipant.gender,
-            MisokinesiaParticipant.country,
+            literal(None).label("age_band"),
+            literal(None).label("gender"),
+            literal(None).label("country"),
         )
         .order_by(MisokinesiaParticipant.started_at.desc())
         .limit(10)
