@@ -47,6 +47,8 @@ The proposal should describe how docs should change, not how implementation shou
 - Ask at least one real question tied to scope, UX, data shape, rollout, or constraints.
 - Prefer concise questions with concrete tradeoffs.
 - Ask additional questions when auth boundaries, schema impact, or streaming behavior might change.
+- Use `AskUserQuestion` to present clarifying questions as structured prompts with 2–4 concrete option choices and a short header. Do not output questions as plain terminal text.
+- If `AskUserQuestion` is unavailable (e.g. non-Claude Code agent context), fall back to numbered terminal questions.
 
 ## Task Breakdown Rules
 
