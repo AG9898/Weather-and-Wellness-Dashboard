@@ -104,8 +104,15 @@ function formatNullable(value: string | number | null | undefined): string {
   return typeof value === "number" ? value.toFixed(1) : value;
 }
 
+function formatDemographicValue(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+  return String(value);
+}
+
 function formatDemographics(row: MisoDashboardSessionItem): string {
-  const values = [row.age_band, row.gender, row.country].map((value) => value || "—");
+  const values = [row.age, row.sex, row.residence_status].map(formatDemographicValue);
   return values.join(" · ");
 }
 

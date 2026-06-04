@@ -3399,7 +3399,7 @@
       "id": "T203",
       "title": "Miso demographics v2: RA dashboard summary fields",
       "description": "Update the RA misokinesia dashboard frontend for the backend v2 dashboard response. Replace age_band, gender, and country usage with age, sex, and residence_status in API types, formatting helpers, empty/null display, and stories/support mocks that are directly tied to the RA dashboard. Keep this task scoped to the RA dashboard summary; do not edit the participant demographics carousel.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "MISO",
       "depends_on": [

@@ -4,9 +4,9 @@ export interface MisoDashboardSessionItem {
   misokinesia_participant_number: number;
   started_at: string;
   completed_at: string | null;
-  age_band: string | null;
-  gender: string | null;
-  country: string | null;
+  age: number | null;
+  sex: string | null;
+  residence_status: string | null;
   avg_clip_score: number | null;
 }
 
