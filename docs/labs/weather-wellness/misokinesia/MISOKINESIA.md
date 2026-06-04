@@ -41,7 +41,7 @@ Source: `reference/labs/Misokinesia/Demographics copy2.docx`.
 
 The DOCX consent item is a UI-only gate and is not stored. Demographics answers are required in production before the intro screen. Database columns remain nullable for legacy rows and no-write trial runs, but the participant UI must not submit an incomplete visible form.
 
-Demographics are displayed as a carousel/card flow with at most 5 questions per pane. Preserve the source block grouping and show block progress.
+Demographics are displayed as a carousel/card flow grouped by source block. Each block computes its panes from the currently visible questions: blocks with fewer than 6 visible questions remain on one pane; blocks with 6 or more visible questions split into two near-equal panes while preserving source order. For odd counts, the first pane gets the smaller count, e.g. 7 visible questions split `3 + 4`. Hidden conditional questions are not counted until they become visible. Block 5 is the one exception: weekly video game hours appears directly under Q21 when "Yes" is selected, and Q21-Q25 remain on a single pane. Preserve the source block grouping and show block progress.
 
 | Block | Questions |
 |---|---|
@@ -51,7 +51,7 @@ Demographics are displayed as a carousel/card flow with at most 5 questions per 
 | Block 4 | Diagnosed Disorders; ADHD Diagnosis; ADHD Medication |
 | Block 5 | Avid Videogamer; Weekly Video Game Hours; Prescription Stimulants; Regular Substance Use; Relationship Status; Occupational Status |
 
-Slider questions are rendered as styled slider controls paired with numeric inputs. Both controls must stay synchronized. Ranges are: age `0`-`100`, years in Canada `0`-`100`, total education years `0`-`100`, cumulative GPA `0`-`5`, and weekly video game hours `0`-`100`.
+Slider questions are rendered as styled slider controls paired with numeric inputs. Both controls must stay synchronized. The UI shows visible range labels above the slider and softly snaps dragging near those labels, but participants can still choose in-between values and direct numeric input remains exact. Ranges are: age `0`-`100`, years in Canada `0`-`100`, total education years `0`-`100`, cumulative GPA `0`-`5`, and weekly video game hours `0`-`100`.
 
 Conditional fields:
 - "Other" answers require matching free text.

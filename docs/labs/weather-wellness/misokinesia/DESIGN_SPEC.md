@@ -58,8 +58,8 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 - First screen shown after navigation to `/misokinesia/[id]`, before the intro screen.
 - Source instrument: `reference/labs/Misokinesia/Demographics copy2.docx`.
 - The DOCX Q1 consent item is a UI-only gate. Selecting "Yes" advances into demographics. Selecting "No" routes back to `/misokinesia`. Do not store a consent row, consent column, or consent flag.
-- Layout: use a carousel/card flow similar to the MkAQ/MAQ survey pattern, with local back/next navigation and at most 5 questions per pane.
-- Preserve the DOCX block grouping and show block progress in the step/progress area, e.g. `Block 3 of 5`, plus the pane position when a block spans multiple panes.
+- Layout: use a carousel/card flow similar to the MkAQ/MAQ survey pattern, with local back/next navigation. Preserve the DOCX block grouping and build panes from the currently visible questions in each block: fewer than 6 visible questions stays on one pane; 6 or more visible questions splits into two near-equal panes while preserving source order, with odd counts using the smaller first pane (for example, 7 visible questions split `3 + 4`). Hidden conditional questions are not counted until they become visible. Block 5 is the one exception: `video_game_hours_per_week` appears directly under Q21 when avid videogamer is "Yes", and Q21-Q25 remain on a single pane.
+- Show block progress in the step/progress area, e.g. `Block 3 of 5`, plus the pane position when a block spans multiple panes.
 - Render categorical single-choice questions as flat radio chips matching the `SurveyForm` chip style. Render multi-select questions as checkable chips with selected state and keyboard-accessible toggles.
 - All visible demographics questions are required before advancing. Conditional questions are required only when visible.
 - Conditional behavior:
@@ -68,7 +68,7 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
   - `instruction_languages` appears only when non-English schooling is "Yes".
   - `video_game_hours_per_week` appears only when avid videogamer is "Yes".
   - "None", "N/A", and "None of the Above" choices are exclusive within their multi-select groups.
-- Slider questions from the DOCX must remain slider-like in functionality but use this app's styling. Each slider is paired with a numeric input; moving either control updates the other. Numeric ranges:
+- Slider questions from the DOCX must remain slider-like in functionality but use this app's styling. Each slider is paired with a numeric input; moving either control updates the other. Show visible range labels above each slider and softly snap pointer/keyboard slider movement near those labels, while still allowing in-between values and exact direct numeric input. Numeric ranges:
   - Age: `0`-`100`
   - Years lived in Canada: `0`-`100`
   - Total years of education: `0`-`100`

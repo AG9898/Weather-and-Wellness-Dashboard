@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { MisokinesiaDemographicsRequest } from "@/lib/api";
 import {
   MISO_DEMOGRAPHICS_BLOCKS,
   MISO_DEMOGRAPHICS_CONSENT_GATE,
+  getMisokinesiaDemographicsBlockPanes,
+  isMisoDemographicsQuestionVisible,
+  misoDemographicsConditionMatches,
   type MisoDemographicsBlock,
   type MisoDemographicsBooleanQuestion,
-  type MisoDemographicsCondition,
   type MisoDemographicsField,
   type MisoDemographicsMultiSelectQuestion,
   type MisoDemographicsPane,
@@ -16,13 +18,13 @@ import {
   type MisoDemographicsSingleChoiceQuestion,
   type MisoDemographicsSliderQuestion,
   type MisoDemographicsTextQuestion,
+  type MisoDemographicsValue,
+  type MisoDemographicsValues,
 } from "@/lib/misokinesia-demographics";
 import { cn } from "@/lib/utils";
 
-type DemographicsFormValue = string | number | boolean | string[] | null | undefined;
-export type DemographicsFormValues = Partial<
-  Record<MisoDemographicsField, DemographicsFormValue>
->;
+type DemographicsFormValue = MisoDemographicsValue;
+export type DemographicsFormValues = MisoDemographicsValues;
 
 export type DemographicsValues = MisokinesiaDemographicsRequest;
 
@@ -46,35 +48,26 @@ interface PaneWithMeta {
   globalIndex: number;
 }
 
-function buildPanes(): PaneWithMeta[] {
+function buildPanes(values: DemographicsFormValues): PaneWithMeta[] {
   return MISO_DEMOGRAPHICS_BLOCKS.flatMap((block, blockIndex) =>
-    block.panes.map((pane, paneIndex) => ({
-      block,
-      pane,
-      blockIndex,
-      paneIndex,
-      panesInBlock: block.panes.length,
-      globalIndex: 0,
-    }))
+    getMisokinesiaDemographicsBlockPanes(block, values).map(
+      (pane, paneIndex, blockPanes) => ({
+        block,
+        pane,
+        blockIndex,
+        paneIndex,
+        panesInBlock: blockPanes.length,
+        globalIndex: 0,
+      })
+    )
   ).map((pane, globalIndex) => ({ ...pane, globalIndex }));
-}
-
-function conditionMatches(
-  condition: MisoDemographicsCondition,
-  values: DemographicsFormValues
-): boolean {
-  const value = values[condition.field];
-  if (condition.operator === "equals") {
-    return value === condition.value;
-  }
-  return Array.isArray(value) && value.includes(condition.value);
 }
 
 function questionVisible(
   question: MisoDemographicsQuestion,
   values: DemographicsFormValues
 ): boolean {
-  return !question.visibleWhen || conditionMatches(question.visibleWhen, values);
+  return isMisoDemographicsQuestionVisible(question, values);
 }
 
 function otherTextVisible(
@@ -82,7 +75,7 @@ function otherTextVisible(
   values: DemographicsFormValues
 ): boolean {
   return "otherText" in question && question.otherText
-    ? conditionMatches(question.otherText.requiredWhen, values)
+    ? misoDemographicsConditionMatches(question.otherText.requiredWhen, values)
     : false;
 }
 
@@ -179,10 +172,9 @@ export default function MisokinesiaDemographicsForm({
   initialValues = {},
   initialValidationAttempted = false,
 }: MisokinesiaDemographicsFormProps) {
-  const panes = useMemo(buildPanes, []);
   const [consentAccepted, setConsentAccepted] = useState(initialConsentAccepted);
   const [currentPaneIndex, setCurrentPaneIndex] = useState(() =>
-    Math.min(Math.max(initialPaneIndex, 0), panes.length - 1)
+    Math.max(initialPaneIndex, 0)
   );
   const [values, setValues] = useState<DemographicsFormValues>(() =>
     sanitizeValues(initialValues)
@@ -190,12 +182,18 @@ export default function MisokinesiaDemographicsForm({
   const [validationAttempted, setValidationAttempted] = useState(
     initialValidationAttempted
   );
+  const panes = useMemo(() => buildPanes(values), [values]);
 
-  const currentPane = panes[currentPaneIndex];
+  useEffect(() => {
+    setCurrentPaneIndex((index) => Math.min(index, panes.length - 1));
+  }, [panes.length]);
+
+  const safePaneIndex = Math.min(currentPaneIndex, panes.length - 1);
+  const currentPane = panes[safePaneIndex];
   const paneComplete = currentPane.pane.questions.every((question) =>
     questionAnswered(question, values)
   );
-  const isFinalPane = currentPaneIndex === panes.length - 1;
+  const isFinalPane = safePaneIndex === panes.length - 1;
 
   function setField(field: MisoDemographicsField, value: DemographicsFormValue) {
     setValues((prev) => sanitizeValues({ ...prev, [field]: value }));
@@ -207,12 +205,12 @@ export default function MisokinesiaDemographicsForm({
       return;
     }
     setValidationAttempted(false);
-    setCurrentPaneIndex((index) => Math.min(index + 1, panes.length - 1));
+    setCurrentPaneIndex(Math.min(safePaneIndex + 1, panes.length - 1));
   }
 
   function handleBack() {
     setValidationAttempted(false);
-    setCurrentPaneIndex((index) => Math.max(index - 1, 0));
+    setCurrentPaneIndex(Math.max(safePaneIndex - 1, 0));
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -316,15 +314,12 @@ export default function MisokinesiaDemographicsForm({
             type="button"
             variant="outline"
             onClick={handleBack}
-            disabled={currentPaneIndex === 0 || submitting}
+            disabled={safePaneIndex === 0 || submitting}
             className="h-11 min-w-[140px] rounded-xl px-[22px] text-sm"
           >
             Back
           </Button>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
-              Roughly 18 minutes to complete
-            </span>
             {isFinalPane ? (
               <Button
                 type="submit"
@@ -454,17 +449,30 @@ function SliderQuestion({
   onChange: (field: MisoDemographicsField, value: DemographicsFormValue) => void;
 }) {
   const numericValue = typeof value === "number" ? value : question.min;
+  const thresholds = getSliderThresholds(question);
   return (
-    <div className="grid gap-3 sm:grid-cols-[1fr_96px] sm:items-center">
-      <input
-        type="range"
-        min={question.min}
-        max={question.max}
-        step={question.step}
-        value={numericValue}
-        onChange={(e) => onChange(question.field, Number(e.target.value))}
-        className="w-full accent-primary"
-      />
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_96px] sm:items-end">
+      <div className="min-w-0 space-y-2">
+        <div
+          className="grid text-center text-[10px] font-semibold text-muted-foreground tabular-nums"
+          style={{ gridTemplateColumns: `repeat(${thresholds.length}, minmax(0, 1fr))` }}
+        >
+          {thresholds.map((threshold) => (
+            <span key={threshold}>{formatSliderThreshold(threshold)}</span>
+          ))}
+        </div>
+        <input
+          type="range"
+          min={question.min}
+          max={question.max}
+          step={question.step}
+          value={numericValue}
+          onChange={(e) =>
+            onChange(question.field, snapSliderValue(question, Number(e.target.value)))
+          }
+          className="w-full accent-primary"
+        />
+      </div>
       <input
         type="number"
         min={question.min}
@@ -479,6 +487,32 @@ function SliderQuestion({
       />
     </div>
   );
+}
+
+function getSliderThresholds(question: MisoDemographicsSliderQuestion): number[] {
+  if (question.field === "cumulative_gpa") {
+    return [0, 1, 2, 3, 4, 5];
+  }
+  if (question.min === 0 && question.max === 100) {
+    return Array.from({ length: 11 }, (_, index) => index * 10);
+  }
+  return [question.min, question.max];
+}
+
+function snapSliderValue(
+  question: MisoDemographicsSliderQuestion,
+  value: number
+): number {
+  const thresholds = getSliderThresholds(question);
+  const snapTolerance = Math.max(question.step * 1.25, (question.max - question.min) / 100);
+  const nearest = thresholds.reduce((closest, threshold) =>
+    Math.abs(threshold - value) < Math.abs(closest - value) ? threshold : closest
+  );
+  return Math.abs(nearest - value) <= snapTolerance ? nearest : value;
+}
+
+function formatSliderThreshold(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(value);
 }
 
 function TextQuestion({

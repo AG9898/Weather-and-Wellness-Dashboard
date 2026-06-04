@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   MISO_DEMOGRAPHICS_BLOCKS,
-  MISO_DEMOGRAPHICS_MAX_QUESTIONS_PER_PANE,
   MISO_DEMOGRAPHICS_PAYLOAD_FIELDS,
+  MISO_DEMOGRAPHICS_SPLIT_THRESHOLD,
+  getMisokinesiaDemographicsBlockPanes,
   getMisokinesiaDemographicsPanes,
   type MisoDemographicsQuestion,
 } from "./misokinesia-demographics";
@@ -22,13 +23,49 @@ describe("misokinesia demographics config", () => {
     ]);
   });
 
-  it("keeps each carousel pane at or below the five-question limit", () => {
-    for (const pane of getMisokinesiaDemographicsPanes()) {
-      expect(pane.questions.length).toBeGreaterThan(0);
-      expect(pane.questions.length).toBeLessThanOrEqual(
-        MISO_DEMOGRAPHICS_MAX_QUESTIONS_PER_PANE
-      );
-    }
+  it("splits blocks from currently visible questions into near-equal panes", () => {
+    expect(MISO_DEMOGRAPHICS_SPLIT_THRESHOLD).toBe(6);
+    expect(getMisokinesiaDemographicsPanes().map((pane) => pane.questions.length)).toEqual([
+      3, 3, 4, 3, 3, 3, 5,
+    ]);
+
+    expect(
+      getMisokinesiaDemographicsPanes({
+        non_english_schooling: true,
+        avid_videogamer: true,
+      }).map((pane) => pane.questions.length)
+    ).toEqual([3, 3, 4, 3, 4, 3, 6]);
+  });
+
+  it("does not split blocks with fewer than six visible questions or the block 5 exception", () => {
+    const lifestyleBlock = MISO_DEMOGRAPHICS_BLOCKS.find(
+      (block) => block.sourceBlock === 5
+    );
+
+    expect(lifestyleBlock).toBeDefined();
+    expect(
+      lifestyleBlock
+        ? getMisokinesiaDemographicsBlockPanes(lifestyleBlock).map(
+            (pane) => pane.questions.length
+          )
+        : []
+    ).toEqual([5]);
+    expect(
+      lifestyleBlock
+        ? getMisokinesiaDemographicsBlockPanes(lifestyleBlock, {
+            avid_videogamer: true,
+          }).map((pane) => pane.questions.map((question) => question.field))
+        : []
+    ).toEqual([
+      [
+        "avid_videogamer",
+        "video_game_hours_per_week",
+        "prescription_stimulants",
+        "regular_substances",
+        "relationship_status",
+        "occupational_status",
+      ],
+    ]);
   });
 
   it("covers every backend v2 payload field exactly once through questions or other text metadata", () => {

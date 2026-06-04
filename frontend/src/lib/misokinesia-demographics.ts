@@ -1,6 +1,6 @@
 import type { MisokinesiaDemographicsRequest } from "@/lib/api";
 
-export const MISO_DEMOGRAPHICS_MAX_QUESTIONS_PER_PANE = 5;
+export const MISO_DEMOGRAPHICS_SPLIT_THRESHOLD = 6;
 
 export const MISO_DEMOGRAPHICS_PAYLOAD_FIELDS = [
   "age",
@@ -40,6 +40,18 @@ export const MISO_DEMOGRAPHICS_PAYLOAD_FIELDS = [
 ] as const satisfies readonly (keyof MisokinesiaDemographicsRequest)[];
 
 export type MisoDemographicsField = (typeof MISO_DEMOGRAPHICS_PAYLOAD_FIELDS)[number];
+
+export type MisoDemographicsValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | null
+  | undefined;
+
+export type MisoDemographicsValues = Partial<
+  Record<MisoDemographicsField, MisoDemographicsValue>
+>;
 
 export type MisoDemographicsCondition =
   | {
@@ -633,6 +645,58 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
   },
 ] as const;
 
-export function getMisokinesiaDemographicsPanes(): readonly MisoDemographicsPane[] {
-  return MISO_DEMOGRAPHICS_BLOCKS.flatMap((block) => block.panes);
+export function misoDemographicsConditionMatches(
+  condition: MisoDemographicsCondition,
+  values: MisoDemographicsValues
+): boolean {
+  const value = values[condition.field];
+  if (condition.operator === "equals") {
+    return value === condition.value;
+  }
+  return Array.isArray(value) && value.includes(condition.value);
+}
+
+export function isMisoDemographicsQuestionVisible(
+  question: MisoDemographicsQuestion,
+  values: MisoDemographicsValues
+): boolean {
+  return (
+    !question.visibleWhen ||
+    misoDemographicsConditionMatches(question.visibleWhen, values)
+  );
+}
+
+function splitVisibleQuestions(
+  questions: readonly MisoDemographicsQuestion[]
+): MisoDemographicsPane[] {
+  if (questions.length < MISO_DEMOGRAPHICS_SPLIT_THRESHOLD) {
+    return [{ questions }];
+  }
+
+  const splitAt = Math.floor(questions.length / 2);
+  return [
+    { questions: questions.slice(0, splitAt) },
+    { questions: questions.slice(splitAt) },
+  ];
+}
+
+export function getMisokinesiaDemographicsBlockPanes(
+  block: MisoDemographicsBlock,
+  values: MisoDemographicsValues = {}
+): readonly MisoDemographicsPane[] {
+  const visibleQuestions = block.panes
+    .flatMap((pane) => pane.questions)
+    .filter((question) => isMisoDemographicsQuestionVisible(question, values));
+  if (block.sourceBlock === 5) {
+    return [{ questions: visibleQuestions }];
+  }
+  return splitVisibleQuestions(visibleQuestions);
+}
+
+export function getMisokinesiaDemographicsPanes(
+  values: MisoDemographicsValues = {}
+): readonly MisoDemographicsPane[] {
+  return MISO_DEMOGRAPHICS_BLOCKS.flatMap((block) =>
+    getMisokinesiaDemographicsBlockPanes(block, values)
+  );
 }
