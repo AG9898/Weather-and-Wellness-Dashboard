@@ -15,7 +15,9 @@
 import type { Decorator } from "@storybook/nextjs-vite";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import MisokinesiaDemographicsForm from "@/lib/components/MisokinesiaDemographicsForm";
+import MisokinesiaDemographicsForm, {
+  type DemographicsFormValues,
+} from "@/lib/components/MisokinesiaDemographicsForm";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
 import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
@@ -45,12 +47,16 @@ export type ParticipantStoryPhase =
 
 export interface MisokinesiaParticipantStoryShellProps {
   phase?: ParticipantStoryPhase;
-  /** Demographics: pre-fill answers (age band selected) */
+  /** Demographics: accept consent gate and pre-fill the selected pane */
   demoAnswered?: boolean;
   /** Demographics: show inline error banner */
   demoError?: boolean;
   /** Demographics: show submitting state */
   demoSubmitting?: boolean;
+  /** Demographics: zero-based pane index from the sourced block carousel */
+  demoPaneIndex?: number;
+  /** Demographics: show required-field validation state */
+  demoValidationAttempted?: boolean;
   /** Questionnaire: number of answered questions (0-4) */
   clipAnswered?: number;
   /** Questionnaire: which clip number to show (default 3) */
@@ -69,6 +75,59 @@ export interface MisokinesiaParticipantStoryShellProps {
 
 const DEMO_PARTICIPANT_ID = "story-demo-participant";
 const DEMO_STIMULUS_ID = "story-demo-stimulus";
+
+const DEMOGRAPHICS_PANE_VALUES: Record<number, DemographicsFormValues> = {
+  0: {
+    age: 24,
+    sex: "Female",
+    gender_identity: "Woman",
+  },
+  1: {
+    years_lived_canada: 5,
+    residence_status: "Other",
+    residence_status_other_text: "Temporary worker permit",
+    student_type: "International",
+    total_years_education: 16,
+    cumulative_gpa: 3.7,
+  },
+  2: {
+    majors_text: "Psychology and statistics",
+    highest_education_completed: "Bachelors degree",
+  },
+  3: {
+    ethnicity: ["Other"],
+    ethnicity_other_text: "Mixed background",
+    native_language: "English",
+    english_fluency: "Strongly agree",
+    fluent_languages: ["Other"],
+    fluent_languages_other_text: "Spanish",
+    english_speaking_frequency: "Always",
+  },
+  4: {
+    non_english_schooling: true,
+    instruction_languages: ["Other"],
+    instruction_languages_other_text: "Spanish",
+  },
+  5: {
+    diagnosed_disorders: ["Other"],
+    diagnosed_disorders_other_text: "Sensory processing condition",
+    adhd_diagnosis: true,
+    adhd_medication: "Maybe",
+  },
+  6: {
+    avid_videogamer: true,
+    video_game_hours_per_week: 12,
+    prescription_stimulants: false,
+    regular_substances: ["Other"],
+    regular_substances_other_text: "Tea",
+    relationship_status: "Other",
+    relationship_status_other_text: "Prefer to describe",
+  },
+  7: {
+    occupational_status: "Other",
+    occupational_status_other_text: "Research co-op",
+  },
+};
 
 // ── Transition card copy ─────────────────────────────────────────────────────
 
@@ -279,6 +338,8 @@ export function MisokinesiaParticipantStoryShell({
   demoAnswered = false,
   demoError = false,
   demoSubmitting = false,
+  demoPaneIndex = 0,
+  demoValidationAttempted = false,
   clipAnswered = 0,
   clipNumber = 3,
   totalClips = 25,
@@ -327,9 +388,11 @@ export function MisokinesiaParticipantStoryShell({
 
   // ── demographics ─────────────────────────────────────────────────────────────
   if (phase === "demographics") {
-    // MisokinesiaDemographicsForm manages its own internal state, so we render it
-    // with controlled error/submitting props. The demoAnswered arg is visual context
-    // only — real state is inside the component.
+    const showDemographicsPane =
+      demoAnswered || demoError || demoSubmitting || demoValidationAttempted;
+    const demoValues = demoValidationAttempted
+      ? {}
+      : DEMOGRAPHICS_PANE_VALUES[demoPaneIndex] ?? DEMOGRAPHICS_PANE_VALUES[0];
     return (
       <div className="min-h-screen bg-background">
         <MisokinesiaDemographicsForm
@@ -339,15 +402,14 @@ export function MisokinesiaParticipantStoryShell({
               ? "Something went wrong saving your demographics. Please try again."
               : null
           }
+          initialConsentAccepted={showDemographicsPane}
+          initialPaneIndex={demoPaneIndex}
+          initialValues={demoValues}
+          initialValidationAttempted={demoValidationAttempted}
           onSubmit={() => {
             // no-op in Storybook
           }}
         />
-        {demoAnswered && (
-          <p className="sr-only">
-            (Demo note: fields pre-filled state shown via demoAnswered=true arg)
-          </p>
-        )}
       </div>
     );
   }

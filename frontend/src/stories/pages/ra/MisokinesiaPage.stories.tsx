@@ -18,6 +18,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Replica: Story = {};
 
+export const RecentSessionsNullDemographics: Story = {
+  args: {
+    demographicsVariant: "all_null",
+  },
+};
+
 export const Loading: Story = {
   args: {
     state: "loading",

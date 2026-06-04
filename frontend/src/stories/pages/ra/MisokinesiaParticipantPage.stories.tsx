@@ -35,20 +35,52 @@ export const Error: Story = {
 
 // ── Demographics ─────────────────────────────────────────────────────────────
 
-export const Demographics: Story = {
+export const DemographicsConsentGate: Story = {
   args: { phase: "demographics" },
 };
 
-export const DemographicsAnswered: Story = {
-  args: { phase: "demographics", demoAnswered: true },
+export const DemographicsBlock1Basics: Story = {
+  args: { phase: "demographics", demoAnswered: true, demoPaneIndex: 0 },
+};
+
+export const DemographicsBlock2ResidenceSliders: Story = {
+  args: { phase: "demographics", demoAnswered: true, demoPaneIndex: 1 },
+};
+
+export const DemographicsBlock3LanguageOther: Story = {
+  args: { phase: "demographics", demoAnswered: true, demoPaneIndex: 3 },
+};
+
+export const DemographicsBlock4ClinicalOther: Story = {
+  args: { phase: "demographics", demoAnswered: true, demoPaneIndex: 5 },
+};
+
+export const DemographicsBlock5LifestyleConditional: Story = {
+  args: { phase: "demographics", demoAnswered: true, demoPaneIndex: 6 },
+};
+
+export const DemographicsValidationBlocked: Story = {
+  args: {
+    phase: "demographics",
+    demoPaneIndex: 0,
+    demoValidationAttempted: true,
+  },
 };
 
 export const DemographicsError: Story = {
-  args: { phase: "demographics", demoError: true },
+  args: {
+    phase: "demographics",
+    demoPaneIndex: 7,
+    demoError: true,
+  },
 };
 
 export const DemographicsSubmitting: Story = {
-  args: { phase: "demographics", demoSubmitting: true },
+  args: {
+    phase: "demographics",
+    demoPaneIndex: 7,
+    demoSubmitting: true,
+  },
 };
 
 // ── Intro card ───────────────────────────────────────────────────────────────
@@ -138,7 +170,7 @@ export const CompleteError: Story = {
 // ── Theme + responsive variants ───────────────────────────────────────────────
 
 export const DemographicsDark: Story = {
-  args: { phase: "demographics" },
+  args: { phase: "demographics", demoAnswered: true, demoPaneIndex: 3 },
   globals: { theme: "dark" },
 };
 
@@ -163,7 +195,7 @@ export const CompleteDark: Story = {
 };
 
 export const DemographicsMobile: Story = {
-  args: { phase: "demographics" },
+  args: { phase: "demographics", demoAnswered: true, demoPaneIndex: 1 },
   decorators: [misokinesiaMobileDecorator],
 };
 

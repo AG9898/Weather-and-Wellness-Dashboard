@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type DemographicsFormValue = string | number | boolean | string[] | null | undefined;
-type DemographicsFormValues = Partial<
+export type DemographicsFormValues = Partial<
   Record<MisoDemographicsField, DemographicsFormValue>
 >;
 
@@ -31,6 +31,10 @@ interface MisokinesiaDemographicsFormProps {
   error: string | null;
   onSubmit: (values: DemographicsValues) => void;
   onDeclineConsent?: () => void;
+  initialConsentAccepted?: boolean;
+  initialPaneIndex?: number;
+  initialValues?: DemographicsFormValues;
+  initialValidationAttempted?: boolean;
 }
 
 interface PaneWithMeta {
@@ -170,12 +174,22 @@ export default function MisokinesiaDemographicsForm({
   error,
   onSubmit,
   onDeclineConsent = () => {},
+  initialConsentAccepted = false,
+  initialPaneIndex = 0,
+  initialValues = {},
+  initialValidationAttempted = false,
 }: MisokinesiaDemographicsFormProps) {
   const panes = useMemo(buildPanes, []);
-  const [consentAccepted, setConsentAccepted] = useState(false);
-  const [currentPaneIndex, setCurrentPaneIndex] = useState(0);
-  const [values, setValues] = useState<DemographicsFormValues>({});
-  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(initialConsentAccepted);
+  const [currentPaneIndex, setCurrentPaneIndex] = useState(() =>
+    Math.min(Math.max(initialPaneIndex, 0), panes.length - 1)
+  );
+  const [values, setValues] = useState<DemographicsFormValues>(() =>
+    sanitizeValues(initialValues)
+  );
+  const [validationAttempted, setValidationAttempted] = useState(
+    initialValidationAttempted
+  );
 
   const currentPane = panes[currentPaneIndex];
   const paneComplete = currentPane.pane.questions.every((question) =>

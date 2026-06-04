@@ -8,9 +8,11 @@ import type {
 } from "@/lib/api/misokinesia";
 
 export type MisokinesiaStoryState = "replica" | "loading" | "empty" | "error";
+export type MisokinesiaDemographicsVariant = "mixed" | "all_null";
 
 interface MisokinesiaStoryShellProps {
   state?: MisokinesiaStoryState;
+  demographicsVariant?: MisokinesiaDemographicsVariant;
 }
 
 const liveDashboardData: MisoDashboardResponse = {
@@ -69,8 +71,30 @@ const emptyVideoScores: MisoVideoScoresResponse = {
   bottom_5: [],
 };
 
+function getDashboardData(
+  state: MisokinesiaStoryState,
+  demographicsVariant: MisokinesiaDemographicsVariant
+): MisoDashboardResponse {
+  if (state === "empty") {
+    return emptyDashboardData;
+  }
+  if (demographicsVariant === "all_null") {
+    return {
+      ...liveDashboardData,
+      recent_sessions: liveDashboardData.recent_sessions.map((session) => ({
+        ...session,
+        age: null,
+        sex: null,
+        residence_status: null,
+      })),
+    };
+  }
+  return liveDashboardData;
+}
+
 export function MisokinesiaStoryShell({
   state = "replica",
+  demographicsVariant = "mixed",
 }: MisokinesiaStoryShellProps) {
   const isLoading = state === "loading";
   const errorMsg =
@@ -86,7 +110,7 @@ export function MisokinesiaStoryShell({
         <main className="pb-32 sm:pb-36">
           <MisokinesiaLaunchPage
             loading={isLoading}
-            dashboard={state === "empty" ? emptyDashboardData : liveDashboardData}
+            dashboard={getDashboardData(state, demographicsVariant)}
             videoScores={state === "empty" ? emptyVideoScores : liveVideoScores}
             dashboardLoading={isLoading}
             dashboardError={errorMsg}

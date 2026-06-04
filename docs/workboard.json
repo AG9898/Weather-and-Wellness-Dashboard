@@ -3431,7 +3431,7 @@
       "id": "T204",
       "title": "Miso demographics v2: Storybook states",
       "description": "Add or update Storybook coverage for the sourced demographics v2 participant flow and the updated RA dashboard demographics summary. Cover consent gate, representative block panes, conditional fields, validation blocked states, slider/input interaction state, submitting/API error, mobile layout, and dashboard rows with populated and null summary demographics. Keep stories mocked and isolated from backend calls.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "MISO",
       "depends_on": [
