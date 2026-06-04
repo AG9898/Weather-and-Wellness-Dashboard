@@ -3335,7 +3335,7 @@
       "id": "T201",
       "title": "Miso demographics v2: frontend types and question config",
       "description": "Add the frontend API payload type and a typed sourced-demographics question/config layer for the DOCX form. The config should define blocks, pane grouping constraints, options, conditional relationships, exclusive multi-select choices, slider ranges, and payload field names. Keep this task scoped to typed helpers/config and compile-time integration; do not replace the visible demographics form yet.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "MISO",
       "depends_on": [

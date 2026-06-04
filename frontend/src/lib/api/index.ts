@@ -1060,8 +1060,142 @@ export async function submitMisokinesiaEndOfTask(
   );
 }
 
-/** Miso demographics PATCH payload. All fields optional; categorical fields must match allowed values. */
+export type MisoSex = "Male" | "Female";
+export type MisoResidenceStatus =
+  | "Canadian Citizenship"
+  | "Permanent Resident"
+  | "Student Visa"
+  | "Other";
+export type MisoStudentType = "Domestic" | "International";
+export type MisoHighestEducationCompleted =
+  | "Elementary or middle school"
+  | "High school or equivalent (e.g., GED)"
+  | "College diploma"
+  | "Bachelors degree"
+  | "Masters degree"
+  | "Doctorate degree";
+export type MisoEnglishFluency =
+  | "Strongly agree"
+  | "Agree"
+  | "Neither agree nor disagree"
+  | "Disagree"
+  | "Strongly disagree";
+export type MisoEnglishSpeakingFrequency =
+  | "Always"
+  | "Often"
+  | "Sometimes"
+  | "Rarely"
+  | "Never";
+export type MisoAdhdMedication = "Yes" | "Maybe" | "No";
+export type MisoEthnicity =
+  | "European Canadian"
+  | "Chinese"
+  | "South Asian"
+  | "Filipino"
+  | "Southeast Asian"
+  | "Japanese"
+  | "Latin American"
+  | "Korean"
+  | "Other";
+export type MisoFluentLanguage =
+  | "French"
+  | "Mandarin"
+  | "Cantonese"
+  | "Hindi"
+  | "Punjabi"
+  | "Korean"
+  | "None"
+  | "Other";
+export type MisoInstructionLanguage =
+  | "French"
+  | "Mandarin"
+  | "Cantonese"
+  | "Hindi"
+  | "Punjabi"
+  | "Korean"
+  | "Other";
+export type MisoDiagnosedDisorder =
+  | "Neurological Disorder"
+  | "Generalized Anxiety Disorder"
+  | "Depression"
+  | "Mood Disorder"
+  | "Substance Use Disorder"
+  | "Other"
+  | "N/A";
+export type MisoRegularSubstance =
+  | "Alcohol"
+  | "Cannabis"
+  | "Tobacco"
+  | "Vaping"
+  | "Caffeinated Stimulants (coffee, energy drinks, etc.)"
+  | "Other"
+  | "None of the Above";
+export type MisoRelationshipStatus =
+  | "Single"
+  | "In a relationship"
+  | "Married (and not separated)"
+  | "Common-law"
+  | "Seperated"
+  | "Divorced"
+  | "Widowed"
+  | "Other"
+  | "None of the Above";
+export type MisoOccupationalStatus =
+  | "Employed full-time"
+  | "Employed part-time"
+  | "Out of work but looking for work"
+  | "Out of work and not looking for work"
+  | "Homemaker"
+  | "Student"
+  | "Military"
+  | "Retired"
+  | "Unable to work"
+  | "Other"
+  | "None of the above";
+
+/** Miso demographics PATCH payload. Mirrors backend MisoDemographicsCreate. */
 export interface MisokinesiaDemographicsRequest {
+  age?: number | null;
+  sex?: MisoSex | null;
+  gender_identity?: string | null;
+  years_lived_canada?: number | null;
+  residence_status?: MisoResidenceStatus | null;
+  residence_status_other_text?: string | null;
+  student_type?: MisoStudentType | null;
+  total_years_education?: number | null;
+  cumulative_gpa?: number | null;
+  majors_text?: string | null;
+  highest_education_completed?: MisoHighestEducationCompleted | null;
+  ethnicity?: MisoEthnicity[] | null;
+  ethnicity_other_text?: string | null;
+  native_language?: string | null;
+  english_fluency?: MisoEnglishFluency | null;
+  fluent_languages?: MisoFluentLanguage[] | null;
+  fluent_languages_other_text?: string | null;
+  english_speaking_frequency?: MisoEnglishSpeakingFrequency | null;
+  non_english_schooling?: boolean | null;
+  instruction_languages?: MisoInstructionLanguage[] | null;
+  instruction_languages_other_text?: string | null;
+  diagnosed_disorders?: MisoDiagnosedDisorder[] | null;
+  diagnosed_disorders_other_text?: string | null;
+  adhd_diagnosis?: boolean | null;
+  adhd_medication?: MisoAdhdMedication | null;
+  avid_videogamer?: boolean | null;
+  video_game_hours_per_week?: number | null;
+  prescription_stimulants?: boolean | null;
+  regular_substances?: MisoRegularSubstance[] | null;
+  regular_substances_other_text?: string | null;
+  relationship_status?: MisoRelationshipStatus | null;
+  relationship_status_other_text?: string | null;
+  occupational_status?: MisoOccupationalStatus | null;
+  occupational_status_other_text?: string | null;
+}
+
+export interface MisokinesiaDemographicsResponse {
+  misokinesia_participant_id: string;
+}
+
+interface LegacyMisokinesiaDemographicsRequest {
   age_band?: string;
   gender?: string;
   gender_other_text?: string;
@@ -1073,9 +1207,9 @@ export interface MisokinesiaDemographicsRequest {
 /** PATCH miso demographics onto an existing misokinesia_participants row (participant-facing, no auth). */
 export async function patchMisokinesiaDemographics(
   participantId: string,
-  payload: MisokinesiaDemographicsRequest
-): Promise<void> {
-  await apiPatch<unknown>(
+  payload: MisokinesiaDemographicsRequest | LegacyMisokinesiaDemographicsRequest
+): Promise<MisokinesiaDemographicsResponse> {
+  return apiPatch<MisokinesiaDemographicsResponse>(
     `/misokinesia/participants/${participantId}/demographics`,
     payload
   );
