@@ -1195,19 +1195,10 @@ export interface MisokinesiaDemographicsResponse {
   misokinesia_participant_id: string;
 }
 
-interface LegacyMisokinesiaDemographicsRequest {
-  age_band?: string;
-  gender?: string;
-  gender_other_text?: string;
-  country?: string;
-  country_other_text?: string;
-  nationality?: string;
-}
-
 /** PATCH miso demographics onto an existing misokinesia_participants row (participant-facing, no auth). */
 export async function patchMisokinesiaDemographics(
   participantId: string,
-  payload: MisokinesiaDemographicsRequest | LegacyMisokinesiaDemographicsRequest
+  payload: MisokinesiaDemographicsRequest
 ): Promise<MisokinesiaDemographicsResponse> {
   return apiPatch<MisokinesiaDemographicsResponse>(
     `/misokinesia/participants/${participantId}/demographics`,

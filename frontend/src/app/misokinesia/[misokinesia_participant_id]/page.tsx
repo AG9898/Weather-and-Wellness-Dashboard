@@ -295,14 +295,7 @@ export default function MisokinesiaTaskPage() {
     if (!manifest) return;
     setDemographicsSubmitting(true);
     try {
-      await patchMisokinesiaDemographics(participantId, {
-        age_band: values.age_band ?? undefined,
-        gender: values.gender ?? undefined,
-        gender_other_text: values.gender_other_text ?? undefined,
-        country: values.country ?? undefined,
-        country_other_text: values.country_other_text ?? undefined,
-        nationality: values.nationality ?? undefined,
-      });
+      await patchMisokinesiaDemographics(participantId, values);
       setFullscreenStarted(true);
       setPhase("intro");
     } catch (err) {
@@ -413,6 +406,7 @@ export default function MisokinesiaTaskPage() {
             submitting={demographicsSubmitting}
             error={demographicsError}
             onSubmit={handleDemographicsSubmit}
+            onDeclineConsent={() => router.push("/misokinesia")}
           />
         </div>
       );

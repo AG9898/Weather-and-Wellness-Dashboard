@@ -3366,7 +3366,7 @@
       "id": "T202",
       "title": "Miso demographics v2: participant consent and carousel UI",
       "description": "Replace the current misokinesia demographics screen with the UI-only consent gate and required sourced-demographics carousel. Reuse the existing quiet editorial carousel visual language where practical, preserve answers when moving back and forward, synchronize slider and numeric input controls, enforce visible required fields, and submit the v2 payload only on final production submit. Keep this task scoped to the participant demographics flow; do not change the RA dashboard or Storybook.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO",
       "depends_on": [
