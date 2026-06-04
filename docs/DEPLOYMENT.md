@@ -25,10 +25,11 @@ For a full release, the workflow runs in this order:
      and auth is enforced.
 5. Build and deploy the Vercel production frontend.
 
-If a push changes only `frontend/**`, the Railway deploy step is skipped, but
-production migrations and backend smoke tests still run before Vercel deploys.
-If a push changes only `backend/**`, the workflow deploys Railway, runs
-migrations, and smoke tests the backend without redeploying Vercel.
+If a push changes only `frontend/**`, the Railway deploy, production migration,
+and backend smoke-test job is skipped; Vercel deploys only after validation and
+the skipped backend job gate have completed. If a push changes only
+`backend/**`, the workflow deploys Railway, runs migrations, and smoke tests the
+backend without redeploying Vercel.
 
 The workflow uses `concurrency: production-release` with
 `cancel-in-progress: false` so production releases run one at a time.

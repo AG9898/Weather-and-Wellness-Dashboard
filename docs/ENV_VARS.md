@@ -4,10 +4,10 @@ Single source of truth for environment and secret configuration across this plat
 If any other doc conflicts with this file, update that doc to point here.
 
 **Where set:** vars are consumed at runtime by the service that needs them.
-- **Root `.env`** — repo-root file, admin CLI and local dev only. Never committed.
-- **Backend runtime** — Railway service env + local `backend/.env` for dev.
-- **Frontend runtime** — Vercel project env (set via Vercel Dashboard or `vercel env add`) + `frontend/.env.local` for dev.
-- `backend/.env.example` documents the canonical set of backend vars with placeholder values.
+- **Root `.env`** — repo-root file for all local backend, frontend, and admin CLI dev vars. Never committed.
+- **Backend runtime** — Railway service env in production.
+- **Frontend runtime** — Vercel project env in production (set via Vercel Dashboard or `vercel env add`).
+- `.env.example` documents the canonical local backend and frontend vars with placeholder values.
 
 Current production uses Vercel for the frontend, Railway for the FastAPI backend, and the Canada-region Supabase project.
 
@@ -16,7 +16,7 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 
 ---
 
-## Backend Variables (Railway / `backend/.env`)
+## Backend Variables (Railway / root `.env`)
 
 | Variable | Required | Default | Description | How to obtain |
 |---|---|---|---|---|
@@ -37,14 +37,14 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 
 ---
 
-## Frontend Variables (Vercel / `frontend/.env.local`)
+## Frontend Variables (Vercel / root `.env`)
 
 | Variable | Required | Default | Description | How to obtain |
 |---|---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | — | Browser-visible Supabase project URL for the frontend auth client. | Supabase Dashboard → Project Settings → API → Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | — | Browser-visible Supabase anon key for the frontend auth client. | Supabase Dashboard → Project Settings → API → `anon` key |
 | `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:8000` | Base URL of the FastAPI backend. Frontend API wrappers prepend this to all requests. | Set to the Railway service URL in production, e.g. `https://backend-production-5809.up.railway.app`; `http://localhost:8000` for local dev |
-| `KV_REST_API_URL` | Conditional (cache enabled) | — | Vercel KV / Upstash REST URL for same-origin cache helpers. | Vercel Dashboard → Storage → KV instance → `.env.local` tab, or `vercel env pull` |
+| `KV_REST_API_URL` | Conditional (cache enabled) | — | Vercel KV / Upstash REST URL for same-origin cache helpers. | Vercel Dashboard → Storage → KV instance → env tab, or `vercel env pull` then copy into root `.env` for local use |
 | `KV_REST_API_TOKEN` | Conditional (cache enabled) | — | Vercel KV / Upstash REST token (read-write) for same-origin cache helpers. | Same as `KV_REST_API_URL` source |
 | `KV_REST_API_READ_ONLY_TOKEN` | Conditional (cache, read-only path) | — | Read-only variant of the KV token for public-safe cache reads. | Same as `KV_REST_API_URL` source |
 | `KV_URL` | Conditional (cache enabled) | — | Redis-protocol URL alias for the Vercel KV / Upstash instance. | Same as `KV_REST_API_URL` source |
@@ -100,14 +100,14 @@ targets.
 | `ADMIN_EMAIL_FROM` | ✓ | ✓ | | |
 | `SITE_URL` | ✓ | ✓ | | |
 | `ADMIN_CLI_CREATED_BY_LAB_MEMBER_ID` | ✓ | | | |
-| `NEXT_PUBLIC_SUPABASE_URL` | | | ✓ | |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | | | ✓ | |
-| `NEXT_PUBLIC_API_URL` | | | ✓ | |
-| `KV_REST_API_URL` | | | ✓ | |
-| `KV_REST_API_TOKEN` | | | ✓ | |
-| `KV_REST_API_READ_ONLY_TOKEN` | | | ✓ | |
-| `KV_URL` | | | ✓ | |
-| `REDIS_URL` | | | ✓ | |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✓ | | ✓ | |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | | ✓ | |
+| `NEXT_PUBLIC_API_URL` | ✓ | | ✓ | |
+| `KV_REST_API_URL` | ✓ | | ✓ | |
+| `KV_REST_API_TOKEN` | ✓ | | ✓ | |
+| `KV_REST_API_READ_ONLY_TOKEN` | ✓ | | ✓ | |
+| `KV_URL` | ✓ | | ✓ | |
+| `REDIS_URL` | ✓ | | ✓ | |
 | `WEATHER_INGEST_SHARED_SECRETS` | | ✓ | | |
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | | ✓ | | |
 | `RAILWAY_TOKEN` | | | | ✓ |

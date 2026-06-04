@@ -16,7 +16,7 @@ Usage (run from repo root or backend/):
 Pass --confirm to skip the interactive prompt:
     python backend/admin_cli/wipe_misokinesia_participants.py --confirm
 
-Required env var (loaded from backend/.env or repo root .env):
+Required env var (loaded from repo-root .env):
     DATABASE_URL  PostgreSQL connection URL
 """
 from __future__ import annotations
@@ -27,15 +27,12 @@ import os
 import sys
 from pathlib import Path
 
-# Load .env — try backend/.env first, then repo root .env
-for _dotenv_path in [
-    Path(__file__).parent.parent / ".env",
-    Path(__file__).parent.parent.parent / ".env",
-]:
-    if _dotenv_path.exists():
-        from dotenv import load_dotenv
-        load_dotenv(_dotenv_path, override=False)
-        break
+# Load repo-root .env for local admin runs.
+_dotenv_path = Path(__file__).parent.parent.parent / ".env"
+if _dotenv_path.exists():
+    from dotenv import load_dotenv
+
+    load_dotenv(_dotenv_path, override=False)
 
 try:
     import asyncpg

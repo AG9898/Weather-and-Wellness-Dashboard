@@ -110,16 +110,16 @@ These rules are not optional and apply to every task, not just doc-specific task
 ## Dev Workflow
 
 ```bash
-cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
+set -a && source .env && set +a && cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
 cd frontend && npm run dev                    # start frontend
-cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
+set -a && source .env && set +a && cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
 ```
 
-All backend commands must be run from the repo root using the `cd backend && PYTHONPATH=.` prefix pattern shown above.
-Copy `backend/.env.example` → `backend/.env`.
+All backend commands must be run from the repo root using the `cd backend && PYTHONPATH=.` prefix pattern shown above after loading repo-root `.env`.
+Copy `.env.example` → `.env` at the repo root.
 See `docs/ENV_VARS.md` for the full variable reference (including conditional requirements).
-If `backend/.env.example` is missing, derive required variables from the Railway/current backend sections in `docs/ARCHITECTURE.md` and `docs/ENV_VARS.md`.
-Never commit `backend/.env`.
+If `.env.example` is missing, derive required variables from the Railway/Vercel/current backend sections in `docs/ARCHITECTURE.md` and `docs/ENV_VARS.md`.
+Never commit `.env`.
 
 ### Operational Tooling
 

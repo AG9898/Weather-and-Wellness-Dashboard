@@ -7,7 +7,7 @@ applies decommission flags (active=false) for clips listed in DECOMMISSIONED.
 Usage (run from repo root or backend/):
     python backend/admin_cli/seed_misokinesia_stimuli.py
 
-Required env var (loaded from backend/.env or root .env):
+Required env var (loaded from repo-root .env):
     DATABASE_URL  PostgreSQL connection URL (any supported prefix)
 """
 from __future__ import annotations
@@ -18,15 +18,12 @@ import sys
 import uuid
 from pathlib import Path
 
-# Load .env — try backend/.env first, then repo root .env
-for _dotenv_path in [
-    Path(__file__).parent.parent / ".env",
-    Path(__file__).parent.parent.parent / ".env",
-]:
-    if _dotenv_path.exists():
-        from dotenv import load_dotenv
-        load_dotenv(_dotenv_path, override=False)
-        break
+# Load repo-root .env for local admin runs.
+_dotenv_path = Path(__file__).parent.parent.parent / ".env"
+if _dotenv_path.exists():
+    from dotenv import load_dotenv
+
+    load_dotenv(_dotenv_path, override=False)
 
 try:
     import asyncpg

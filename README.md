@@ -22,11 +22,11 @@ for all operational detail, then use `docs/INDEX.md` as the canonical documentat
 ## Quickstart
 
 ```bash
-cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
+set -a && source .env && set +a && cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
 cd frontend && npm run dev                    # start frontend
-cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
+set -a && source .env && set +a && cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
 ```
 
-Copy `backend/.env.example` to `backend/.env`, set required variables, and never commit `backend/.env`.
+Copy `.env.example` to repo-root `.env`, set required backend and frontend variables, and never commit `.env`.
 For complete setup, conventions, architecture, and workflow guidance, use `AGENTS.md` and the
 `docs/INDEX.md` routing map.
