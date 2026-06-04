@@ -52,6 +52,42 @@ _MKAQ_DUPLICATE_CONSTRAINT = "uq_misokinesia_mkaq_responses_participant"
 _GAD7_DUPLICATE_CONSTRAINT = "uq_misokinesia_gad7_responses_participant"
 _MAQ_DUPLICATE_CONSTRAINT = "uq_misokinesia_maq_responses_participant"
 _SURVEY_KEYS = ["mkaq", "gad7", "maq"]
+_DEMOGRAPHICS_FIELDS = (
+    "age",
+    "sex",
+    "gender_identity",
+    "years_lived_canada",
+    "residence_status",
+    "residence_status_other_text",
+    "student_type",
+    "total_years_education",
+    "cumulative_gpa",
+    "majors_text",
+    "highest_education_completed",
+    "ethnicity",
+    "ethnicity_other_text",
+    "native_language",
+    "english_fluency",
+    "fluent_languages",
+    "fluent_languages_other_text",
+    "english_speaking_frequency",
+    "non_english_schooling",
+    "instruction_languages",
+    "instruction_languages_other_text",
+    "diagnosed_disorders",
+    "diagnosed_disorders_other_text",
+    "adhd_diagnosis",
+    "adhd_medication",
+    "avid_videogamer",
+    "video_game_hours_per_week",
+    "prescription_stimulants",
+    "regular_substances",
+    "regular_substances_other_text",
+    "relationship_status",
+    "relationship_status_other_text",
+    "occupational_status",
+    "occupational_status_other_text",
+)
 
 
 def _supabase_url() -> str:
@@ -298,9 +334,9 @@ async def get_misokinesia_dashboard(
             MisokinesiaParticipant.misokinesia_participant_number,
             MisokinesiaParticipant.started_at,
             MisokinesiaParticipant.completed_at,
-            literal(None).label("age_band"),
-            literal(None).label("gender"),
-            literal(None).label("country"),
+            MisokinesiaParticipant.age,
+            MisokinesiaParticipant.sex,
+            MisokinesiaParticipant.residence_status,
         )
         .order_by(MisokinesiaParticipant.started_at.desc())
         .limit(10)
@@ -320,9 +356,9 @@ async def get_misokinesia_dashboard(
             recent_participants.c.misokinesia_participant_number,
             recent_participants.c.started_at,
             recent_participants.c.completed_at,
-            recent_participants.c.age_band,
-            recent_participants.c.gender,
-            recent_participants.c.country,
+            recent_participants.c.age,
+            recent_participants.c.sex,
+            recent_participants.c.residence_status,
             func.avg(clip_score).label("avg_clip_score"),
         )
         .select_from(one_row)
@@ -337,9 +373,9 @@ async def get_misokinesia_dashboard(
             recent_participants.c.misokinesia_participant_number,
             recent_participants.c.started_at,
             recent_participants.c.completed_at,
-            recent_participants.c.age_band,
-            recent_participants.c.gender,
-            recent_participants.c.country,
+            recent_participants.c.age,
+            recent_participants.c.sex,
+            recent_participants.c.residence_status,
         )
         .order_by(recent_participants.c.started_at.desc().nullslast())
     )
@@ -352,9 +388,9 @@ async def get_misokinesia_dashboard(
             misokinesia_participant_number=row["misokinesia_participant_number"],
             started_at=row["started_at"],
             completed_at=row["completed_at"],
-            age_band=row["age_band"],
-            gender=row["gender"],
-            country=row["country"],
+            age=row["age"],
+            sex=row["sex"],
+            residence_status=row["residence_status"],
             avg_clip_score=(
                 float(row["avg_clip_score"])
                 if row["avg_clip_score"] is not None
@@ -431,8 +467,8 @@ async def submit_demographics(
 ) -> MisoDemographicsResponse:
     """Participant-facing (no auth). Write miso-specific demographics to
     misokinesia_participants. Idempotent — later calls overwrite earlier values.
-    All fields optional. Returns 404 if participant not found, 422 for invalid
-    categorical values or inconsistent other_text fields (validated by schema).
+    Database columns are nullable, but schema validation enforces the sourced
+    v2 ranges, categorical values, conditional fields, and Other-text rules.
     """
 
     mp_result = await db.execute(
@@ -447,12 +483,8 @@ async def submit_demographics(
             detail="Misokinesia participant not found.",
         )
 
-    miso_participant.age_band = payload.age_band
-    miso_participant.gender = payload.gender
-    miso_participant.gender_other_text = payload.gender_other_text
-    miso_participant.country = payload.country
-    miso_participant.country_other_text = payload.country_other_text
-    miso_participant.nationality = payload.nationality
+    for field_name in _DEMOGRAPHICS_FIELDS:
+        setattr(miso_participant, field_name, getattr(payload, field_name))
 
     await db.commit()
 

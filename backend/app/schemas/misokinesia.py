@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
@@ -48,9 +49,9 @@ class MisoDashboardSessionItem(BaseModel):
     misokinesia_participant_number: int
     started_at: datetime
     completed_at: Optional[datetime]
-    age_band: Optional[str]
-    gender: Optional[str]
-    country: Optional[str]
+    age: Optional[int]
+    sex: Optional[str]
+    residence_status: Optional[str]
     avg_clip_score: Optional[float]
 
 
@@ -117,55 +118,335 @@ class MisokinesiaTrialResponseResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# End-of-task questionnaire
-# ---------------------------------------------------------------------------
-
-_VALID_AGE_BANDS = {"Under 18", "18-24", "25-31", "32-38", "Over 38"}
-_VALID_GENDERS = {"Woman", "Man", "Nonbinary person", "Prefer not to say", "Not listed"}
-_VALID_COUNTRIES = {"Canada", "South Korea", "Not listed"}
-_VALID_TIMING_OPTIONS = {
-    "Immediately",
-    "After 5 seconds",
-    "After 10 seconds",
-    "At the end of the video",
-}
-
-
-# ---------------------------------------------------------------------------
 # Demographics (participant-facing, PATCH)
 # ---------------------------------------------------------------------------
 
+_VALID_SEXES = {"Male", "Female"}
+_VALID_RESIDENCE_STATUSES = {
+    "Canadian Citizenship",
+    "Permanent Resident",
+    "Student Visa",
+    "Other",
+}
+_VALID_STUDENT_TYPES = {"Domestic", "International"}
+_VALID_HIGHEST_EDUCATION = {
+    "Elementary or middle school",
+    "High school or equivalent (e.g., GED)",
+    "College diploma",
+    "Bachelors degree",
+    "Masters degree",
+    "Doctorate degree",
+}
+_VALID_AGREEMENT_SCALE = {
+    "Strongly agree",
+    "Agree",
+    "Neither agree nor disagree",
+    "Disagree",
+    "Strongly disagree",
+}
+_VALID_ENGLISH_FREQUENCY = {"Always", "Often", "Sometimes", "Rarely", "Never"}
+_VALID_ADHD_MEDICATION = {"Yes", "Maybe", "No"}
+_VALID_RELATIONSHIP_STATUSES = {
+    "Single",
+    "In a relationship",
+    "Married (and not separated)",
+    "Common-law",
+    "Seperated",
+    "Divorced",
+    "Widowed",
+    "Other",
+    "None of the Above",
+}
+_VALID_OCCUPATIONAL_STATUSES = {
+    "Employed full-time",
+    "Employed part-time",
+    "Out of work but looking for work",
+    "Out of work and not looking for work",
+    "Homemaker",
+    "Student",
+    "Military",
+    "Retired",
+    "Unable to work",
+    "Other",
+    "None of the above",
+}
+_VALID_ETHNICITIES = {
+    "European Canadian",
+    "Chinese",
+    "South Asian",
+    "Filipino",
+    "Southeast Asian",
+    "Japanese",
+    "Latin American",
+    "Korean",
+    "Other",
+}
+_VALID_LANGUAGES = {
+    "French",
+    "Mandarin",
+    "Cantonese",
+    "Hindi",
+    "Punjabi",
+    "Korean",
+    "None",
+    "Other",
+}
+_VALID_INSTRUCTION_LANGUAGES = {
+    "French",
+    "Mandarin",
+    "Cantonese",
+    "Hindi",
+    "Punjabi",
+    "Korean",
+    "Other",
+}
+_VALID_DIAGNOSED_DISORDERS = {
+    "Neurological Disorder",
+    "Generalized Anxiety Disorder",
+    "Depression",
+    "Mood Disorder",
+    "Substance Use Disorder",
+    "Other",
+    "N/A",
+}
+_VALID_REGULAR_SUBSTANCES = {
+    "Alcohol",
+    "Cannabis",
+    "Tobacco",
+    "Vaping",
+    "Caffeinated Stimulants (coffee, energy drinks, etc.)",
+    "Other",
+    "None of the Above",
+}
+
+
+def _validate_optional_choice(
+    value: str | None,
+    allowed: set[str],
+    field_name: str,
+) -> None:
+    if value is not None and value not in allowed:
+        raise ValueError(f"{field_name} must be one of: {sorted(allowed)}")
+
+
+def _validate_optional_choices(
+    value: list[str] | None,
+    allowed: set[str],
+    field_name: str,
+) -> None:
+    if value is None:
+        return
+    invalid = sorted(set(value) - allowed)
+    if invalid:
+        raise ValueError(f"{field_name} contains invalid values: {invalid}")
+
+
+def _validate_other_text(
+    *,
+    selected: str | list[str] | None,
+    other_text: str | None,
+    field_name: str,
+    text_field_name: str,
+) -> None:
+    has_other = (
+        "Other" in selected
+        if isinstance(selected, list)
+        else selected == "Other"
+    )
+    has_text = other_text is not None and other_text.strip() != ""
+    if has_other and not has_text:
+        raise ValueError(f"{text_field_name} is required when {field_name} includes Other")
+    if has_text and not has_other:
+        raise ValueError(f"{text_field_name} may only be set when {field_name} includes Other")
+
+
+def _validate_exclusive_choice(
+    value: list[str] | None,
+    exclusive_value: str,
+    field_name: str,
+) -> None:
+    if value is not None and exclusive_value in value and len(value) > 1:
+        raise ValueError(f"{exclusive_value} is exclusive in {field_name}")
+
 
 class MisoDemographicsCreate(BaseModel):
-    age_band: Optional[str] = None
-    gender: Optional[str] = None
-    gender_other_text: Optional[str] = None
-    country: Optional[str] = None
-    country_other_text: Optional[str] = None
-    nationality: Optional[str] = None
+    age: Optional[int] = Field(default=None, ge=0, le=100)
+    sex: Optional[str] = None
+    gender_identity: Optional[str] = None
+    years_lived_canada: Optional[int] = Field(default=None, ge=0, le=100)
+    residence_status: Optional[str] = None
+    residence_status_other_text: Optional[str] = None
+    student_type: Optional[str] = None
+    total_years_education: Optional[int] = Field(default=None, ge=0, le=100)
+    cumulative_gpa: Optional[Decimal] = Field(default=None, ge=0, le=5)
+    majors_text: Optional[str] = None
+    highest_education_completed: Optional[str] = None
+    ethnicity: Optional[list[str]] = None
+    ethnicity_other_text: Optional[str] = None
+    native_language: Optional[str] = None
+    english_fluency: Optional[str] = None
+    fluent_languages: Optional[list[str]] = None
+    fluent_languages_other_text: Optional[str] = None
+    english_speaking_frequency: Optional[str] = None
+    non_english_schooling: Optional[bool] = None
+    instruction_languages: Optional[list[str]] = None
+    instruction_languages_other_text: Optional[str] = None
+    diagnosed_disorders: Optional[list[str]] = None
+    diagnosed_disorders_other_text: Optional[str] = None
+    adhd_diagnosis: Optional[bool] = None
+    adhd_medication: Optional[str] = None
+    avid_videogamer: Optional[bool] = None
+    video_game_hours_per_week: Optional[int] = Field(default=None, ge=0, le=100)
+    prescription_stimulants: Optional[bool] = None
+    regular_substances: Optional[list[str]] = None
+    regular_substances_other_text: Optional[str] = None
+    relationship_status: Optional[str] = None
+    relationship_status_other_text: Optional[str] = None
+    occupational_status: Optional[str] = None
+    occupational_status_other_text: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_demographics(self) -> "MisoDemographicsCreate":
-        if self.age_band is not None and self.age_band not in _VALID_AGE_BANDS:
+        _validate_optional_choice(self.sex, _VALID_SEXES, "sex")
+        _validate_optional_choice(
+            self.residence_status,
+            _VALID_RESIDENCE_STATUSES,
+            "residence_status",
+        )
+        _validate_optional_choice(self.student_type, _VALID_STUDENT_TYPES, "student_type")
+        _validate_optional_choice(
+            self.highest_education_completed,
+            _VALID_HIGHEST_EDUCATION,
+            "highest_education_completed",
+        )
+        _validate_optional_choice(
+            self.english_fluency,
+            _VALID_AGREEMENT_SCALE,
+            "english_fluency",
+        )
+        _validate_optional_choice(
+            self.english_speaking_frequency,
+            _VALID_ENGLISH_FREQUENCY,
+            "english_speaking_frequency",
+        )
+        _validate_optional_choice(
+            self.adhd_medication,
+            _VALID_ADHD_MEDICATION,
+            "adhd_medication",
+        )
+        _validate_optional_choice(
+            self.relationship_status,
+            _VALID_RELATIONSHIP_STATUSES,
+            "relationship_status",
+        )
+        _validate_optional_choice(
+            self.occupational_status,
+            _VALID_OCCUPATIONAL_STATUSES,
+            "occupational_status",
+        )
+        _validate_optional_choices(self.ethnicity, _VALID_ETHNICITIES, "ethnicity")
+        _validate_optional_choices(
+            self.fluent_languages,
+            _VALID_LANGUAGES,
+            "fluent_languages",
+        )
+        _validate_optional_choices(
+            self.instruction_languages,
+            _VALID_INSTRUCTION_LANGUAGES,
+            "instruction_languages",
+        )
+        _validate_optional_choices(
+            self.diagnosed_disorders,
+            _VALID_DIAGNOSED_DISORDERS,
+            "diagnosed_disorders",
+        )
+        _validate_optional_choices(
+            self.regular_substances,
+            _VALID_REGULAR_SUBSTANCES,
+            "regular_substances",
+        )
+
+        _validate_other_text(
+            selected=self.residence_status,
+            other_text=self.residence_status_other_text,
+            field_name="residence_status",
+            text_field_name="residence_status_other_text",
+        )
+        _validate_other_text(
+            selected=self.ethnicity,
+            other_text=self.ethnicity_other_text,
+            field_name="ethnicity",
+            text_field_name="ethnicity_other_text",
+        )
+        _validate_other_text(
+            selected=self.fluent_languages,
+            other_text=self.fluent_languages_other_text,
+            field_name="fluent_languages",
+            text_field_name="fluent_languages_other_text",
+        )
+        _validate_other_text(
+            selected=self.instruction_languages,
+            other_text=self.instruction_languages_other_text,
+            field_name="instruction_languages",
+            text_field_name="instruction_languages_other_text",
+        )
+        _validate_other_text(
+            selected=self.diagnosed_disorders,
+            other_text=self.diagnosed_disorders_other_text,
+            field_name="diagnosed_disorders",
+            text_field_name="diagnosed_disorders_other_text",
+        )
+        _validate_other_text(
+            selected=self.regular_substances,
+            other_text=self.regular_substances_other_text,
+            field_name="regular_substances",
+            text_field_name="regular_substances_other_text",
+        )
+        _validate_other_text(
+            selected=self.relationship_status,
+            other_text=self.relationship_status_other_text,
+            field_name="relationship_status",
+            text_field_name="relationship_status_other_text",
+        )
+        _validate_other_text(
+            selected=self.occupational_status,
+            other_text=self.occupational_status_other_text,
+            field_name="occupational_status",
+            text_field_name="occupational_status_other_text",
+        )
+
+        _validate_exclusive_choice(self.fluent_languages, "None", "fluent_languages")
+        _validate_exclusive_choice(self.diagnosed_disorders, "N/A", "diagnosed_disorders")
+        _validate_exclusive_choice(
+            self.regular_substances,
+            "None of the Above",
+            "regular_substances",
+        )
+
+        if self.non_english_schooling is not True:
+            if self.instruction_languages is not None:
+                raise ValueError(
+                    "instruction_languages may only be set when non_english_schooling is true"
+                )
+            if self.instruction_languages_other_text is not None:
+                raise ValueError(
+                    "instruction_languages_other_text may only be set when non_english_schooling is true"
+                )
+        elif not self.instruction_languages:
             raise ValueError(
-                f"age_band must be one of: {sorted(_VALID_AGE_BANDS)}"
+                "instruction_languages is required when non_english_schooling is true"
             )
-        if self.gender is not None and self.gender not in _VALID_GENDERS:
+
+        if self.avid_videogamer is not True:
+            if self.video_game_hours_per_week is not None:
+                raise ValueError(
+                    "video_game_hours_per_week may only be set when avid_videogamer is true"
+                )
+        elif self.video_game_hours_per_week is None:
             raise ValueError(
-                f"gender must be one of: {sorted(_VALID_GENDERS)}"
+                "video_game_hours_per_week is required when avid_videogamer is true"
             )
-        if self.country is not None and self.country not in _VALID_COUNTRIES:
-            raise ValueError(
-                f"country must be one of: {sorted(_VALID_COUNTRIES)}"
-            )
-        if self.gender_other_text is not None and self.gender != "Not listed":
-            raise ValueError(
-                "gender_other_text may only be set when gender is 'Not listed'"
-            )
-        if self.country_other_text is not None and self.country != "Not listed":
-            raise ValueError(
-                "country_other_text may only be set when country is 'Not listed'"
-            )
+
         return self
 
 
@@ -173,6 +454,18 @@ class MisoDemographicsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     misokinesia_participant_id: UUID
+
+
+# ---------------------------------------------------------------------------
+# End-of-task questionnaire
+# ---------------------------------------------------------------------------
+
+_VALID_TIMING_OPTIONS = {
+    "Immediately",
+    "After 5 seconds",
+    "After 10 seconds",
+    "At the end of the video",
+}
 
 
 class MisokinesiaEndOfTaskCreate(BaseModel):

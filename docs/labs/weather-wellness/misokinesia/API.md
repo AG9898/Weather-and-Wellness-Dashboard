@@ -40,7 +40,7 @@
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143, T172 |
 | GET    | /misokinesia/dashboard | RA | implemented | T195 |
 | GET    | /misokinesia/video-scores | RA | implemented | T196 |
-| PATCH  | /misokinesia/participants/{participant_id}/demographics | None | planned replacement | T184 → Miso demographics v2 |
+| PATCH  | /misokinesia/participants/{participant_id}/demographics | None | implemented | T200 |
 | POST   | /misokinesia/participants/{participant_id}/responses | None | implemented | T107 |
 | POST   | /misokinesia/participants/{participant_id}/mkaq | None | implemented | T146 |
 | POST   | /misokinesia/participants/{participant_id}/gad7 | None | implemented | T169 |
@@ -130,9 +130,9 @@
         "misokinesia_participant_number": 12,
         "started_at": "2026-05-20T16:00:00Z",
         "completed_at": null,
-        "age_band": null,
-        "gender": null,
-        "country": null,
+        "age": 24,
+        "sex": "Female",
+        "residence_status": "Student Visa",
         "avg_clip_score": 15.5
       }
     ]
@@ -142,14 +142,14 @@
   - RA-only summary endpoint for the misokinesia operations page.
   - `active_stimuli_count` counts active `misokinesia_stimuli` rows in the active test set.
   - `recent_sessions` returns up to 10 `misokinesia_participants` rows ordered by `started_at DESC`.
-  - After T199, the response keeps the legacy `age_band`, `gender`, and `country` keys for frontend compatibility, but the backend returns `null` for them because the T184 columns were replaced. T200 will replace these with the v2 summary fields `age`, `sex`, and `residence_status`.
+  - Recent-session demographics expose the sourced v2 summary fields `age`, `sex`, and `residence_status`; legacy `age_band`, `gender`, and `country` keys are no longer returned.
   - `avg_clip_score` is the mean of `q1 + q2 + q3 + q4` across that participant's per-clip response rows. It is `null` when the participant has not submitted any clip responses.
   - The backend computes the dashboard with one aggregate query and does not issue per-participant response lookups.
   - Unauthenticated requests return 401.
 
 ### PATCH /misokinesia/participants/{participant_id}/demographics
 - **Auth:** None (participant-facing)
-- **Status:** planned replacement for T184 sourced from `reference/labs/Misokinesia/Demographics copy2.docx`
+- **Status:** implemented (T200), sourced from `reference/labs/Misokinesia/Demographics copy2.docx`
 - **Request body:** `MisoDemographicsCreate`
   ```json
   {

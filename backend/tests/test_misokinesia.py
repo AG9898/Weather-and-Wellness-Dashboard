@@ -1,4 +1,4 @@
-"""Tests for misokinesia router endpoints (T108, updated T168, T184).
+"""Tests for misokinesia router endpoints (T108, updated T168, T200).
 
 Covers:
 - POST /misokinesia/start: valid manifest response (post_survey_order), auth requirement, clip ordering
@@ -7,8 +7,8 @@ Covers:
   post_survey_order included in both modes
 - misokinesia_participant_number increments across successive start calls
 - PATCH /misokinesia/participants/{id}/demographics: happy path 200, 404 for unknown
-  participant, 422 for invalid categorical values, 422 for inconsistent other_text,
-  idempotent overwrite, no auth required (T184)
+  participant, 422 for invalid v2 values, conditional fields, Other text,
+  exclusive None/N/A choices, idempotent overwrite, no auth required (T200)
 - POST /misokinesia/participants/{id}/responses: happy path, no-auth requirement,
   duplicate 409, wrong test-set 422, out-of-range qN 422, completed_at auto-set,
   post-completion 409
@@ -134,13 +134,41 @@ class _FakeMisoParticipant:
         self.end_emotions_text: str | None = None
         self.stronger_responses: bool | None = None
         self.stronger_responses_timing: str | None = None
-        # Demographics (T184)
-        self.age_band: str | None = None
-        self.gender: str | None = None
-        self.gender_other_text: str | None = None
-        self.country: str | None = None
-        self.country_other_text: str | None = None
-        self.nationality: str | None = None
+        # Demographics (T200 sourced v2)
+        self.age: int | None = None
+        self.sex: str | None = None
+        self.gender_identity: str | None = None
+        self.years_lived_canada: int | None = None
+        self.residence_status: str | None = None
+        self.residence_status_other_text: str | None = None
+        self.student_type: str | None = None
+        self.total_years_education: int | None = None
+        self.cumulative_gpa: Any = None
+        self.majors_text: str | None = None
+        self.highest_education_completed: str | None = None
+        self.ethnicity: list[str] | None = None
+        self.ethnicity_other_text: str | None = None
+        self.native_language: str | None = None
+        self.english_fluency: str | None = None
+        self.fluent_languages: list[str] | None = None
+        self.fluent_languages_other_text: str | None = None
+        self.english_speaking_frequency: str | None = None
+        self.non_english_schooling: bool | None = None
+        self.instruction_languages: list[str] | None = None
+        self.instruction_languages_other_text: str | None = None
+        self.diagnosed_disorders: list[str] | None = None
+        self.diagnosed_disorders_other_text: str | None = None
+        self.adhd_diagnosis: bool | None = None
+        self.adhd_medication: str | None = None
+        self.avid_videogamer: bool | None = None
+        self.video_game_hours_per_week: int | None = None
+        self.prescription_stimulants: bool | None = None
+        self.regular_substances: list[str] | None = None
+        self.regular_substances_other_text: str | None = None
+        self.relationship_status: str | None = None
+        self.relationship_status_other_text: str | None = None
+        self.occupational_status: str | None = None
+        self.occupational_status_other_text: str | None = None
 
 
 class _FakeParticipant:
@@ -704,9 +732,9 @@ class GetMisokinesiaDashboardTests(IsolatedAsyncioTestCase):
                     "misokinesia_participant_number": 12,
                     "started_at": datetime(2026, 5, 20, 16, 0, tzinfo=timezone.utc),
                     "completed_at": None,
-                    "age_band": "25-31",
-                    "gender": "Woman",
-                    "country": "Canada",
+                    "age": 24,
+                    "sex": "Female",
+                    "residence_status": "Student Visa",
                     "avg_clip_score": 15.5,
                 },
                 {
@@ -714,9 +742,9 @@ class GetMisokinesiaDashboardTests(IsolatedAsyncioTestCase):
                     "misokinesia_participant_number": 11,
                     "started_at": datetime(2026, 5, 19, 16, 0, tzinfo=timezone.utc),
                     "completed_at": datetime(2026, 5, 19, 17, 0, tzinfo=timezone.utc),
-                    "age_band": None,
-                    "gender": None,
-                    "country": None,
+                    "age": None,
+                    "sex": None,
+                    "residence_status": None,
                     "avg_clip_score": None,
                 },
             ]
@@ -728,11 +756,14 @@ class GetMisokinesiaDashboardTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.active_stimuli_count, 25)
         self.assertEqual(len(result.recent_sessions), 2)
         self.assertEqual(result.recent_sessions[0].misokinesia_participant_number, 12)
+        self.assertEqual(result.recent_sessions[0].age, 24)
+        self.assertEqual(result.recent_sessions[0].sex, "Female")
+        self.assertEqual(result.recent_sessions[0].residence_status, "Student Visa")
         self.assertEqual(result.recent_sessions[0].avg_clip_score, 15.5)
         self.assertIsNone(result.recent_sessions[1].avg_clip_score)
-        self.assertIsNone(result.recent_sessions[1].age_band)
-        self.assertIsNone(result.recent_sessions[1].gender)
-        self.assertIsNone(result.recent_sessions[1].country)
+        self.assertIsNone(result.recent_sessions[1].age)
+        self.assertIsNone(result.recent_sessions[1].sex)
+        self.assertIsNone(result.recent_sessions[1].residence_status)
         self.assertEqual(db.execute_calls, 1)
 
     async def test_miso_dashboard_returns_empty_sessions_when_no_participants(self) -> None:
@@ -743,9 +774,9 @@ class GetMisokinesiaDashboardTests(IsolatedAsyncioTestCase):
                     "misokinesia_participant_number": None,
                     "started_at": None,
                     "completed_at": None,
-                    "age_band": None,
-                    "gender": None,
-                    "country": None,
+                    "age": None,
+                    "sex": None,
+                    "residence_status": None,
                     "avg_clip_score": None,
                 }
             ]
@@ -849,7 +880,7 @@ class GetMisokinesiaVideoScoresTests(IsolatedAsyncioTestCase):
 
 
 # ---------------------------------------------------------------------------
-# Class 5 — submit_demographics (T184)
+# Class 5 — submit_demographics (T200)
 # ---------------------------------------------------------------------------
 
 
@@ -863,17 +894,44 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
             miso_participant = _FakeMisoParticipant()
         return _SequencedDB(execute_returns=[miso_participant])
 
+    def _valid_payload(self) -> MisoDemographicsCreate:
+        return MisoDemographicsCreate(
+            age=24,
+            sex="Female",
+            gender_identity="Woman",
+            years_lived_canada=6,
+            residence_status="Other",
+            residence_status_other_text="Work permit",
+            student_type="International",
+            total_years_education=16,
+            cumulative_gpa=4.0,
+            majors_text="Psychology",
+            highest_education_completed="Bachelors degree",
+            ethnicity=["Korean", "Other"],
+            ethnicity_other_text="Korean Canadian",
+            native_language="Korean",
+            english_fluency="Agree",
+            fluent_languages=["Korean"],
+            english_speaking_frequency="Often",
+            non_english_schooling=True,
+            instruction_languages=["Korean"],
+            diagnosed_disorders=["N/A"],
+            adhd_diagnosis=False,
+            adhd_medication="No",
+            avid_videogamer=True,
+            video_game_hours_per_week=8,
+            prescription_stimulants=False,
+            regular_substances=[
+                "Caffeinated Stimulants (coffee, energy drinks, etc.)"
+            ],
+            relationship_status="Single",
+            occupational_status="Student",
+        )
+
     async def test_valid_full_payload_returns_200(self) -> None:
         miso = _FakeMisoParticipant()
         db = self._db_for_demographics(miso)
-        payload = MisoDemographicsCreate(
-            age_band="18-24",
-            gender="Not listed",
-            gender_other_text="Agender",
-            country="Not listed",
-            country_other_text="Germany",
-            nationality="German",
-        )
+        payload = self._valid_payload()
         result = await submit_demographics(
             participant_id=_MISO_PARTICIPANT_ID,
             payload=payload,
@@ -882,12 +940,16 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
         self.assertTrue(db.committed)
         # Fields written onto ORM object
-        self.assertEqual(miso.age_band, "18-24")
-        self.assertEqual(miso.gender, "Not listed")
-        self.assertEqual(miso.gender_other_text, "Agender")
-        self.assertEqual(miso.country, "Not listed")
-        self.assertEqual(miso.country_other_text, "Germany")
-        self.assertEqual(miso.nationality, "German")
+        self.assertEqual(miso.age, 24)
+        self.assertEqual(miso.sex, "Female")
+        self.assertEqual(miso.residence_status, "Other")
+        self.assertEqual(miso.residence_status_other_text, "Work permit")
+        self.assertEqual(miso.ethnicity, ["Korean", "Other"])
+        self.assertEqual(miso.instruction_languages, ["Korean"])
+        self.assertEqual(miso.video_game_hours_per_week, 8)
+        self.assertEqual(miso.regular_substances, [
+            "Caffeinated Stimulants (coffee, energy drinks, etc.)"
+        ])
 
     async def test_all_null_fields_accepted(self) -> None:
         miso = _FakeMisoParticipant()
@@ -911,50 +973,97 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
             )
         self.assertEqual(ctx.exception.status_code, 404)
 
-    async def test_invalid_age_band_raises_422(self) -> None:
+    async def test_invalid_slider_ranges_raise_422(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(age_band="19-25")
+            MisoDemographicsCreate(age=-1)
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(cumulative_gpa=5.1)
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(video_game_hours_per_week=101)
 
-    async def test_invalid_gender_raises_422(self) -> None:
+    async def test_invalid_single_choice_raises_422(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(gender="Other")
+            MisoDemographicsCreate(sex="Nonbinary")
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(residence_status="Visitor")
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(english_fluency="Very fluent")
 
-    async def test_invalid_country_raises_422(self) -> None:
+    async def test_invalid_multi_select_raises_422(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(country="USA")
+            MisoDemographicsCreate(ethnicity=["Martian"])
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(regular_substances=["Sugar"])
 
-    async def test_gender_other_text_without_not_listed_raises_422(self) -> None:
+    async def test_other_selection_requires_matching_text(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(gender="Woman", gender_other_text="Agender")
+            MisoDemographicsCreate(residence_status="Other")
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(ethnicity=["Other"], ethnicity_other_text="")
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                diagnosed_disorders=["Other"],
+                diagnosed_disorders_other_text=None,
+            )
 
-    async def test_country_other_text_without_not_listed_raises_422(self) -> None:
+    async def test_other_text_without_visible_other_selection_raises_422(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(country="Canada", country_other_text="Germany")
+            MisoDemographicsCreate(
+                residence_status="Student Visa",
+                residence_status_other_text="Work permit",
+            )
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                regular_substances=["Alcohol"],
+                regular_substances_other_text="Creatine",
+            )
 
-    async def test_gender_other_text_without_gender_set_raises_422(self) -> None:
-        """gender_other_text requires gender='Not listed'; None gender is not allowed."""
+    async def test_hidden_conditional_values_raise_422(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(gender=None, gender_other_text="Something")
+            MisoDemographicsCreate(
+                non_english_schooling=False,
+                instruction_languages=["Korean"],
+            )
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                non_english_schooling=True,
+                instruction_languages=None,
+            )
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                avid_videogamer=False,
+                video_game_hours_per_week=8,
+            )
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                avid_videogamer=True,
+                video_game_hours_per_week=None,
+            )
 
-    async def test_country_other_text_without_country_set_raises_422(self) -> None:
-        """country_other_text requires country='Not listed'; None country is not allowed."""
+    async def test_none_and_na_multi_select_values_are_exclusive(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(country=None, country_other_text="Somewhere")
+            MisoDemographicsCreate(fluent_languages=["None", "Korean"])
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(diagnosed_disorders=["N/A", "Depression"])
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                regular_substances=["None of the Above", "Alcohol"]
+            )
 
     async def test_idempotent_overwrite(self) -> None:
         """Second call with different values overwrites earlier demographics."""
         miso = _FakeMisoParticipant()
-        miso.age_band = "18-24"
-        miso.gender = "Woman"
+        miso.age = 24
+        miso.sex = "Female"
         db = self._db_for_demographics(miso)
-        payload = MisoDemographicsCreate(age_band="25-31", gender="Man")
+        payload = MisoDemographicsCreate(age=25, sex="Male")
         await submit_demographics(
             participant_id=_MISO_PARTICIPANT_ID,
             payload=payload,
             db=db,
         )
-        self.assertEqual(miso.age_band, "25-31")
-        self.assertEqual(miso.gender, "Man")
+        self.assertEqual(miso.age, 25)
+        self.assertEqual(miso.sex, "Male")
         self.assertTrue(db.committed)
 
     async def test_demographics_route_has_no_auth_dependency(self) -> None:
@@ -978,24 +1087,15 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
             "Demographics endpoint should not require lab-member auth",
         )
 
-    async def test_all_valid_age_bands_accepted(self) -> None:
-        for band in ("Under 18", "18-24", "25-31", "32-38", "Over 38"):
-            payload = MisoDemographicsCreate(age_band=band)
-            self.assertEqual(payload.age_band, band)
-
-    async def test_all_valid_genders_accepted(self) -> None:
-        for g in ("Woman", "Man", "Nonbinary person", "Prefer not to say", "Not listed"):
-            payload = MisoDemographicsCreate(gender=g)
-            self.assertEqual(payload.gender, g)
-
-    async def test_all_valid_countries_accepted(self) -> None:
-        for c in ("Canada", "South Korea", "Not listed"):
-            payload = MisoDemographicsCreate(country=c)
-            self.assertEqual(payload.country, c)
-
-    async def test_nationality_free_text_accepted(self) -> None:
-        payload = MisoDemographicsCreate(nationality="Canadian")
-        self.assertEqual(payload.nationality, "Canadian")
+    async def test_valid_none_and_na_single_choices_are_accepted(self) -> None:
+        payload = MisoDemographicsCreate(
+            fluent_languages=["None"],
+            diagnosed_disorders=["N/A"],
+            regular_substances=["None of the Above"],
+        )
+        self.assertEqual(payload.fluent_languages, ["None"])
+        self.assertEqual(payload.diagnosed_disorders, ["N/A"])
+        self.assertEqual(payload.regular_substances, ["None of the Above"])
 
 
 # ---------------------------------------------------------------------------

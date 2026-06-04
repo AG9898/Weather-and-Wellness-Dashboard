@@ -3301,7 +3301,7 @@
       "id": "T200",
       "title": "Miso demographics v2: backend API contract",
       "description": "Update the participant-facing demographics PATCH contract and RA dashboard response for the sourced demographics v2 schema. Add Pydantic request validation for numeric ranges, enum values, required Other text, conditional fields, and exclusive None/N/A choices. Update router persistence and dashboard summary fields to age, sex, and residence_status. Keep this task scoped to backend schemas, router logic, and backend tests; do not build frontend UI.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "MISO",
       "depends_on": [
