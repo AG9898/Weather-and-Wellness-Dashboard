@@ -3545,6 +3545,39 @@
         "cd frontend && npm run lint",
         "cd frontend && npm run build"
       ]
+    },
+    {
+      "id": "T1816",
+      "title": "Misokinesia trial section jumper - Storybook alignment",
+      "description": "Update the existing Misokinesia participant Storybook page replica so it reflects the completed trial section-jumper work and the current post-video survey sequence, including MkAQ, GAD-7, MAQ, transition/end states, and short/full trial variants. Keep stories mocked and page-first; do not call live backend APIs.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "TRIAL_RUN_MODE",
+      "depends_on": [
+        "T1815"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Existing Misokinesia participant page stories render the section jumper in trial-mode states after T1815 lands and keep it absent from recorded-session states.",
+        "Storybook includes representative states for Intro, Clips, MkAQ, GAD-7, MAQ, End, and Done using mocked data and the current survey order.",
+        "Short and full trial variants demonstrate the correct survey item sets and section-jump labels without live backend calls.",
+        "The jumper is visually checked against the fullscreen button and survey layouts at desktop and mobile viewport sizes.",
+        "Storybook and lint/build checks pass for the affected frontend stories and components."
+      ],
+      "docs": [
+        "docs/storybook.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "frontend/src/stories/pages/ra/MisokinesiaParticipantPage.stories.tsx",
+        "frontend/src/stories/pages/ra/MisokinesiaParticipantPageStorySupport.tsx",
+        "frontend/src/lib/components/MisokinesiaSectionJumper.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run lint",
+        "cd frontend && npm run build-storybook"
+      ]
     }
   ],
   "last_updated": "2026-06-05"
