@@ -44,7 +44,9 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
   recorded participant sessions. Behavior and jump targets are specified in
   `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md` ("Section jumper (trial only)").
 - **Placement.** Pinned top-center of the task container (`absolute`, horizontally centered),
-  kept clear of the top-right exit-fullscreen button so the two controls never overlap.
+  kept clear of the top-right exit-fullscreen button so the two controls never overlap. On narrow
+  screens it remains centered but sits below the fullscreen button row to preserve touch targets
+  and avoid collision.
 - **Form.** A single-row, always-visible segmented control. Each segment is one major section
   using an abbreviated label so all sections fit on one row without horizontal scroll
   (e.g. `Intro · Clips · MkAQ · GAD-7 · MAQ · End · Done`). The segment for the current section

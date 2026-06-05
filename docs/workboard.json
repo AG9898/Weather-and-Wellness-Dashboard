@@ -3520,7 +3520,7 @@
       "id": "T1815",
       "title": "Integrate section jumper into trial task page",
       "description": "Render MisokinesiaSectionJumper inside the task container in the misokinesia participant page, pinned top-center, only when trialMode === true. Wire onJump to apply the helper map { phase, currentClipIndex?, surveyIndex? } to setPhase/currentClip/surveyIndex, deriving the active section from the current phase. Ensure no API calls or row writes occur on jump and the control never overlaps the top-right fullscreen button.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "TRIAL_RUN_MODE",
       "depends_on": [

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import MisokinesiaVideoPlayer from "@/lib/components/MisokinesiaVideoPlayer";
 import MisokinesiaQuestionnaire from "@/lib/components/MisokinesiaQuestionnaire";
 import MisokinesiaEndOfTaskForm from "@/lib/components/MisokinesiaEndOfTaskForm";
+import MisokinesiaSectionJumper from "@/lib/components/MisokinesiaSectionJumper";
 import MisokinesiaMkaqForm, { MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
 import MisokinesiaGAD7Form from "@/lib/components/MisokinesiaGAD7Form";
 import MisokinesiaMAQForm from "@/lib/components/MisokinesiaMAQForm";
@@ -45,6 +46,11 @@ import {
   type PostSurveyKey,
   type TransitionCardPhase,
 } from "@/lib/misokinesia-phase";
+import {
+  getMisokinesiaSectionJumpState,
+  MISOKINESIA_SECTION_JUMP_SECTIONS,
+  type MisokinesiaSectionTarget,
+} from "@/lib/misokinesia-section-jump";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 const PRE_CLIP_BUFFER_MS = 4000;
@@ -361,6 +367,27 @@ export default function MisokinesiaTaskPage() {
   function handleRetry() {
     setCompleting(true);
     setSessionPatchAttempt((prev) => prev + 1);
+  }
+
+  const activeJumpSection = getActiveJumpSection(phase);
+
+  function handleSectionJump(target: MisokinesiaSectionTarget) {
+    const jumpState = getMisokinesiaSectionJumpState(target, surveyOrder);
+
+    setSurveySubmitting(null);
+    setPendingSurvey(null);
+    setSurveyError(null);
+    setCompleting(false);
+    setCompleteError(null);
+    setSessionPatchAttempt(0);
+
+    if (typeof jumpState.currentClipIndex === "number") {
+      setCurrentClipIndex(jumpState.currentClipIndex);
+    }
+    if (typeof jumpState.surveyIndex === "number") {
+      setSurveyIndex(jumpState.surveyIndex);
+    }
+    setPhase(jumpState.phase);
   }
 
   // ── Render ──
@@ -769,6 +796,16 @@ export default function MisokinesiaTaskPage() {
     >
       {renderPhaseContent()}
 
+      {trialMode && activeJumpSection && (
+        <div className="absolute left-1/2 top-14 z-40 w-[calc(100%-2rem)] max-w-[34rem] -translate-x-1/2 sm:top-3 sm:w-[calc(100%-13rem)]">
+          <MisokinesiaSectionJumper
+            sections={MISOKINESIA_SECTION_JUMP_SECTIONS}
+            activeSection={activeJumpSection}
+            onJump={handleSectionJump}
+          />
+        </div>
+      )}
+
       {/* Fullscreen toggle button — visible in task phases after demographics advances */}
       {fullscreenStarted && phase !== "complete" && (
         <FullscreenButton
@@ -779,6 +816,17 @@ export default function MisokinesiaTaskPage() {
       )}
     </div>
   );
+}
+
+function getActiveJumpSection(phase: Phase): MisokinesiaSectionTarget | null {
+  if (phase === "intro") return "intro";
+  if (phase === "pre_play" || phase === "playing" || phase === "questionnaire") return "clips";
+  if (phase === "transition_mkaq" || phase === "mkaq") return "mkaq";
+  if (phase === "transition_gad7" || phase === "gad7") return "gad7";
+  if (phase === "transition_maq" || phase === "maq") return "maq";
+  if (phase === "end_of_task") return "end";
+  if (phase === "complete") return "done";
+  return null;
 }
 
 // ── Shared layout components ──

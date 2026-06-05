@@ -98,9 +98,10 @@ Full trial state machine: `consent_gate → demographics → intro → playing �
 Both trial modes render a section jumper that lets the RA navigate directly to any major
 stage of the flow instead of clicking through every step. It is a rehearsal/QA aid only.
 
-- **Visibility.** Renders only when `trialMode === true`, in both Short and Full trials. It is
-  never rendered in real recorded participant sessions, in any phase. It lives inside the
-  fullscreen task container alongside the exit-fullscreen control.
+- **Visibility.** Renders only when `trialMode === true`, in both Short and Full trials after
+  demographics has advanced into the task container. It is never rendered in real recorded
+  participant sessions, loading/error states, or the pre-container consent/demographics flow. It
+  lives inside the fullscreen task container alongside the exit-fullscreen control.
 - **Jump targets (major sections only):** Intro, Clips & Questionnaire loop, MkAQ, GAD-7, MAQ,
   End-of-task, Complete. Consent and demographics precede the task container and fullscreen and
   are not jump targets.
@@ -114,9 +115,9 @@ stage of the flow instead of clicking through every step. It is a rehearsal/QA a
 - **Shared mapping helper.** `frontend/src/lib/misokinesia-section-jump.ts` owns the ordered
   target list (`Intro`, `Clips`, `MkAQ`, `GAD-7`, `MAQ`, `End`, `Done`) and the pure mapping from
   a target plus `post_survey_order` to `{ phase, currentClipIndex?, surveyIndex? }`.
-- **No-write guarantee preserved.** Jumping drives local phase state only — it triggers no API
-  calls and writes no rows, consistent with the shared trial constraints above. No
-  `"Trial Run"` watermark is added.
+- **No-write guarantee preserved.** Jumping drives local phase, clip index, and survey index
+  state only — it triggers no API calls and writes no rows, consistent with the shared trial
+  constraints above. No `"Trial Run"` watermark is added.
 - **Survey item counts unchanged.** Jumping to a survey does not change which item set renders:
   Short trial still uses the shortened sets (MkAQ/MAQ `q1`–`q10`, GAD-7 all 7) and Full uses the
   full sets.
