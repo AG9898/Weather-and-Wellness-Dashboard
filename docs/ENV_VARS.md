@@ -20,7 +20,8 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 
 | Variable | Required | Default | Description | How to obtain |
 |---|---|---|---|---|
-| `DATABASE_URL` | Yes | — | Supabase PostgreSQL asyncpg connection string (`ssl=require`). | Supabase Dashboard → Project Settings → Database → Connection String (URI, Transaction pooler) |
+| `DATABASE_URL` | Yes | — | Supabase PostgreSQL asyncpg connection string for app runtime (`ssl=require`). Use the transaction pooler on port `6543` for deployed/serverless-style runtime connections. | Supabase Dashboard → Project Settings → Database → Connection String (URI, Transaction pooler) |
+| `DATABASE_MIGRATION_URL` | Required for migrations | — | Supabase PostgreSQL asyncpg connection string for Alembic/admin schema work (`ssl=require`). Use the session pooler on port `5432`, or the direct DB URL when IPv6/direct connectivity is available. `backend/alembic/env.py` prefers this value over `DATABASE_URL`. | Supabase Dashboard → Project Settings → Database → Connection String (URI, Session pooler or Direct connection) |
 | `SUPABASE_URL` | Yes | — | Supabase project REST/Auth base URL. | Supabase Dashboard → Project Settings → API → Project URL |
 | `SUPABASE_ANON_KEY` | Yes | — | Supabase public anon key for server-side SDK calls. | Supabase Dashboard → Project Settings → API → `anon` key |
 | `SUPABASE_JWT_SECRET` | Conditional (HS256 fallback only) | — | JWT secret for HS256 fallback verification. Not required when using ES256/JWKS only. | Supabase Dashboard → Project Settings → API → JWT Secret |
@@ -64,12 +65,15 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 
 ---
 
-## Operational / Local-only Variables
+## Operational / Migration Variables
 
-These live in the root `.env` only and are never set on deployed services.
+These are used for local agent workflows and deployment automation rather than
+application request handling.
 
-No current production-only operational variables are required beyond the
-runtime variables listed above.
+`DATABASE_MIGRATION_URL` should be set anywhere Alembic runs. Locally, keep it
+in root `.env`. In production release automation, set it on the Railway backend
+environment so `scripts/alembic-upgrade-head.sh` can run migrations without
+using the transaction pooler.
 
 For operational debugging, local workstations may already have the `vercel`,
 `supabase`, and `railway` CLIs authenticated for this project. They are useful
@@ -90,6 +94,7 @@ targets.
 | Variable | Root `.env` | Backend (Railway) | Frontend (Vercel) | GitHub Secrets |
 |---|:---:|:---:|:---:|:---:|
 | `DATABASE_URL` | ✓ | ✓ | | |
+| `DATABASE_MIGRATION_URL` | ✓ | ✓ | | |
 | `SUPABASE_URL` | ✓ | ✓ | | |
 | `SUPABASE_ANON_KEY` | ✓ | ✓ | | |
 | `SUPABASE_JWT_SECRET` | ✓ | ✓ | | |

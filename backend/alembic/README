@@ -2,4 +2,6 @@ Alembic environment for the Weather & Wellness backend.
 
 Migrations are sourced from `backend/alembic/versions/`.
 
-The database URL is read from the `DATABASE_URL` environment variable only.
+Alembic reads `DATABASE_MIGRATION_URL` first, then falls back to
+`DATABASE_URL`. Set `DATABASE_MIGRATION_URL` to the Supabase session pooler or
+direct database URL; avoid the transaction pooler for migrations.

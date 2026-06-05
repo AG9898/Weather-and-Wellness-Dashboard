@@ -71,9 +71,10 @@
 ### DB access
 - Alembic autogenerate from SQLAlchemy models; **always review** generated migration before committing
 - `DATABASE_URL` from environment only — never hardcode connection strings
+- Alembic uses `DATABASE_MIGRATION_URL` when present; use a Supabase session-pooler or direct DB URL for migrations/admin schema work
 - FK constraints enforced at DB level (not just application level)
 - All tables get `created_at TIMESTAMPTZ DEFAULT NOW()`
-- For Supabase connectivity in IPv4-only environments, prefer session pooler `DATABASE_URL` values
+- For app runtime in IPv4-only/serverless-style environments, the Supabase transaction pooler may be used in `DATABASE_URL`; do not use that transaction pooler for Alembic migrations
 - With SQLAlchemy asyncpg in this repo, use `ssl=require` query param (not `sslmode=require`)
 
 ### Misokinesia module
@@ -179,7 +180,7 @@
 - FKs enforced at the DB level, not just application level
 - All tables get `created_at TIMESTAMPTZ DEFAULT NOW()`
 - Alembic autogenerate from SQLAlchemy models; review migration before applying
-- Connection string from `DATABASE_URL` env var only
+- Runtime DB connection string comes from `DATABASE_URL`; Alembic/admin schema work uses `DATABASE_MIGRATION_URL` when present
 
 ---
 

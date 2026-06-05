@@ -25,9 +25,11 @@ target_metadata = Base.metadata
 
 
 def _get_url() -> str:
-    env_url = get_database_url()
+    env_url = os.getenv("DATABASE_MIGRATION_URL") or get_database_url()
     if not env_url:
-        raise RuntimeError("DATABASE_URL is not set; cannot run migrations.")
+        raise RuntimeError(
+            "DATABASE_MIGRATION_URL or DATABASE_URL is not set; cannot run migrations."
+        )
     return _as_asyncpg_url(env_url)
 
 

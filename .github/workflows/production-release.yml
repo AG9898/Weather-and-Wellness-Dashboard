@@ -199,7 +199,7 @@ jobs:
           railway run \
             --service "${RAILWAY_SERVICE_NAME}" \
             --no-local \
-            -- bash -lc 'cd backend && PYTHONPATH=. python -m alembic upgrade head'
+            -- bash -lc './scripts/alembic-upgrade-head.sh'
 
       - name: Smoke test backend
         run: |

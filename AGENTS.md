@@ -112,14 +112,15 @@ These rules are not optional and apply to every task, not just doc-specific task
 ```bash
 set -a && source .env && set +a && cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
 cd frontend && npm run dev                    # start frontend
-set -a && source .env && set +a && cd backend && PYTHONPATH=. alembic upgrade head            # apply migrations
+scripts/alembic-upgrade-head.sh                    # apply migrations
 ```
 
-All backend commands must be run from the repo root using the `cd backend && PYTHONPATH=.` prefix pattern shown above after loading repo-root `.env`.
+All backend commands must be run from the repo root using the `cd backend && PYTHONPATH=.` prefix pattern shown above after loading repo-root `.env`, except migrations, which should use `scripts/alembic-upgrade-head.sh`.
 Copy `.env.example` → `.env` at the repo root.
 See `docs/ENV_VARS.md` for the full variable reference (including conditional requirements).
 If `.env.example` is missing, derive required variables from the Railway/Vercel/current backend sections in `docs/ARCHITECTURE.md` and `docs/ENV_VARS.md`.
 Never commit `.env`.
+For migrations, set `DATABASE_MIGRATION_URL` to the Supabase session pooler or direct DB URL. Do not run Alembic through the transaction pooler on port `6543`.
 
 ### Operational Tooling
 

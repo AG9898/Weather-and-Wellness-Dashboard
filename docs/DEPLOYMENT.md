@@ -16,8 +16,8 @@ For a full release, the workflow runs in this order:
 
 1. Validate backend tests and frontend type-check/build.
 2. Deploy the Railway backend service.
-3. Run `alembic upgrade head` with Railway production backend environment
-   variables.
+3. Run `scripts/alembic-upgrade-head.sh` with Railway production backend
+   environment variables.
 4. Smoke test the live backend:
    - `GET /health` returns 2xx.
    - `GET /openapi.json` contains required production routes.
@@ -86,3 +86,8 @@ default production strategy:
 
 Avoid destructive or incompatible migrations in the automatic release path
 unless a separate maintenance plan exists.
+
+Alembic runs through `scripts/alembic-upgrade-head.sh`. Set
+`DATABASE_MIGRATION_URL` on the Railway backend environment to a Supabase
+session-pooler or direct database URL. Keep `DATABASE_URL` for app runtime; it
+may use the transaction pooler on port `6543`.
