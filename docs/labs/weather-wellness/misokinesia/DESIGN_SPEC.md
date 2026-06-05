@@ -38,6 +38,21 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
 - A persistent exit-fullscreen button is rendered in a fixed corner (e.g. top-right) and is visible during active task states. Pressing `Esc` or clicking the button exits fullscreen; the button then offers a re-enter control until the task reaches completion.
 - No page-shell chrome (floating dock, RA nav) is visible inside fullscreen.
 
+### Trial Section Jumper
+
+- Rendered only in trial mode (`trialMode === true`) inside the task container; never shown in
+  recorded participant sessions. Behavior and jump targets are specified in
+  `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md` ("Section jumper (trial only)").
+- **Placement.** Pinned top-center of the task container (`absolute`, horizontally centered),
+  kept clear of the top-right exit-fullscreen button so the two controls never overlap.
+- **Form.** A single-row, always-visible segmented control. Each segment is one major section
+  using an abbreviated label so all sections fit on one row without horizontal scroll
+  (e.g. `Intro · Clips · MkAQ · GAD-7 · MAQ · End · Done`). The segment for the current section
+  is marked active; the others are tappable.
+- **Theme.** Reuses existing semantic tokens — container `bg-card`/`bg-background` with
+  `border-border`, active segment `bg-primary` with primary foreground text — matching the page
+  and trial theme. Kept subtle/low-contrast so it does not dominate the rehearsal view.
+
 ### Pre-Clip Buffer
 
 - Before each clip autoplays, a solid-black interstitial fills the task container for 4 seconds.

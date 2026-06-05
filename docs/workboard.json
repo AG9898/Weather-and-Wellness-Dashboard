@@ -3459,7 +3459,93 @@
       "commands": [
         "cd frontend && npm run build-storybook"
       ]
+    },
+    {
+      "id": "T1813",
+      "title": "Trial section-jump mapping helper (pure)",
+      "description": "Add a pure, framework-free module defining the ordered list of major misokinesia trial sections (Intro, Clips, MkAQ, GAD-7, MAQ, End, Done), their abbreviated single-row labels, and a mapping from a section target to the companion state required to render it: { phase, currentClipIndex?, surveyIndex? }. Survey targets must derive surveyIndex from a provided post_survey_order. No React, no API calls.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "TRIAL_RUN_MODE",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Exports an ordered section list with abbreviated labels matching the DESIGN_SPEC set.",
+        "Clips target maps to phase pre_play with currentClipIndex 0.",
+        "MkAQ/GAD-7/MAQ targets resolve surveyIndex correctly from a provided surveyOrder.",
+        "Intro/End/Done map to phases intro/end_of_task/complete respectively.",
+        "Unit tests cover every section target including a non-default surveyOrder; tests and lint pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "files": [
+        "frontend/src/lib/misokinesia-section-jump.ts",
+        "frontend/src/lib/misokinesia-section-jump.test.ts"
+      ],
+      "commands": [
+        "cd frontend && npm test -- misokinesia-section-jump",
+        "cd frontend && npm run lint"
+      ]
+    },
+    {
+      "id": "T1814",
+      "title": "MisokinesiaSectionJumper presentational component",
+      "description": "Build a presentational, props-driven segmented control (sections, activeSection, onJump). Single-row, abbreviated labels, no horizontal scroll; active segment marked. Uses semantic theme tokens (bg-card/border-border, active bg-primary with primary foreground); subtle/low-contrast. No trial-mode or phase logic inside the component.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "TRIAL_RUN_MODE",
+      "depends_on": [
+        "T1813"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Renders one tappable segment per provided section on a single row; calls onJump with the section id.",
+        "Active section is visually distinguished using theme tokens only (no hardcoded colors).",
+        "Component contains no trialMode/phase/state logic and makes no API calls.",
+        "Lint and build pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaSectionJumper.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run lint",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T1815",
+      "title": "Integrate section jumper into trial task page",
+      "description": "Render MisokinesiaSectionJumper inside the task container in the misokinesia participant page, pinned top-center, only when trialMode === true. Wire onJump to apply the helper map { phase, currentClipIndex?, surveyIndex? } to setPhase/currentClip/surveyIndex, deriving the active section from the current phase. Ensure no API calls or row writes occur on jump and the control never overlaps the top-right fullscreen button.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "TRIAL_RUN_MODE",
+      "depends_on": [
+        "T1813",
+        "T1814"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Jumper renders top-center only in trial mode (short and full); absent in recorded sessions and in loading/error/pre-container phases.",
+        "Selecting each section navigates to a valid render of that stage with no console errors and no network/API calls.",
+        "Survey jumps land on the correct survey with the correct (short vs full) item set.",
+        "Control does not overlap the fullscreen button; lint and build pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run lint",
+        "cd frontend && npm run build"
+      ]
     }
   ],
-  "last_updated": "2026-06-03"
+  "last_updated": "2026-06-05"
 }
