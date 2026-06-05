@@ -38,35 +38,29 @@ export const MISOKINESIA_SECTION_JUMP_SECTIONS: readonly MisokinesiaSectionJumpS
     { target: "done", label: "Done" },
   ] as const;
 
-const SURVEY_TARGETS = new Set<MisokinesiaSectionTarget>(["mkaq", "gad7", "maq"]);
-
 export function getMisokinesiaSectionJumpState(
   target: MisokinesiaSectionTarget,
   surveyOrder: readonly PostSurveyKey[]
 ): MisokinesiaSectionJumpState {
-  if (target === "intro") {
-    return { phase: "intro" };
-  }
+  switch (target) {
+    case "intro":
+      return { phase: "intro" };
+    case "clips":
+      return { phase: "pre_play", currentClipIndex: 0 };
+    case "end":
+      return { phase: "end_of_task" };
+    case "done":
+      return { phase: "complete" };
+    case "mkaq":
+    case "gad7":
+    case "maq": {
+      const surveyIndex = surveyOrder.indexOf(target);
+      if (surveyIndex < 0) {
+        throw new Error(`Survey target "${target}" is missing from surveyOrder.`);
+      }
 
-  if (target === "clips") {
-    return { phase: "pre_play", currentClipIndex: 0 };
-  }
-
-  if (target === "end") {
-    return { phase: "end_of_task" };
-  }
-
-  if (target === "done") {
-    return { phase: "complete" };
-  }
-
-  if (SURVEY_TARGETS.has(target)) {
-    const surveyIndex = surveyOrder.indexOf(target);
-    if (surveyIndex < 0) {
-      throw new Error(`Survey target "${target}" is missing from surveyOrder.`);
+      return { phase: target, surveyIndex };
     }
-
-    return { phase: target, surveyIndex };
   }
 
   target satisfies never;

@@ -3492,7 +3492,7 @@
       "id": "T1814",
       "title": "MisokinesiaSectionJumper presentational component",
       "description": "Build a presentational, props-driven segmented control (sections, activeSection, onJump). Single-row, abbreviated labels, no horizontal scroll; active segment marked. Uses semantic theme tokens (bg-card/border-border, active bg-primary with primary foreground); subtle/low-contrast. No trial-mode or phase logic inside the component.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "TRIAL_RUN_MODE",
       "depends_on": [

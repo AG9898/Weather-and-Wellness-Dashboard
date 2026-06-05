@@ -49,6 +49,9 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
   using an abbreviated label so all sections fit on one row without horizontal scroll
   (e.g. `Intro · Clips · MkAQ · GAD-7 · MAQ · End · Done`). The segment for the current section
   is marked active; the others are tappable.
+- **Component boundary.** The shared `MisokinesiaSectionJumper` component is presentational:
+  callers provide the ordered sections, active section, and jump callback. It does not inspect
+  trial mode, task phase, survey state, or backend data, and it does not make API calls.
 - **Theme.** Reuses existing semantic tokens — container `bg-card`/`bg-background` with
   `border-border`, active segment `bg-primary` with primary foreground text — matching the page
   and trial theme. Kept subtle/low-contrast so it does not dominate the rehearsal view.
