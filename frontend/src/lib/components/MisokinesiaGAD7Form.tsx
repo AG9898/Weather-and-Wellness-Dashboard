@@ -116,7 +116,7 @@ export default function MisokinesiaGAD7Form({
                 <div className="grid items-center gap-4" style={{ gridTemplateColumns: "32px 1fr auto" }}>
                   {/* Item number */}
                   <span
-                    className="self-start mt-1 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                    className="font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
                     aria-hidden
                   >
                     {String(idx + 1).padStart(2, "0")}
@@ -166,9 +166,12 @@ export default function MisokinesiaGAD7Form({
             style={{ background: "var(--fieldset-bg)" }}
             disabled={submitting}
           >
-            <legend className="text-[14px] font-medium leading-[1.45] text-foreground">
+            <legend className="sr-only">
               If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?
             </legend>
+            <p className="text-[14px] font-medium leading-[1.45] text-foreground">
+              If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?
+            </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {GAD7_DIFFICULTY_OPTIONS.map((option) => {
                 const isSelected = difficultyImpact === option;
