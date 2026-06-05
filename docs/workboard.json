@@ -3464,7 +3464,7 @@
       "id": "T1813",
       "title": "Trial section-jump mapping helper (pure)",
       "description": "Add a pure, framework-free module defining the ordered list of major misokinesia trial sections (Intro, Clips, MkAQ, GAD-7, MAQ, End, Done), their abbreviated single-row labels, and a mapping from a section target to the companion state required to render it: { phase, currentClipIndex?, surveyIndex? }. Survey targets must derive surveyIndex from a provided post_survey_order. No React, no API calls.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "TRIAL_RUN_MODE",
       "depends_on": [],

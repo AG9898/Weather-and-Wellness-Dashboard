@@ -111,6 +111,9 @@ stage of the flow instead of clicking through every step. It is a rehearsal/QA a
     one and its preceding transition card is treated as already passed.
   - Targets inside the task container assume fullscreen has already started
     (`fullscreenStarted === true`).
+- **Shared mapping helper.** `frontend/src/lib/misokinesia-section-jump.ts` owns the ordered
+  target list (`Intro`, `Clips`, `MkAQ`, `GAD-7`, `MAQ`, `End`, `Done`) and the pure mapping from
+  a target plus `post_survey_order` to `{ phase, currentClipIndex?, surveyIndex? }`.
 - **No-write guarantee preserved.** Jumping drives local phase state only — it triggers no API
   calls and writes no rows, consistent with the shared trial constraints above. No
   `"Trial Run"` watermark is added.
