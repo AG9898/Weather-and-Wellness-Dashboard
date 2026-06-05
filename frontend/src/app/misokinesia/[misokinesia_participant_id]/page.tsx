@@ -97,7 +97,7 @@ export default function MisokinesiaTaskPage() {
   const [surveyError, setSurveyError] = useState<string | null>(null);
   const [pendingSurvey, setPendingSurvey] = useState<{
     key: PostSurveyKey;
-    answers: Record<string, number>;
+    answers: Record<string, number | string | null>;
   } | null>(null);
 
   // Fullscreen state
@@ -328,7 +328,10 @@ export default function MisokinesiaTaskPage() {
     setPhase(getSurveyPhaseFromTransition(transition));
   }
 
-  function handleSurveyComplete(key: PostSurveyKey, answers: Record<string, number>) {
+  function handleSurveyComplete(
+    key: PostSurveyKey,
+    answers: Record<string, number | string | null>
+  ) {
     setPendingSurvey({ key, answers });
     setSurveySubmitting(key);
     setSurveySubmitTrigger((n) => n + 1);
@@ -927,7 +930,7 @@ const TRANSITION_CARD_COPY: Record<PostSurveyKey, TransitionCardCopy> = {
     meta: [
       { k: "Items", v: "7 statements" },
       { k: "Format", v: "Single screen" },
-      { k: "Scale", v: "1–4 · Never → Often" },
+      { k: "Scale", v: "0–3 · Not at all → Nearly every day" },
       { k: "Estimated", v: "≈ 1 minute" },
     ],
     buttonLabel: "Begin questionnaire →",

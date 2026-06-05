@@ -704,7 +704,7 @@ async def submit_miso_gad7(
     )
 
     raw_scores = [getattr(payload, f"r{i}") for i in range(1, 8)]
-    scored = gad7_scoring.score_gad7(raw_scores)
+    scored = gad7_scoring.score_zero_based(raw_scores)
     response_row = MisokinesiaGAD7ResponseModel(
         misokinesia_participant_id=miso_participant.misokinesia_participant_id,
         session_id=miso_participant.session_id,
@@ -716,6 +716,7 @@ async def submit_miso_gad7(
         r5=payload.r5,
         r6=payload.r6,
         r7=payload.r7,
+        difficulty_impact=payload.difficulty_impact,
         total_score=scored.total_score,
         severity_band=scored.severity_band,
     )

@@ -1669,7 +1669,16 @@ class SubmitPostVideoSurveyTests(IsolatedAsyncioTestCase):
         )
 
     def _valid_gad7_payload(self) -> MisoGAD7Create:
-        return MisoGAD7Create(r1=1, r2=2, r3=3, r4=4, r5=2, r6=3, r7=4)
+        return MisoGAD7Create(
+            r1=0,
+            r2=1,
+            r3=2,
+            r4=3,
+            r5=1,
+            r6=2,
+            r7=3,
+            difficulty_impact="Somewhat difficult",
+        )
 
     def _valid_maq_payload(self) -> MisoMAQCreate:
         return MisoMAQCreate(**{f"q{i}": i % 4 for i in range(1, 22)})
@@ -1700,7 +1709,8 @@ class SubmitPostVideoSurveyTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.response_id, _GAD7_RESPONSE_ID)
         self.assertEqual(result.total_score, 12)
         self.assertEqual(result.severity_band, "moderate")
-        self.assertEqual(captured["r7"], 4)
+        self.assertEqual(captured["r7"], 3)
+        self.assertEqual(captured["difficulty_impact"], "Somewhat difficult")
         self.assertTrue(db.committed)
 
     async def test_gad7_raises_409_when_clips_not_complete(self) -> None:
@@ -1738,14 +1748,29 @@ class SubmitPostVideoSurveyTests(IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.status_code, 409)
         self.assertIn("already exists", ctx.exception.detail)
 
-    async def test_gad7_values_outside_1_4_rejected_by_schema(self) -> None:
-        base = {f"r{i}": 1 for i in range(1, 8)}
+    async def test_gad7_values_outside_0_3_rejected_by_schema(self) -> None:
+        base = {
+            **{f"r{i}": 0 for i in range(1, 8)},
+            "difficulty_impact": None,
+        }
 
         with self.assertRaises(ValidationError):
-            MisoGAD7Create(**{**base, "r1": 0})
+            MisoGAD7Create(**{**base, "r1": -1})
 
         with self.assertRaises(ValidationError):
-            MisoGAD7Create(**{**base, "r1": 5})
+            MisoGAD7Create(**{**base, "r1": 4})
+
+    async def test_gad7_requires_difficulty_when_problem_endorsed(self) -> None:
+        base = {f"r{i}": 0 for i in range(1, 8)}
+
+        payload = MisoGAD7Create(**base, difficulty_impact=None)
+        self.assertIsNone(payload.difficulty_impact)
+
+        with self.assertRaises(ValidationError):
+            MisoGAD7Create(**{**base, "r1": 1, "difficulty_impact": None})
+
+        with self.assertRaises(ValidationError):
+            MisoGAD7Create(**{**base, "r1": 1, "difficulty_impact": "A bit"})
 
     async def test_maq_happy_path_scores_and_returns_response(self) -> None:
         db = self._db_for_post_survey()

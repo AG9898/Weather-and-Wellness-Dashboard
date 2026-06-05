@@ -355,13 +355,14 @@
 - **Request body:** `MisoGAD7Create`
   ```json
   {
-    "r1": "integer (1–4)",
-    "r2": "integer (1–4)",
-    "r3": "integer (1–4)",
-    "r4": "integer (1–4)",
-    "r5": "integer (1–4)",
-    "r6": "integer (1–4)",
-    "r7": "integer (1–4)"
+    "r1": "integer (0–3)",
+    "r2": "integer (0–3)",
+    "r3": "integer (0–3)",
+    "r4": "integer (0–3)",
+    "r5": "integer (0–3)",
+    "r6": "integer (0–3)",
+    "r7": "integer (0–3)",
+    "difficulty_impact": "string or null"
   }
   ```
 - **Response (HTTP 201):** `MisoGAD7Response`
@@ -378,8 +379,9 @@
   - Returns 404 if `participant_id` not found.
   - Returns 409 until `completed_at` is set (clips must be finished before any post-video survey).
   - Returns 409 if this participant already has a GAD-7 response.
-  - Returns 422 if any `rN` value is outside 1–4.
-  - Scoring reuses `backend/app/scoring/gad7.py::score_gad7()`: converts 1–4 → 0–3 per item, sums to `total_score` (0–21), assigns `severity_band` (`"minimal"` 0–4, `"mild"` 5–9, `"moderate"` 10–14, `"severe"` 15–21).
+  - Returns 422 if any `rN` value is outside 0–3.
+  - Returns 422 if `difficulty_impact` is not one of `"Not difficult at all"`, `"Somewhat difficult"`, `"Very difficult"`, `"Extremely difficult"`, or if it is missing/null while any `rN` value is greater than `0`.
+  - Scoring sums the 0–3 item values directly to `total_score` (0–21) and assigns `severity_band` (`"minimal"` 0–4, `"mild"` 5–9, `"moderate"` 10–14, `"severe"` 15–21).
   - Trial mode bypasses this endpoint and performs local-only progression.
 
 ---

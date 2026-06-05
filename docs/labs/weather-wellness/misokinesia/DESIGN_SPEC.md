@@ -152,7 +152,7 @@ All four surveys share:
 |------------|-------|--------------------------------------------------|-------------|
 | ULS-8      | 1-4   | Never / Rarely / Sometimes / Often               | [ULS8.md](../weather/ULS8.md) |
 | CES-D 10   | 1-4   | Never / Rarely / Sometimes / Often               | [CESD10.md](../weather/CESD10.md) |
-| GAD-7      | 1-4   | Never / Rarely / Sometimes / Often               | [GAD7.md](../weather/GAD7.md) |
+| GAD-7      | 0-3   | Not at all / Several days / More than half the days / Nearly every day | [MISOKINESIA.md](MISOKINESIA.md) |
 | CogFunc 8a | 1-5   | Never / Rarely / Sometimes / Often / Very Often   | [COGFUNC8A.md](../weather/COGFUNC8A.md) |
 
 ---
@@ -163,7 +163,7 @@ All scoring is server-side. See per-instrument docs for full formulas.
 
 - **ULS-8:** reverse items 3 & 6 (`5 - raw`), mean → 0-100 transform
 - **CES-D 10:** raw 1-4, convert to 0-3 (`raw - 1`), reverse items 5 & 8 (`4 - raw`), sum → total 0-30
-- **GAD-7:** raw 1-4, convert to 0-3 (`raw - 1`), sum → total 0-21 + severity band
+- **GAD-7:** raw 0-3, sum → total 0-21 + severity band; collect the conditional difficulty impact question when any problem is endorsed
 - **CogFunc 8a:** raw 1-5, reverse all (`6 - raw`) for computed scores, sum (8-40) + mean (1.0-5.0)
 
 > Planned dashboard analytics derived from `reference/Weather_MLM.R` must reuse

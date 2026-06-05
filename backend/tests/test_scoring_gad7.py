@@ -1,6 +1,6 @@
 """Unit tests for GAD-7 scoring."""
 
-from app.scoring.gad7 import score
+from app.scoring.gad7 import score, score_zero_based
 
 
 def test_all_never():
@@ -62,3 +62,21 @@ def test_severe_boundary():
     result = score([4, 4, 4, 4, 4, 1, 1])
     assert result.total_score == 15
     assert result.severity_band == "severe"
+
+
+def test_zero_based_all_not_at_all():
+    result = score_zero_based([0, 0, 0, 0, 0, 0, 0])
+    assert result.total_score == 0
+    assert result.severity_band == "minimal"
+
+
+def test_zero_based_all_nearly_every_day():
+    result = score_zero_based([3, 3, 3, 3, 3, 3, 3])
+    assert result.total_score == 21
+    assert result.severity_band == "severe"
+
+
+def test_zero_based_moderate_boundary():
+    result = score_zero_based([3, 3, 3, 1, 0, 0, 0])
+    assert result.total_score == 10
+    assert result.severity_band == "moderate"

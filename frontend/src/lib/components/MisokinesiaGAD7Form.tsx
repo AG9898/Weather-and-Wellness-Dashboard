@@ -7,8 +7,10 @@ import {
   EditorialKicker,
 } from "@/lib/components/EditorialPrimitives";
 
+export type MisokinesiaGAD7Answers = Record<string, number | string | null>;
+
 interface MisokinesiaGAD7FormProps {
-  onSubmit: (answers: Record<string, number>) => void;
+  onSubmit: (answers: MisokinesiaGAD7Answers) => void;
   submitting: boolean;
   error: string | null;
 }
@@ -24,10 +26,17 @@ const GAD7_ITEMS = [
 ] as const;
 
 const GAD7_SCALE = [
-  { value: 1, label: "Never" },
-  { value: 2, label: "Rarely" },
-  { value: 3, label: "Sometimes" },
-  { value: 4, label: "Often" },
+  { value: 0, label: "Not at all" },
+  { value: 1, label: "Several days" },
+  { value: 2, label: "More than half the days" },
+  { value: 3, label: "Nearly every day" },
+] as const;
+
+const GAD7_DIFFICULTY_OPTIONS = [
+  "Not difficult at all",
+  "Somewhat difficult",
+  "Very difficult",
+  "Extremely difficult",
 ] as const;
 
 export default function MisokinesiaGAD7Form({
@@ -36,18 +45,29 @@ export default function MisokinesiaGAD7Form({
   error,
 }: MisokinesiaGAD7FormProps) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [difficultyImpact, setDifficultyImpact] = useState<string | null>(null);
 
   const answeredCount = Object.keys(answers).length;
-  const allAnswered = GAD7_ITEMS.every((item) => answers[item.key] !== undefined);
+  const allItemsAnswered = GAD7_ITEMS.every((item) => answers[item.key] !== undefined);
+  const hasEndorsedProblem = Object.values(answers).some((value) => value > 0);
+  const allAnswered =
+    allItemsAnswered && (!hasEndorsedProblem || difficultyImpact !== null);
 
   const handleSelect = (key: string, value: number) => {
-    setAnswers((prev) => ({ ...prev, [key]: value }));
+    const nextAnswers = { ...answers, [key]: value };
+    setAnswers(nextAnswers);
+    if (!Object.values(nextAnswers).some((answer) => answer > 0)) {
+      setDifficultyImpact(null);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!allAnswered || submitting) return;
-    onSubmit({ ...answers });
+    onSubmit({
+      ...answers,
+      difficulty_impact: hasEndorsedProblem ? difficultyImpact : null,
+    });
   };
 
   return (
@@ -65,10 +85,10 @@ export default function MisokinesiaGAD7Form({
         Items 1–7 of 7
       </EditorialKicker>
       <h2 className="text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
-        How often have you been bothered by these problems?
+        Over the last two weeks, how often have you been bothered by the following problems?
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        1&nbsp;&bull;&nbsp;Never&nbsp;&nbsp;&bull;&nbsp;&nbsp;2&nbsp;&bull;&nbsp;Rarely&nbsp;&nbsp;&bull;&nbsp;&nbsp;3&nbsp;&bull;&nbsp;Sometimes&nbsp;&nbsp;&bull;&nbsp;&nbsp;4&nbsp;&bull;&nbsp;Often
+        0&nbsp;&bull;&nbsp;Not at all&nbsp;&nbsp;&bull;&nbsp;&nbsp;1&nbsp;&bull;&nbsp;Several days&nbsp;&nbsp;&bull;&nbsp;&nbsp;2&nbsp;&bull;&nbsp;More than half the days&nbsp;&nbsp;&bull;&nbsp;&nbsp;3&nbsp;&bull;&nbsp;Nearly every day
       </p>
 
       {/* Error banner */}
@@ -139,6 +159,45 @@ export default function MisokinesiaGAD7Form({
             );
           })}
         </div>
+
+        {hasEndorsedProblem && (
+          <fieldset
+            className="mt-5 rounded-[14px] border border-border px-[18px] py-[16px]"
+            style={{ background: "var(--fieldset-bg)" }}
+            disabled={submitting}
+          >
+            <legend className="text-[14px] font-medium leading-[1.45] text-foreground">
+              If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?
+            </legend>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {GAD7_DIFFICULTY_OPTIONS.map((option) => {
+                const isSelected = difficultyImpact === option;
+                return (
+                  <label
+                    key={option}
+                    className={cn(
+                      "flex min-h-11 cursor-pointer items-center justify-center rounded-[10px] border px-3 py-2 text-center text-xs font-semibold transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring/60",
+                      isSelected
+                        ? "border-transparent bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:border-ring/40 hover:text-foreground",
+                      submitting && "pointer-events-none opacity-50"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="gad7-difficulty-impact"
+                      value={option}
+                      checked={isSelected}
+                      onChange={() => setDifficultyImpact(option)}
+                      className="sr-only"
+                    />
+                    {option}
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
 
         {/* Footer */}
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">

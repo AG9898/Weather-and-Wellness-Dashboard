@@ -994,7 +994,7 @@ export async function submitMisokinesiaMkaq(
   );
 }
 
-/** Miso-isolated GAD-7 request payload. All items required, each valued 1-4. */
+/** Miso-isolated GAD-7 request payload. All items required, each valued 0-3. */
 export interface MisokinesiaGAD7Request {
   r1: number;
   r2: number;
@@ -1003,6 +1003,7 @@ export interface MisokinesiaGAD7Request {
   r5: number;
   r6: number;
   r7: number;
+  difficulty_impact?: string | null;
 }
 
 /** GAD-7 response returned by POST /misokinesia/participants/{id}/gad7. */

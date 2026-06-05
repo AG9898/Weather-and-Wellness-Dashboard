@@ -145,6 +145,12 @@ _VALID_AGREEMENT_SCALE = {
     "Strongly disagree",
 }
 _VALID_ENGLISH_FREQUENCY = {"Always", "Often", "Sometimes", "Rarely", "Never"}
+_VALID_GAD7_DIFFICULTY_IMPACTS = {
+    "Not difficult at all",
+    "Somewhat difficult",
+    "Very difficult",
+    "Extremely difficult",
+}
 _VALID_ADHD_MEDICATION = {"Yes", "Maybe", "No"}
 _VALID_RELATIONSHIP_STATUSES = {
     "Single",
@@ -537,13 +543,29 @@ class MisokinesiaAqResponse(BaseModel):
 
 
 class MisoGAD7Create(BaseModel):
-    r1: int = Field(..., ge=1, le=4)
-    r2: int = Field(..., ge=1, le=4)
-    r3: int = Field(..., ge=1, le=4)
-    r4: int = Field(..., ge=1, le=4)
-    r5: int = Field(..., ge=1, le=4)
-    r6: int = Field(..., ge=1, le=4)
-    r7: int = Field(..., ge=1, le=4)
+    r1: int = Field(..., ge=0, le=3)
+    r2: int = Field(..., ge=0, le=3)
+    r3: int = Field(..., ge=0, le=3)
+    r4: int = Field(..., ge=0, le=3)
+    r5: int = Field(..., ge=0, le=3)
+    r6: int = Field(..., ge=0, le=3)
+    r7: int = Field(..., ge=0, le=3)
+    difficulty_impact: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_difficulty_impact(self) -> "MisoGAD7Create":
+        if (
+            self.difficulty_impact is not None
+            and self.difficulty_impact not in _VALID_GAD7_DIFFICULTY_IMPACTS
+        ):
+            raise ValueError("difficulty_impact must match a GAD-7 difficulty option.")
+
+        if any(getattr(self, f"r{i}") > 0 for i in range(1, 8)) and not self.difficulty_impact:
+            raise ValueError(
+                "difficulty_impact is required when any GAD-7 problem is endorsed."
+            )
+
+        return self
 
 
 class MisoGAD7Response(BaseModel):

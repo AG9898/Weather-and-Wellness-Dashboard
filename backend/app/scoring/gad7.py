@@ -17,6 +17,17 @@ def score(raw: list[int]) -> GAD7Scored:
     Convert to 0-3 (raw - 1), sum, assign severity band.
     """
     total = sum(val - 1 for val in raw)
+    return _score_total(total)
+
+
+def score_zero_based(raw: list[int]) -> GAD7Scored:
+    """Score GAD-7 from 7 values already on the canonical 0-3 scale."""
+    total = sum(raw)
+    return _score_total(total)
+
+
+def _score_total(total: int) -> GAD7Scored:
+    """Assign a GAD-7 severity band from a 0-21 total."""
 
     if total <= 4:
         band = "minimal"

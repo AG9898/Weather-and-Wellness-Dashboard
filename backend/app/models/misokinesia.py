@@ -248,7 +248,7 @@ class MisokinesiaGAD7Response(Base):
     participant_uuid: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("participants.participant_uuid"), nullable=False
     )
-    # GAD-7 items r1–r7, scale 1–4 (1=Never, 4=Often)
+    # GAD-7 items r1-r7, scale 0-3 (0=Not at all, 3=Nearly every day)
     r1: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     r2: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     r3: Mapped[int] = mapped_column(SmallInteger, nullable=False)
@@ -256,6 +256,7 @@ class MisokinesiaGAD7Response(Base):
     r5: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     r6: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     r7: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    difficulty_impact: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     total_score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     severity_band: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

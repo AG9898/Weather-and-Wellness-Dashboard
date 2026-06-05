@@ -814,14 +814,15 @@ One GAD-7 (Generalized Anxiety Disorder-7) response per miso participant. Isolat
 | misokinesia_participant_id | UUID        | FK, NOT NULL, UNIQUE | → misokinesia_participants.misokinesia_participant_id                       |
 | session_id                 | UUID        | FK, NOT NULL         | → sessions.session_id                                                       |
 | participant_uuid           | UUID        | FK, NOT NULL         | → participants.participant_uuid                                             |
-| r1                         | SMALLINT    | NOT NULL             | GAD-7 item 1, 1–4 (1=Never, 4=Often)                                        |
-| r2                         | SMALLINT    | NOT NULL             | GAD-7 item 2, 1–4                                                           |
-| r3                         | SMALLINT    | NOT NULL             | GAD-7 item 3, 1–4                                                           |
-| r4                         | SMALLINT    | NOT NULL             | GAD-7 item 4, 1–4                                                           |
-| r5                         | SMALLINT    | NOT NULL             | GAD-7 item 5, 1–4                                                           |
-| r6                         | SMALLINT    | NOT NULL             | GAD-7 item 6, 1–4                                                           |
-| r7                         | SMALLINT    | NOT NULL             | GAD-7 item 7, 1–4                                                           |
-| total_score                | SMALLINT    | NOT NULL             | Server-computed; raw values converted to 0–3 scale then summed; range 0–21  |
+| r1                         | SMALLINT    | NOT NULL             | GAD-7 item 1, 0–3 (0=Not at all, 3=Nearly every day)                        |
+| r2                         | SMALLINT    | NOT NULL             | GAD-7 item 2, 0–3                                                           |
+| r3                         | SMALLINT    | NOT NULL             | GAD-7 item 3, 0–3                                                           |
+| r4                         | SMALLINT    | NOT NULL             | GAD-7 item 4, 0–3                                                           |
+| r5                         | SMALLINT    | NOT NULL             | GAD-7 item 5, 0–3                                                           |
+| r6                         | SMALLINT    | NOT NULL             | GAD-7 item 6, 0–3                                                           |
+| r7                         | SMALLINT    | NOT NULL             | GAD-7 item 7, 0–3                                                           |
+| difficulty_impact          | VARCHAR     | NULLABLE             | Conditional final difficulty question; required by API when any item > 0    |
+| total_score                | SMALLINT    | NOT NULL             | Server-computed direct sum of the 0–3 item values; range 0–21               |
 | severity_band              | VARCHAR     | NOT NULL             | `"minimal"` (0–4), `"mild"` (5–9), `"moderate"` (10–14), `"severe"` (15–21) |
 | created_at                 | TIMESTAMPTZ | DEFAULT NOW()        |                                                                             |
 
@@ -829,7 +830,8 @@ One GAD-7 (Generalized Anxiety Disorder-7) response per miso participant. Isolat
 Constraints/indexes:
 
 - UNIQUE (`misokinesia_participant_id`) — one GAD-7 response per participant
-- CHECK (`r1` through `r7` are each between 1 and 4)
+- CHECK (`r1` through `r7` are each between 0 and 3)
+- CHECK (`difficulty_impact` is null or one of `"Not difficult at all"`, `"Somewhat difficult"`, `"Very difficult"`, `"Extremely difficult"`)
 - Index (`misokinesia_gad7_responses(session_id)`)
 - Index (`misokinesia_gad7_responses(participant_uuid)`)
 
@@ -909,9 +911,10 @@ Constraints/indexes:
 | 2026-05-18 | T168                  | Replace `misokinesia_participants.mkaq_administration` with `post_survey_order`; add `misokinesia_gad7_responses` and `misokinesia_maq_responses` tables                                                            |
 | 2026-05-19 | T184                  | Add miso demographics columns to `misokinesia_participants`: `age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality` (all VARCHAR NULLABLE)                                        |
 | 2026-06-03 | T199                  | Replace T184's six demographics columns with typed sourced-demographics columns from `reference/labs/Misokinesia/Demographics copy2.docx`                                                                                 |
+| 2026-06-05 | n/a                   | Revise misokinesia GAD-7 item storage to 0–3 scale and add conditional `difficulty_impact` column                                                                                                                   |
 
 
-As of 2026-06-03, migration `20260603_000001` is the current head revision.
+As of 2026-06-05, migration `20260605_000001` is the current head revision.
 
 ---
 

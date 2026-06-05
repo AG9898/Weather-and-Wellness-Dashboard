@@ -110,7 +110,7 @@ Four core tables were added by migration `20260317_000001`. The planned MkAQ add
 | `misokinesia_participants` | One row per participant task execution; holds progress state, randomized post-video survey order, sourced demographics, and end-of-task responses | `misokinesia_participant_id` (UUID PK), `session_id` (FK), `participant_uuid` (FK), `test_set_id` (FK), `misokinesia_participant_number` (SERIAL), `post_survey_order` (VARCHAR, e.g. `"mkaq,gad7,maq"`), `completed_at` (nullable), demographics columns, end-of-task columns |
 | `misokinesia_trial_responses` | One row per clip per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `stimulus_id` (FK), `display_order`, `q1`–`q4` (SMALLINT), UNIQUE (`misokinesia_participant_id`, `stimulus_id`) |
 | `misokinesia_mkaq_responses` | One MkAQ response per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `q1`–`q21` (SMALLINT 0–3), `total_score` (0–63), UNIQUE (`misokinesia_participant_id`) |
-| `misokinesia_gad7_responses` | One GAD-7 response per participant (miso-isolated table) | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `r1`–`r7` (SMALLINT 1–4), `total_score` (0–21), `severity_band`, UNIQUE (`misokinesia_participant_id`) |
+| `misokinesia_gad7_responses` | One GAD-7 response per participant (miso-isolated table) | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `r1`–`r7` (SMALLINT 0–3), `difficulty_impact` (nullable), `total_score` (0–21), `severity_band`, UNIQUE (`misokinesia_participant_id`) |
 | `misokinesia_maq_responses` | One MAQ response per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `q1`–`q21` (SMALLINT 0–3), `total_score` (0–63), UNIQUE (`misokinesia_participant_id`) |
 
 See `docs/SCHEMA.md` — "Phase 4 Additions — Misokinesia Module" for the full column list.
@@ -206,11 +206,13 @@ The MkAQ items come from `reference/labs/Misokinesia/41598_2021_96430_MOESM1_ESM
 
 Required 7-item questionnaire shown once per production participant as part of the randomised post-video survey block. Results are stored in the miso-isolated `misokinesia_gad7_responses` table.
 
-Response scale: `1 = Never`, `2 = Rarely`, `3 = Sometimes`, `4 = Often`. All 7 items are required. FastAPI computes `total_score` (0–21, converted 1–4 → 0–3 per item) and `severity_band`; the frontend must not compute scores.
+Header text: "Over the last two weeks, how often have you been bothered by the following problems?"
 
-Rendered using the shared `SurveyForm` component — not a card carousel.
+Response scale: `0 = Not at all`, `1 = Several days`, `2 = More than half the days`, `3 = Nearly every day`. All 7 items are required. FastAPI computes `total_score` (0–21, direct sum of the 0–3 item values) and `severity_band`; the frontend must not compute scores.
 
-Item wording from the original validated GAD-7 (Spitzer et al., 2006; `reference/labs/weather-wellness/anxiety-disorder-response.pdf`).
+Rendered as a single-screen form — not a card carousel.
+
+Item wording and difficulty question from the revised misokinesia GAD-7 form (`reference/labs/Misokinesia/GAD7 revised (Miso).pdf`; Spitzer et al., 2006).
 
 | Column | Question |
 |---|---|
@@ -221,6 +223,8 @@ Item wording from the original validated GAD-7 (Spitzer et al., 2006; `reference
 | `r5` | Being so restless that it is hard to sit still |
 | `r6` | Becoming easily annoyed or irritable |
 | `r7` | Feeling afraid, as if something awful might happen |
+
+Final difficulty question: "If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?" Stored as nullable `difficulty_impact`. It is required when any `r1`–`r7` value is greater than `0`; otherwise it is stored as `null`. Allowed values: `"Not difficult at all"`, `"Somewhat difficult"`, `"Very difficult"`, `"Extremely difficult"`.
 
 ---
 
@@ -285,7 +289,7 @@ All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `co
 - **Trial manifest is read-only.** `GET /misokinesia/trial-manifest` returns only clip metadata and public CDN URLs for 5 randomly sampled active stimuli. It must not create or mutate `participants`, `sessions`, `misokinesia_participants`, or response rows.
 - **Post-video survey order is randomized and persisted.** Production starts assign a random permutation of `["mkaq", "gad7", "maq"]` as `post_survey_order` server-side, persist it on `misokinesia_participants`, and return it in the manifest so the frontend drives all three post-video surveys in the correct sequence.
 - **Transition cards are frontend-only.** A transition/intro card is shown before each post-video survey. Each card is keyed to its survey key (`mkaq`, `gad7`, `maq`) and paired with it in the `post_survey_order` sequence. No backend involvement; no new API call.
-- **Survey scores are server-computed.** MkAQ and MAQ: direct sum of raw items; GAD-7: items converted 1–4 → 0–3 then summed. The frontend must not compute or persist scores for any survey.
+- **Survey scores are server-computed.** MkAQ and MAQ: direct sum of raw items; GAD-7: direct sum of 0–3 item values. The frontend must not compute or persist scores for any survey.
 - **`completed_at` set server-side.** On each `POST /responses` call the backend counts submitted responses for the participant; when all stimuli are answered it sets `misokinesia_participants.completed_at` automatically and returns `is_complete: true`.
 - **Independent participant numbering.** `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence and starts from 1, independent of `participants.participant_number`.
 - **Stimuli seeded via seed script.** No admin upload endpoint exists yet; stimulus rows are inserted manually or via a seed script. Decommissioned stimuli have `active = false`; their rows are retained.
