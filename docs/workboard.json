@@ -3550,7 +3550,7 @@
       "id": "T1816",
       "title": "Misokinesia trial section jumper - Storybook alignment",
       "description": "Update the existing Misokinesia participant Storybook page replica so it reflects the completed trial section-jumper work and the current post-video survey sequence, including MkAQ, GAD-7, MAQ, transition/end states, and short/full trial variants. Keep stories mocked and page-first; do not call live backend APIs.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "TRIAL_RUN_MODE",
       "depends_on": [

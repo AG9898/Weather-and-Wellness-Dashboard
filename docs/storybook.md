@@ -95,6 +95,12 @@ Optional when relevant:
 - destructive
 - dense data state
 
+Misokinesia participant page stories must also keep mocked trial-mode variants for the
+post-demographics task container. Trial states render the section jumper for Intro, Clips, MkAQ,
+GAD-7, MAQ, End, and Done while recorded-session comparison states keep it absent. Short-trial
+stories use the shortened MkAQ/MAQ item sets; full-trial stories use the complete item sets. These
+stories remain page-first fixtures and must not call live backend APIs.
+
 ## 6) Storybook Feedback Workflow for Agents
 
 Agents should expect Storybook review feedback to arrive as a narrow request tied to a page replica or a visible section inside that page rather than as a broad redesign brief.

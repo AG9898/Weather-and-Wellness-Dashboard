@@ -86,77 +86,147 @@ export const DemographicsSubmitting: Story = {
 // ── Intro card ───────────────────────────────────────────────────────────────
 
 export const Intro: Story = {
-  args: { phase: "intro" },
+  args: {
+    phase: "intro",
+    trialMode: true,
+    trialVariant: "short",
+    totalClips: 5,
+  },
+};
+
+export const IntroFullTrial: Story = {
+  args: {
+    phase: "intro",
+    trialMode: true,
+    trialVariant: "full",
+    totalClips: 25,
+  },
 };
 
 // ── Per-clip questionnaire ───────────────────────────────────────────────────
 
 export const PerClipQuestionnaireEmpty: Story = {
-  args: { phase: "questionnaire" },
+  args: {
+    phase: "questionnaire",
+    trialMode: true,
+    trialVariant: "short",
+    totalClips: 5,
+  },
 };
 
 export const PerClipQuestionnairePartiallyAnswered: Story = {
-  args: { phase: "questionnaire", clipAnswered: 2 },
+  args: {
+    phase: "questionnaire",
+    clipAnswered: 2,
+    trialMode: true,
+    trialVariant: "short",
+    totalClips: 5,
+  },
 };
 
 export const PerClipQuestionnaireAllAnswered: Story = {
-  args: { phase: "questionnaire", clipAnswered: 4 },
+  args: {
+    phase: "questionnaire",
+    clipAnswered: 4,
+    trialMode: true,
+    trialVariant: "short",
+    totalClips: 5,
+  },
 };
 
 export const PerClipQuestionnaireMidProgress: Story = {
-  args: { phase: "questionnaire", clipNumber: 13, totalClips: 25 },
+  args: {
+    phase: "questionnaire",
+    clipNumber: 13,
+    totalClips: 25,
+    trialMode: true,
+    trialVariant: "full",
+  },
+};
+
+export const RecordedSessionQuestionnaire: Story = {
+  args: {
+    phase: "questionnaire",
+    clipNumber: 13,
+    totalClips: 25,
+    trialMode: false,
+    trialVariant: "full",
+  },
 };
 
 // ── Transition cards (before each post-video survey) ─────────────────────────
 
 export const TransitionMkaq: Story = {
-  args: { phase: "transition_mkaq" },
+  args: { phase: "transition_mkaq", trialMode: true, trialVariant: "short" },
 };
 
 export const TransitionGad7: Story = {
-  args: { phase: "transition_gad7" },
+  args: { phase: "transition_gad7", trialMode: true, trialVariant: "short" },
 };
 
 export const TransitionMaq: Story = {
-  args: { phase: "transition_maq" },
+  args: { phase: "transition_maq", trialMode: true, trialVariant: "short" },
 };
 
 // ── Carousel surveys ─────────────────────────────────────────────────────────
 
 export const MkaqCarouselPane1: Story = {
-  args: { phase: "mkaq" },
+  args: { phase: "mkaq", trialMode: true, trialVariant: "short" },
 };
 
 export const MkaqCarouselPane1Answered: Story = {
-  args: { phase: "mkaq", carouselAnswered: true },
+  args: {
+    phase: "mkaq",
+    carouselAnswered: true,
+    trialMode: true,
+    trialVariant: "short",
+  },
+};
+
+export const MkaqFullTrial: Story = {
+  args: { phase: "mkaq", trialMode: true, trialVariant: "full" },
 };
 
 export const Gad7Survey: Story = {
-  args: { phase: "gad7" },
+  args: { phase: "gad7", trialMode: true, trialVariant: "short" },
 };
 
 export const Gad7SurveyPartial: Story = {
-  args: { phase: "gad7", gad7Answered: 4 },
+  args: {
+    phase: "gad7",
+    gad7Answered: 4,
+    trialMode: true,
+    trialVariant: "short",
+  },
 };
 
 export const MaqCarousel: Story = {
-  args: { phase: "maq" },
+  args: { phase: "maq", trialMode: true, trialVariant: "short" },
+};
+
+export const MaqFullTrial: Story = {
+  args: { phase: "maq", trialMode: true, trialVariant: "full" },
 };
 
 // ── End-of-task form ─────────────────────────────────────────────────────────
 
 export const EndOfTask: Story = {
-  args: { phase: "end_of_task" },
+  args: { phase: "end_of_task", trialMode: true, trialVariant: "short" },
 };
 
 export const EndOfTaskWithStrongerResponses: Story = {
-  args: { phase: "end_of_task", showTimingRow: true },
+  args: {
+    phase: "end_of_task",
+    showTimingRow: true,
+    trialMode: true,
+    trialVariant: "short",
+  },
 };
 
 // ── Completion ───────────────────────────────────────────────────────────────
 
 export const Complete: Story = {
-  args: { phase: "complete" },
+  args: { phase: "complete", trialMode: true, trialVariant: "short" },
 };
 
 export const Completing: Story = {
@@ -175,17 +245,27 @@ export const DemographicsDark: Story = {
 };
 
 export const PerClipDark: Story = {
-  args: { phase: "questionnaire", clipAnswered: 2 },
+  args: {
+    phase: "questionnaire",
+    clipAnswered: 2,
+    trialMode: true,
+    trialVariant: "short",
+  },
   globals: { theme: "dark" },
 };
 
 export const TransitionMkaqDark: Story = {
-  args: { phase: "transition_mkaq" },
+  args: { phase: "transition_mkaq", trialMode: true, trialVariant: "short" },
   globals: { theme: "dark" },
 };
 
 export const MkaqDark: Story = {
-  args: { phase: "mkaq", carouselAnswered: true },
+  args: {
+    phase: "mkaq",
+    carouselAnswered: true,
+    trialMode: true,
+    trialVariant: "short",
+  },
   globals: { theme: "dark" },
 };
 
@@ -200,12 +280,17 @@ export const DemographicsMobile: Story = {
 };
 
 export const PerClipMobile: Story = {
-  args: { phase: "questionnaire", clipAnswered: 2 },
+  args: {
+    phase: "questionnaire",
+    clipAnswered: 2,
+    trialMode: true,
+    trialVariant: "short",
+  },
   decorators: [misokinesiaMobileDecorator],
 };
 
 export const MkaqMobile: Story = {
-  args: { phase: "mkaq" },
+  args: { phase: "mkaq", trialMode: true, trialVariant: "short" },
   decorators: [misokinesiaMobileDecorator],
 };
 
