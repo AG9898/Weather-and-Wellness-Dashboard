@@ -176,7 +176,7 @@ export default function MisokinesiaMAQForm({
                 <div className="grid items-center gap-4" style={{ gridTemplateColumns: "32px 1fr auto" }}>
                   {/* Item number */}
                   <span
-                    className="self-start mt-1 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
+                    className="font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground"
                     aria-hidden
                   >
                     {String(globalIdx + 1).padStart(2, "0")}
