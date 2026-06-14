@@ -3656,7 +3656,7 @@
       "id": "T207",
       "title": "WW cognitive battery manifest and order assignment API",
       "description": "Update WW session start and participant session APIs so each native WW session receives stable stored cognitive_task_order and card_sorting_rule_order values, and add GET /sessions/{session_id}/cognitive-battery for active participant sessions. The task order must contain digitspan, stroop, and card_sorting exactly once. The card sorting rule order must start with color, include color/shape/number twice, avoid adjacent duplicates, and not use the predictable color-shape-number repeat. Keep this backend-only except for typed API wrappers; do not build task UIs. Scope cap: confirm this can be completed by one agent with at least 30% context remaining before starting.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [

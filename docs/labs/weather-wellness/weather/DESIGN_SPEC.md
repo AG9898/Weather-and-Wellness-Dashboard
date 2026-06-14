@@ -88,8 +88,11 @@ The battery order contains exactly one instance of each key:
 
 The assigned order is participant/session scoped. It must be stable across
 refreshes and submitted task transitions, and it must be available for later
-data review. Do not compute or store weather analytics/modeling outputs as part
-of this task-order work.
+data review. Production sessions receive their stored task order and hidden card
+sorting rule order when `/sessions/start` creates the active session. The
+post-survey battery reads the stored manifest from
+`GET /sessions/{session_id}/cognitive-battery`. Do not compute or store weather
+analytics/modeling outputs as part of this task-order work.
 
 ### WW Trial Section Jumper
 

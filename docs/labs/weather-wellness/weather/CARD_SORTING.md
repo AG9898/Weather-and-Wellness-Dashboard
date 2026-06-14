@@ -50,6 +50,8 @@ Requirements:
   `color -> shape -> number -> color -> shape -> number`.
 - The assigned rule order is generated or selected per participant session and
   stored for audit/review.
+- Native WW sessions receive this order at `POST /sessions/start`; active
+  participant sessions read it through `GET /sessions/{session_id}/cognitive-battery`.
 - Participant-facing UI must not reveal the rule names, total number of
   possible categories, rule order, or any recurring pattern.
 

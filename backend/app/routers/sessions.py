@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import math
+import random
 from datetime import date, datetime, timedelta, timezone
+from itertools import permutations
 from typing import Annotated, Optional
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -18,6 +20,7 @@ from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
 from app.schemas.sessions import (
     AllowedStatus,
+    CognitiveBatteryResponse,
     LastNativeSessionInfo,
     SessionCreate,
     SessionListItemResponse,
@@ -35,6 +38,51 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 _optional_bearer = HTTPBearer(auto_error=False)
 
 _VALID_STATUSES = {"created", "active", "complete"}
+_COGNITIVE_TASKS = ("digitspan", "stroop", "card_sorting")
+_PREDICTABLE_CARD_SORTING_RULE_ORDER = (
+    "color",
+    "shape",
+    "number",
+    "color",
+    "shape",
+    "number",
+)
+
+
+def _generate_cognitive_task_order() -> list[str]:
+    return random.sample(list(_COGNITIVE_TASKS), k=len(_COGNITIVE_TASKS))
+
+
+def _valid_card_sorting_rule_orders() -> list[tuple[str, ...]]:
+    candidates = {
+        ("color", *order)
+        for order in permutations(("color", "shape", "shape", "number", "number"), 5)
+    }
+    return sorted(
+        order
+        for order in candidates
+        if all(order[index] != order[index + 1] for index in range(len(order) - 1))
+        and order != _PREDICTABLE_CARD_SORTING_RULE_ORDER
+    )
+
+
+_CARD_SORTING_RULE_ORDER_CHOICES = _valid_card_sorting_rule_orders()
+
+
+def _generate_card_sorting_rule_order() -> list[str]:
+    return list(random.choice(_CARD_SORTING_RULE_ORDER_CHOICES))
+
+
+def _is_valid_cognitive_task_order(order: object) -> bool:
+    return isinstance(order, list) and sorted(order) == sorted(_COGNITIVE_TASKS)
+
+
+def _is_valid_card_sorting_rule_order(order: object) -> bool:
+    return (
+        isinstance(order, list)
+        and tuple(order) in _CARD_SORTING_RULE_ORDER_CHOICES
+        and sorted(order) == ["color", "color", "number", "number", "shape", "shape"]
+    )
 
 
 @router.get(
@@ -204,6 +252,8 @@ async def start_session(
     session_obj = SessionModel(
         participant_uuid=participant.participant_uuid,
         status="active",
+        cognitive_task_order=_generate_cognitive_task_order(),
+        card_sorting_rule_order=_generate_card_sorting_rule_order(),
     )
     db.add(session_obj)
     await db.commit()
@@ -246,6 +296,46 @@ async def get_last_native_session_info(
         participant_number=candidate.participant_number,
         status=candidate.status,
         created_at=candidate.created_at,
+    )
+
+
+@router.get(
+    "/{session_id}/cognitive-battery",
+    response_model=CognitiveBatteryResponse,
+)
+async def get_cognitive_battery(
+    session_id: UUID,
+    db: AsyncSession = Depends(get_session),
+) -> CognitiveBatteryResponse:
+    result = await db.execute(
+        select(SessionModel).where(SessionModel.session_id == session_id)
+    )
+    session_obj = result.scalar_one_or_none()
+    if session_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+    if session_obj.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Session is not active",
+        )
+    if (
+        not _is_valid_cognitive_task_order(session_obj.cognitive_task_order)
+        or not _is_valid_card_sorting_rule_order(
+            session_obj.card_sorting_rule_order
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cognitive battery manifest is not assigned",
+        )
+
+    return CognitiveBatteryResponse(
+        session_id=session_obj.session_id,
+        task_order=session_obj.cognitive_task_order,
+        card_sorting_rule_order=session_obj.card_sorting_rule_order,
     )
 
 

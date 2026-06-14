@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 
 AllowedStatus = Literal["created", "active", "complete"]
+CognitiveTaskKey = Literal["digitspan", "stroop", "card_sorting"]
+CardSortingRuleKey = Literal["color", "shape", "number"]
 
 # Canonical preset option lists for start-session demographics (DESIGN_SPEC.md)
 AGE_BAND_OPTIONS = frozenset({"Under 18", "18-24", "25-31", "32-38", ">38"})
@@ -123,8 +125,8 @@ class CognitiveBatteryResponse(BaseModel):
     """Stored cognitive task manifest returned after the fixed WW surveys."""
 
     session_id: UUID
-    task_order: list[str]
-    card_sorting_rule_order: list[str]
+    task_order: list[CognitiveTaskKey]
+    card_sorting_rule_order: list[CardSortingRuleKey]
 
 
 class UndoLastSessionRequest(BaseModel):
@@ -156,9 +158,11 @@ class LastNativeSessionInfo(BaseModel):
 
 __all__ = [
     "AllowedStatus",
+    "CardSortingRuleKey",
     "LastNativeSessionInfo",
     "SessionCreate",
     "CognitiveBatteryResponse",
+    "CognitiveTaskKey",
     "SessionListItemResponse",
     "SessionListResponse",
     "SessionResponse",

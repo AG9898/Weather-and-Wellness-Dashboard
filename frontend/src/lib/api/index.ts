@@ -430,6 +430,15 @@ export interface StartSessionResponse {
   start_path: string;
 }
 
+export type CognitiveTaskKey = "digitspan" | "stroop" | "card_sorting";
+export type CardSortingRuleKey = "color" | "shape" | "number";
+
+export interface CognitiveBatteryResponse {
+  session_id: string;
+  task_order: CognitiveTaskKey[];
+  card_sorting_rule_order: CardSortingRuleKey[];
+}
+
 /**
  * Bundle returned by GET /api/ra/dashboard (Vercel Route Handler).
  * Contains only the current-day weather payload rendered by the default dashboard.
@@ -487,6 +496,15 @@ export async function startSession(
   payload: StartSessionCreate
 ): Promise<StartSessionResponse> {
   return apiPost<StartSessionResponse>("/sessions/start", payload, { auth: true });
+}
+
+/** Fetch the stored WW cognitive task manifest for an active participant session. */
+export async function getCognitiveBattery(
+  sessionId: string
+): Promise<CognitiveBatteryResponse> {
+  return apiGet<CognitiveBatteryResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}/cognitive-battery`
+  );
 }
 
 async function buildSameOriginAuthHeaders(): Promise<Record<string, string>> {

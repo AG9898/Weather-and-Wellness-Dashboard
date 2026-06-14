@@ -70,7 +70,7 @@
 | GET    | /sessions/last-native | RA | implemented | T97 |
 | DELETE | /sessions/last-native | RA | implemented | T97 |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
-| GET    | /sessions/{session_id}/cognitive-battery | None (active session) | planned | TBD |
+| GET    | /sessions/{session_id}/cognitive-battery | None (active session) | implemented | T207 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
 | POST   | /stroop/runs | None (active session) | planned | TBD |
@@ -531,7 +531,8 @@
   - All demographic fields are required. If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required; otherwise it is optional/ignored.
   - `participants.daylight_exposure_minutes` is computed at request time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`) using `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
   - `start_path` is always `/session/<session_id>/uls8`. Consent is collected at `(ra)/new-session` before session creation; there is no `/consent` page within the session flow.
-  - Cognitive-battery storage is available on `sessions` as nullable `cognitive_task_order` and `card_sorting_rule_order` JSONB fields. Session-start assignment logic remains planned; when implemented it will store a per-session randomized task order containing exactly `digitspan`, `stroop`, and `card_sorting`, plus the hidden card sorting rule order.
+  - `POST /sessions/start` stores a per-session randomized `cognitive_task_order` containing exactly `digitspan`, `stroop`, and `card_sorting`, plus the hidden `card_sorting_rule_order`.
+  - The hidden card sorting rule order always starts with `color`, contains `color`, `shape`, and `number` twice each, avoids adjacent duplicate dimensions, and excludes the predictable `color -> shape -> number -> color -> shape -> number` sequence.
   - No consent record is stored in Supabase (UI-only gating).
   - Demographics are stored on `participants` only (never on `sessions`).
   - Trial mode bypasses this endpoint entirely.
@@ -576,7 +577,7 @@
 
 ### GET /sessions/{session_id}/cognitive-battery
 - **Auth:** None (active session validated)
-- **Status:** planned
+- **Status:** implemented (T207)
 - **Purpose:** Return the stored cognitive task order and task manifest data needed for the post-survey battery.
 - **Response:**
   ```json
@@ -586,8 +587,9 @@
     "card_sorting_rule_order": ["color", "number", "shape", "color", "shape", "number"]
   }
   ```
-- **Notes:** The card sorting rule order is hidden task state. It may be needed by the client to provide immediate correct/incorrect feedback, but it must never be displayed in participant-facing UI.
-  - Persistence fields for the manifest were added by T206; this endpoint remains planned until the router/service layer is implemented.
+- **Notes:** Returns `404` for unknown sessions and `409` unless the session is currently `active` with a valid stored manifest.
+  - The card sorting rule order is hidden task state. It may be needed by the client to provide immediate correct/incorrect feedback, but it must never be displayed in participant-facing UI.
+  - The task order is assigned once at `POST /sessions/start` and remains stable across refreshes and task transitions.
 
 ---
 
