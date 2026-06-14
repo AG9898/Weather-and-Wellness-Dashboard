@@ -74,7 +74,7 @@
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
 | POST   | /stroop/runs | None (active session) | implemented | T208 |
-| POST   | /card-sorting/runs | None (active session) | planned | TBD |
+| POST   | /card-sorting/runs | None (active session) | implemented | T209 |
 | POST   | /surveys/uls8 | None (active session) | implemented | T10 |
 | POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
 | POST   | /surveys/gad7 | None (active session) | implemented | T10 |
@@ -644,7 +644,7 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
 
 ### POST /card-sorting/runs
 - **Auth:** None (active session validated)
-- **Status:** planned
+- **Status:** implemented (T209)
 - **Request body:**
   ```json
   {
@@ -676,7 +676,12 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
     "failure_to_maintain_set_count": 1
   }
   ```
-- **Notes:** Backend reads the stored hidden rule order for the session and recomputes correctness, streaks, category shifts, and all summary metrics before persistence. T206 added the `card_sorting_runs` and `card_sorting_trials` persistence tables; this endpoint remains planned until the router/service layer is implemented. Trial mode bypasses this endpoint and performs no server-side scoring/write.
+- **Notes:** Backend reads the stored hidden `card_sorting_rule_order` for the session and recomputes correctness, streaks, category shifts, and all summary metrics before persistence (`app/scoring/card_sorting.py`); the client choice is never trusted for correctness. T206 added the `card_sorting_runs` and `card_sorting_trials` persistence tables; T209 implemented the router/scoring layer.
+  - **Reference cards (fixed):** index `1 = red/triangle/1`, `2 = green/star/2`, `3 = yellow/cross/3`, `4 = blue/circle/4`. Each dimension value maps to exactly one reference index, so the response card's value on the active rule dimension determines the single correct `selected_reference_index`. A trial is correct when `selected_reference_index` equals that index.
+  - **Shift behavior:** the active rule advances to the next `card_sorting_rule_order` entry on the trial after exactly 10 consecutive correct responses; a single error resets the streak to 0. After the sixth category the final rule stays active through card 64 and `categories_completed` stays capped at 6. The task never stops before card 64.
+  - **Perseverative scoring:** a response is perseverative when it matches the previous (pre-shift) rule's correct reference while the previous rule differs from the now-active rule; a perseverative response that is incorrect under the active rule is a `perseverative_error`. `nonperseverative_errors` are incorrect responses that are not perseverative. `failure_to_maintain_set_count` increments on an error made after 5–9 consecutive correct responses.
+  - **Errors:** `404` (session not found), `409` (session not active, no stored rule order, or a card sorting run already exists for the session), `422` (a card attribute value is not one of the four reference cards, or the stored rule order contains an unknown dimension). Pydantic enforces 1–64 trials, `trial_number` 1–64, and `selected_reference_index` 1–4.
+  - Trial mode bypasses this endpoint and performs no server-side scoring/write.
 
 ---
 

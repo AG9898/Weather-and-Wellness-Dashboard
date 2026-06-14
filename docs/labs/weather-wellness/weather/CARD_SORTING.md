@@ -102,6 +102,32 @@ categories completed, or remaining rule schedule.
 
 ---
 
+## Reference Cards and Correctness
+
+The four fixed reference cards are canonical and each has a unique value on every
+dimension:
+
+| Index | color  | shape    | number |
+|-------|--------|----------|--------|
+| 1     | red    | triangle | 1      |
+| 2     | green  | star     | 2      |
+| 3     | yellow | cross    | 3      |
+| 4     | blue   | circle   | 4      |
+
+Because each dimension value maps to exactly one reference index, the response
+card's value on the active rule dimension determines the single correct
+`selected_reference_index`. A trial is **correct** when the participant's
+`selected_reference_index` equals that index. The submission payload therefore
+does not carry reference-card attributes; the backend derives correctness from the
+card attributes plus the stored hidden rule. Response cards must use values drawn
+from these canonical sets (`card_color`, `card_shape`, and `card_number`); a value
+outside the reference set is rejected with `422`.
+
+The scorer lives in `backend/app/scoring/card_sorting.py` (pure, no DB). The
+route `POST /card-sorting/runs` (`backend/app/routers/card_sorting.py`) reads the
+session's `card_sorting_rule_order`, runs the scorer, and persists the run plus
+raw scored trials. Implemented in T209.
+
 ## Server-Side Scoring
 
 Persist raw scored trials and task-level summary fields. Do not add

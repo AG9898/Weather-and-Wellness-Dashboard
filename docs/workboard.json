@@ -3726,7 +3726,7 @@
       "id": "T209",
       "title": "WW card sorting scoring and submit API",
       "description": "Implement POST /card-sorting/runs using the stored hidden rule order and CARD_SORTING.md contract. The backend must validate active session state, read the session rule order, recompute correctness/streaks/category shifts/perseverative metrics from raw trial choices, persist the run and raw scored trials, and return task-level category/error summaries. Do not build the participant UI in this task. Scope cap: keep this to scoring, schemas, router registration, persistence, and targeted tests so one agent can finish with at least 30% context remaining.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [
