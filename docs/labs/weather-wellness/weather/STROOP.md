@@ -127,6 +127,19 @@ Payload:
 
 Response includes the persisted `run_id` plus the run-level metrics above.
 
+**Implementation (T208):** `POST /stroop/runs` is implemented in
+`backend/app/routers/stroop.py` with pure scoring in
+`backend/app/scoring/stroop.py`. The endpoint validates that the session exists
+(`404` otherwise) and is `active` (`409` otherwise), rejects a second run for the
+same session (`409`, one run per session), and recomputes correctness from
+`response_color` vs `ink_color` rather than trusting the client. Submission
+validation (`422`) rejects unknown `condition` values, duplicate `trial_number`s
+within a run, non-timeout trials missing `response_color`, and timed-out trials
+that carry a `reaction_time_ms`. Correctness uses case-insensitive,
+whitespace-trimmed color comparison. The persisted scored trials store the
+backend-computed `correct` flag, and timed-out trials have their stored
+`reaction_time_ms` cleared to null.
+
 ---
 
 ## Planned Data Storage

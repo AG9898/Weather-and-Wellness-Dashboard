@@ -73,7 +73,7 @@
 | GET    | /sessions/{session_id}/cognitive-battery | None (active session) | implemented | T207 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
-| POST   | /stroop/runs | None (active session) | planned | TBD |
+| POST   | /stroop/runs | None (active session) | implemented | T208 |
 | POST   | /card-sorting/runs | None (active session) | planned | TBD |
 | POST   | /surveys/uls8 | None (active session) | implemented | T10 |
 | POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
@@ -599,7 +599,7 @@ Canonical task spec: [STROOP.md](STROOP.md)
 
 ### POST /stroop/runs
 - **Auth:** None (active session validated)
-- **Status:** planned
+- **Status:** implemented (T208)
 - **Request body:**
   ```json
   {
@@ -634,7 +634,7 @@ Canonical task spec: [STROOP.md](STROOP.md)
     "stroop_interference_ms": 130
   }
   ```
-- **Notes:** Backend recomputes correctness and all summary metrics before persistence. T206 added the `stroop_runs` and `stroop_trials` persistence tables; this endpoint remains planned until the router/service layer is implemented. Trial mode bypasses this endpoint and performs no server-side scoring/write.
+- **Notes:** Backend recomputes correctness and all summary metrics before persistence (`app/scoring/stroop.py`); the client-submitted `correct` field is never trusted. T206 added the `stroop_runs` and `stroop_trials` persistence tables and T208 implemented the router/scoring layer. A trial is scored correct only when it did not time out and its normalized (trimmed, lowercased) `response_color` equals the normalized `ink_color`. Condition RT means are computed over correct, non-timeout trials only; `stroop_interference_ms` is null whenever either condition mean is null. Errors: `404` (session not found), `409` (session not active, or a Stroop run already exists for the session), `422` (invalid trial payload — unknown `condition`, duplicate `trial_number`, a non-timeout trial missing `response_color`, or a timed-out trial carrying `reaction_time_ms`). Trial mode bypasses this endpoint and performs no server-side scoring/write.
 
 ---
 

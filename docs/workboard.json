@@ -3690,7 +3690,7 @@
       "id": "T208",
       "title": "WW Stroop scoring and submit API",
       "description": "Implement POST /stroop/runs using the planned schema and STROOP.md contract. The backend must validate active session state, recompute correctness from word/ink/response data, persist the run and raw scored trials, and return task-level accuracy, condition RT means, timeout counts, and stroop_interference_ms. Do not build the participant UI in this task. Scope cap: keep this to scoring, schemas, router registration, persistence, and targeted tests so one agent can complete it with at least 30% context remaining.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [

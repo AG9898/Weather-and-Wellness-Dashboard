@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StroopTrialSubmission(BaseModel):
     trial_number: int = Field(..., ge=1)
-    condition: str
+    condition: Literal["congruent", "incongruent"]
     word: str = Field(..., min_length=1)
     ink_color: str = Field(..., min_length=1)
     response_key: str | None = None
@@ -16,10 +17,27 @@ class StroopTrialSubmission(BaseModel):
     reaction_time_ms: int | None = Field(default=None, ge=0)
     timed_out: bool
 
+    @model_validator(mode="after")
+    def _check_response_consistency(self) -> "StroopTrialSubmission":
+        if self.timed_out:
+            if self.reaction_time_ms is not None:
+                raise ValueError("timed_out trials must not carry a reaction_time_ms")
+        else:
+            if self.response_color is None:
+                raise ValueError("non-timeout trials require a response_color")
+        return self
+
 
 class StroopRunCreate(BaseModel):
     session_id: UUID
     trials: list[StroopTrialSubmission] = Field(..., min_length=1)
+
+    @model_validator(mode="after")
+    def _check_unique_trial_numbers(self) -> "StroopRunCreate":
+        numbers = [t.trial_number for t in self.trials]
+        if len(numbers) != len(set(numbers)):
+            raise ValueError("trial_number values must be unique within a run")
+        return self
 
 
 class StroopRunResponse(BaseModel):
