@@ -6,6 +6,9 @@ Visual language baseline: [docs/styleguide.md](../../../styleguide.md) · Animat
 - Guided, simple flow — one screen per step, no back navigation during session
 - Keyboard-first cognitive tasks with clear focus states and no back navigation during session
 - Exact survey wording from lab instrument forms (present-tense, "Right now..." framing)
+- WW participant surveys, Digit Span, and completion screens share the quiet
+  editorial task shell from `docs/styleguide.md`: compact step metadata,
+  hairline/progress rhythm, flat response controls, and mobile-safe spacing.
 
 ## RA Flow
 1. Login
@@ -67,7 +70,10 @@ Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It d
   - Does not serve or proxy video bytes through FastAPI
 - UX behavior:
   - Preserves the same end-to-end screen order as production flow
-  - Shows a centered top-screen "Trial Run" watermark on WW participant trial-mode screens; Misokinesia participant task screens do not show this badge
+  - Shows a compact centered top-screen "Trial Run" watermark on WW participant
+    trial-mode screens; Misokinesia participant task screens do not show this
+    badge. The badge and any trial-only controls must stay clear of prompts,
+    inputs, feedback, and primary actions on mobile and desktop.
   - Ends on the standard completion screens
 
 ## WW Cognitive Task Battery

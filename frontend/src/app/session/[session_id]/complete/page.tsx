@@ -1,39 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  EditorialTaskHeader,
+  EditorialTaskPanel,
+  EditorialTaskShell,
+} from "@/lib/components/EditorialPrimitives";
 
 export default function CompletePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-sm w-full text-center space-y-6">
-        {/* Checkmark icon */}
-        <div
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary"
-        >
-          <svg
-            className="h-8 w-8 text-primary-foreground"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
+    <EditorialTaskShell centered>
+      <EditorialTaskPanel className="space-y-7 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary">
+          <CheckCircle2 className="h-8 w-8 text-primary-foreground" aria-hidden="true" />
         </div>
 
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Thank You</h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            You have completed all tasks. Please return this device to the
-            research assistant.
-          </p>
-        </div>
+        <EditorialTaskHeader
+          stepTag="Complete"
+          breadcrumb="Weather Wellness"
+          kicker="Session complete"
+          title="Thank You"
+          description="You have completed all tasks. Please return this device to the research assistant."
+          className="items-center text-center"
+        />
 
         <Button
           asChild
@@ -42,7 +33,7 @@ export default function CompletePage() {
         >
           <Link href="/dashboard">Return to Dashboard</Link>
         </Button>
-      </div>
-    </div>
+      </EditorialTaskPanel>
+    </EditorialTaskShell>
   );
 }

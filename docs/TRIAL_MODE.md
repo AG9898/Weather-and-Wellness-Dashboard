@@ -15,6 +15,9 @@ Canonical specification for trial-run behavior across WW and Misokinesia partici
 
 - Show the `Trial Run` watermark on Weather Wellness participant pages only.
 - Always exclude the watermark from the Misokinesia participant task route (`/misokinesia/[id]`), even when `TRIAL_RUN_MODE` is active.
+- Keep the Weather Wellness watermark compact, centered at the top of the
+  viewport, and visually clear of participant prompts, inputs, feedback, and
+  primary actions across mobile and desktop layouts.
 
 ## Module Placement
 

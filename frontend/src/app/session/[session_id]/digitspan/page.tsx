@@ -5,6 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { apiPost, apiPatch, getParticipantErrorMessage, type DigitSpanRunResponse, type SessionResponse } from "@/lib/api";
 import {
+  EditorialTaskHeader,
+  EditorialTaskPanel,
+  EditorialTaskShell,
+} from "@/lib/components/EditorialPrimitives";
+import {
   buildTrialRunPath,
   getWeatherWellnessSubmitMode,
   runTrialAwareSubmit,
@@ -237,13 +242,13 @@ export default function DigitSpanPage() {
 
   if (phase === "instruction1") {
     return (
-      <Screen>
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-          Study Task
-        </p>
-        <h1 className="text-2xl font-bold text-foreground">Backwards Digit Span</h1>
-
-        <div className="mt-6 space-y-2 text-sm text-muted-foreground text-left">
+      <Screen
+        kicker="Study task"
+        title="Backwards Digit Span"
+        description="You will be shown a number sequence, one number at a time, then enter it in reverse order."
+        centered={false}
+      >
+        <div className="space-y-2 text-left text-sm text-muted-foreground">
           <p>You will be shown a number sequence, one number at a time.</p>
           <p>Memorize the number sequence.</p>
           <p>
@@ -270,8 +275,11 @@ export default function DigitSpanPage() {
 
   if (phase === "instruction2") {
     return (
-      <Screen>
-        <p className="text-lg text-foreground">We will begin with a practice trial...</p>
+      <Screen
+        kicker="Practice"
+        title="Practice trial"
+        description="A short practice sequence comes first so you can try the response format."
+      >
         <Advance />
       </Screen>
     );
@@ -279,8 +287,17 @@ export default function DigitSpanPage() {
 
   if (phase === "instruction3") {
     return (
-      <Screen>
-        <p className="text-lg text-foreground">We will now begin the main trials...</p>
+      <Screen
+        kicker="Scored task"
+        title="Main trials"
+        description="The sequences will get longer as the task continues."
+        progress={{
+          current: 0,
+          total: SPANS.length,
+          label: `0 of ${SPANS.length} trials complete`,
+          hidePercent: true,
+        }}
+      >
         <Advance />
       </Screen>
     );
@@ -288,8 +305,17 @@ export default function DigitSpanPage() {
 
   if (phase === "instruction4") {
     return (
-      <Screen>
-        <p className="text-lg text-foreground">End of task.</p>
+      <Screen
+        kicker="Study task"
+        title="End of task"
+        description="Your responses have been recorded for this task."
+        progress={{
+          current: SPANS.length,
+          total: SPANS.length,
+          label: `${SPANS.length} of ${SPANS.length} trials complete`,
+          hidePercent: true,
+        }}
+      >
         {error && (
           <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
             {error}
@@ -308,16 +334,33 @@ export default function DigitSpanPage() {
 
   if (phase === "submitting") {
     return (
-      <Screen>
-        <p className="text-lg text-muted-foreground">Submitting results…</p>
-      </Screen>
+      <Screen
+        kicker="Study task"
+        title="Submitting results"
+        description="Please wait while the task advances to the completion screen."
+      />
     );
   }
 
   // Showing digits
   if (phase === "practice-showing" || phase === "trial-showing") {
+    const isTrial = phase === "trial-showing";
     return (
-      <Screen>
+      <Screen
+        kicker={isTrial ? "Scored task" : "Practice"}
+        title={isTrial ? `Trial ${trialIndex + 1} of ${SPANS.length}` : "Practice sequence"}
+        description="Watch each digit as it appears."
+        progress={
+          isTrial
+            ? {
+                current: trialIndex,
+                total: SPANS.length,
+                label: `${trialIndex} of ${SPANS.length} trials complete`,
+                hidePercent: true,
+              }
+            : undefined
+        }
+      >
         <div
           className="text-8xl font-bold tabular-nums text-foreground select-none"
           style={{ lineHeight: "1.1", minHeight: "1em" }}
@@ -332,7 +375,11 @@ export default function DigitSpanPage() {
   if (phase === "practice-feedback") {
     const isCorrect = practiceFeedback === "Correct";
     return (
-      <Screen>
+      <Screen
+        kicker="Practice"
+        title="Practice feedback"
+        description="The main task will begin after this feedback."
+      >
         <p
           className={`text-3xl font-bold ${
             isCorrect ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"
@@ -345,13 +392,24 @@ export default function DigitSpanPage() {
   }
 
   // Input phase (practice or trial)
+  const isPracticeInput = phase === "practice-input";
   return (
-    <Screen>
-      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-6">
-        {phase === "practice-input" ? "Practice Trial" : `Trial ${trialIndex + 1} of 14`}
-      </p>
-      <p className="text-foreground mb-6">Type the sequence in backwards order:</p>
-      <div className="text-4xl font-mono tracking-widest border-b-2 border-border pb-2 min-w-[200px] min-h-[1.4em] text-center text-foreground select-none">
+    <Screen
+      kicker={isPracticeInput ? "Practice trial" : "Scored task"}
+      title={isPracticeInput ? "Enter the practice sequence" : `Trial ${trialIndex + 1} of ${SPANS.length}`}
+      description="Type the sequence in backwards order."
+      progress={
+        isPracticeInput
+          ? undefined
+          : {
+              current: trialIndex,
+              total: SPANS.length,
+              label: `${trialIndex} of ${SPANS.length} trials complete`,
+              hidePercent: true,
+            }
+      }
+    >
+      <div className="min-h-[1.4em] min-w-[200px] border-b-2 border-border pb-2 text-center font-mono text-4xl text-foreground tabular-nums select-none">
         {entered.join(" ") || "\u00A0"}
       </div>
       <p className="mt-6 text-xs text-muted-foreground">
@@ -363,11 +421,46 @@ export default function DigitSpanPage() {
 
 // ── Shared layout components ──
 
-function Screen({ children }: { children: React.ReactNode }) {
+interface ScreenProps {
+  children?: React.ReactNode;
+  kicker: string;
+  title: string;
+  description?: string;
+  centered?: boolean;
+  progress?: {
+    current: number;
+    total: number;
+    label: string;
+    hidePercent?: boolean;
+  };
+}
+
+function Screen({
+  children,
+  kicker,
+  title,
+  description,
+  centered = true,
+  progress,
+}: ScreenProps) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md text-center">{children}</div>
-    </div>
+    <EditorialTaskShell centered={centered}>
+      <EditorialTaskPanel className="space-y-7">
+        <EditorialTaskHeader
+          stepTag="05 / 05"
+          breadcrumb="Weather Wellness"
+          kicker={kicker}
+          title={title}
+          description={description}
+          progress={progress}
+        />
+        {children && (
+          <div className="flex flex-col items-center text-center">
+            {children}
+          </div>
+        )}
+      </EditorialTaskPanel>
+    </EditorialTaskShell>
   );
 }
 

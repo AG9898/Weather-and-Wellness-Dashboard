@@ -154,6 +154,9 @@ Use this pattern for task flows and operations pages that need more structure th
 - Prefer white cards lifted on the paper canvas, separated rows, and fieldsets over nested cards.
 - Use tabular metadata for counts, clip progress, pane numbers, timestamps, and response completion text.
 - Chips and scale controls should be flat: neutral border + card fill when idle, `bg-primary text-primary-foreground` when selected, and border/text emphasis on hover.
+- Participant task flows should reuse shared editorial task shell primitives for
+  page width, a single task surface, step metadata, and progress rhythm so
+  surveys, cognitive tasks, and completion states feel like one sequence.
 - Avoid decorative ambient glows for new work. Use shadows, hairlines, and spacing for depth.
 - Treat user-provided HTML/React design files as templates for layout and states; translate them into existing Next.js, Tailwind, shadcn, and lucide patterns.
 

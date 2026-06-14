@@ -14,6 +14,9 @@
  *  - EditorialMetaTag        — compact pill badge (neutral or accent)
  *  - EditorialStepIndicator  — "01 / 04" row with expanding hairline + breadcrumb
  *  - EditorialProgressStrip  — "Clip N of M" tabular row + 2px progress bar
+ *  - EditorialTaskShell      — centered task-page width + vertical rhythm
+ *  - EditorialTaskPanel      — single quiet task surface
+ *  - EditorialTaskHeader     — step/kicker/title/description/progress stack
  *  - EditorialPaneDots       — horizontal dot strip for paged carousels
  *  - EditorialChip           — single flat choice chip (select/hover/disabled/focus)
  *  - EditorialChipGroup      — wrapping row of EditorialChips (single-select helper)
@@ -176,6 +179,114 @@ export function EditorialProgressStrip({
         <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {percent}%
         </span>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EditorialTaskShell + EditorialTaskPanel + EditorialTaskHeader
+// Shared quiet-editorial shell for participant task and survey pages.
+// ─────────────────────────────────────────────────────────────────────────────
+export interface EditorialTaskShellProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  /** Vertically center short task states; long forms should use the default top flow. */
+  centered?: boolean;
+}
+
+export function EditorialTaskShell({
+  children,
+  centered = false,
+  className,
+  ...props
+}: EditorialTaskShellProps) {
+  return (
+    <div
+      className={cn(
+        "mx-auto flex min-h-[calc(100vh-8rem)] w-full max-w-[760px] flex-col py-6 sm:py-10",
+        centered ? "justify-center" : "justify-start",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+export interface EditorialTaskPanelProps
+  extends React.HTMLAttributes<HTMLElement> {
+  children: React.ReactNode;
+}
+
+export function EditorialTaskPanel({
+  children,
+  className,
+  ...props
+}: EditorialTaskPanelProps) {
+  return (
+    <section
+      className={cn(
+        "rounded-[18px] border border-border bg-card p-5 shadow-[0_24px_60px_-52px_rgb(0_19_40/0.72)] sm:p-8",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </section>
+  );
+}
+
+export interface EditorialTaskHeaderProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  stepTag?: string;
+  breadcrumb?: string;
+  kicker?: React.ReactNode;
+  progress?: Pick<
+    EditorialProgressStripProps,
+    "current" | "total" | "label" | "hidePercent"
+  >;
+}
+
+export function EditorialTaskHeader({
+  title,
+  description,
+  stepTag,
+  breadcrumb,
+  kicker,
+  progress,
+  className,
+  ...props
+}: EditorialTaskHeaderProps) {
+  return (
+    <div className={cn("space-y-4", className)} {...props}>
+      {stepTag && (
+        <EditorialStepIndicator
+          stepTag={stepTag}
+          breadcrumb={breadcrumb}
+        />
+      )}
+      <div className="space-y-2">
+        {kicker && <EditorialKicker>{kicker}</EditorialKicker>}
+        <h1 className="text-[22px] font-bold leading-snug text-foreground sm:text-[26px]">
+          {title}
+        </h1>
+        {description && (
+          <p className="max-w-[64ch] text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        )}
+      </div>
+      {progress && (
+        <EditorialProgressStrip
+          current={progress.current}
+          total={progress.total}
+          label={progress.label}
+          hidePercent={progress.hidePercent}
+        />
       )}
     </div>
   );
@@ -347,7 +458,7 @@ export function EditorialChipGroup({
 // Does not own question content — wrap question label + chip row inside.
 // ─────────────────────────────────────────────────────────────────────────────
 export interface EditorialFieldsetProps
-  extends React.HTMLAttributes<HTMLFieldSetElement> {
+  extends React.FieldsetHTMLAttributes<HTMLFieldSetElement> {
   /** Accessible legend text (visually hidden by default) */
   legend?: string;
   /** Whether to show the legend visibly */

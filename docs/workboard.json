@@ -3583,7 +3583,7 @@
       "id": "T205",
       "title": "WW trial survey and test UI alignment",
       "description": "Compare the Weather-Wellness trial survey/test flow against the updated Misokinesia task UI and translate the cleaner quiet-editorial patterns across every existing WW trial page: ULS-8, CES-D 10, GAD-7, CogFunc 8a, Digit Span, completion, shared trial watermark, and shared trial/test controls. Keep this scoped to visual/task-shell adaptation for the WW trial/tests flow, with task-appropriate copy, density, progress labels, keyboard hints, and controls; do not redesign the RA dashboard, implement Stroop/card sorting, change backend behavior, or add Storybook states. Scope cap: before starting, confirm the change can be completed by one agent while preserving at least 30% context remaining; split before execution if it grows beyond this surface.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [],

@@ -30,7 +30,7 @@ export default function TrialRunWatermark() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed left-1/2 top-3 z-50 -translate-x-1/2 rounded-md border border-amber-300 bg-amber-100/95 px-3 py-1 text-xs font-bold uppercase tracking-widest text-amber-950 shadow-sm"
+      className="pointer-events-none fixed left-1/2 top-2 z-50 max-w-[calc(100vw-1rem)] -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-card px-2.5 py-1 text-[10px] font-bold uppercase leading-none text-foreground shadow-sm sm:top-3 sm:px-3 sm:text-xs"
     >
       {label}
     </div>

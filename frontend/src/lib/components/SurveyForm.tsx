@@ -2,6 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  EditorialFieldset,
+  EditorialTaskHeader,
+  EditorialTaskPanel,
+  EditorialTaskShell,
+} from "@/lib/components/EditorialPrimitives";
 import { cn } from "@/lib/utils";
 
 export interface SurveyItem {
@@ -54,6 +60,9 @@ export default function SurveyForm({
 
   const allAnswered = items.every((item) => responses[item.number] !== undefined);
   const answeredCount = Object.keys(responses).length;
+  const stepTag = progress
+    ? `${String(progress.current).padStart(2, "0")} / ${String(progress.total).padStart(2, "0")}`
+    : undefined;
 
   const handleSelect = (itemNumber: number, value: number) => {
     setResponses((prev) => ({ ...prev, [itemNumber]: value }));
@@ -70,55 +79,30 @@ export default function SurveyForm({
   };
 
   return (
-    <div className="relative mx-auto max-w-4xl px-4 py-8 sm:py-12">
-      <div
-        className="pointer-events-none absolute left-0 top-6 h-44 w-44 rounded-full opacity-35 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--ring) 72%, transparent)" }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-0 right-0 h-52 w-52 rounded-full opacity-20 blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--primary) 68%, transparent)" }}
-      />
-
-      <div
-        className="relative space-y-6 rounded-[1.6rem] border border-border/90 p-5 shadow-[0_30px_60px_-52px_rgb(0_19_40/0.7)] sm:p-8"
-        style={{ background: "var(--card)" }}
-      >
-        <div className="space-y-3">
-          {stepLabel && (
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              {stepLabel}
-            </p>
-          )}
-          {progress && (
-            <div className="space-y-1.5">
-              <div className="h-1.5 overflow-hidden rounded-full bg-border/70">
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{
-                    width: `${progress.percent}%`,
-                    background: "var(--primary)",
-                  }}
-                />
-              </div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Step {progress.current} of {progress.total}
-              </p>
-            </div>
-          )}
-          <h1 className="text-2xl font-bold text-foreground sm:text-3xl">{title}</h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">{instructions}</p>
-        </div>
+    <EditorialTaskShell>
+      <EditorialTaskPanel className="space-y-7">
+        <EditorialTaskHeader
+          stepTag={stepTag}
+          breadcrumb="Weather Wellness"
+          kicker={stepLabel ?? "Survey"}
+          title={title}
+          description={instructions}
+          progress={{
+            current: answeredCount,
+            total: items.length,
+            label: `${answeredCount} of ${items.length} answered`,
+            hidePercent: true,
+          }}
+        />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {items.map((item) => (
-            <fieldset
+            <EditorialFieldset
               key={item.number}
-              className="space-y-3 rounded-2xl border border-border/80 bg-background/55 p-4"
+              legend={`${item.number}. ${item.text}`}
+              disabled={submitting}
+              className="space-y-3"
             >
-              <legend className="sr-only">
-                {item.number}. {item.text}
-              </legend>
               <p className="text-sm font-medium leading-snug text-foreground">
                 {item.number}. {item.text}
               </p>
@@ -129,7 +113,7 @@ export default function SurveyForm({
                     <label
                       key={opt.value}
                       className={cn(
-                        "cursor-pointer rounded-xl border px-3 py-2 text-sm font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
+                        "cursor-pointer rounded-[10px] border px-3 py-2 text-sm font-medium leading-tight transition-colors focus-within:ring-2 focus-within:ring-ring/60",
                         selected
                           ? "border-transparent bg-primary text-primary-foreground shadow-sm"
                           : "border-border bg-card/70 text-muted-foreground hover:border-ring/40 hover:text-foreground"
@@ -148,7 +132,7 @@ export default function SurveyForm({
                   );
                 })}
               </div>
-            </fieldset>
+            </EditorialFieldset>
           ))}
 
           {error && (
@@ -157,7 +141,7 @@ export default function SurveyForm({
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <p className="text-xs text-muted-foreground">
               {answeredCount}/{items.length} answered
             </p>
@@ -170,7 +154,7 @@ export default function SurveyForm({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </EditorialTaskPanel>
+    </EditorialTaskShell>
   );
 }
