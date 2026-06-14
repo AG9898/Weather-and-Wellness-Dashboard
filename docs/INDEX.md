@@ -50,6 +50,8 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`](labs/weather-wellness/weather/WEATHER_INGESTION.md) | Live weather ingest and reconciliation |
 | [`docs/labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md`](labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill process |
 | [`docs/labs/weather-wellness/weather/DIGITSPAN.md`](labs/weather-wellness/weather/DIGITSPAN.md) | Digit Span task specification |
+| [`docs/labs/weather-wellness/weather/STROOP.md`](labs/weather-wellness/weather/STROOP.md) | Stroop task specification |
+| [`docs/labs/weather-wellness/weather/CARD_SORTING.md`](labs/weather-wellness/weather/CARD_SORTING.md) | WCST-64-inspired card sorting task specification |
 | [`docs/labs/weather-wellness/weather/ULS8.md`](labs/weather-wellness/weather/ULS8.md) | ULS-8 instrument spec |
 | [`docs/labs/weather-wellness/weather/CESD10.md`](labs/weather-wellness/weather/CESD10.md) | CES-D 10 instrument spec |
 | [`docs/labs/weather-wellness/weather/GAD7.md`](labs/weather-wellness/weather/GAD7.md) | GAD-7 instrument spec |

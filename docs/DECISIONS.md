@@ -290,9 +290,48 @@ while keeping sessions linkable even if weather ingestion is missing for a day.
 
 **Decision:** The participant task order is: 4 surveys (ULS-8 → CES-D 10 → GAD-7 → CogFunc 8a) followed by Digit Span, then completion.
 
+**Superseded by:** RESOLVED-20.
+
 **Why:** Matches the desired supervised lab workflow and enables a single one-click launch into Survey 1 without intermediate digit span instructions.
 
 **Affects:** docs/DESIGN_SPEC.md, docs/labs/weather-wellness/weather/API.md.
+
+---
+
+### RESOLVED-20 — Surveys First, Randomized Cognitive Battery After Surveys
+
+**Resolved:** 2026-06-14
+
+**Decision:** Weather-Wellness sessions keep the four surveys first and fixed:
+ULS-8 → CES-D 10 → GAD-7 → CogFunc 8a. After surveys, each participant session
+receives a randomized cognitive task battery containing Backward Digit Span,
+Stroop, and WCST-64-inspired card sorting. The assigned task order is stored per
+session for later review and order-aware export.
+
+Card sorting follows the 64-card, 10-consecutive-correct shift mechanics, but
+the category schedule must not be a predictable recurring
+`color → shape → number` repeat. The hidden per-session rule order starts with
+color, includes color/shape/number twice across six possible category blocks,
+does not repeat the same dimension in adjacent blocks, and is stored for audit.
+The participant-facing UI never reveals rule names, rule order, streaks, or
+category-count progress.
+
+WW Trial Run now has Short Trial and Full Trial variants with a trial-only
+section jumper, matching the Misokinesia rehearsal pattern. Trial mode remains
+no-write.
+
+**Why:** The lab needs Stroop and card sorting in addition to Digit Span, while
+preserving survey order and recording task-order assignment for later review.
+The card sorting task should preserve WCST-style category-learning mechanics
+without exposing a learnable recurring rule sequence.
+
+**Affects:** docs/labs/weather-wellness/weather/DESIGN_SPEC.md,
+docs/labs/weather-wellness/weather/API.md,
+docs/labs/weather-wellness/weather/SCORING.md,
+docs/labs/weather-wellness/weather/DIGITSPAN.md,
+docs/labs/weather-wellness/weather/STROOP.md,
+docs/labs/weather-wellness/weather/CARD_SORTING.md, docs/TRIAL_MODE.md,
+docs/SCHEMA.md.
 
 ---
 

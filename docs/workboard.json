@@ -3578,7 +3578,364 @@
         "cd frontend && npm run lint",
         "cd frontend && npm run build-storybook"
       ]
+    },
+    {
+      "id": "T205",
+      "title": "WW trial survey and test UI alignment",
+      "description": "Compare the Weather-Wellness trial survey/test flow against the updated Misokinesia task UI and translate the cleaner quiet-editorial patterns across every existing WW trial page: ULS-8, CES-D 10, GAD-7, CogFunc 8a, Digit Span, completion, shared trial watermark, and shared trial/test controls. Keep this scoped to visual/task-shell adaptation for the WW trial/tests flow, with task-appropriate copy, density, progress labels, keyboard hints, and controls; do not redesign the RA dashboard, implement Stroop/card sorting, change backend behavior, or add Storybook states. Scope cap: before starting, confirm the change can be completed by one agent while preserving at least 30% context remaining; split before execution if it grows beyond this surface.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "All existing WW trial survey pages use a coherent task shell aligned with the Misokinesia task visual language where appropriate.",
+        "Digit Span and completion screens use the same WW trial/test shell, spacing, progress rhythm, and mobile-safe layout as the survey pages.",
+        "Trial watermark and trial-only controls do not overlap prompts, inputs, feedback, or primary actions on mobile or desktop.",
+        "The shared shell is suitable for later Stroop and card sorting pages without adding those tasks in this task.",
+        "No backend behavior, scoring, schema, route contract, or Storybook state work is introduced.",
+        "Frontend lint, TypeScript check, and build pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md",
+        "docs/TRIAL_MODE.md",
+        "docs/styleguide.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/SurveyForm.tsx",
+        "frontend/src/app/session/[session_id]/digitspan/page.tsx",
+        "frontend/src/app/session/[session_id]/complete/page.tsx",
+        "frontend/src/lib/components/EditorialPrimitives.tsx",
+        "frontend/src/lib/components/TrialRunWatermark.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm run lint",
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T206",
+      "title": "WW cognitive battery schema and production migration",
+      "description": "Implement the planned cognitive battery persistence schema from docs/SCHEMA.md with Alembic and SQLAlchemy models: session-level cognitive_task_order and card_sorting_rule_order, stroop_runs/stroop_trials, and card_sorting_runs/card_sorting_trials. Store raw task trials plus task-level scores/statistics only; do not add analytics/modeling tables or dashboard analysis outputs. Apply the migration to the production database as part of this task using the repo migration workflow and the production DATABASE_MIGRATION_URL; do not use the Supabase transaction pooler on port 6543. Scope cap: before starting, confirm the model, migration, docs, local verification, and production migration can be completed by one agent while preserving at least 30% context remaining; split before execution if needed.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T205"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Alembic migration adds the planned session order fields and Stroop/card sorting run/trial tables with FKs and one-run-per-session uniqueness.",
+        "SQLAlchemy models and schema docs match the migrated table and column names.",
+        "No analytics/modeling tables or dashboard-derived outputs are added.",
+        "Migration applies locally with scripts/alembic-upgrade-head.sh.",
+        "Migration is applied to the production database with the approved production DATABASE_MIGRATION_URL path, and alembic current confirms the new head."
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/labs/weather-wellness/weather/API.md",
+        "docs/labs/weather-wellness/weather/STROOP.md",
+        "docs/labs/weather-wellness/weather/CARD_SORTING.md",
+        "docs/ENV_VARS.md"
+      ],
+      "files": [
+        "backend/alembic/versions/",
+        "backend/app/models/",
+        "backend/app/schemas/",
+        "docs/SCHEMA.md"
+      ],
+      "commands": [
+        "scripts/alembic-upgrade-head.sh",
+        "cd backend && PYTHONPATH=. pytest tests -k 'schema or cognitive or stroop or card_sorting'",
+        "DATABASE_MIGRATION_URL=<production-session-pooler-or-direct-url> scripts/alembic-upgrade-head.sh",
+        "cd backend && PYTHONPATH=. alembic current -v"
+      ]
+    },
+    {
+      "id": "T207",
+      "title": "WW cognitive battery manifest and order assignment API",
+      "description": "Update WW session start and participant session APIs so each native WW session receives stable stored cognitive_task_order and card_sorting_rule_order values, and add GET /sessions/{session_id}/cognitive-battery for active participant sessions. The task order must contain digitspan, stroop, and card_sorting exactly once. The card sorting rule order must start with color, include color/shape/number twice, avoid adjacent duplicates, and not use the predictable color-shape-number repeat. Keep this backend-only except for typed API wrappers; do not build task UIs. Scope cap: confirm this can be completed by one agent with at least 30% context remaining before starting.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T206"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "POST /sessions/start stores a stable randomized cognitive task order and valid hidden card sorting rule order for native WW sessions.",
+        "GET /sessions/{session_id}/cognitive-battery returns task_order and card_sorting_rule_order only for active valid sessions.",
+        "Rule-order generation rejects the predictable color-shape-number repeated sequence and adjacent duplicate dimensions.",
+        "Frontend typed API wrapper exists for the manifest endpoint; components are not rewired yet.",
+        "Backend route tests and frontend typecheck pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/API.md",
+        "docs/labs/weather-wellness/weather/CARD_SORTING.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "backend/app/routers/sessions.py",
+        "backend/app/schemas/sessions.py",
+        "backend/app/models/sessions.py",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests -k 'sessions or cognitive_battery'",
+        "cd frontend && npx tsc --noEmit"
+      ]
+    },
+    {
+      "id": "T208",
+      "title": "WW Stroop scoring and submit API",
+      "description": "Implement POST /stroop/runs using the planned schema and STROOP.md contract. The backend must validate active session state, recompute correctness from word/ink/response data, persist the run and raw scored trials, and return task-level accuracy, condition RT means, timeout counts, and stroop_interference_ms. Do not build the participant UI in this task. Scope cap: keep this to scoring, schemas, router registration, persistence, and targeted tests so one agent can complete it with at least 30% context remaining.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T206",
+        "T207"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Pure Stroop scoring function computes correctness, accuracy, condition RT means over correct non-timeout trials, and interference score.",
+        "POST /stroop/runs persists exactly one run per active session plus raw trial rows and rejects inactive, duplicate, and invalid submissions.",
+        "Response shape matches docs/labs/weather-wellness/weather/API.md.",
+        "Route tests cover success, inactive session, duplicate run, timeout trials, and invalid trial payloads.",
+        "Targeted backend tests pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/STROOP.md",
+        "docs/labs/weather-wellness/weather/API.md",
+        "docs/labs/weather-wellness/weather/SCORING.md",
+        "docs/SCHEMA.md"
+      ],
+      "files": [
+        "backend/app/routers/stroop.py",
+        "backend/app/scoring/stroop.py",
+        "backend/app/models/",
+        "backend/app/schemas/",
+        "backend/tests/"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests -k 'stroop'"
+      ]
+    },
+    {
+      "id": "T209",
+      "title": "WW card sorting scoring and submit API",
+      "description": "Implement POST /card-sorting/runs using the stored hidden rule order and CARD_SORTING.md contract. The backend must validate active session state, read the session rule order, recompute correctness/streaks/category shifts/perseverative metrics from raw trial choices, persist the run and raw scored trials, and return task-level category/error summaries. Do not build the participant UI in this task. Scope cap: keep this to scoring, schemas, router registration, persistence, and targeted tests so one agent can finish with at least 30% context remaining.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T206",
+        "T207"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Pure card sorting scorer applies 10-consecutive-correct shifts, no early stop before card 64, category cap of 6, and final-rule continuation after the sixth category.",
+        "Scorer computes categories_completed, total_correct/errors, perseverative responses/errors, nonperseverative errors, trials_to_first_category, and failure_to_maintain_set_count.",
+        "POST /card-sorting/runs persists exactly one run per active session plus raw scored trial rows and rejects inactive, duplicate, and invalid submissions.",
+        "Route tests cover success, rule shift/reset behavior, non-recurring rule order use, duplicate run, and inactive session.",
+        "Targeted backend tests pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/CARD_SORTING.md",
+        "docs/labs/weather-wellness/weather/API.md",
+        "docs/labs/weather-wellness/weather/SCORING.md",
+        "docs/SCHEMA.md"
+      ],
+      "files": [
+        "backend/app/routers/card_sorting.py",
+        "backend/app/scoring/card_sorting.py",
+        "backend/app/models/",
+        "backend/app/schemas/",
+        "backend/tests/"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests -k 'card_sorting or card-sorting'"
+      ]
+    },
+    {
+      "id": "T210",
+      "title": "WW frontend cognitive battery router",
+      "description": "Add frontend battery state/routing helpers that fetch the cognitive battery manifest after CogFunc, derive the first/next task path, and let each cognitive task submit then route to the next task or completion based on the stored order. Refactor Digit Span completion so it no longer always marks the session complete. Keep this task to routing, typed helpers, and Digit Span integration; do not implement Stroop or card sorting UI beyond placeholder route wiring if needed. Scope cap: keep it focused enough for one agent to complete with at least 30% context remaining.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T205",
+        "T207"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "CogFunc routes to the first task from GET /sessions/{session_id}/cognitive-battery instead of hardcoding Digit Span.",
+        "Digit Span submits its run and routes to the next task unless it is last in task_order.",
+        "Only the final cognitive task marks the session complete and routes to /complete.",
+        "Trial mode uses local manifest/order behavior and still performs no backend writes.",
+        "Frontend unit tests or route helper tests cover multiple task orders; typecheck and build pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/weather/API.md",
+        "docs/labs/weather-wellness/weather/DIGITSPAN.md",
+        "docs/TRIAL_MODE.md"
+      ],
+      "files": [
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/app/session/[session_id]/cogfunc/page.tsx",
+        "frontend/src/app/session/[session_id]/digitspan/page.tsx",
+        "frontend/src/app/session/[session_id]/"
+      ],
+      "commands": [
+        "cd frontend && npm test -- trial-mode",
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T211",
+      "title": "WW Stroop participant task UI",
+      "description": "Implement the Stroop participant page and typed frontend submit wrapper according to STROOP.md. Use the WW trial/test shell visual language established in T205, client-side RT capture, practice feedback, balanced scored trials, timeout handling, trial-mode no-write behavior, and battery-router next-task handoff. Keep task scoring display out of participant UI and do not add Storybook states. Scope cap: if production UI and trial shortening cannot fit with at least 30% context remaining, split before execution.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T208",
+        "T210"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Stroop page presents instructions, practice, 80 scored production trials, timeout handling, and end-of-task submit flow.",
+        "Frontend records word, ink color, condition, response key/color, RT, timeout, and trial number without computing final scores.",
+        "Trial mode uses a shortened scored set, local simulated submit, and no /stroop/runs call.",
+        "Task routes to the next battery task or completion using shared battery helpers.",
+        "Frontend lint, typecheck, and build pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/STROOP.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/weather/API.md"
+      ],
+      "files": [
+        "frontend/src/app/session/[session_id]/stroop/page.tsx",
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/lib/components/"
+      ],
+      "commands": [
+        "cd frontend && npm run lint",
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T212",
+      "title": "WW card sorting participant task UI",
+      "description": "Implement the card sorting participant page and typed frontend submit wrapper according to CARD_SORTING.md. Use the WW trial/test shell visual language from T205, 64 production response cards, hidden rule feedback, no participant-facing rule/streak/category reveal, client-side RT capture, trial-mode shortened set, and battery-router next-task handoff. The page may use the manifest rule order internally for immediate feedback but must not display it. Do not add Storybook states. Scope cap: if production UI and trial shortening cannot fit with at least 30% context remaining, split before execution.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T209",
+        "T210"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Card sorting page presents instructions, reference cards, response cards, immediate correct/incorrect feedback, and 64-card production flow.",
+        "Participant UI never displays active rule, rule order, streak count, categories completed, or recurring-pattern hints.",
+        "Frontend records card attributes, selected reference, RT, and trial number; backend remains canonical for scores.",
+        "Trial mode uses a shortened response-card set, local simulated submit, and no /card-sorting/runs call.",
+        "Frontend lint, typecheck, and build pass."
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/CARD_SORTING.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/weather/API.md"
+      ],
+      "files": [
+        "frontend/src/app/session/[session_id]/card-sorting/page.tsx",
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/lib/components/"
+      ],
+      "commands": [
+        "cd frontend && npm run lint",
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T213",
+      "title": "WW Short and Full Trial launch plus section helper",
+      "description": "Extend WW trial-mode state to distinguish short and full trials, update the new-session launch controls, and add pure section-jump helpers for WW sections: Consent, Demographics, ULS-8, CES-D, GAD-7, CogFunc, Battery, Digit Span, Stroop, Card Sort, and Done. Keep this task to launch/state/helper logic and tests; do not integrate visual jumper rendering into every page yet and do not add Storybook states. Scope cap: keep helpers and launch changes small enough for one agent to finish with at least 30% context remaining.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T210"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "WW launch surface exposes Run Short Trial and Run Full Trial controls instead of a single generic test trial control.",
+        "TrialRunState records WW trial variant and local cognitive task order without backend writes.",
+        "Pure WW section-jump helper maps every documented section to a valid route or local task state without API calls.",
+        "Existing Misokinesia trial behavior remains unchanged.",
+        "Unit tests cover short/full state creation and all WW section jump targets."
+      ],
+      "docs": [
+        "docs/TRIAL_MODE.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/lib/trial-mode.test.ts",
+        "frontend/src/app/(ra)/new-session/page.tsx",
+        "frontend/src/stories/pages/ra/NewSessionPageStorySupport.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm test -- trial-mode",
+        "cd frontend && npx tsc --noEmit"
+      ]
+    },
+    {
+      "id": "T214",
+      "title": "WW trial section jumper integration",
+      "description": "Integrate the WW trial-only section jumper into the aligned WW survey/test shell and cognitive task pages, using the helper from T213. The jumper must support Short Trial and Full Trial, jump to major survey/task/completion sections without backend writes, and stay clear of the watermark and primary task controls across every WW survey and test page in the trial flow. Do not add Storybook states. Scope cap: if integration across all pages grows too large for one agent with at least 30% context remaining, split by survey shell vs cognitive task pages before execution.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "WW_COG_TASKS",
+      "depends_on": [
+        "T211",
+        "T212",
+        "T213"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Section jumper renders only in WW trial mode and is absent from recorded participant sessions.",
+        "Jumping to each documented WW section causes local navigation/state changes only and makes no survey/task/session-complete API calls.",
+        "Short Trial uses shortened cognitive task lengths; Full Trial uses production-length cognitive tasks with no writes.",
+        "Jumper placement does not overlap the Trial Run watermark, task prompts, inputs, feedback, or primary buttons on mobile or desktop.",
+        "Frontend lint, TypeScript check, and build pass."
+      ],
+      "docs": [
+        "docs/TRIAL_MODE.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/lib/components/",
+        "frontend/src/app/session/[session_id]/",
+        "frontend/src/lib/trial-mode.ts"
+      ],
+      "commands": [
+        "cd frontend && npm run lint",
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
     }
   ],
-  "last_updated": "2026-06-05"
+  "last_updated": "2026-06-14"
 }

@@ -11,12 +11,14 @@
 Participants are shown a sequence of digits one at a time, then must type the sequence
 **backwards** using the keyboard. Sequences increase in length from 3 to 9 digits.
 
-### Trial mode (Run Test Trial)
+### Trial mode (Short Trial and Full Trial)
 
-- In trial mode, Digit Span keeps the same on-screen flow (instructions, practice, 14 trials, end-of-task).
+- In Full Trial mode, Digit Span keeps the same on-screen flow (instructions, practice, 14 trials, end-of-task).
+- In Short Trial mode, Digit Span keeps the same screen sequence but may use a shortened scored set for fast RA rehearsal.
 - End-of-task uses local simulated submit success and routes to completion flow without calling `POST /digitspan/runs`.
 - No run/trial rows are written in trial mode.
 - A centered top-screen `"Trial Run"` watermark is shown while the task is in trial mode.
+- The WW trial section jumper may enter Digit Span directly in trial mode only.
 
 ---
 
@@ -118,6 +120,10 @@ Present these screens in order, each advancing on spacebar/button press:
 
 **Screen 4 — End of task:**
 > End of task.
+
+After production submission, Digit Span routes to the next task in the
+session-assigned randomized cognitive battery. It marks the session complete
+only when it is the final task in that order.
 
 ---
 

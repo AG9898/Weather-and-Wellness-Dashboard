@@ -6,11 +6,12 @@ The Weather & Wellness study investigates the relationship between daily weather
 and psychological wellbeing outcomes (loneliness, depression, anxiety, cognitive function).
 
 Research assistants (RAs) administer a fixed battery of instruments per session:
-- **Backward Digit Span** — working memory task
 - **ULS-8** — loneliness (UCLA Loneliness Scale, 8-item)
 - **CES-D 10** — depressive symptoms (Center for Epidemiologic Studies Depression)
 - **GAD-7** — anxiety (Generalized Anxiety Disorder, 7-item)
 - **CogFunc 8a** — cognitive function (PROMIS SF v2.0, 8-item)
+- **Randomized cognitive task battery** — Backward Digit Span, Stroop, and
+  WCST-64-inspired card sorting in a per-session stored order
 - **Misokinesia task** — 29-clip video sensitivity task (optional, separate session)
 
 Sessions are anonymous. Participants have no accounts; identity is a stable `participant_uuid`
@@ -46,6 +47,8 @@ docs cover cross-component concerns only.
 | [`weather/WEATHER_INGESTION.md`](weather/WEATHER_INGESTION.md) | Weather data ingestion via UBC EOS station |
 | [`weather/HISTORICAL_WEATHER_BACKFILL.md`](weather/HISTORICAL_WEATHER_BACKFILL.md) | Historical weather backfill procedure |
 | [`weather/DIGITSPAN.md`](weather/DIGITSPAN.md) | Digit Span task specification |
+| [`weather/STROOP.md`](weather/STROOP.md) | Stroop task specification |
+| [`weather/CARD_SORTING.md`](weather/CARD_SORTING.md) | WCST-64-inspired card sorting task specification |
 | [`weather/ULS8.md`](weather/ULS8.md) | ULS-8 instrument specification |
 | [`weather/CESD10.md`](weather/CESD10.md) | CES-D 10 instrument specification |
 | [`weather/GAD7.md`](weather/GAD7.md) | GAD-7 instrument specification |

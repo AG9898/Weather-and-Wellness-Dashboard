@@ -28,10 +28,10 @@
 
 ## Trial Run Mode (No-write Rehearsal)
 
-- "Run Test Trial" is an RA-facing frontend rehearsal mode for WW; Misokinesia exposes separate "Run Short Trial" and "Run Full Trial" controls.
+- WW and Misokinesia expose separate "Run Short Trial" and "Run Full Trial" controls for RA-facing rehearsal.
 - Canonical trial-mode behavior (fake ID format, consent rules, and module boundaries) is documented in `docs/TRIAL_MODE.md`.
 - In trial mode, frontend uses fake ids and local simulated submit success transitions.
-- WW trial mode is frontend-only and must not call `/sessions/start`, survey submit endpoints, or `/digitspan/runs`.
+- WW trial mode is frontend-only and must not call `/sessions/start`, survey submit endpoints, `/digitspan/runs`, `/stroop/runs`, `/card-sorting/runs`, or session-complete writes.
 - Misokinesia trial mode may call read-only clip-manifest endpoints, but must not call `/misokinesia/start`, `/misokinesia/participants/{id}/responses`, `/misokinesia/participants/{id}/mkaq`, `/misokinesia/participants/{id}/gad7`, `/misokinesia/participants/{id}/maq`, or `/misokinesia/participants/{id}/end-of-task`.
 - The `Trial Run` watermark is shown on WW participant pages only and must be excluded from `/misokinesia/[id]` even when `TRIAL_RUN_MODE` is active.
 - Two misokinesia trial modes exist: **Short Trial** (5 clips, MkAQ/MAQ q1–q10 only) and **Full Trial** (all clips, all items). Both present all three post-video surveys in a locally generated randomised order. Neither writes any rows. This does not change production storage or scoring contracts.
@@ -70,8 +70,11 @@
 | GET    | /sessions/last-native | RA | implemented | T97 |
 | DELETE | /sessions/last-native | RA | implemented | T97 |
 | GET    | /sessions/{session_id} | None | implemented | T08 |
+| GET    | /sessions/{session_id}/cognitive-battery | None (active session) | planned | TBD |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
 | POST   | /digitspan/runs | None (active session) | implemented | T09 |
+| POST   | /stroop/runs | None (active session) | planned | TBD |
+| POST   | /card-sorting/runs | None (active session) | planned | TBD |
 | POST   | /surveys/uls8 | None (active session) | implemented | T10 |
 | POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
 | POST   | /surveys/gad7 | None (active session) | implemented | T10 |
@@ -528,6 +531,7 @@
   - All demographic fields are required. If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required; otherwise it is optional/ignored.
   - `participants.daylight_exposure_minutes` is computed at request time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`) using `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
   - `start_path` is always `/session/<session_id>/uls8`. Consent is collected at `(ra)/new-session` before session creation; there is no `/consent` page within the session flow.
+  - Planned cognitive-battery behavior: session start assigns and stores a per-session randomized task order containing exactly `digitspan`, `stroop`, and `card_sorting`, plus the hidden card sorting rule order. These orders are used only after the four fixed surveys are complete.
   - No consent record is stored in Supabase (UI-only gating).
   - Demographics are stored on `participants` only (never on `sessions`).
   - Trial mode bypasses this endpoint entirely.
@@ -564,6 +568,112 @@
   ```
 - **Notes:** Returns 400/409 if session is not in `"active"` status. Expects exactly 14 trials.
   - Trial mode bypasses this endpoint and performs no server-side scoring/write.
+  - Planned cognitive-battery behavior: after the run is accepted, the frontend routes to the next task in the stored per-session battery order. Digit Span no longer always marks the session complete; only the final task in the assigned order does.
+
+---
+
+## Cognitive Battery Manifest
+
+### GET /sessions/{session_id}/cognitive-battery
+- **Auth:** None (active session validated)
+- **Status:** planned
+- **Purpose:** Return the stored cognitive task order and task manifest data needed for the post-survey battery.
+- **Response:**
+  ```json
+  {
+    "session_id": "uuid",
+    "task_order": ["stroop", "digitspan", "card_sorting"],
+    "card_sorting_rule_order": ["color", "number", "shape", "color", "shape", "number"]
+  }
+  ```
+- **Notes:** The card sorting rule order is hidden task state. It may be needed by the client to provide immediate correct/incorrect feedback, but it must never be displayed in participant-facing UI.
+
+---
+
+## Stroop
+
+Canonical task spec: [STROOP.md](STROOP.md)
+
+### POST /stroop/runs
+- **Auth:** None (active session validated)
+- **Status:** planned
+- **Request body:**
+  ```json
+  {
+    "session_id": "uuid",
+    "trials": [
+      {
+        "trial_number": 1,
+        "condition": "congruent",
+        "word": "RED",
+        "ink_color": "red",
+        "response_key": "r",
+        "response_color": "red",
+        "reaction_time_ms": 742,
+        "timed_out": false
+      }
+    ]
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "run_id": "uuid",
+    "total_trials": 80,
+    "correct_trials": 72,
+    "error_trials": 6,
+    "timeout_trials": 2,
+    "overall_accuracy": 0.9,
+    "congruent_accuracy": 0.95,
+    "incongruent_accuracy": 0.85,
+    "mean_rt_congruent_ms": 650,
+    "mean_rt_incongruent_ms": 780,
+    "stroop_interference_ms": 130
+  }
+  ```
+- **Notes:** Backend recomputes correctness and all summary metrics before persistence. Trial mode bypasses this endpoint and performs no server-side scoring/write.
+
+---
+
+## Card Sorting
+
+Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
+
+### POST /card-sorting/runs
+- **Auth:** None (active session validated)
+- **Status:** planned
+- **Request body:**
+  ```json
+  {
+    "session_id": "uuid",
+    "trials": [
+      {
+        "trial_number": 1,
+        "card_color": "red",
+        "card_shape": "triangle",
+        "card_number": 2,
+        "selected_reference_index": 3,
+        "reaction_time_ms": 2310
+      }
+    ]
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "run_id": "uuid",
+    "total_trials": 64,
+    "categories_completed": 4,
+    "total_correct": 45,
+    "total_errors": 19,
+    "perseverative_responses": 7,
+    "perseverative_errors": 6,
+    "nonperseverative_errors": 13,
+    "trials_to_first_category": 14,
+    "failure_to_maintain_set_count": 1
+  }
+  ```
+- **Notes:** Backend reads the stored hidden rule order for the session and recomputes correctness, streaks, category shifts, and all summary metrics before persistence. Trial mode bypasses this endpoint and performs no server-side scoring/write.
 
 ---
 
@@ -605,7 +715,7 @@
 - **Request body:** `{ "session_id": "uuid", "r1"–"r8": 1–5 each }`
 - **Response:** `{ "response_id": "uuid", "total_sum": integer, "mean_score": "decimal" }`
 
-> Trial mode note for surveys: all four survey submit endpoints are bypassed during "Run Test Trial"; routing advances via local simulated success only.
+> Trial mode note for surveys: all four survey submit endpoints are bypassed during WW Short Trial and Full Trial; routing advances via local simulated success only.
 
 ---
 

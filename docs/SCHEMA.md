@@ -68,6 +68,11 @@ invite state and links invite acceptance to Supabase Auth user creation/update.
 state. Redis remains an optional read cache only and is not the source of truth
 for analytics payloads.
 
+Planned Weather-Wellness cognitive battery additions are documented below as
+not-yet-migrated table shapes. They cover task order, raw task trials, and
+task-level scores only; they do not add weather analytics/modeling tables or
+derived analysis outputs.
+
 ---
 
 ## Admin User Management — Invitations
@@ -444,6 +449,108 @@ clause provides an additional DB-level guard against overwriting native rows.
 | sequence_entered | VARCHAR | NOT NULL     | Participant's backwards response |
 | correct          | BOOLEAN | NOT NULL     |                                  |
 
+
+---
+
+## Planned Tables: Weather-Wellness Cognitive Battery (not yet migrated)
+
+> Planning reference for the Stroop and card sorting additions. Do not write
+> application code against these tables until an Alembic migration applies them.
+> Scope is limited to recording per-session task order, raw task trials, and
+> task-level scores/statistics from the participant task itself. Weather
+> analytics/modeling outputs remain out of scope.
+
+### Planned addition to `sessions`
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| cognitive_task_order | JSONB | NULLABLE until migration/backfill policy is settled | Ordered array containing exactly `digitspan`, `stroop`, and `card_sorting` for native WW sessions |
+| card_sorting_rule_order | JSONB | NULLABLE until migration/backfill policy is settled | Hidden ordered category schedule for native WW card sorting |
+
+These orders are assigned at session start and remain stable across page
+refreshes and task transitions. Imported legacy sessions may remain null unless
+a future import policy defines a mapping.
+
+### Planned table: `stroop_runs`
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| run_id | UUID | PK | Generated server-side |
+| session_id | UUID | FK, NOT NULL, UNIQUE | -> sessions.session_id; at most 1 Stroop run per session |
+| participant_uuid | UUID | FK, NOT NULL | -> participants.participant_uuid |
+| total_trials | INT | NOT NULL | Planned production value: 80 |
+| correct_trials | INT | NOT NULL | Backend-computed |
+| error_trials | INT | NOT NULL | Incorrect non-timeout responses |
+| timeout_trials | INT | NOT NULL | No accepted response before timeout |
+| overall_accuracy | NUMERIC | NOT NULL | `correct_trials / total_trials` |
+| congruent_accuracy | NUMERIC | NULLABLE | Null if no congruent trials are scoreable |
+| incongruent_accuracy | NUMERIC | NULLABLE | Null if no incongruent trials are scoreable |
+| mean_rt_congruent_ms | NUMERIC | NULLABLE | Correct, non-timeout congruent trials |
+| mean_rt_incongruent_ms | NUMERIC | NULLABLE | Correct, non-timeout incongruent trials |
+| stroop_interference_ms | NUMERIC | NULLABLE | `mean_rt_incongruent_ms - mean_rt_congruent_ms` |
+| data_source | VARCHAR(16) | NOT NULL | `native` by default |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | |
+
+### Planned table: `stroop_trials`
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| trial_id | UUID | PK | Generated server-side |
+| run_id | UUID | FK, NOT NULL | -> stroop_runs.run_id |
+| trial_number | INT | NOT NULL | 1-based scored trial number |
+| condition | VARCHAR | NOT NULL | `congruent` or `incongruent` |
+| word | VARCHAR | NOT NULL | Displayed color word |
+| ink_color | VARCHAR | NOT NULL | Correct response color |
+| response_key | VARCHAR | NULLABLE | Pressed key; null for timeout |
+| response_color | VARCHAR | NULLABLE | Mapped response color; null for timeout |
+| correct | BOOLEAN | NOT NULL | Backend-computed |
+| reaction_time_ms | INT | NULLABLE | Null for timeout |
+| timed_out | BOOLEAN | NOT NULL | |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | |
+
+### Planned table: `card_sorting_runs`
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| run_id | UUID | PK | Generated server-side |
+| session_id | UUID | FK, NOT NULL, UNIQUE | -> sessions.session_id; at most 1 card sorting run per session |
+| participant_uuid | UUID | FK, NOT NULL | -> participants.participant_uuid |
+| rule_order | JSONB | NOT NULL | Hidden ordered category schedule, max 6 blocks |
+| total_trials | INT | NOT NULL | Max 64 |
+| categories_completed | INT | NOT NULL | 0-6 |
+| total_correct | INT | NOT NULL | Backend-computed |
+| total_errors | INT | NOT NULL | Backend-computed |
+| perseverative_responses | INT | NOT NULL | Backend-computed |
+| perseverative_errors | INT | NOT NULL | Backend-computed |
+| nonperseverative_errors | INT | NOT NULL | Backend-computed |
+| trials_to_first_category | INT | NULLABLE | Trial number where first category completes |
+| failure_to_maintain_set_count | INT | NOT NULL | Errors after 5-9 consecutive correct responses |
+| data_source | VARCHAR(16) | NOT NULL | `native` by default |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | |
+
+### Planned table: `card_sorting_trials`
+
+| Column | Type | Constraints | Notes |
+| --- | --- | --- | --- |
+| trial_id | UUID | PK | Generated server-side |
+| run_id | UUID | FK, NOT NULL | -> card_sorting_runs.run_id |
+| trial_number | INT | NOT NULL | 1-64 |
+| category_index | INT | NOT NULL | 1-6 current hidden category block |
+| active_rule | VARCHAR | NOT NULL | `color`, `shape`, or `number` |
+| previous_rule | VARCHAR | NULLABLE | Previous hidden rule after a shift |
+| card_color | VARCHAR | NOT NULL | Response-card attribute |
+| card_shape | VARCHAR | NOT NULL | Response-card attribute |
+| card_number | INT | NOT NULL | Response-card attribute |
+| selected_reference_index | INT | NOT NULL | 1-4 |
+| correct | BOOLEAN | NOT NULL | Backend-computed |
+| perseverative_response | BOOLEAN | NOT NULL | Backend-computed |
+| perseverative_error | BOOLEAN | NOT NULL | Backend-computed |
+| streak_before | INT | NOT NULL | Consecutive correct count before this response |
+| streak_after | INT | NOT NULL | Consecutive correct count after this response |
+| category_completed_after_trial | BOOLEAN | NOT NULL | True when this trial triggers the next rule |
+| reaction_time_ms | INT | NULLABLE | Client-measured |
+| feedback | VARCHAR | NOT NULL | `correct` or `incorrect` |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() | |
 
 ---
 

@@ -11,6 +11,8 @@
 | Instrument              | Full specification       | Key scoring notes                                          |
 |-------------------------|--------------------------|------------------------------------------------------------|
 | Backwards Digit Span    | [docs/labs/weather-wellness/weather/DIGITSPAN.md](./DIGITSPAN.md)   | Server-side: total_correct + max_span                     |
+| Stroop                  | [docs/labs/weather-wellness/weather/STROOP.md](./STROOP.md)         | Server-side: accuracy + condition RT + interference score |
+| Card Sorting            | [docs/labs/weather-wellness/weather/CARD_SORTING.md](./CARD_SORTING.md) | Server-side: categories, errors, perseverative scores |
 | ULS-8 (Loneliness)      | [docs/labs/weather-wellness/weather/ULS8.md](./ULS8.md)         | Reverse items 3 & 6; mean → 0-100 transform              |
 | CES-D 10 (Depression)   | [docs/labs/weather-wellness/weather/CESD10.md](./CESD10.md)     | Raw 1-4, convert to 0-3; reverse items 5 & 8; sum 0-30   |
 | GAD-7 (Anxiety)         | [docs/labs/weather-wellness/weather/GAD7.md](./GAD7.md)         | Raw 1-4, convert to 0-3; sum 0-21; severity band          |
@@ -62,6 +64,13 @@ Use these ranges to validate computed values server-side before persisting:
 |---------------|----------------|-------|--------|
 | Digit Span    | total_correct  | 0     | 14     |
 | Digit Span    | max_span       | 0     | 9      |
+| Stroop        | total_trials   | 0     | 80     |
+| Stroop        | accuracy       | 0.0   | 1.0    |
+| Stroop        | stroop_interference_ms | unbounded | unbounded |
+| Card Sorting  | total_trials   | 0     | 64     |
+| Card Sorting  | categories_completed | 0 | 6      |
+| Card Sorting  | total_correct  | 0     | 64     |
+| Card Sorting  | total_errors   | 0     | 64     |
 | ULS-8         | r1–r8          | 1     | 4      |
 | ULS-8         | computed_mean  | 1.0   | 4.0    |
 | ULS-8         | score_0_100    | 0.0   | 100.0  |
