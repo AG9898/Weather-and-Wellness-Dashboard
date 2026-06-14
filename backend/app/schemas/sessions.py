@@ -119,6 +119,14 @@ class StartSessionResponse(BaseModel):
     start_path: str
 
 
+class CognitiveBatteryResponse(BaseModel):
+    """Stored cognitive task manifest returned after the fixed WW surveys."""
+
+    session_id: UUID
+    task_order: list[str]
+    card_sorting_rule_order: list[str]
+
+
 class UndoLastSessionRequest(BaseModel):
     """Request body for DELETE /sessions/last-native."""
 
@@ -150,6 +158,7 @@ __all__ = [
     "AllowedStatus",
     "LastNativeSessionInfo",
     "SessionCreate",
+    "CognitiveBatteryResponse",
     "SessionListItemResponse",
     "SessionListResponse",
     "SessionResponse",

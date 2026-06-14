@@ -16,7 +16,7 @@
 - **FKs:** Enforced at DB level, not just application level
 
 > Migration head check: `alembic current -v` should report
-> `Rev: 20260603_000001 (head)`.
+> `Rev: 20260614_000001 (head)`.
 > Keep this value in sync after every new migration.
 
 > Planned statistical analysis rules derived from `reference/Weather_MLM.R` are
@@ -36,6 +36,10 @@ participants (1) ──────────────── (many) session
 study_days (1) ────────────────── (many) sessions
 sessions (1) ──────────────────── (1) digitspan_runs
 digitspan_runs (1) ─────────────── (14) digitspan_trials
+sessions (1) ──────────────────── (1) stroop_runs
+stroop_runs (1) ───────────────── (many) stroop_trials
+sessions (1) ──────────────────── (1) card_sorting_runs
+card_sorting_runs (1) ─────────── (many) card_sorting_trials
 sessions (1) ──────────────────── (1) survey_uls8
 sessions (1) ──────────────────── (1) survey_cesd10
 sessions (1) ──────────────────── (1) survey_gad7
@@ -68,10 +72,9 @@ invite state and links invite acceptance to Supabase Auth user creation/update.
 state. Redis remains an optional read cache only and is not the source of truth
 for analytics payloads.
 
-Planned Weather-Wellness cognitive battery additions are documented below as
-not-yet-migrated table shapes. They cover task order, raw task trials, and
-task-level scores only; they do not add weather analytics/modeling tables or
-derived analysis outputs.
+Weather-Wellness cognitive battery additions cover task order, raw task trials,
+and task-level scores only; they do not add weather analytics/modeling tables
+or derived analysis outputs.
 
 ---
 
@@ -452,26 +455,25 @@ clause provides an additional DB-level guard against overwriting native rows.
 
 ---
 
-## Planned Tables: Weather-Wellness Cognitive Battery (not yet migrated)
+## Tables: Weather-Wellness Cognitive Battery
 
-> Planning reference for the Stroop and card sorting additions. Do not write
-> application code against these tables until an Alembic migration applies them.
-> Scope is limited to recording per-session task order, raw task trials, and
-> task-level scores/statistics from the participant task itself. Weather
-> analytics/modeling outputs remain out of scope.
+> Applied by migration `20260614_000001` (T206). Scope is limited to recording
+> per-session task order, raw task trials, and task-level scores/statistics from
+> the participant task itself. Weather analytics/modeling outputs remain out of
+> scope.
 
-### Planned addition to `sessions`
+### Addition to `sessions`
 
 | Column | Type | Constraints | Notes |
 | --- | --- | --- | --- |
-| cognitive_task_order | JSONB | NULLABLE until migration/backfill policy is settled | Ordered array containing exactly `digitspan`, `stroop`, and `card_sorting` for native WW sessions |
-| card_sorting_rule_order | JSONB | NULLABLE until migration/backfill policy is settled | Hidden ordered category schedule for native WW card sorting |
+| cognitive_task_order | JSONB | NULLABLE, CHECK array when set | Ordered array containing exactly `digitspan`, `stroop`, and `card_sorting` for native WW sessions |
+| card_sorting_rule_order | JSONB | NULLABLE, CHECK array when set | Hidden ordered category schedule for native WW card sorting |
 
 These orders are assigned at session start and remain stable across page
 refreshes and task transitions. Imported legacy sessions may remain null unless
 a future import policy defines a mapping.
 
-### Planned table: `stroop_runs`
+### Table: `stroop_runs`
 
 | Column | Type | Constraints | Notes |
 | --- | --- | --- | --- |
@@ -482,22 +484,22 @@ a future import policy defines a mapping.
 | correct_trials | INT | NOT NULL | Backend-computed |
 | error_trials | INT | NOT NULL | Incorrect non-timeout responses |
 | timeout_trials | INT | NOT NULL | No accepted response before timeout |
-| overall_accuracy | NUMERIC | NOT NULL | `correct_trials / total_trials` |
-| congruent_accuracy | NUMERIC | NULLABLE | Null if no congruent trials are scoreable |
-| incongruent_accuracy | NUMERIC | NULLABLE | Null if no incongruent trials are scoreable |
-| mean_rt_congruent_ms | NUMERIC | NULLABLE | Correct, non-timeout congruent trials |
-| mean_rt_incongruent_ms | NUMERIC | NULLABLE | Correct, non-timeout incongruent trials |
-| stroop_interference_ms | NUMERIC | NULLABLE | `mean_rt_incongruent_ms - mean_rt_congruent_ms` |
+| overall_accuracy | NUMERIC(8,4) | NOT NULL | `correct_trials / total_trials` |
+| congruent_accuracy | NUMERIC(8,4) | NULLABLE | Null if no congruent trials are scoreable |
+| incongruent_accuracy | NUMERIC(8,4) | NULLABLE | Null if no incongruent trials are scoreable |
+| mean_rt_congruent_ms | NUMERIC(10,2) | NULLABLE | Correct, non-timeout congruent trials |
+| mean_rt_incongruent_ms | NUMERIC(10,2) | NULLABLE | Correct, non-timeout incongruent trials |
+| stroop_interference_ms | NUMERIC(10,2) | NULLABLE | `mean_rt_incongruent_ms - mean_rt_congruent_ms` |
 | data_source | VARCHAR(16) | NOT NULL | `native` by default |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | |
 
-### Planned table: `stroop_trials`
+### Table: `stroop_trials`
 
 | Column | Type | Constraints | Notes |
 | --- | --- | --- | --- |
 | trial_id | UUID | PK | Generated server-side |
 | run_id | UUID | FK, NOT NULL | -> stroop_runs.run_id |
-| trial_number | INT | NOT NULL | 1-based scored trial number |
+| trial_number | INT | NOT NULL, UNIQUE with `run_id` | 1-based scored trial number |
 | condition | VARCHAR | NOT NULL | `congruent` or `incongruent` |
 | word | VARCHAR | NOT NULL | Displayed color word |
 | ink_color | VARCHAR | NOT NULL | Correct response color |
@@ -508,14 +510,14 @@ a future import policy defines a mapping.
 | timed_out | BOOLEAN | NOT NULL | |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | |
 
-### Planned table: `card_sorting_runs`
+### Table: `card_sorting_runs`
 
 | Column | Type | Constraints | Notes |
 | --- | --- | --- | --- |
 | run_id | UUID | PK | Generated server-side |
 | session_id | UUID | FK, NOT NULL, UNIQUE | -> sessions.session_id; at most 1 card sorting run per session |
 | participant_uuid | UUID | FK, NOT NULL | -> participants.participant_uuid |
-| rule_order | JSONB | NOT NULL | Hidden ordered category schedule, max 6 blocks |
+| rule_order | JSONB | NOT NULL, CHECK array | Hidden ordered category schedule, max 6 blocks |
 | total_trials | INT | NOT NULL | Max 64 |
 | categories_completed | INT | NOT NULL | 0-6 |
 | total_correct | INT | NOT NULL | Backend-computed |
@@ -528,13 +530,13 @@ a future import policy defines a mapping.
 | data_source | VARCHAR(16) | NOT NULL | `native` by default |
 | created_at | TIMESTAMPTZ | DEFAULT NOW() | |
 
-### Planned table: `card_sorting_trials`
+### Table: `card_sorting_trials`
 
 | Column | Type | Constraints | Notes |
 | --- | --- | --- | --- |
 | trial_id | UUID | PK | Generated server-side |
 | run_id | UUID | FK, NOT NULL | -> card_sorting_runs.run_id |
-| trial_number | INT | NOT NULL | 1-64 |
+| trial_number | INT | NOT NULL, UNIQUE with `run_id` | 1-64 |
 | category_index | INT | NOT NULL | 1-6 current hidden category block |
 | active_rule | VARCHAR | NOT NULL | `color`, `shape`, or `number` |
 | previous_rule | VARCHAR | NULLABLE | Previous hidden rule after a shift |
@@ -1019,9 +1021,10 @@ Constraints/indexes:
 | 2026-05-19 | T184                  | Add miso demographics columns to `misokinesia_participants`: `age_band`, `gender`, `gender_other_text`, `country`, `country_other_text`, `nationality` (all VARCHAR NULLABLE)                                        |
 | 2026-06-03 | T199                  | Replace T184's six demographics columns with typed sourced-demographics columns from `reference/labs/Misokinesia/Demographics copy2.docx`                                                                                 |
 | 2026-06-05 | n/a                   | Revise misokinesia GAD-7 item storage to 0–3 scale and add conditional `difficulty_impact` column                                                                                                                   |
+| 2026-06-14 | T206                  | Add Weather-Wellness cognitive battery persistence: session task/rule orders, Stroop run/trial tables, and card sorting run/trial tables                                                                            |
 
 
-As of 2026-06-05, migration `20260605_000001` is the current head revision.
+As of 2026-06-14, migration `20260614_000001` is the current head revision.
 
 ---
 

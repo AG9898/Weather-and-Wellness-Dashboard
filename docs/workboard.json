@@ -3618,7 +3618,7 @@
       "id": "T206",
       "title": "WW cognitive battery schema and production migration",
       "description": "Implement the planned cognitive battery persistence schema from docs/SCHEMA.md with Alembic and SQLAlchemy models: session-level cognitive_task_order and card_sorting_rule_order, stroop_runs/stroop_trials, and card_sorting_runs/card_sorting_trials. Store raw task trials plus task-level scores/statistics only; do not add analytics/modeling tables or dashboard analysis outputs. Apply the migration to the production database as part of this task using the repo migration workflow and the production DATABASE_MIGRATION_URL; do not use the Supabase transaction pooler on port 6543. Scope cap: before starting, confirm the model, migration, docs, local verification, and production migration can be completed by one agent while preserving at least 30% context remaining; split before execution if needed.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [

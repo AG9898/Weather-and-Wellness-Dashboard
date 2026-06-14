@@ -3,11 +3,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, text
-from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
-
+from sqlalchemy.sql import func
 
 from app.db import Base
 
@@ -15,6 +14,14 @@ from app.db import Base
 class Session(Base):
     __tablename__ = "sessions"
     __table_args__ = (
+        CheckConstraint(
+            "cognitive_task_order IS NULL OR jsonb_typeof(cognitive_task_order) = 'array'",
+            name="cognitive_task_order_array",
+        ),
+        CheckConstraint(
+            "card_sorting_rule_order IS NULL OR jsonb_typeof(card_sorting_rule_order) = 'array'",
+            name="card_sorting_rule_order_array",
+        ),
         Index(
             "ix_sessions_complete_completed_at",
             "completed_at",
@@ -40,8 +47,16 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Set when session becomes complete; links session to weather data via study_days
     study_day_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("study_days.study_day_id"), nullable=True
+    )
+    cognitive_task_order: Mapped[list[str] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    card_sorting_rule_order: Mapped[list[str] | None] = mapped_column(
+        JSONB, nullable=True
     )

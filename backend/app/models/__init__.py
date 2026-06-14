@@ -1,6 +1,12 @@
 from .participants import Participant
 from .sessions import Session
 from .digitspan import DigitSpanRun, DigitSpanTrial
+from .cognitive import (
+    CardSortingRun,
+    CardSortingTrial,
+    StroopRun,
+    StroopTrial,
+)
 from .surveys import (
     SurveyULS8,
     SurveyCESD10,
@@ -24,6 +30,10 @@ __all__ = [
     "Session",
     "DigitSpanRun",
     "DigitSpanTrial",
+    "StroopRun",
+    "StroopTrial",
+    "CardSortingRun",
+    "CardSortingTrial",
     "SurveyULS8",
     "SurveyCESD10",
     "SurveyGAD7",

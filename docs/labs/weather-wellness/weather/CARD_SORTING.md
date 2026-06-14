@@ -154,7 +154,7 @@ Response includes the persisted `run_id` plus the run-level metrics above.
 
 ## Planned Data Storage
 
-See `docs/SCHEMA.md` for the planned table shape once migrated.
+See `docs/SCHEMA.md` for the migrated table shape.
 
 **Per run** (`card_sorting_runs`): one row per `session_id`, including
 `participant_uuid`, hidden rule order, category count, correctness/error

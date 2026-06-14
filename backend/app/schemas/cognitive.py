@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+from decimal import Decimal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class StroopTrialSubmission(BaseModel):
+    trial_number: int = Field(..., ge=1)
+    condition: str
+    word: str = Field(..., min_length=1)
+    ink_color: str = Field(..., min_length=1)
+    response_key: str | None = None
+    response_color: str | None = None
+    reaction_time_ms: int | None = Field(default=None, ge=0)
+    timed_out: bool
+
+
+class StroopRunCreate(BaseModel):
+    session_id: UUID
+    trials: list[StroopTrialSubmission] = Field(..., min_length=1)
+
+
+class StroopRunResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    run_id: UUID
+    total_trials: int
+    correct_trials: int
+    error_trials: int
+    timeout_trials: int
+    overall_accuracy: Decimal
+    congruent_accuracy: Decimal | None = None
+    incongruent_accuracy: Decimal | None = None
+    mean_rt_congruent_ms: Decimal | None = None
+    mean_rt_incongruent_ms: Decimal | None = None
+    stroop_interference_ms: Decimal | None = None
+
+
+class CardSortingTrialSubmission(BaseModel):
+    trial_number: int = Field(..., ge=1, le=64)
+    card_color: str = Field(..., min_length=1)
+    card_shape: str = Field(..., min_length=1)
+    card_number: int = Field(..., ge=1)
+    selected_reference_index: int = Field(..., ge=1, le=4)
+    reaction_time_ms: int | None = Field(default=None, ge=0)
+
+
+class CardSortingRunCreate(BaseModel):
+    session_id: UUID
+    trials: list[CardSortingTrialSubmission] = Field(..., min_length=1, max_length=64)
+
+
+class CardSortingRunResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    run_id: UUID
+    total_trials: int
+    categories_completed: int
+    total_correct: int
+    total_errors: int
+    perseverative_responses: int
+    perseverative_errors: int
+    nonperseverative_errors: int
+    trials_to_first_category: int | None = None
+    failure_to_maintain_set_count: int
+
+
+__all__ = [
+    "CardSortingRunCreate",
+    "CardSortingRunResponse",
+    "CardSortingTrialSubmission",
+    "StroopRunCreate",
+    "StroopRunResponse",
+    "StroopTrialSubmission",
+]

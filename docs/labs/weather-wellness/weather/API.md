@@ -531,7 +531,7 @@
   - All demographic fields are required. If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required; otherwise it is optional/ignored.
   - `participants.daylight_exposure_minutes` is computed at request time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`) using `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
   - `start_path` is always `/session/<session_id>/uls8`. Consent is collected at `(ra)/new-session` before session creation; there is no `/consent` page within the session flow.
-  - Planned cognitive-battery behavior: session start assigns and stores a per-session randomized task order containing exactly `digitspan`, `stroop`, and `card_sorting`, plus the hidden card sorting rule order. These orders are used only after the four fixed surveys are complete.
+  - Cognitive-battery storage is available on `sessions` as nullable `cognitive_task_order` and `card_sorting_rule_order` JSONB fields. Session-start assignment logic remains planned; when implemented it will store a per-session randomized task order containing exactly `digitspan`, `stroop`, and `card_sorting`, plus the hidden card sorting rule order.
   - No consent record is stored in Supabase (UI-only gating).
   - Demographics are stored on `participants` only (never on `sessions`).
   - Trial mode bypasses this endpoint entirely.
@@ -587,6 +587,7 @@
   }
   ```
 - **Notes:** The card sorting rule order is hidden task state. It may be needed by the client to provide immediate correct/incorrect feedback, but it must never be displayed in participant-facing UI.
+  - Persistence fields for the manifest were added by T206; this endpoint remains planned until the router/service layer is implemented.
 
 ---
 
@@ -631,7 +632,7 @@ Canonical task spec: [STROOP.md](STROOP.md)
     "stroop_interference_ms": 130
   }
   ```
-- **Notes:** Backend recomputes correctness and all summary metrics before persistence. Trial mode bypasses this endpoint and performs no server-side scoring/write.
+- **Notes:** Backend recomputes correctness and all summary metrics before persistence. T206 added the `stroop_runs` and `stroop_trials` persistence tables; this endpoint remains planned until the router/service layer is implemented. Trial mode bypasses this endpoint and performs no server-side scoring/write.
 
 ---
 
@@ -673,7 +674,7 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
     "failure_to_maintain_set_count": 1
   }
   ```
-- **Notes:** Backend reads the stored hidden rule order for the session and recomputes correctness, streaks, category shifts, and all summary metrics before persistence. Trial mode bypasses this endpoint and performs no server-side scoring/write.
+- **Notes:** Backend reads the stored hidden rule order for the session and recomputes correctness, streaks, category shifts, and all summary metrics before persistence. T206 added the `card_sorting_runs` and `card_sorting_trials` persistence tables; this endpoint remains planned until the router/service layer is implemented. Trial mode bypasses this endpoint and performs no server-side scoring/write.
 
 ---
 
