@@ -3762,7 +3762,7 @@
       "id": "T210",
       "title": "WW frontend cognitive battery router",
       "description": "Add frontend battery state/routing helpers that fetch the cognitive battery manifest after CogFunc, derive the first/next task path, and let each cognitive task submit then route to the next task or completion based on the stored order. Refactor Digit Span completion so it no longer always marks the session complete. Keep this task to routing, typed helpers, and Digit Span integration; do not implement Stroop or card sorting UI beyond placeholder route wiring if needed. Scope cap: keep it focused enough for one agent to complete with at least 30% context remaining.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [

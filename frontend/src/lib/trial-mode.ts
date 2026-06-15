@@ -1,4 +1,5 @@
 import type { PostSurveyKey } from "@/lib/misokinesia-phase";
+import type { CognitiveTaskKey } from "@/lib/api";
 
 export const TRIAL_RUN_QUERY_PARAM = "trial";
 export const TRIAL_RUN_QUERY_VALUE = "1";
@@ -15,6 +16,7 @@ export interface TrialRunState {
   misokinesia_trial_mode?: MisokinesiaTrialMode;
   session_id?: string;
   misokinesia_participant_id?: string;
+  cognitive_task_order?: CognitiveTaskKey[];
   created_at: string;
 }
 
@@ -148,6 +150,92 @@ export function getWeatherWellnessSubmitMode(sessionId: string): TrialSubmitMode
   return isTrialRunId(sessionId) ? "trial" : "production";
 }
 
+// ── Cognitive battery routing ──
+
+/** The three cognitive tasks that make up the post-survey battery. */
+export const COGNITIVE_TASK_KEYS: CognitiveTaskKey[] = [
+  "digitspan",
+  "stroop",
+  "card_sorting",
+];
+
+/** Map a cognitive task key to its participant route segment. */
+export function cognitiveTaskRouteSegment(task: CognitiveTaskKey): string {
+  return task;
+}
+
+/** Build the participant page path for a cognitive task within a session. */
+export function buildCognitiveTaskPath(
+  sessionId: string,
+  task: CognitiveTaskKey
+): string {
+  return `/session/${sessionId}/${cognitiveTaskRouteSegment(task)}`;
+}
+
+/** Path for the first task in an assigned battery order. */
+export function firstCognitiveTaskPath(
+  sessionId: string,
+  order: CognitiveTaskKey[]
+): string {
+  const first = order[0];
+  if (!first) {
+    return `/session/${sessionId}/complete`;
+  }
+  return buildCognitiveTaskPath(sessionId, first);
+}
+
+/**
+ * Resolve the destination path after a cognitive task submits. Routes to the
+ * next task in the assigned order, or to the completion screen when the task is
+ * the last one in the battery.
+ */
+export function nextCognitiveTaskPath(
+  sessionId: string,
+  order: CognitiveTaskKey[],
+  current: CognitiveTaskKey
+): string {
+  const index = order.indexOf(current);
+  const next = index >= 0 ? order[index + 1] : undefined;
+  if (next === undefined) {
+    return `/session/${sessionId}/complete`;
+  }
+  return buildCognitiveTaskPath(sessionId, next);
+}
+
+/** True when the given task is the final one in the assigned battery order. */
+export function isLastCognitiveTask(
+  order: CognitiveTaskKey[],
+  current: CognitiveTaskKey
+): boolean {
+  return order.length > 0 && order[order.length - 1] === current;
+}
+
+/** Generate a randomized local-only battery order for trial rehearsal. */
+export function createTrialCognitiveTaskOrder(): CognitiveTaskKey[] {
+  const order = [...COGNITIVE_TASK_KEYS];
+  for (let i = order.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
+
+/**
+ * Return the battery order for a trial session, generating and persisting one
+ * on first read so it stays stable across task transitions within the run.
+ */
+export function getOrCreateTrialCognitiveTaskOrder(): CognitiveTaskKey[] {
+  const state = readTrialRunState();
+  if (state?.cognitive_task_order && state.cognitive_task_order.length > 0) {
+    return state.cognitive_task_order;
+  }
+  const order = createTrialCognitiveTaskOrder();
+  if (state) {
+    persistTrialRunState({ ...state, cognitive_task_order: order });
+  }
+  return order;
+}
+
 export function getMisokinesiaSubmitMode(trialMode: boolean): TrialSubmitMode {
   return trialMode ? "trial" : "production";
 }
@@ -261,6 +349,14 @@ function isTrialRunState(value: unknown): value is TrialRunState {
     return false;
   }
   if (typeof candidate.created_at !== "string") return false;
+  if (candidate.cognitive_task_order !== undefined) {
+    if (!Array.isArray(candidate.cognitive_task_order)) return false;
+    const valid = candidate.cognitive_task_order.every(
+      (key) =>
+        key === "digitspan" || key === "stroop" || key === "card_sorting"
+    );
+    if (!valid) return false;
+  }
   if (candidate.session_id !== undefined && !isTrialRunId(candidate.session_id)) return false;
   if (
     candidate.misokinesia_participant_id !== undefined &&

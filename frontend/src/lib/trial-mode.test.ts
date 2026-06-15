@@ -19,6 +19,13 @@ import {
   getMisokinesiaSubmitMode,
   getTrialRunWatermarkLabel,
   getWeatherWellnessSubmitMode,
+  COGNITIVE_TASK_KEYS,
+  buildCognitiveTaskPath,
+  firstCognitiveTaskPath,
+  nextCognitiveTaskPath,
+  isLastCognitiveTask,
+  createTrialCognitiveTaskOrder,
+  getOrCreateTrialCognitiveTaskOrder,
   isTrialRunActiveForLocation,
   isTrialRunId,
   persistTrialRunState,
@@ -199,6 +206,85 @@ describe("trial-mode submit branching", () => {
 
     expect(submitSurvey).toHaveBeenCalledOnce();
     expect(submitMisokinesiaResponse).toHaveBeenCalledOnce();
+  });
+});
+
+describe("T210 cognitive battery routing", () => {
+  it("builds task paths from the session id and task key", () => {
+    expect(buildCognitiveTaskPath("abc", "digitspan")).toBe("/session/abc/digitspan");
+    expect(buildCognitiveTaskPath("abc", "stroop")).toBe("/session/abc/stroop");
+    expect(buildCognitiveTaskPath("abc", "card_sorting")).toBe("/session/abc/card_sorting");
+  });
+
+  it("routes to the first task in the assigned order", () => {
+    expect(firstCognitiveTaskPath("s1", ["stroop", "digitspan", "card_sorting"])).toBe(
+      "/session/s1/stroop"
+    );
+    expect(firstCognitiveTaskPath("s1", ["card_sorting", "stroop", "digitspan"])).toBe(
+      "/session/s1/card_sorting"
+    );
+  });
+
+  it("routes an empty order straight to completion", () => {
+    expect(firstCognitiveTaskPath("s1", [])).toBe("/session/s1/complete");
+  });
+
+  it("routes to the next task unless the current task is last", () => {
+    const order = ["stroop", "digitspan", "card_sorting"] as const;
+    expect(nextCognitiveTaskPath("s1", [...order], "stroop")).toBe("/session/s1/digitspan");
+    expect(nextCognitiveTaskPath("s1", [...order], "digitspan")).toBe(
+      "/session/s1/card_sorting"
+    );
+    expect(nextCognitiveTaskPath("s1", [...order], "card_sorting")).toBe(
+      "/session/s1/complete"
+    );
+  });
+
+  it("routes digitspan to complete only when it is last in the order", () => {
+    expect(nextCognitiveTaskPath("s1", ["stroop", "card_sorting", "digitspan"], "digitspan")).toBe(
+      "/session/s1/complete"
+    );
+    expect(nextCognitiveTaskPath("s1", ["digitspan", "stroop", "card_sorting"], "digitspan")).toBe(
+      "/session/s1/stroop"
+    );
+  });
+
+  it("identifies the last cognitive task in an order", () => {
+    expect(isLastCognitiveTask(["stroop", "digitspan", "card_sorting"], "card_sorting")).toBe(true);
+    expect(isLastCognitiveTask(["stroop", "digitspan", "card_sorting"], "digitspan")).toBe(false);
+    expect(isLastCognitiveTask(["digitspan", "stroop", "card_sorting"], "card_sorting")).toBe(true);
+    expect(isLastCognitiveTask([], "digitspan")).toBe(false);
+  });
+
+  it("generates a trial order that is a permutation of the three tasks", () => {
+    const order = createTrialCognitiveTaskOrder();
+    expect(order).toHaveLength(3);
+    expect(new Set(order)).toEqual(new Set(COGNITIVE_TASK_KEYS));
+  });
+
+  it("persists and reuses a stable trial battery order across reads", () => {
+    const state = createTrialRunState("weather-wellness");
+    persistTrialRunState(state);
+
+    const first = getOrCreateTrialCognitiveTaskOrder();
+    const second = getOrCreateTrialCognitiveTaskOrder();
+
+    expect(first).toEqual(second);
+    expect(new Set(first)).toEqual(new Set(COGNITIVE_TASK_KEYS));
+  });
+
+  it("CogFunc routes to the manifest first task instead of hardcoding digitspan", () => {
+    const source = readFrontendFile("src/app/session/[session_id]/cogfunc/page.tsx");
+    expect(source).toContain("getCognitiveBattery");
+    expect(source).toContain("firstCognitiveTaskPath");
+    expect(source).not.toContain("/digitspan`");
+  });
+
+  it("Digit Span routes via nextCognitiveTaskPath and gates session completion", () => {
+    const source = readFrontendFile("src/app/session/[session_id]/digitspan/page.tsx");
+    expect(source).toContain("nextCognitiveTaskPath");
+    expect(source).toContain("isLastCognitiveTask");
+    expect(source).toContain("if (lastTask)");
   });
 });
 

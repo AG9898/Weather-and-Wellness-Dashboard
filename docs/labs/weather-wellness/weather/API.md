@@ -569,7 +569,7 @@
   ```
 - **Notes:** Returns 400/409 if session is not in `"active"` status. Expects exactly 14 trials.
   - Trial mode bypasses this endpoint and performs no server-side scoring/write.
-  - Planned cognitive-battery behavior: after the run is accepted, the frontend routes to the next task in the stored per-session battery order. Digit Span no longer always marks the session complete; only the final task in the assigned order does.
+  - Cognitive-battery routing (T210, implemented): after the run is accepted, the frontend reads the stored per-session order from `GET /sessions/{session_id}/cognitive-battery` and routes to the next task in that order via the helpers in `frontend/src/lib/trial-mode.ts` (`nextCognitiveTaskPath`, `isLastCognitiveTask`). Digit Span no longer always marks the session complete; it only `PATCH`es `/sessions/{id}/status` to `complete` when it is the final task in the assigned order. CogFunc routes to the manifest's first task (`firstCognitiveTaskPath`) rather than hardcoding Digit Span. Trial mode generates and persists an equivalent local order (`getOrCreateTrialCognitiveTaskOrder`) and performs no backend writes.
 
 ---
 

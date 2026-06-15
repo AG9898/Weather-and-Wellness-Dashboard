@@ -3,7 +3,15 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { apiPost, apiPatch, getParticipantErrorMessage, type DigitSpanRunResponse, type SessionResponse } from "@/lib/api";
+import {
+  apiPost,
+  apiPatch,
+  getCognitiveBattery,
+  getParticipantErrorMessage,
+  type CognitiveTaskKey,
+  type DigitSpanRunResponse,
+  type SessionResponse,
+} from "@/lib/api";
 import {
   EditorialTaskHeader,
   EditorialTaskPanel,
@@ -11,7 +19,10 @@ import {
 } from "@/lib/components/EditorialPrimitives";
 import {
   buildTrialRunPath,
+  getOrCreateTrialCognitiveTaskOrder,
   getWeatherWellnessSubmitMode,
+  isLastCognitiveTask,
+  nextCognitiveTaskPath,
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
 
@@ -80,6 +91,28 @@ export default function DigitSpanPage() {
   const [results, setResults] = useState<TrialData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [taskOrder, setTaskOrder] = useState<CognitiveTaskKey[] | null>(null);
+
+  // ── Resolve the assigned battery order so completion routes correctly ──
+
+  useEffect(() => {
+    let cancelled = false;
+    if (getWeatherWellnessSubmitMode(sessionId) === "trial") {
+      setTaskOrder(getOrCreateTrialCognitiveTaskOrder());
+      return;
+    }
+    getCognitiveBattery(sessionId)
+      .then((battery) => {
+        if (!cancelled) setTaskOrder(battery.task_order);
+      })
+      .catch(() => {
+        // Fall back to single-task behavior if the manifest is unavailable.
+        if (!cancelled) setTaskOrder(["digitspan"]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
 
   // ── Digit presentation via setTimeout chains ──
 
@@ -216,18 +249,23 @@ export default function DigitSpanPage() {
     setSubmitting(true);
     setPhase("submitting");
     setError(null);
+    const order = taskOrder ?? ["digitspan"];
+    const lastTask = isLastCognitiveTask(order, "digitspan");
+    const nextPath = nextCognitiveTaskPath(sessionId, order, "digitspan");
     try {
       await runTrialAwareSubmit(getWeatherWellnessSubmitMode(sessionId), {
         trial: () => {
-          router.push(buildTrialRunPath(`/session/${sessionId}/complete`));
+          router.push(buildTrialRunPath(nextPath));
         },
         production: async () => {
           await apiPost<DigitSpanRunResponse>("/digitspan/runs", {
             session_id: sessionId,
             trials: results,
           });
-          await apiPatch<SessionResponse>(`/sessions/${sessionId}/status`, { status: "complete" });
-          router.push(`/session/${sessionId}/complete`);
+          if (lastTask) {
+            await apiPatch<SessionResponse>(`/sessions/${sessionId}/status`, { status: "complete" });
+          }
+          router.push(nextPath);
         },
       });
     } catch (err) {

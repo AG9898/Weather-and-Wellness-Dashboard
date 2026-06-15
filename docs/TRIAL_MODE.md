@@ -40,6 +40,10 @@ Canonical specification for trial-run behavior across WW and Misokinesia partici
   simulated submit success, and no backend writes.
 - Full Trial mirrors production-length WW participant flow: four surveys followed
   by the randomized cognitive task battery.
+- The trial cognitive battery order is generated and persisted locally on the
+  trial run state by `getOrCreateTrialCognitiveTaskOrder` (in
+  `frontend/src/lib/trial-mode.ts`) so it stays stable across task transitions
+  and never calls `GET /sessions/{id}/cognitive-battery` or any write endpoint.
 - Short Trial keeps the same major sections but uses shortened cognitive task
   protocols for fast RA rehearsal.
 - Both modes include a WW-only section jumper. The jumper is trial-only and can

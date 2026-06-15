@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { apiPost, getParticipantErrorMessage, type CogFunc8aResponse } from "@/lib/api";
+import {
+  apiPost,
+  getCognitiveBattery,
+  getParticipantErrorMessage,
+  type CogFunc8aResponse,
+} from "@/lib/api";
 import SurveyForm, { type SurveyItem, type ScaleOption } from "@/lib/components/SurveyForm";
 import {
   buildTrialRunPath,
+  firstCognitiveTaskPath,
+  getOrCreateTrialCognitiveTaskOrder,
   getWeatherWellnessSubmitMode,
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
@@ -43,14 +50,16 @@ export default function CogFuncPage() {
     try {
       await runTrialAwareSubmit(getWeatherWellnessSubmitMode(sessionId), {
         trial: () => {
-          router.push(buildTrialRunPath(`/session/${sessionId}/digitspan`));
+          const order = getOrCreateTrialCognitiveTaskOrder();
+          router.push(buildTrialRunPath(firstCognitiveTaskPath(sessionId, order)));
         },
         production: async () => {
           await apiPost<CogFunc8aResponse>("/surveys/cogfunc8a", {
             session_id: sessionId,
             ...responses,
           });
-          router.push(`/session/${sessionId}/digitspan`);
+          const battery = await getCognitiveBattery(sessionId);
+          router.push(firstCognitiveTaskPath(sessionId, battery.task_order));
         },
       });
     } catch (err) {
