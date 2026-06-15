@@ -33,15 +33,16 @@ https://www.psytoolkit.org/experiment-library/stroop.html.
 
 ## Stimuli
 
-Use a small fixed color set with one response key per color. The initial planned
-set is:
+Use a small fixed color set with one response key per color. Responses are bound
+to the number keys `1`–`4` (number-row and numpad both emit these), shown on the
+participant UI as labelled keycaps next to each color swatch:
 
 | Ink color | Word | Response key |
 |---|---|---|
-| red | RED | R |
-| blue | BLUE | B |
-| green | GREEN | G |
-| yellow | YELLOW | Y |
+| red | RED | 1 |
+| blue | BLUE | 2 |
+| green | GREEN | 3 |
+| yellow | YELLOW | 4 |
 
 Trials are either:
 
@@ -116,7 +117,7 @@ Payload:
       "condition": "congruent",
       "word": "RED",
       "ink_color": "red",
-      "response_key": "r",
+      "response_key": "1",
       "response_color": "red",
       "reaction_time_ms": 742,
       "timed_out": false
@@ -165,9 +166,11 @@ built on the shared WW trial/test shell (`EditorialTaskShell` /
 Flow: instructions → 4 unscored practice trials with feedback → scored block →
 end-of-task submit. A fixation `+` is shown between scored trials.
 
-- **Stimuli/keys.** Ink colors red/blue/green/yellow with response keys
-  `r`/`b`/`g`/`y` (matched case-insensitively). Only those keys are accepted;
-  all other keys are ignored. Space advances instruction screens.
+- **Stimuli/keys.** Ink colors red/blue/green/yellow bound to number keys
+  `1`/`2`/`3`/`4` respectively. Only those keys are accepted; all other keys are
+  ignored. Space advances instruction screens. The number→color mapping is shown
+  on-screen as labelled keycaps (`ColorKeyLegend`) on every instruction, practice,
+  and scored trial.
 - **Balanced scored trials.** Production runs 80 scored trials (40 congruent /
   40 incongruent), shuffled. Incongruent stimuli always render a word whose
   meaning differs from the ink color.

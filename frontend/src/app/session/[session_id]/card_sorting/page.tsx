@@ -144,6 +144,17 @@ export default function CardSortingPage() {
   const streakRef = useRef(0);
   const categoriesRef = useRef(0);
 
+  // Trial-mode-only debug mirror of the hidden state. Rendered solely when
+  // isTrialMode is true so RAs can confirm the active rule, streak progress,
+  // and rule shifts. Never surfaced in production runs.
+  const [debug, setDebug] = useState({
+    ruleIndex: 0,
+    appliedRule: null as CardSortingRuleKey | null,
+    streak: 0,
+    categories: 0,
+    shifted: false,
+  });
+
   const cardShownAtRef = useRef(0);
 
   // ── Resolve battery order + hidden rule order ──
@@ -197,6 +208,7 @@ export default function CardSortingPage() {
     ruleIndexRef.current = 0;
     streakRef.current = 0;
     categoriesRef.current = 0;
+    setDebug({ ruleIndex: 0, appliedRule: null, streak: 0, categories: 0, shifted: false });
     startTrial(0);
   };
 
@@ -219,6 +231,7 @@ export default function CardSortingPage() {
     };
 
     // Update hidden streak / category state (feedback only).
+    let shifted = false;
     if (isCorrect) {
       streakRef.current += 1;
       if (streakRef.current >= SHIFT_STREAK) {
@@ -230,10 +243,22 @@ export default function CardSortingPage() {
         if (ruleIndexRef.current < ruleOrder.length - 1) {
           ruleIndexRef.current += 1;
         }
+        shifted = true;
       }
     } else {
       streakRef.current = 0;
     }
+
+    // Mirror hidden state for the trial-only debug indicator. `appliedRule` is
+    // the rule scored against this card; `ruleIndex` already points at the rule
+    // for the next card after any shift.
+    setDebug({
+      ruleIndex: ruleIndexRef.current,
+      appliedRule: activeRule,
+      streak: streakRef.current,
+      categories: categoriesRef.current,
+      shifted,
+    });
 
     setFeedback(isCorrect ? "Correct" : "Incorrect");
     setResults((prev) => [...prev, trial]);
@@ -337,6 +362,13 @@ export default function CardSortingPage() {
       >
         <CurrentCard card={currentCard} />
         <ReferenceRow onSelect={selectReference} />
+        {isTrialMode && ruleOrder && (
+          <TrialRuleIndicator
+            rule={ruleOrder[debug.ruleIndex] ?? null}
+            streak={debug.streak}
+            categories={debug.categories}
+          />
+        )}
       </Screen>
     );
   }
@@ -355,6 +387,14 @@ export default function CardSortingPage() {
       >
         <CurrentCard card={currentCard} />
         <p className={`mt-6 text-2xl font-bold ${tone}`}>{feedback}</p>
+        {isTrialMode && (
+          <TrialRuleIndicator
+            rule={debug.appliedRule}
+            streak={debug.streak}
+            categories={debug.categories}
+            shifted={debug.shifted}
+          />
+        )}
       </Screen>
     );
   }
@@ -429,6 +469,46 @@ function Screen({ children, kicker, title, description, centered = true, progres
         {children && <div className="flex flex-col items-center text-center">{children}</div>}
       </EditorialTaskPanel>
     </EditorialTaskShell>
+  );
+}
+
+// ── Trial-only rule indicator ──
+
+/**
+ * Debug banner shown ONLY during trial runs (isTrialMode). Surfaces the hidden
+ * sorting rule, current streak toward a shift, and categories completed so RAs
+ * can confirm the task is scoring and shifting correctly. Never rendered in
+ * production runs.
+ */
+function TrialRuleIndicator({
+  rule,
+  streak,
+  categories,
+  shifted = false,
+}: {
+  rule: CardSortingRuleKey | null;
+  streak: number;
+  categories: number;
+  shifted?: boolean;
+}) {
+  return (
+    <div className="mt-7 w-full max-w-md rounded-xl border border-dashed border-primary/50 bg-primary/5 px-4 py-3 text-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+        Trial mode · hidden rule (RA only)
+      </p>
+      <p className="mt-1.5 text-foreground">
+        Active rule:{" "}
+        <span className="font-mono font-bold uppercase">{rule ?? "—"}</span>
+        <span className="ml-2 text-muted-foreground">
+          streak {streak}/{SHIFT_STREAK} · categories {categories}/{MAX_CATEGORIES}
+        </span>
+      </p>
+      {shifted && (
+        <p className="mt-1 text-xs font-medium text-primary">
+          Category complete — rule shifts on the next card.
+        </p>
+      )}
+    </div>
   );
 }
 

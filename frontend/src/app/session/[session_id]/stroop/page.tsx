@@ -35,12 +35,12 @@ type Condition = "congruent" | "incongruent";
 
 const COLORS: StroopColor[] = ["red", "blue", "green", "yellow"];
 
-/** One response key per color. Keys are matched case-insensitively. */
+/** One number key per color (1–4). Number-row and numpad both emit these. */
 const KEY_TO_COLOR: Record<string, StroopColor> = {
-  r: "red",
-  b: "blue",
-  g: "green",
-  y: "yellow",
+  "1": "red",
+  "2": "blue",
+  "3": "green",
+  "4": "yellow",
 };
 
 /** CSS color values for the rendered ink. */
@@ -389,8 +389,8 @@ export default function StroopPage() {
         <div className="space-y-2 text-left text-sm text-muted-foreground">
           <p>Each screen shows one word printed in a color.</p>
           <p>
-            Press the key for the <strong>ink color</strong> of the word, ignoring what the word
-            says.
+            Press the <strong>number key (1–4)</strong> for the <strong>ink color</strong> of the
+            word, ignoring what the word says.
           </p>
         </div>
         <ColorKeyLegend />
@@ -414,7 +414,7 @@ export default function StroopPage() {
 
   if (phase === "practice-trial") {
     return (
-      <Screen kicker="Practice" title="Respond to the ink color" description="Press the key for the color of the ink.">
+      <Screen kicker="Practice" title="Respond to the ink color" description="Press the number key (1–4) for the color of the ink.">
         <StimulusWord stimulus={currentStimulus} />
         <ColorKeyLegend compact />
       </Screen>
@@ -457,7 +457,7 @@ export default function StroopPage() {
       <Screen
         kicker="Scored task"
         title="Respond to the ink color"
-        description="Press the key for the color of the ink."
+        description="Press the number key (1–4) for the color of the ink."
         progress={{
           current: trialIndex,
           total: scoredCount,
@@ -476,7 +476,7 @@ export default function StroopPage() {
       <Screen
         kicker="Scored task"
         title="Respond to the ink color"
-        description="Press the key for the color of the ink."
+        description="Press the number key (1–4) for the color of the ink."
         progress={{
           current: trialIndex + 1,
           total: scoredCount,
@@ -573,25 +573,34 @@ function StimulusWord({ stimulus }: { stimulus: StroopStimulus | null }) {
   );
 }
 
+/** Ordered key → color pairs (1→red, 2→blue, 3→green, 4→yellow). */
+const KEY_LEGEND: { key: string; color: StroopColor }[] = Object.entries(KEY_TO_COLOR)
+  .map(([key, color]) => ({ key, color }))
+  .sort((a, b) => Number(a.key) - Number(b.key));
+
 function ColorKeyLegend({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-3 ${compact ? "mt-6" : "mt-8"}`}>
-      {COLORS.map((color) => {
-        const key = Object.keys(KEY_TO_COLOR).find((k) => KEY_TO_COLOR[k] === color) ?? "";
-        return (
+    <div className={`flex flex-col items-center gap-2 ${compact ? "mt-6" : "mt-8"}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Press the number key for the ink color
+      </p>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {KEY_LEGEND.map(({ key, color }) => (
           <span
             key={color}
             className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm"
           >
+            <kbd className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted font-mono text-base font-bold text-foreground shadow-sm">
+              {key}
+            </kbd>
             <span
-              className="inline-block h-3 w-3 rounded-full"
+              className="inline-block h-3.5 w-3.5 rounded-full"
               style={{ background: COLOR_HEX[color] }}
             />
-            <span className="font-mono font-semibold uppercase">{key}</span>
             <span className="capitalize text-muted-foreground">{color}</span>
           </span>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }

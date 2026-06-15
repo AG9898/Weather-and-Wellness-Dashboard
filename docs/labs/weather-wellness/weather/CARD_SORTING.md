@@ -87,6 +87,9 @@ Requirements:
 - Trial mode uses local simulated submit success and routes to the next trial
   section without calling `POST /card-sorting/runs`.
 - The WW trial section jumper may enter card sorting directly in trial mode only.
+- Trial runs render an RA-only rule indicator (active rule, streak, categories,
+  shift notice) so scoring/shift behaviour can be verified. See Participant
+  Feedback below. This indicator is never shown in production runs.
 
 ---
 
@@ -98,7 +101,13 @@ After every sort, show simple feedback:
 - Incorrect
 
 Do not state the active category, upcoming category, streak count, number of
-categories completed, or remaining rule schedule.
+categories completed, or remaining rule schedule in **production** runs.
+
+Trial runs are the sole exception: when `isTrialMode` is true the page renders a
+clearly-labelled "Trial mode · hidden rule (RA only)" indicator exposing the
+active rule, streak progress (`streak/10`), categories completed (`/6`), and a
+rule-shift notice. This lets RAs confirm scoring and shift behaviour and is never
+shown for real participant sessions.
 
 ---
 
@@ -130,8 +139,10 @@ Hidden state and privacy:
 - The active rule advances on the trial after exactly 10 consecutive correct
   responses; an error resets the streak to 0; the final rule stays active through
   card 64 and categories are capped at 6.
-- Participant-facing UI never displays the active rule, rule order, streak count,
-  categories completed, or any recurring-pattern hint.
+- Production UI never displays the active rule, rule order, streak count,
+  categories completed, or any recurring-pattern hint. In trial runs only
+  (`isTrialMode`), a `TrialRuleIndicator` debug banner mirrors the hidden state
+  (active rule, streak, categories, shift notice) for RA verification.
 - Immediate feedback is a client convenience; the backend remains canonical for
   scoring and recomputes correctness from the stored hidden rule order.
 
