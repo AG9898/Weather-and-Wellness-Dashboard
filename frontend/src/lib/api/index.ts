@@ -183,6 +183,30 @@ export interface StroopRunResponse {
   stroop_interference_ms: number | null;
 }
 
+/** Response from POST /card-sorting/runs. Run-level scoring is computed server-side. */
+export interface CardSortingRunResponse {
+  run_id: string;
+  total_trials: number;
+  categories_completed: number;
+  total_correct: number;
+  total_errors: number;
+  perseverative_responses: number;
+  perseverative_errors: number;
+  nonperseverative_errors: number;
+  trials_to_first_category: number | null;
+  failure_to_maintain_set_count: number;
+}
+
+/** One scored card sorting trial submitted to POST /card-sorting/runs. */
+export interface CardSortingTrialInput {
+  trial_number: number;
+  card_color: string;
+  card_shape: string;
+  card_number: number;
+  selected_reference_index: number;
+  reaction_time_ms: number;
+}
+
 export interface ULS8Response {
   response_id: string;
   computed_mean: number;
@@ -520,6 +544,21 @@ export async function getCognitiveBattery(
   return apiGet<CognitiveBatteryResponse>(
     `/sessions/${encodeURIComponent(sessionId)}/cognitive-battery`
   );
+}
+
+/**
+ * Submit raw card sorting trials. The backend reads the hidden stored rule order
+ * for the session and recomputes correctness/streaks/category metrics; the client
+ * choice is never trusted for scoring.
+ */
+export async function submitCardSortingRun(
+  sessionId: string,
+  trials: CardSortingTrialInput[]
+): Promise<CardSortingRunResponse> {
+  return apiPost<CardSortingRunResponse>("/card-sorting/runs", {
+    session_id: sessionId,
+    trials,
+  });
 }
 
 async function buildSameOriginAuthHeaders(): Promise<Record<string, string>> {

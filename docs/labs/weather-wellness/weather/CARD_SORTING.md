@@ -102,6 +102,51 @@ categories completed, or remaining rule schedule.
 
 ---
 
+## Participant UI (T212, implemented)
+
+The participant page lives at
+`frontend/src/app/session/[session_id]/card_sorting/page.tsx` and uses the WW
+trial/test editorial shell (`EditorialTaskShell` / `EditorialTaskPanel` /
+`EditorialTaskHeader`). The reachable route segment is `card_sorting`
+(underscore), matching `cognitiveTaskRouteSegment` so the battery router resolves
+to it directly.
+
+Flow:
+
+- Two instruction screens explain that there is a hidden rule, that it may
+  change, and to use the correct/incorrect feedback to adapt.
+- Each trial renders one response card (color, shape, and N glyphs) above the
+  four fixed reference cards. The participant clicks the reference card to sort.
+- After each sort, the page shows only `Correct` or `Incorrect` for ~900 ms, then
+  advances to the next card.
+- Production presents all 64 response cards; the task ends after card 64.
+
+Hidden state and privacy:
+
+- The page reads `card_sorting_rule_order` from
+  `GET /sessions/{session_id}/cognitive-battery` and tracks the active rule
+  index, consecutive-correct streak, and categories completed in refs to drive
+  immediate feedback only.
+- The active rule advances on the trial after exactly 10 consecutive correct
+  responses; an error resets the streak to 0; the final rule stays active through
+  card 64 and categories are capped at 6.
+- Participant-facing UI never displays the active rule, rule order, streak count,
+  categories completed, or any recurring-pattern hint.
+- Immediate feedback is a client convenience; the backend remains canonical for
+  scoring and recomputes correctness from the stored hidden rule order.
+
+Submission and routing:
+
+- The page captures `card_color`, `card_shape`, `card_number`,
+  `selected_reference_index`, `reaction_time_ms`, and `trial_number` per card and
+  submits via the typed `submitCardSortingRun` wrapper.
+- When card sorting is the last task in the assigned battery order it also
+  `PATCH`es `/sessions/{id}/status` to `complete`; otherwise it routes to the next
+  task via `nextCognitiveTaskPath`.
+- Trial mode uses a shortened 8-card response set, performs a local simulated
+  submit with no `/card-sorting/runs` call, and uses a local hidden rule order so
+  feedback still works without any backend read or write.
+
 ## Reference Cards and Correctness
 
 The four fixed reference cards are canonical and each has a unique value on every

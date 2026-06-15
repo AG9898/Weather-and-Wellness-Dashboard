@@ -3836,7 +3836,7 @@
       "id": "T212",
       "title": "WW card sorting participant task UI",
       "description": "Implement the card sorting participant page and typed frontend submit wrapper according to CARD_SORTING.md. Use the WW trial/test shell visual language from T205, 64 production response cards, hidden rule feedback, no participant-facing rule/streak/category reveal, client-side RT capture, trial-mode shortened set, and battery-router next-task handoff. The page may use the manifest rule order internally for immediate feedback but must not display it. Do not add Storybook states. Scope cap: if production UI and trial shortening cannot fit with at least 30% context remaining, split before execution.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [
