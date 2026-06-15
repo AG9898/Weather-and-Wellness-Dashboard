@@ -29,7 +29,11 @@ import {
   isTrialRunActiveForLocation,
   isTrialRunId,
   persistTrialRunState,
+  readTrialRunState,
   runTrialAwareSubmit,
+  WEATHER_WELLNESS_SECTIONS,
+  WEATHER_WELLNESS_SECTION_LABELS,
+  weatherWellnessSectionPath,
 } from "@/lib/trial-mode";
 import {
   getPhaseAfterBegin,
@@ -70,12 +74,16 @@ beforeEach(() => {
 });
 
 describe("trial-mode launch controls", () => {
-  it("keeps the WW Run Test Trial launch control on the new-session page", () => {
+  it("exposes WW Run Short Trial and Run Full Trial launch controls on the new-session page", () => {
     const source = readFrontendFile("src/app/(ra)/new-session/page.tsx");
 
-    expect(source).toContain("Run Test Trial");
-    expect(source).toContain("createTrialRunState(\"weather-wellness\")");
+    expect(source).toContain("Run Short Trial");
+    expect(source).toContain("Run Full Trial");
+    expect(source).toContain("createTrialRunState(\"weather-wellness\", mode)");
+    expect(source).toContain("handleRunTrial(\"short\")");
+    expect(source).toContain("handleRunTrial(\"full\")");
     expect(source).toContain("buildTrialRunPath(`/session/${trialState.session_id}/uls8`)");
+    expect(source).not.toContain("Run Test Trial");
   });
 
   it("keeps the Misokinesia Run Short Trial launch control on the launch surface", () => {
@@ -285,6 +293,111 @@ describe("T210 cognitive battery routing", () => {
     expect(source).toContain("nextCognitiveTaskPath");
     expect(source).toContain("isLastCognitiveTask");
     expect(source).toContain("if (lastTask)");
+  });
+});
+
+describe("T213 WW short and full trial state", () => {
+  it("creates a WW short trial state by default", () => {
+    const state = createTrialRunState("weather-wellness");
+    expect(state.flow).toBe("weather-wellness");
+    expect(state.weather_wellness_trial_mode).toBe("short");
+    expect(isTrialRunId(state.session_id)).toBe(true);
+    expect(state.misokinesia_participant_id).toBeUndefined();
+  });
+
+  it("creates a WW full trial state when requested", () => {
+    const state = createTrialRunState("weather-wellness", "full");
+    expect(state.flow).toBe("weather-wellness");
+    expect(state.weather_wellness_trial_mode).toBe("full");
+    expect(isTrialRunId(state.session_id)).toBe(true);
+  });
+
+  it("persists and re-reads WW full trial mode through session storage", () => {
+    const state = createTrialRunState("weather-wellness", "full");
+    persistTrialRunState(state);
+    expect(readTrialRunState()?.weather_wellness_trial_mode).toBe("full");
+  });
+
+  it("leaves Misokinesia trial state creation unchanged", () => {
+    const short = createTrialRunState("misokinesia");
+    const full = createTrialRunState("misokinesia", "full");
+    expect(short.misokinesia_trial_mode).toBe("short");
+    expect(full.misokinesia_trial_mode).toBe("full");
+    expect(short.weather_wellness_trial_mode).toBeUndefined();
+    expect(isTrialRunId(short.misokinesia_participant_id)).toBe(true);
+  });
+});
+
+describe("T213 WW trial section jumper", () => {
+  it("lists every documented WW section in order", () => {
+    expect(WEATHER_WELLNESS_SECTIONS).toEqual([
+      "consent",
+      "demographics",
+      "uls8",
+      "cesd",
+      "gad7",
+      "cogfunc",
+      "battery",
+      "digitspan",
+      "stroop",
+      "card_sorting",
+      "done",
+    ]);
+  });
+
+  it("labels every section for the jumper UI", () => {
+    for (const section of WEATHER_WELLNESS_SECTIONS) {
+      expect(WEATHER_WELLNESS_SECTION_LABELS[section]).toBeTruthy();
+    }
+    expect(WEATHER_WELLNESS_SECTION_LABELS.cesd).toBe("CES-D");
+    expect(WEATHER_WELLNESS_SECTION_LABELS.card_sorting).toBe("Card Sort");
+    expect(WEATHER_WELLNESS_SECTION_LABELS.done).toBe("Done");
+  });
+
+  it("routes pre-session sections to the new-session launch surface", () => {
+    expect(weatherWellnessSectionPath("consent", "trial-local-session-x")).toBe("/new-session");
+    expect(weatherWellnessSectionPath("demographics", "trial-local-session-x")).toBe(
+      "/new-session"
+    );
+  });
+
+  it("routes survey and cogfunc sections to trial participant routes", () => {
+    const sid = "trial-local-session-x";
+    expect(weatherWellnessSectionPath("uls8", sid)).toBe(`/session/${sid}/uls8?trial=1`);
+    expect(weatherWellnessSectionPath("cesd", sid)).toBe(`/session/${sid}/cesd10?trial=1`);
+    expect(weatherWellnessSectionPath("gad7", sid)).toBe(`/session/${sid}/gad7?trial=1`);
+    expect(weatherWellnessSectionPath("cogfunc", sid)).toBe(`/session/${sid}/cogfunc?trial=1`);
+  });
+
+  it("routes cognitive task sections to their task routes", () => {
+    const sid = "trial-local-session-x";
+    expect(weatherWellnessSectionPath("digitspan", sid)).toBe(`/session/${sid}/digitspan?trial=1`);
+    expect(weatherWellnessSectionPath("stroop", sid)).toBe(`/session/${sid}/stroop?trial=1`);
+    expect(weatherWellnessSectionPath("card_sorting", sid)).toBe(
+      `/session/${sid}/card_sorting?trial=1`
+    );
+  });
+
+  it("routes the battery intro to the first task in the local trial order", () => {
+    const state = createTrialRunState("weather-wellness");
+    persistTrialRunState(state);
+    const order = getOrCreateTrialCognitiveTaskOrder();
+    expect(weatherWellnessSectionPath("battery", state.session_id!)).toBe(
+      `/session/${state.session_id}/${order[0]}?trial=1`
+    );
+  });
+
+  it("routes Done to the completion screen", () => {
+    const sid = "trial-local-session-x";
+    expect(weatherWellnessSectionPath("done", sid)).toBe(`/session/${sid}/complete?trial=1`);
+  });
+
+  it("produces a valid path for every documented WW section", () => {
+    const sid = "trial-local-session-x";
+    for (const section of WEATHER_WELLNESS_SECTIONS) {
+      const path = weatherWellnessSectionPath(section, sid);
+      expect(path.startsWith("/")).toBe(true);
+    }
   });
 });
 

@@ -35,7 +35,11 @@ Canonical specification for trial-run behavior across WW and Misokinesia partici
 ## Weather-Wellness Short And Full Trial Modes
 
 - WW exposes separate **Run Short Trial** and **Run Full Trial** controls from
-  the consent/demographics launch flow.
+  the consent/demographics launch flow (`src/app/(ra)/new-session/page.tsx`).
+  Both controls call `createTrialRunState("weather-wellness", mode)`; the chosen
+  variant is stored on `TrialRunState.weather_wellness_trial_mode` (`"short"` |
+  `"full"`) in session storage. The old single `Run Test Trial` control is
+  removed.
 - Both modes are frontend-only rehearsals: they use fake ids, local task order,
   simulated submit success, and no backend writes.
 - Full Trial mirrors production-length WW participant flow: four surveys followed
@@ -49,5 +53,20 @@ Canonical specification for trial-run behavior across WW and Misokinesia partici
 - Both modes include a WW-only section jumper. The jumper is trial-only and can
   navigate directly to consent/demographics, any survey, the battery intro,
   Digit Span, Stroop, card sorting, and completion.
+- Section targets and routing are provided by the pure helper
+  `weatherWellnessSectionPath(section, sessionId)` in
+  `frontend/src/lib/trial-mode.ts`. Sections are enumerated by
+  `WEATHER_WELLNESS_SECTIONS` with labels in
+  `WEATHER_WELLNESS_SECTION_LABELS`. Route mapping:
+  - `consent`, `demographics` → `/new-session` (pre-session RA launch surface)
+  - `uls8` → `/session/{id}/uls8`, `cesd` → `/session/{id}/cesd10`,
+    `gad7` → `/session/{id}/gad7`, `cogfunc` → `/session/{id}/cogfunc`
+  - `battery` → first task in the local trial battery order, plus `digitspan`,
+    `stroop`, `card_sorting` → their `/session/{id}/{task}` routes
+  - `done` → `/session/{id}/complete`
+
+  All `/session/{id}` targets carry the `?trial=1` query parameter so
+  participant pages recover the trial signal.
 - Jumping sections must not call `/sessions/start`, survey submit endpoints,
-  task submit endpoints, or session-complete writes.
+  task submit endpoints, or session-complete writes. `weatherWellnessSectionPath`
+  is pure and performs no API calls.

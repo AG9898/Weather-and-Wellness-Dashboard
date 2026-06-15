@@ -3872,7 +3872,7 @@
       "id": "T213",
       "title": "WW Short and Full Trial launch plus section helper",
       "description": "Extend WW trial-mode state to distinguish short and full trials, update the new-session launch controls, and add pure section-jump helpers for WW sections: Consent, Demographics, ULS-8, CES-D, GAD-7, CogFunc, Battery, Digit Span, Stroop, Card Sort, and Done. Keep this task to launch/state/helper logic and tests; do not integrate visual jumper rendering into every page yet and do not add Storybook states. Scope cap: keep helpers and launch changes small enough for one agent to finish with at least 30% context remaining.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "WW_COG_TASKS",
       "depends_on": [

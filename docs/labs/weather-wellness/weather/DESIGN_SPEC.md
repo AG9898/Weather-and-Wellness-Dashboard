@@ -103,6 +103,14 @@ analytics/modeling outputs as part of this task-order work.
   `Digit Span`, `Stroop`, `Card Sort`, and `Done`.
 - Jumping is local-only state navigation. It must not create participant rows,
   sessions, survey rows, task rows, or session-complete writes.
+- Targets and routing come from the pure helper
+  `weatherWellnessSectionPath(section, sessionId)` in
+  `frontend/src/lib/trial-mode.ts` (sections enumerated by
+  `WEATHER_WELLNESS_SECTIONS`). Consent and Demographics resolve to
+  `/new-session`; surveys, CogFunc, the battery intro, each cognitive task, and
+  Done resolve to `/session/{id}/...` routes carrying `?trial=1`. The helper is
+  side-effect free and makes no API calls. The selected variant is recorded on
+  `TrialRunState.weather_wellness_trial_mode`.
 - The jumper should use a compact segmented control or menu that stays clear of
   the trial watermark and primary task controls on mobile and desktop.
 

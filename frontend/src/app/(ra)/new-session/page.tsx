@@ -130,12 +130,12 @@ export default function NewSessionPage() {
     }
   };
 
-  const handleRunTestTrial = () => {
+  const handleRunTrial = (mode: "short" | "full") => {
     if (!isFormComplete(demoForm) || starting) return;
 
     setStarting(true);
     setStartError(null);
-    const trialState = createTrialRunState("weather-wellness");
+    const trialState = createTrialRunState("weather-wellness", mode);
     persistTrialRunState(trialState);
     router.push(buildTrialRunPath(`/session/${trialState.session_id}/uls8`));
   };
@@ -397,16 +397,28 @@ export default function NewSessionPage() {
                 size="lg"
                 className="rounded-xl px-6 font-semibold"
                 disabled={!isFormComplete(demoForm) || starting}
-                onClick={handleRunTestTrial}
+                onClick={() => handleRunTrial("short")}
               >
                 <FlaskConical className="mr-2 size-4" />
-                Run Test Trial
+                Run Short Trial
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="rounded-xl px-6 font-semibold"
+                disabled={!isFormComplete(demoForm) || starting}
+                onClick={() => handleRunTrial("full")}
+              >
+                <FlaskConical className="mr-2 size-4" />
+                Run Full Trial
               </Button>
             </div>
 
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Test trials use fake local-only session ids and do not create participant,
-              session, survey, or digit span records.
+              Trials use fake local-only session ids and do not create participant,
+              session, survey, or digit span records. Short Trial uses shortened
+              cognitive task protocols; Full Trial mirrors production length.
             </p>
 
           </form>

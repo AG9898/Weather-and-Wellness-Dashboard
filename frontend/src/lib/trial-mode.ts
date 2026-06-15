@@ -9,11 +9,13 @@ export const TRIAL_RUN_ID_PREFIX = "trial-local";
 export type TrialRunFlow = "weather-wellness" | "misokinesia";
 export type TrialSubmitMode = "production" | "trial";
 export type MisokinesiaTrialMode = "short" | "full";
+export type WeatherWellnessTrialMode = "short" | "full";
 
 export interface TrialRunState {
   mode: "trial";
   flow: TrialRunFlow;
   misokinesia_trial_mode?: MisokinesiaTrialMode;
+  weather_wellness_trial_mode?: WeatherWellnessTrialMode;
   session_id?: string;
   misokinesia_participant_id?: string;
   cognitive_task_order?: CognitiveTaskKey[];
@@ -51,14 +53,14 @@ interface TrialRunLocation {
  */
 export function createTrialRunState(
   flow: TrialRunFlow,
-  misokinesiaTrialMode: MisokinesiaTrialMode = "short"
+  trialMode: MisokinesiaTrialMode | WeatherWellnessTrialMode = "short"
 ): TrialRunState {
   const createdAt = new Date().toISOString();
   if (flow === "misokinesia") {
     return {
       mode: "trial",
       flow,
-      misokinesia_trial_mode: misokinesiaTrialMode,
+      misokinesia_trial_mode: trialMode,
       session_id: createTrialRunSessionId(),
       misokinesia_participant_id: createTrialRunMisokinesiaParticipantId(),
       created_at: createdAt,
@@ -68,6 +70,7 @@ export function createTrialRunState(
   return {
     mode: "trial",
     flow,
+    weather_wellness_trial_mode: trialMode,
     session_id: createTrialRunSessionId(),
     created_at: createdAt,
   };
@@ -236,6 +239,104 @@ export function getOrCreateTrialCognitiveTaskOrder(): CognitiveTaskKey[] {
   return order;
 }
 
+// ── WW trial section jumper ──
+
+/** Documented WW participant sections the trial-only jumper can target. */
+export type WeatherWellnessSection =
+  | "consent"
+  | "demographics"
+  | "uls8"
+  | "cesd"
+  | "gad7"
+  | "cogfunc"
+  | "battery"
+  | "digitspan"
+  | "stroop"
+  | "card_sorting"
+  | "done";
+
+/** Ordered list of WW sections for rendering the jumper. */
+export const WEATHER_WELLNESS_SECTIONS: WeatherWellnessSection[] = [
+  "consent",
+  "demographics",
+  "uls8",
+  "cesd",
+  "gad7",
+  "cogfunc",
+  "battery",
+  "digitspan",
+  "stroop",
+  "card_sorting",
+  "done",
+];
+
+/** Human-readable labels for the WW section jumper buttons. */
+export const WEATHER_WELLNESS_SECTION_LABELS: Record<WeatherWellnessSection, string> = {
+  consent: "Consent",
+  demographics: "Demographics",
+  uls8: "ULS-8",
+  cesd: "CES-D",
+  gad7: "GAD-7",
+  cogfunc: "CogFunc",
+  battery: "Battery",
+  digitspan: "Digit Span",
+  stroop: "Stroop",
+  card_sorting: "Card Sort",
+  done: "Done",
+};
+
+/**
+ * Pure WW trial section jumper. Maps a documented section to a valid local
+ * route for the given trial session id. Returns null for sections that live
+ * before session creation (Consent, Demographics) since those are the
+ * `/new-session` RA launch surface rather than a `/session/{id}` route.
+ *
+ * This helper performs no API calls and never triggers session, survey, task,
+ * or session-complete writes. All `/session/{id}` targets carry the trial
+ * query parameter so participant pages recover the trial signal.
+ */
+export function weatherWellnessSectionPath(
+  section: WeatherWellnessSection,
+  sessionId: string
+): string {
+  switch (section) {
+    case "consent":
+    case "demographics":
+      return "/new-session";
+    case "uls8":
+    case "cesd":
+    case "gad7":
+    case "cogfunc":
+      return buildTrialRunPath(`/session/${sessionId}/${weatherWellnessSectionSegment(section)}`);
+    case "battery":
+    case "digitspan":
+    case "stroop":
+    case "card_sorting":
+      return buildTrialRunPath(
+        buildCognitiveTaskPath(sessionId, weatherWellnessBatterySectionTask(section))
+      );
+    case "done":
+      return buildTrialRunPath(`/session/${sessionId}/complete`);
+  }
+}
+
+function weatherWellnessSectionSegment(
+  section: "uls8" | "cesd" | "gad7" | "cogfunc"
+): string {
+  return section === "cesd" ? "cesd10" : section;
+}
+
+function weatherWellnessBatterySectionTask(
+  section: "battery" | "digitspan" | "stroop" | "card_sorting"
+): CognitiveTaskKey {
+  if (section === "battery") {
+    // Battery intro routes to the first task in the local trial order.
+    const order = getOrCreateTrialCognitiveTaskOrder();
+    return order[0] ?? "digitspan";
+  }
+  return section;
+}
+
 export function getMisokinesiaSubmitMode(trialMode: boolean): TrialSubmitMode {
   return trialMode ? "trial" : "production";
 }
@@ -345,6 +446,13 @@ function isTrialRunState(value: unknown): value is TrialRunState {
     candidate.misokinesia_trial_mode !== undefined &&
     candidate.misokinesia_trial_mode !== "short" &&
     candidate.misokinesia_trial_mode !== "full"
+  ) {
+    return false;
+  }
+  if (
+    candidate.weather_wellness_trial_mode !== undefined &&
+    candidate.weather_wellness_trial_mode !== "short" &&
+    candidate.weather_wellness_trial_mode !== "full"
   ) {
     return false;
   }

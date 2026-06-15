@@ -119,13 +119,24 @@ function NewSessionLaunchMock({ state }: { state: NewSessionStoryState }) {
                 disabled={empty || loading}
               >
                 <FlaskConical className="mr-2 size-4" />
-                Run Test Trial
+                Run Short Trial
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="rounded-xl px-6 font-semibold"
+                disabled={empty || loading}
+              >
+                <FlaskConical className="mr-2 size-4" />
+                Run Full Trial
               </Button>
             </div>
 
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Test trials use fake local-only session ids and do not create participant,
-              session, survey, or digit span records.
+              Trials use fake local-only session ids and do not create participant,
+              session, survey, or digit span records. Short Trial uses shortened
+              cognitive task protocols; Full Trial mirrors production length.
             </p>
           </div>
         </div>
