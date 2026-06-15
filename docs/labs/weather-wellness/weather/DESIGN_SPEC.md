@@ -62,7 +62,7 @@ Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It d
   - Misokinesia trial mode may call a read-only RA endpoint for a sampled clip manifest, but never calls write endpoints
   - Never writes rows to `participants`, `sessions`, survey tables, digit span tables, Stroop tables, card sorting tables, or misokinesia tables
   - WW Short Trial uses shortened cognitive task protocols for fast rehearsal; WW Full Trial mirrors production-length cognitive tasks without writes
-  - WW trial mode includes a trial-only section jumper so RAs can jump to consent/demographics, any survey, the battery intro, each cognitive task, and completion
+  - WW trial mode includes a trial-only section jumper so RAs can jump to consent/demographics, any survey, the battery intro, each cognitive task, and completion. It is rendered once for the whole `/session/{id}` participant shell (the session route layout) so it appears on every WW survey and cognitive task page in the trial flow, and is absent from recorded sessions. Jumping is client-side navigation only (`router.push`) and triggers no survey/task/session writes. It is pinned to the bottom-center of the viewport (the watermark holds the top), and the session shell adds bottom padding so the jumper never overlaps task prompts, inputs, feedback, or primary buttons
   - Misokinesia Trial Run locally generates the post-video survey order and never persists that assignment
 - Misokinesia video behavior:
   - Short Trial samples 5 active videos by `stimulus_id`

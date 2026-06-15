@@ -70,3 +70,17 @@ Canonical specification for trial-run behavior across WW and Misokinesia partici
 - Jumping sections must not call `/sessions/start`, survey submit endpoints,
   task submit endpoints, or session-complete writes. `weatherWellnessSectionPath`
   is pure and performs no API calls.
+- The jumper UI is the `WeatherWellnessTrialSectionJumper` client component
+  (`frontend/src/lib/components/WeatherWellnessTrialSectionJumper.tsx`), rendered
+  once in the session route layout
+  (`frontend/src/app/session/[session_id]/layout.tsx`) so it covers every WW
+  survey and cognitive task page. It renders only when
+  `isTrialRunActiveForLocation` is true (and a trial session id is present), so it
+  never appears in recorded participant sessions. The active button is derived
+  from the pathname by the pure helper `weatherWellnessSectionFromPath` (in
+  `frontend/src/lib/trial-mode.ts`). On click it calls
+  `router.push(weatherWellnessSectionPath(section, sessionId))` — local
+  navigation only, no writes. It is fixed to the bottom-center of the viewport
+  (the Trial Run watermark holds the top-center), and the session shell adds
+  bottom padding so the jumper stays clear of task prompts, inputs, feedback, and
+  primary buttons on mobile and desktop.

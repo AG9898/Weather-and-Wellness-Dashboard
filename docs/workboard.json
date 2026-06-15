@@ -3905,7 +3905,7 @@
       "id": "T214",
       "title": "WW trial section jumper integration",
       "description": "Integrate the WW trial-only section jumper into the aligned WW survey/test shell and cognitive task pages, using the helper from T213. The jumper must support Short Trial and Full Trial, jump to major survey/task/completion sections without backend writes, and stay clear of the watermark and primary task controls across every WW survey and test page in the trial flow. Do not add Storybook states. Scope cap: if integration across all pages grows too large for one agent with at least 30% context remaining, split by survey shell vs cognitive task pages before execution.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "WW_COG_TASKS",
       "depends_on": [

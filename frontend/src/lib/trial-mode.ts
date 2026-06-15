@@ -326,6 +326,41 @@ function weatherWellnessSectionSegment(
   return section === "cesd" ? "cesd10" : section;
 }
 
+/**
+ * Resolve the active WW section from a `/session/{id}/...` participant pathname.
+ * Pure and side-effect free; returns null when the path is not a recognized WW
+ * session route so the trial jumper can highlight nothing rather than guess.
+ */
+export function weatherWellnessSectionFromPath(
+  pathname: string
+): WeatherWellnessSection | null {
+  const parts = pathname.split("/").filter(Boolean);
+  if (parts[0] !== "session" || !parts[1]) {
+    return null;
+  }
+  const segment = parts[2];
+  switch (segment) {
+    case "uls8":
+      return "uls8";
+    case "cesd10":
+      return "cesd";
+    case "gad7":
+      return "gad7";
+    case "cogfunc":
+      return "cogfunc";
+    case "digitspan":
+      return "digitspan";
+    case "stroop":
+      return "stroop";
+    case "card_sorting":
+      return "card_sorting";
+    case "complete":
+      return "done";
+    default:
+      return null;
+  }
+}
+
 function weatherWellnessBatterySectionTask(
   section: "battery" | "digitspan" | "stroop" | "card_sorting"
 ): CognitiveTaskKey {
