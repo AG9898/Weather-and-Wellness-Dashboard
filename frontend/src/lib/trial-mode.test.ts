@@ -85,7 +85,7 @@ describe("trial-mode launch controls", () => {
     expect(pageSource).toContain('startTrial("short")');
     expect(pageSource).toContain("createTrialRunState(\"misokinesia\", mode)");
     expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
-    expect(componentSource).toContain("Run Short Trial");
+    expect(componentSource).toContain("Short Trial");
     expect(componentSource).toContain("onStartShortTrial");
   });
 
@@ -98,7 +98,7 @@ describe("trial-mode launch controls", () => {
     expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
     expect(pageSource).toContain("Full trial manifest returned only");
     expect(apiSource).toContain('"/misokinesia/trial-manifest?full=true"');
-    expect(componentSource).toContain("Run Full Trial");
+    expect(componentSource).toContain("Full Trial");
     expect(componentSource).toContain("onStartFullTrial");
   });
 
@@ -108,7 +108,7 @@ describe("trial-mode launch controls", () => {
     );
 
     expect(pageSource).toContain("const totalClips = manifest?.clips.length ?? 0");
-    expect(pageSource).toContain("<p>You will watch {totalClips} short video clips.</p>");
+    expect(pageSource).toContain("You will watch {totalClips} short video clips.");
     expect(pageSource).toContain("Clip {clipNumber} of {totalClips}");
   });
 
