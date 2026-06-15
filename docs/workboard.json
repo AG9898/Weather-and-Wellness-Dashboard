@@ -3800,7 +3800,7 @@
       "id": "T211",
       "title": "WW Stroop participant task UI",
       "description": "Implement the Stroop participant page and typed frontend submit wrapper according to STROOP.md. Use the WW trial/test shell visual language established in T205, client-side RT capture, practice feedback, balanced scored trials, timeout handling, trial-mode no-write behavior, and battery-router next-task handoff. Keep task scoring display out of participant UI and do not add Storybook states. Scope cap: if production UI and trial shortening cannot fit with at least 30% context remaining, split before execution.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "WW_COG_TASKS",
       "depends_on": [

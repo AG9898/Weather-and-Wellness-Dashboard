@@ -168,6 +168,21 @@ export interface DigitSpanRunResponse {
   max_span: number;
 }
 
+/** Response from POST /stroop/runs. Run-level scoring is computed server-side. */
+export interface StroopRunResponse {
+  run_id: string;
+  total_trials: number;
+  correct_trials: number;
+  error_trials: number;
+  timeout_trials: number;
+  overall_accuracy: number;
+  congruent_accuracy: number | null;
+  incongruent_accuracy: number | null;
+  mean_rt_congruent_ms: number | null;
+  mean_rt_incongruent_ms: number | null;
+  stroop_interference_ms: number | null;
+}
+
 export interface ULS8Response {
   response_id: string;
   computed_mean: number;

@@ -153,3 +153,38 @@ See `docs/SCHEMA.md` for the migrated table shape.
 **Per trial** (`stroop_trials`): one row per scored trial with trial number,
 condition, word, ink color, response key/color, backend-computed correctness,
 reaction time, timeout flag, and timestamp.
+
+---
+
+## Participant UI (T211)
+
+The participant page is `frontend/src/app/session/[session_id]/stroop/page.tsx`,
+built on the shared WW trial/test shell (`EditorialTaskShell` /
+`EditorialTaskPanel` / `EditorialTaskHeader`) used by Backward Digit Span.
+
+Flow: instructions → 4 unscored practice trials with feedback → scored block →
+end-of-task submit. A fixation `+` is shown between scored trials.
+
+- **Stimuli/keys.** Ink colors red/blue/green/yellow with response keys
+  `r`/`b`/`g`/`y` (matched case-insensitively). Only those keys are accepted;
+  all other keys are ignored. Space advances instruction screens.
+- **Balanced scored trials.** Production runs 80 scored trials (40 congruent /
+  40 incongruent), shuffled. Incongruent stimuli always render a word whose
+  meaning differs from the ink color.
+- **RT capture.** Reaction time is measured client-side from stimulus render
+  (`performance.now()`) to the accepted keypress and rounded to whole ms.
+- **Timeout.** Each scored trial has a 3000 ms response window. Timed-out trials
+  are recorded with `timed_out: true` and null `response_key`/`response_color`/
+  `reaction_time_ms`; practice timeouts show a "Too slow" feedback line.
+- **No client scoring.** The page records raw `word`, `ink_color`, `condition`,
+  `response_key`, `response_color`, `reaction_time_ms`, `timed_out`, and
+  `trial_number` only. No correctness or run metrics are computed or displayed
+  in the participant UI.
+- **Production submit.** Posts the trial array to `POST /stroop/runs` via the
+  typed `apiPost<StroopRunResponse>` wrapper (`StroopRunResponse` added to
+  `frontend/src/lib/api/index.ts`), then routes to the next battery task — or
+  patches the session to `complete` when Stroop is the last task — using the
+  shared battery helpers in `frontend/src/lib/trial-mode.ts`.
+- **Trial mode.** A shortened scored block of 12 trials (6 / 6 balanced) runs
+  with a local simulated submit (no `/stroop/runs` call) and routes to the next
+  trial section via `buildTrialRunPath`.
