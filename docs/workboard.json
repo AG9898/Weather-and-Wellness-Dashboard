@@ -3998,7 +3998,7 @@
       "id": "T1819",
       "title": "AI chat - Scoped aggregate data tools",
       "description": "Add read-only aggregate tools for bounded dashboard analytics, study window, session counts, survey score summaries, and weather/study-day summaries using authenticated lab scope.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [

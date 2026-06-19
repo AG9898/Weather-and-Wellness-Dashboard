@@ -120,13 +120,14 @@
 
 ### POST /chat
 - **Auth:** RA required
-- **Status:** implemented (T1818; authenticated no-op route, data tools not attached)
+- **Status:** implemented (T1818; scoped aggregate tools added in T1819)
 - **Classification:** internal-only backend chat coordinator
 - **Current same-origin caller:** planned `POST /api/ra/chat`
 - **Purpose:** Accept authenticated RA chat requests through the backend
-  coordinator. Until approved read-only data tools are attached, the route
-  returns a typed unavailable response and does not query lab data or call an
-  ungrounded data assistant.
+  coordinator. The route runs approved read-only aggregate tools for the
+  authenticated Weather-Wellness lab scope and returns bounded tool summaries.
+  The narrative model layer is not connected by this endpoint yet, so the
+  backend does not send ungrounded study-data questions to OpenRouter.
 - **Request:** `RAChatRequest`
 
 ```json
@@ -174,11 +175,11 @@
 ```
 
 - **Allowed data tools:**
-  - dashboard analytics summaries for bounded date ranges
-  - study-window and session-count summaries
-  - anonymous participant/session lookup by participant number or bounded filters
-  - survey and digit span score summaries
-  - weather/study-day summaries
+  - implemented: dashboard analytics summaries for bounded date ranges
+  - implemented: study-window and linked session-count summaries
+  - implemented: survey and digit span aggregate score summaries
+  - implemented: weather/study-day summaries
+  - planned: anonymous participant/session lookup by participant number or bounded filters
   - report formatter over already retrieved scoped results
   - privacy-preserving public web research search/fetch for literature-backed
     context, source links, and citations
@@ -189,9 +190,17 @@
     direct SQL execution to OpenRouter.
   - Does not accept arbitrary SQL or raw table-name instructions; those requests
     return `blocked_reason="disallowed_data_access_request"`.
-  - Until approved data tools are attached, returns
-    `blocked_reason="data_tools_unavailable"`, `model="tool-unavailable"`, and
-    an empty `tool_results` array.
+  - For normal aggregate requests, returns `model="aggregate-tools"` and a
+    compact `tool_results` array with one summary per aggregate tool.
+  - Aggregate tools are capped at 400 local study days per request. When dates
+    are omitted, the tools use the latest available study day and a 30-day
+    window.
+  - Aggregate tools currently accept only the authenticated `lab_name="ww"`
+    Weather-Wellness scope because persistent `lab_id` / `study_id` columns are
+    not present on these tables yet; unsupported lab scopes return typed
+    user-safe `permission_denied` tool summaries rather than broad reads.
+  - Missing snapshots or empty source data return typed `insufficient_data`
+    summaries instead of raw errors.
   - Sends only bounded scoped tool results to OpenRouter.
   - Does not send participant rows, participant/session identifiers, private
     lab-sensitive content, credentials, JWTs, or raw database output to public

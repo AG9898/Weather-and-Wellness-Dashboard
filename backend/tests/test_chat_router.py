@@ -7,9 +7,10 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from app.auth import LabMember, get_current_lab_member
+from app.db import get_session
 from app.main import app as backend_app
 from app.routers.chat import router
-from app.schemas.chat import RAChatResponse
+from app.schemas.chat import RAChatResponse, RAChatToolResult
 
 
 def _lab_member() -> LabMember:
@@ -25,6 +26,7 @@ def _client_with_auth() -> TestClient:
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_lab_member] = _lab_member
+    app.dependency_overrides[get_session] = lambda: object()
     return TestClient(app)
 
 
@@ -64,7 +66,22 @@ def test_route_is_registered_on_backend_app() -> None:
     assert app_route.response_model is RAChatResponse
 
 
-def test_route_returns_documented_unavailable_response_shape() -> None:
+def test_route_returns_documented_aggregate_tool_response_shape(monkeypatch) -> None:
+    async def _coordinate_response(request, *, lab_member, db) -> RAChatResponse:
+        return RAChatResponse(
+            conversation_id=request.conversation_id or uuid.uuid4(),
+            message="Approved read-only aggregate tools ran for the authenticated lab scope.",
+            model="aggregate-tools",
+            tool_results=[
+                RAChatToolResult(
+                    tool_name="weather_study_day_summary",
+                    summary="ready: Found 31 study days and 31 weather rows.",
+                )
+            ],
+            blocked_reason=None,
+        )
+
+    monkeypatch.setattr("app.routers.chat.coordinate_ra_chat", _coordinate_response)
     client = _client_with_auth()
 
     response = client.post(
@@ -78,13 +95,28 @@ def test_route_returns_documented_unavailable_response_shape() -> None:
     assert response.status_code == 200
     body = response.json()
     assert uuid.UUID(body["conversation_id"])
-    assert body["message"].startswith("AI chat is not connected")
-    assert body["model"] == "tool-unavailable"
-    assert body["tool_results"] == []
-    assert body["blocked_reason"] == "data_tools_unavailable"
+    assert body["message"].startswith("Approved read-only aggregate tools ran")
+    assert body["model"] == "aggregate-tools"
+    assert body["tool_results"] == [
+        {
+            "tool_name": "weather_study_day_summary",
+            "summary": "ready: Found 31 study days and 31 weather rows.",
+        }
+    ]
+    assert body["blocked_reason"] is None
 
 
-def test_route_preserves_supplied_conversation_id() -> None:
+def test_route_preserves_supplied_conversation_id(monkeypatch) -> None:
+    async def _coordinate_response(request, *, lab_member, db) -> RAChatResponse:
+        return RAChatResponse(
+            conversation_id=request.conversation_id,
+            message="Approved read-only aggregate tools ran for the authenticated lab scope.",
+            model="aggregate-tools",
+            tool_results=[],
+            blocked_reason=None,
+        )
+
+    monkeypatch.setattr("app.routers.chat.coordinate_ra_chat", _coordinate_response)
     client = _client_with_auth()
     conversation_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 

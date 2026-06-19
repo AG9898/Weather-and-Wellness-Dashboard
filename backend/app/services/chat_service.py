@@ -3,11 +3,15 @@ from __future__ import annotations
 import re
 from uuid import uuid4
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.auth import LabMember
-from app.schemas.chat import RAChatRequest, RAChatResponse
+from app.schemas.chat import RAChatRequest, RAChatResponse, RAChatToolResult
+from app.services.chat_tools import run_scoped_aggregate_tools
 
 
 _TOOL_UNAVAILABLE_MODEL = "tool-unavailable"
+_AGGREGATE_TOOLS_MODEL = "aggregate-tools"
 _DATA_TOOLS_UNAVAILABLE_REASON = "data_tools_unavailable"
 _DISALLOWED_DATA_ACCESS_REASON = "disallowed_data_access_request"
 
@@ -58,16 +62,17 @@ def _contains_disallowed_data_access_request(request: RAChatRequest) -> bool:
     return any(pattern.search(text) for pattern in (*_RAW_SQL_PATTERNS, *_RAW_TABLE_PATTERNS))
 
 
-def coordinate_ra_chat(
+async def coordinate_ra_chat(
     request: RAChatRequest,
     *,
     lab_member: LabMember,
+    db: AsyncSession,
 ) -> RAChatResponse:
     """Coordinate an authenticated RA chat request.
 
-    Real data tools are intentionally not attached yet. Until they are, the
-    coordinator fails closed with a typed unavailable response instead of
-    letting a model infer answers from ungrounded lab data.
+    The aggregate data-tool layer is intentionally deterministic while the
+    narrative model gateway is still separate work. The coordinator returns
+    scoped tool summaries only, never ungrounded model claims.
     """
 
     conversation_id = request.conversation_id or uuid4()
@@ -86,16 +91,33 @@ def coordinate_ra_chat(
             blocked_reason=_DISALLOWED_DATA_ACCESS_REASON,
         )
 
+    aggregate_results = await run_scoped_aggregate_tools(
+        db,
+        lab_member=lab_member,
+        chat_scope=request.scope,
+    )
+    tool_results = [
+        RAChatToolResult(
+            tool_name=result.tool_name,
+            summary=result.response_summary(),
+        )
+        for result in aggregate_results
+    ]
+    ready_count = sum(1 for result in aggregate_results if result.status == "ready")
+    blocked_reason = None
+    if ready_count == 0:
+        blocked_reason = aggregate_results[0].status if aggregate_results else _DATA_TOOLS_UNAVAILABLE_REASON
+
     return RAChatResponse(
         conversation_id=conversation_id,
         message=(
-            "AI chat is not connected to approved read-only lab data tools yet, "
-            "so no study data was queried. The backend route is available for "
-            "authenticated RA requests and will answer once scoped data tools are attached."
+            "Approved read-only aggregate tools ran for the authenticated lab scope. "
+            "The narrative model layer is not connected in this backend task, so this "
+            "response includes bounded tool summaries only."
         ),
-        model=_TOOL_UNAVAILABLE_MODEL,
-        tool_results=[],
-        blocked_reason=_DATA_TOOLS_UNAVAILABLE_REASON,
+        model=_AGGREGATE_TOOLS_MODEL,
+        tool_results=tool_results,
+        blocked_reason=blocked_reason,
     )
 
 
