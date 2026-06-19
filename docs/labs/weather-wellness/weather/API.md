@@ -169,15 +169,22 @@
   - survey and digit span score summaries
   - weather/study-day summaries
   - report formatter over already retrieved scoped results
+  - privacy-preserving public web research search/fetch for literature-backed
+    context, source links, and citations
 - **Behavior:**
   - Validates the JWT with `get_current_lab_member` and uses the resolved
     `role` and `lab_name` for every data tool.
   - Does not expose database credentials, Supabase service keys, raw JWTs, or
     direct SQL execution to OpenRouter.
   - Sends only bounded scoped tool results to OpenRouter.
+  - Does not send participant rows, participant/session identifiers, private
+    lab-sensitive content, credentials, JWTs, or raw database output to public
+    web search providers.
   - Allows aggregate/statistical summaries and anonymous participant/session
     rows when scoped to the user's lab.
-  - May produce clean report-style on-screen text.
+  - May produce opinions, interpretations, recommendations, and clean
+    report-style on-screen text when grounded in scoped backend results,
+    documented scoring/analysis rules, or cited public research sources.
   - Does not write data, start sessions, import files, create downloadable
     exports, or return unbounded table dumps.
   - Returns a user-safe unavailable response when required OpenRouter privacy

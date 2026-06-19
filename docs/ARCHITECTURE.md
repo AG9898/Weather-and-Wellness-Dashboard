@@ -106,7 +106,7 @@ This section is the single routing inventory for dashboard-related reads across 
 | Route | Auth | Classification | Notes |
 |---|---|---|---|
 | `/users` | RA required, admin role required in page guard | `canonical` | Admin page for app-owned invitations, role/lab edits, pending invite resend/revoke, and access revocation. |
-| `/chat` or dashboard-embedded chat (planned) | RA required (via `(ra)` layout) | `canonical` | Planned RA chatbot surface for lab-scoped Q&A and on-screen report-style summaries. |
+| `/chat` (planned) | RA required (via `(ra)` layout) | `canonical` | Planned dedicated RA chatbot page for lab-scoped Q&A and on-screen report-style summaries, reachable from the floating bottom dock/navigation. |
 | `/misokinesia` | RA required (via `(ra)` layout) | `canonical` | RA page — launch a Misokinesia session via "Start Misokinesia Session" button |
 | `/misokinesia/[id]` | None | `canonical` | Participant task page — video clips + questionnaires; `id` = `misokinesia_participant_id` |
 

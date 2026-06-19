@@ -82,6 +82,11 @@ authorization mechanisms.
   participant/session-level reads when scoped to the user's lab.
 - The chatbot is read-only: no imports, exports, downloads, scoring writes,
   session starts, or arbitrary SQL.
+- The chatbot may provide opinions and recommendations when grounded in scoped
+  backend data, documented scoring/analysis rules, or cited public research.
+  Public web research is allowed only through approved, privacy-preserving tools
+  that do not send participant rows, identifiers, credentials, or sensitive lab
+  data to external search providers.
 - OpenRouter model/provider selection is env-configured. Privacy controls such
   as provider training opt-out, disabled logging, provider allowlists, and ZDR
   routing are required where available.

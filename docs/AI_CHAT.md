@@ -11,6 +11,11 @@ The RA data chatbot lets authenticated lab members ask natural-language question
 about their lab's research data, request statistical summaries, and generate
 clean report-style narrative output for on-screen review.
 
+The assistant is specifically meant to help RAs chat about and work with their
+data. It should support exploratory analysis, interpretation, report drafting,
+and practical next-step recommendations, while making clear what is retrieved
+data, what is model interpretation, and what is sourced research context.
+
 The chatbot is an internal RA workflow. It is never participant-facing and does
 not replace canonical scoring, analytics snapshots, imports, exports, or
 Supabase Studio.
@@ -32,6 +37,11 @@ All data access is mediated by FastAPI:
 The LLM may request approved tools, but it must not execute arbitrary SQL, select
 tables dynamically, call Supabase directly, trigger writes, import data, export
 files, or bypass server-side authorization.
+
+External research/search is also mediated by FastAPI. The LLM may request an
+approved web research tool for public research context, but it must not send
+participant-level rows, participant identifiers, private lab-sensitive content,
+Supabase/JWT data, or direct database output to an external search provider.
 
 ---
 
@@ -86,6 +96,52 @@ or bulk export behavior remains out of scope for v1.
 
 ---
 
+## Assistant Behavior and System Prompt Contract
+
+The backend coordinator should build a stable system prompt from this contract
+rather than relying on ad hoc route-level wording.
+
+The assistant should be framed as:
+
+- an RA-facing research data assistant for UBC Psychology lab workflows
+- helpful for chatting about lab data, understanding patterns, drafting concise
+  report-style summaries, and suggesting reasonable next analysis steps
+- careful to separate retrieved study data, statistical summaries, model
+  interpretation, and public research context
+- explicit about uncertainty, small sample sizes, missing data, and analysis
+  limitations
+
+The assistant may give opinions, interpretations, and recommendations when they
+are grounded in either:
+
+- scoped backend tool results from the authenticated user's lab data
+- documented platform/lab scoring and analysis rules
+- public research sources retrieved through an approved web research tool
+
+When a recommendation depends on external literature or current public guidance,
+the assistant should use the web research tool or ask the RA whether to search.
+Research-backed recommendations must cite or summarize the public sources used.
+The assistant should not present unsupported opinions as research conclusions.
+
+The system prompt must require the assistant to:
+
+- use only approved tools exposed by the backend coordinator
+- answer from scoped tool results when discussing lab data
+- prefer anonymous RA-facing identifiers such as `participant_number`
+- avoid raw UUIDs unless the RA is troubleshooting and the backend supplied them
+- refuse requests that require disallowed writes, exports, credentials, PII, or
+  unbounded table dumps
+- avoid clinical, causal, or policy claims beyond the retrieved data and cited
+  research
+- state when an answer is based on insufficient data or unavailable tools
+
+The prompt should also tell the model that web search is for public research
+context only. Search queries must be generalized and privacy-preserving; they
+must not include participant rows, participant/session identifiers, private lab
+notes, credentials, JWTs, or sensitive database output.
+
+---
+
 ## OpenRouter Configuration
 
 OpenRouter is the planned model gateway for this feature. Model and provider
@@ -134,22 +190,34 @@ Initial tool categories may include:
 - survey and digit span score summaries
 - weather/study-day summaries
 - report formatter over previously retrieved scoped results
+- public web research search/fetch for literature-backed context and citations
 
 Tool outputs should be compact. The model should receive summaries and selected
 rows, not entire tables.
+
+Web research tool outputs should include source titles, URLs, retrieval dates
+where available, and compact excerpts or summaries. The tool must enforce query
+sanitization and should reject searches that appear to include participant
+identifiers, raw data rows, credentials, or private lab-sensitive content.
 
 ---
 
 ## Frontend UX
 
-The first UI should be an RA-authenticated chat surface reachable from the RA
-dashboard/navigation. It should support:
+The first UI should be a dedicated RA-authenticated `/chat` page reachable from
+the RA bottom dock/navigation. It should be available to all authenticated RA
+and admin users and must not be exposed to participant routes.
+
+The page should use a very simple chat-first layout inspired by Claude.ai's
+minimal conversation experience, adapted to this project's color system and
+without third-party branding. It should support:
 
 - plain-language questions
 - formatted markdown-like responses for readable statistical summaries and
   report-style text
 - loading, empty, error, and privacy-unavailable states
 - clear distinction between retrieved data and model interpretation
+- source links or citations when responses rely on public web research
 - no export/download action in v1
 
 All frontend API calls must go through typed wrappers in `src/lib/api/`. Browser

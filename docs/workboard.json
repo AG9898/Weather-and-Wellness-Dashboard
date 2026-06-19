@@ -4085,7 +4085,7 @@
     {
       "id": "T1822",
       "title": "AI chat - RA chat UI surface",
-      "description": "Build the authenticated RA chatbot UI from dashboard/navigation with message input, formatted responses, loading/error/privacy-unavailable states, and no export/download controls.",
+      "description": "Build a dedicated authenticated RA chatbot page at /chat, reachable by all RA/admin users from the floating bottom dock/navigation. The page should provide a very simple chat-first experience inspired by Claude.ai's minimal conversation UI, adapted to the project color system and without third-party branding, with message input, formatted responses, loading/error/privacy-unavailable states, source/citation display when provided, and no export/download controls.",
       "status": "todo",
       "priority": "medium",
       "group_id": "AI_CHAT",
@@ -4096,8 +4096,10 @@
       ],
       "blocked_by": [],
       "acceptance_criteria": [
-        "All RA/admin users can reach the chat surface",
-        "Responses render clean readable report-style text",
+        "All RA/admin users can reach the dedicated /chat page from the RA route group",
+        "The floating bottom dock/navigation includes a Chat entry for /chat",
+        "The chat surface uses a simple Claude.ai-inspired conversation layout adapted to the project color system without third-party branding",
+        "Responses render clean readable report-style text and source/citation links when provided",
         "The UI has no CSV/XLSX/ZIP download action"
       ],
       "docs": [
@@ -4107,11 +4109,13 @@
       "files": [
         "frontend/src/app/(ra)/chat/page.tsx",
         "frontend/src/app/(ra)/layout.tsx",
+        "frontend/src/lib/components/RAFloatingChrome.tsx",
+        "frontend/src/lib/components/RAFloatingChrome.test.tsx",
         "frontend/src/lib/components/RaChatPanel.tsx",
         "frontend/src/lib/components/RaChatPanel.test.tsx"
       ],
       "commands": [
-        "cd frontend && npm test -- --runInBand src/lib/components/RaChatPanel.test.tsx",
+        "cd frontend && npm test -- --runInBand src/lib/components/RaChatPanel.test.tsx src/lib/components/RAFloatingChrome.test.tsx",
         "cd frontend && npm run build"
       ]
     }

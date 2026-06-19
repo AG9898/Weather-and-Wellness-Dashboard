@@ -25,7 +25,8 @@ Visual language baseline: [docs/styleguide.md](../../../styleguide.md) · Animat
    - trial mode: no KPI/data changes (no writes)
 7. View data via Supabase Studio
 8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click either "Start Misokinesia Session" (backend-backed write path), "Run Short Trial", or "Run Full Trial" (read-only rehearsal paths) → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Design Spec](../misokinesia/DESIGN_SPEC.md).
-9. Planned: open the RA data chatbot from dashboard/navigation to ask
+9. Planned: open the RA data chatbot from the floating bottom dock/navigation
+   to visit the dedicated `/chat` page and ask
    lab-scoped questions, request statistical summaries, and generate clean
    report-style on-screen text. Chatbot answers are read-only and may use both
    aggregate summaries and anonymous participant/session-level rows through
@@ -35,8 +36,12 @@ Visual language baseline: [docs/styleguide.md](../../../styleguide.md) · Animat
 ## RA Data Chatbot UX (planned)
 
 - Available to authenticated RA/admin users only.
-- Reachable from the RA dashboard/navigation without exposing it to participant
-  routes.
+- Implemented as a dedicated `/chat` page in the RA route group.
+- Reachable from the floating bottom dock/navigation without exposing it to
+  participant routes.
+- Uses a very simple chat-first interface inspired by Claude.ai's minimal
+  conversation layout, adapted to the Weather-Wellness color system and without
+  third-party branding.
 - Shows formatted, readable answers suitable for statistical summaries and
   short report-style text.
 - Distinguishes retrieved data from model interpretation when practical.
