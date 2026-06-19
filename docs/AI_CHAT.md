@@ -223,6 +223,31 @@ Required behavior:
 - Requests should include application attribution headers only when they do not
   expose participant or lab-sensitive data.
 
+### Availability fallback (deliberate non-ZDR)
+
+On the free tier, Venice is effectively the only OpenRouter provider offering a
+ZDR `:free` endpoint, so a ZDR-required primary model has a single point of
+failure and observed free-tier uptime is unreliable (~70%). To keep the RA
+chatbot answering when the primary ZDR provider is down, an **optional**
+availability fallback is supported:
+
+- `OPENROUTER_FALLBACK_MODEL` (optional, default unset) names a non-ZDR model
+  used **only** when the primary ZDR-required request fails due to provider
+  unavailability/upstream error — never on misconfiguration, which still fails
+  closed. Recommended slug: `nvidia/nemotron-3-super-120b-a12b:free` (free,
+  tool-calling, 1M context); lighter secondary: `nvidia/nemotron-3-nano-30b-a3b:free`.
+- `OPENROUTER_FALLBACK_PROVIDER_ALLOWLIST` (optional) may scope the fallback;
+  leave unset to let OpenRouter route freely for maximum availability.
+- When the fallback fires, ZDR routing is **intentionally relaxed** for that
+  retry. This is an explicit, owner-approved trade (2026-06-19): availability is
+  preferred over ZDR for the fallback request only. The primary path keeps ZDR
+  enforced; when `OPENROUTER_FALLBACK_MODEL` is unset, behavior is unchanged and
+  the client fails closed.
+- The served route (primary ZDR vs. non-ZDR fallback) must be observable for
+  auditing without exposing secrets.
+
+See `docs/DECISIONS.md` for the decision record.
+
 Operational references:
 
 - OpenRouter provider logging/privacy: `https://openrouter.ai/docs/guides/privacy/provider-logging`

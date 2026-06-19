@@ -39,6 +39,8 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 | `OPENROUTER_MODEL` | Conditional (RA chatbot) | — | Model slug used by the RA data chatbot. Configure at runtime so current free models can be used or replaced without code/schema changes. | OpenRouter model catalog |
 | `OPENROUTER_REQUIRE_ZDR` | Optional (RA chatbot) | `true` | When enabled, chatbot requests must require Zero Data Retention/provider privacy controls where OpenRouter supports them. If the configured model cannot satisfy the requirement, chat fails closed with a generic unavailable state. | Hardcode per environment |
 | `OPENROUTER_PROVIDER_ALLOWLIST` | Conditional (RA chatbot) | — | Comma-separated provider allowlist for privacy/cost routing. Required while `OPENROUTER_REQUIRE_ZDR=true`; leave unset only when ZDR is explicitly disabled for a non-production environment. | OpenRouter provider routing settings |
+| `OPENROUTER_FALLBACK_MODEL` | Optional (RA chatbot) | — | Non-ZDR model slug used **only** when the primary ZDR-required request fails due to provider unavailability/upstream error (not misconfiguration). Setting it is a deliberate, owner-approved relaxation of ZDR for the fallback request to improve availability when the sole free ZDR provider (Venice) is down. Unset = no fallback (fail closed). Recommended: `nvidia/nemotron-3-super-120b-a12b:free`. See `docs/AI_CHAT.md` and `docs/DECISIONS.md`. | OpenRouter model catalog |
+| `OPENROUTER_FALLBACK_PROVIDER_ALLOWLIST` | Optional (RA chatbot) | — | Optional comma-separated provider allowlist scoping the fallback model. Leave unset to let OpenRouter route the fallback freely for maximum availability. | OpenRouter provider routing settings |
 | `CHAT_WEB_SEARCH_API_KEY` | Conditional (RA chatbot web research) | — | Server-only API key for the privacy-sanitized web research tool. Only required once the web-research phase (final phase) ships; leave unset to disable web research. The tool must never send participant rows, identifiers, or sensitive lab data to the provider. | Chosen search provider dashboard |
 
 ---
@@ -124,6 +126,8 @@ targets.
 | `OPENROUTER_MODEL` | ✓ | ✓ | | |
 | `OPENROUTER_REQUIRE_ZDR` | ✓ | ✓ | | |
 | `OPENROUTER_PROVIDER_ALLOWLIST` | ✓ | ✓ | | |
+| `OPENROUTER_FALLBACK_MODEL` | ✓ | ✓ | | |
+| `OPENROUTER_FALLBACK_PROVIDER_ALLOWLIST` | ✓ | ✓ | | |
 | `RAILWAY_TOKEN` | | | | ✓ |
 | `VERCEL_TOKEN` | | | | ✓ |
 | `WEATHER_INGEST_BASE_URL` | | | | ✓ |

@@ -112,6 +112,40 @@ authorization mechanisms.
 `docs/labs/weather-wellness/weather/DESIGN_SPEC.md`,
 `docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`.
 
+---
+
+### RESOLVED-21 — RA Chatbot May Fall Back to a Non-ZDR Model for Availability
+
+**Resolved:** 2026-06-19
+
+**Decision:** The RA chatbot keeps ZDR enforced on its primary OpenRouter model
+but may, **optionally**, fall back to a non-ZDR model for availability when the
+primary ZDR-required request fails due to provider unavailability/upstream error.
+The fallback is opt-in via `OPENROUTER_FALLBACK_MODEL`; when unset, the client
+continues to fail closed. Recommended fallback slug:
+`nvidia/nemotron-3-super-120b-a12b:free`.
+
+**Why:** On OpenRouter's free tier, Venice is effectively the only provider
+offering a ZDR `:free` endpoint, so a ZDR-required free model is a single point of
+failure with unreliable (~70%) uptime. Switching free ZDR models does not help —
+they all route through Venice. Free Gemma/Nemotron endpoints are not ZDR, so they
+cannot satisfy free+ZDR simultaneously. To keep the RA-facing feature usable when
+Venice is down, the owner accepts relaxing ZDR for the fallback request only.
+
+**Constraints chosen:**
+- Fallback fires **only** on runtime provider unavailability/upstream error, never
+  on misconfiguration (ZDR required without allowlist still fails closed).
+- The primary path always keeps ZDR enforced; only the single fallback retry
+  relaxes provider routing. `OPENROUTER_FALLBACK_PROVIDER_ALLOWLIST` may optionally
+  scope the fallback.
+- The served route (primary ZDR vs. non-ZDR fallback) must be observable for
+  research-ethics auditing, without exposing secrets.
+- No participant rows, identifiers, or sensitive lab data leave the existing
+  backend-mediated tool boundary; the fallback changes only which model serves the
+  response, not the data-access boundary in RESOLVED-20.
+
+**Affects:** `docs/AI_CHAT.md`, `docs/ENV_VARS.md`, `docs/workboard.json` (T1823).
+
 ### RESOLVED-01 — Database Platform: Supabase
 
 **Resolved:** Pre-project (before T01)

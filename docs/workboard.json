@@ -4122,7 +4122,7 @@
     {
       "id": "T1823",
       "title": "AI chat - OpenRouter client and privacy config",
-      "description": "Add a server-only OpenRouter client wrapper in the backend that performs chat-completions with tool-calling support, driven by OPENROUTER_API_KEY/OPENROUTER_MODEL and enforcing privacy config: when OPENROUTER_REQUIRE_ZDR=true, require OPENROUTER_PROVIDER_ALLOWLIST and fail closed with a generic unavailable state if privacy cannot be satisfied. No browser-visible secret path. No business logic/tool execution here.",
+      "description": "Add a server-only OpenRouter client wrapper in the backend that performs chat-completions with tool-calling support, driven by OPENROUTER_API_KEY/OPENROUTER_MODEL and enforcing privacy config: when OPENROUTER_REQUIRE_ZDR=true, require OPENROUTER_PROVIDER_ALLOWLIST and route the primary request through the ZDR provider allowlist. Add an OPTIONAL non-ZDR availability fallback: when OPENROUTER_FALLBACK_MODEL is set, a primary request that fails due to provider unavailability/upstream error (NOT misconfiguration) retries once on the fallback model with ZDR routing relaxed (provider allowlist not enforced; optional OPENROUTER_FALLBACK_PROVIDER_ALLOWLIST may scope it). This is a deliberate, owner-approved relaxation of ZDR for availability when the sole free ZDR provider (Venice) is down; default unset means behavior is unchanged and the client fails closed with a generic unavailable state. Recommended fallback slug: nvidia/nemotron-3-super-120b-a12b:free. The fallback path must be observable (which model/route served the response) without leaking secrets. No browser-visible secret path. No business logic/tool execution here.",
       "status": "todo",
       "priority": "high",
       "group_id": "AI_CHAT",
@@ -4132,7 +4132,10 @@
         "OpenRouter client reads only backend env vars and never exposes secrets to the browser path",
         "Missing/invalid privacy config (ZDR required without allowlist) returns a generic unavailable result instead of calling the model",
         "Client supports passing tool/function schemas and receiving tool-call requests",
-        "Unit tests cover privacy fail-closed and config parsing"
+        "When OPENROUTER_FALLBACK_MODEL is unset, a failed ZDR-required primary call fails closed (no non-ZDR call is made)",
+        "When OPENROUTER_FALLBACK_MODEL is set, an unavailable/errored primary ZDR call retries once on the fallback model with the ZDR allowlist not enforced; misconfiguration still fails closed and does not trigger fallback",
+        "The served route/model (primary vs non-ZDR fallback) is recorded/observable without exposing secrets",
+        "Unit tests cover privacy fail-closed, config parsing, fallback-on-unavailability, and no-fallback-when-unset"
       ],
       "docs": [
         "docs/AI_CHAT.md",
