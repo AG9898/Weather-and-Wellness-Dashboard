@@ -43,6 +43,18 @@ class OpenRouterConfig:
     model: str
     require_zdr: bool
     provider_allowlist: tuple[str, ...]
+    # Optional, owner-approved non-ZDR availability fallback. When
+    # fallback_model is set, a primary ZDR-required request that fails due to
+    # provider unavailability/upstream error retries once on this model with
+    # ZDR routing relaxed. Unset (empty) means no fallback: the client fails
+    # closed. See docs/AI_CHAT.md and docs/DECISIONS.md.
+    fallback_model: str = ""
+    fallback_provider_allowlist: tuple[str, ...] = ()
+
+    @property
+    def has_fallback(self) -> bool:
+        """Whether a non-ZDR availability fallback model is configured."""
+        return bool(self.fallback_model)
 
 
 def _parse_bool_env(name: str, default: bool) -> bool:
@@ -78,6 +90,10 @@ def get_openrouter_config() -> OpenRouterConfig:
     model = (os.getenv("OPENROUTER_MODEL") or "").strip()
     require_zdr = _parse_bool_env("OPENROUTER_REQUIRE_ZDR", True)
     provider_allowlist = _parse_csv_env("OPENROUTER_PROVIDER_ALLOWLIST")
+    fallback_model = (os.getenv("OPENROUTER_FALLBACK_MODEL") or "").strip()
+    fallback_provider_allowlist = _parse_csv_env(
+        "OPENROUTER_FALLBACK_PROVIDER_ALLOWLIST"
+    )
 
     if not api_key:
         raise OpenRouterConfigError("OPENROUTER_API_KEY is required.")
@@ -93,6 +109,8 @@ def get_openrouter_config() -> OpenRouterConfig:
         model=model,
         require_zdr=require_zdr,
         provider_allowlist=provider_allowlist,
+        fallback_model=fallback_model,
+        fallback_provider_allowlist=fallback_provider_allowlist,
     )
 
 

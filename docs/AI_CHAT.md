@@ -7,6 +7,11 @@
 > `postRaChat()` wrapper were added in T1821. The dedicated RA `/chat` UI surface
 > (page, `RaChatPanel`, and floating-dock entry) was added in T1822.
 >
+> The server-only OpenRouter client wrapper (tool-calling support, privacy
+> fail-closed config, and the optional non-ZDR availability fallback) was added
+> in T1823 (`backend/app/services/openrouter_client.py`); it owns the secret
+> boundary and exposes no business logic or tool execution yet.
+>
 > The **agentic model layer** that connects OpenRouter on top of these tools is
 > planned in five phases: (1) the agentic coordinator loop, (2) SSE streaming,
 > (3) the tool-call audit table, (4) the doc-grounded methodology explainer, and
@@ -222,6 +227,13 @@ Required behavior:
   details or silently relaxing privacy.
 - Requests should include application attribution headers only when they do not
   expose participant or lab-sensitive data.
+- The client supports passing tool/function schemas and returns any tool-call
+  requests the model makes, so the agentic coordinator can drive the
+  tool-calling loop. The client itself executes no tools and runs no business
+  logic; it only relays tool schemas and tool-call requests.
+- Every chat result records the served route (`primary` ZDR vs. non-ZDR
+  `fallback`) and the served model slug so the coordinator/audit can observe
+  which path answered, without exposing the API key or other secrets.
 
 ### Availability fallback (deliberate non-ZDR)
 
