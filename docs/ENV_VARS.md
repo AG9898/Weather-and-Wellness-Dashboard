@@ -37,8 +37,8 @@ to HS256 when `SUPABASE_JWT_SECRET` is set. See `docs/ARCHITECTURE.md` (Auth sec
 | `WEATHER_INGEST_COOLDOWN_SECONDS` | Optional | `600` | Per-station weather ingestion cooldown window in seconds. | Hardcode or omit to accept default |
 | `OPENROUTER_API_KEY` | Conditional (RA chatbot) | — | Server-only OpenRouter API key for the planned RA data chatbot. Never expose to browser code. | OpenRouter dashboard |
 | `OPENROUTER_MODEL` | Conditional (RA chatbot) | — | Model slug used by the RA data chatbot. Configure at runtime so current free models can be used or replaced without code/schema changes. | OpenRouter model catalog |
-| `OPENROUTER_REQUIRE_ZDR` | Optional (RA chatbot) | `true` | When enabled, chatbot requests must require Zero Data Retention/provider privacy controls where OpenRouter supports them. If the configured model cannot satisfy the requirement, chat should fail closed or show unavailable state. | Hardcode per environment |
-| `OPENROUTER_PROVIDER_ALLOWLIST` | Optional (RA chatbot) | — | Comma-separated provider allowlist for privacy/cost routing. Leave unset only when account-level privacy settings are sufficient. | OpenRouter provider routing settings |
+| `OPENROUTER_REQUIRE_ZDR` | Optional (RA chatbot) | `true` | When enabled, chatbot requests must require Zero Data Retention/provider privacy controls where OpenRouter supports them. If the configured model cannot satisfy the requirement, chat fails closed with a generic unavailable state. | Hardcode per environment |
+| `OPENROUTER_PROVIDER_ALLOWLIST` | Conditional (RA chatbot) | — | Comma-separated provider allowlist for privacy/cost routing. Required while `OPENROUTER_REQUIRE_ZDR=true`; leave unset only when ZDR is explicitly disabled for a non-production environment. | OpenRouter provider routing settings |
 
 ---
 

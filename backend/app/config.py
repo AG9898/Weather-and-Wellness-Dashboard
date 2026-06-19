@@ -9,6 +9,7 @@ time used to compute participants.daylight_exposure_minutes at session start.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -19,6 +20,80 @@ from zoneinfo import ZoneInfo
 #   - dashboard date-range filtering
 #   - daylight exposure computation
 STUDY_TIMEZONE = "America/Vancouver"
+
+_OPENROUTER_UNAVAILABLE_MESSAGE = (
+    "AI chat is unavailable because its privacy configuration is incomplete."
+)
+
+
+class OpenRouterConfigError(RuntimeError):
+    """Raised when server-side OpenRouter configuration is missing or unsafe."""
+
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+        self.public_message = _OPENROUTER_UNAVAILABLE_MESSAGE
+        super().__init__(self.public_message)
+
+
+@dataclass(frozen=True)
+class OpenRouterConfig:
+    """Server-only OpenRouter runtime configuration."""
+
+    api_key: str
+    model: str
+    require_zdr: bool
+    provider_allowlist: tuple[str, ...]
+
+
+def _parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+
+    raise OpenRouterConfigError(f"{name} must be a boolean value.")
+
+
+def _parse_csv_env(name: str) -> tuple[str, ...]:
+    raw = os.getenv(name, "")
+    values = tuple(part.strip() for part in raw.split(",") if part.strip())
+    if len(set(values)) != len(values):
+        raise OpenRouterConfigError(f"{name} must not contain duplicate providers.")
+    return values
+
+
+def get_openrouter_config() -> OpenRouterConfig:
+    """Return validated server-only OpenRouter config for the RA chatbot.
+
+    The API key is intentionally read only from non-public backend env vars.
+    Privacy-sensitive routing fails closed until the backend can prove the
+    configured request will use approved provider controls.
+    """
+    api_key = (os.getenv("OPENROUTER_API_KEY") or "").strip()
+    model = (os.getenv("OPENROUTER_MODEL") or "").strip()
+    require_zdr = _parse_bool_env("OPENROUTER_REQUIRE_ZDR", True)
+    provider_allowlist = _parse_csv_env("OPENROUTER_PROVIDER_ALLOWLIST")
+
+    if not api_key:
+        raise OpenRouterConfigError("OPENROUTER_API_KEY is required.")
+    if not model:
+        raise OpenRouterConfigError("OPENROUTER_MODEL is required.")
+    if require_zdr and not provider_allowlist:
+        raise OpenRouterConfigError(
+            "OPENROUTER_PROVIDER_ALLOWLIST is required when ZDR routing is required."
+        )
+
+    return OpenRouterConfig(
+        api_key=api_key,
+        model=model,
+        require_zdr=require_zdr,
+        provider_allowlist=provider_allowlist,
+    )
 
 
 def get_daylight_start_local_time() -> str:

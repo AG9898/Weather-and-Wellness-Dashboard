@@ -152,12 +152,16 @@ Required behavior:
 
 - `OPENROUTER_API_KEY` is server-only.
 - `OPENROUTER_MODEL` selects the model at runtime.
+- FastAPI parses OpenRouter configuration only from backend environment
+  variables; there is no `NEXT_PUBLIC_*` or browser-visible OpenRouter secret
+  path.
 - Privacy controls must be enforced where possible, including provider training
   opt-out, disabled input/output logging, provider restrictions, and Zero Data
   Retention (ZDR) routing when available.
-- If the configured free model cannot satisfy required privacy constraints, the
-  feature should fail closed or show a clear unavailable state instead of
-  silently relaxing privacy.
+- When `OPENROUTER_REQUIRE_ZDR=true`, `OPENROUTER_PROVIDER_ALLOWLIST` is required
+  until provider metadata checks are implemented. Missing or invalid privacy
+  configuration returns a generic unavailable state instead of exposing provider
+  details or silently relaxing privacy.
 - Requests should include application attribution headers only when they do not
   expose participant or lab-sensitive data.
 

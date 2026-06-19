@@ -3940,7 +3940,7 @@
       "id": "T1817",
       "title": "AI chat - Backend config and OpenRouter privacy client",
       "description": "Add server-only OpenRouter configuration, a small client wrapper, and fail-closed privacy/provider checks for the planned RA chatbot without adding data tools yet.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [],
