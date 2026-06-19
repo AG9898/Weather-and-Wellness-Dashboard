@@ -3967,7 +3967,7 @@
       "id": "T1818",
       "title": "AI chat - Authenticated backend route and coordinator",
       "description": "Implement the planned FastAPI POST /chat route with typed schemas, RA auth, bounded request validation, coordinator structure, and no-op/tool-unavailable behavior before real data tools are attached.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [

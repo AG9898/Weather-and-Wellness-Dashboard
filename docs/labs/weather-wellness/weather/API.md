@@ -61,7 +61,7 @@
 |--------|------|------|--------|----------------|
 | GET    | /dashboard/study-window | RA | implemented | T121 |
 | GET    | /dashboard/analytics | RA | implemented | T88 |
-| POST   | /chat | RA | planned | AI chat |
+| POST   | /chat | RA | implemented | T1818 |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
@@ -113,18 +113,20 @@
 > Statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
 > in `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 
-## RA Data Chatbot (planned)
+## RA Data Chatbot
 
 > Platform boundary: `docs/AI_CHAT.md`. Same-origin topology:
 > `docs/ARCHITECTURE.md`.
 
 ### POST /chat
 - **Auth:** RA required
-- **Status:** planned
+- **Status:** implemented (T1818; authenticated no-op route, data tools not attached)
 - **Classification:** internal-only backend chat coordinator
 - **Current same-origin caller:** planned `POST /api/ra/chat`
-- **Purpose:** Answer RA questions about lab-scoped data using approved
-  read-only backend tools and OpenRouter-generated natural-language output.
+- **Purpose:** Accept authenticated RA chat requests through the backend
+  coordinator. Until approved read-only data tools are attached, the route
+  returns a typed unavailable response and does not query lab data or call an
+  ungrounded data assistant.
 - **Request:** `RAChatRequest`
 
 ```json
@@ -145,13 +147,22 @@
 }
 ```
 
+- **Validation:**
+  - Request bodies reject unknown fields such as raw `sql` or `table_names`.
+  - `message` is required, trimmed, and capped at 2,000 characters.
+  - `history` is capped at 20 prior turns; each prior turn is capped at 4,000
+    characters and must use `role="user"` or `role="assistant"`.
+  - `scope.date_from` must not be after `scope.date_to`.
+  - `scope.study_slug` accepts lowercase slugs only (`a-z`, `0-9`, `-`) and is
+    capped at 64 characters.
+
 - **Response:** `RAChatResponse`
 
 ```json
 {
   "conversation_id": "uuid",
   "message": "formatted assistant response text",
-  "model": "configured-openrouter-model",
+  "model": "configured-openrouter-model | tool-unavailable",
   "tool_results": [
     {
       "tool_name": "dashboard_analytics_summary",
@@ -176,6 +187,11 @@
     `role` and `lab_name` for every data tool.
   - Does not expose database credentials, Supabase service keys, raw JWTs, or
     direct SQL execution to OpenRouter.
+  - Does not accept arbitrary SQL or raw table-name instructions; those requests
+    return `blocked_reason="disallowed_data_access_request"`.
+  - Until approved data tools are attached, returns
+    `blocked_reason="data_tools_unavailable"`, `model="tool-unavailable"`, and
+    an empty `tool_results` array.
   - Sends only bounded scoped tool results to OpenRouter.
   - Does not send participant rows, participant/session identifiers, private
     lab-sensitive content, credentials, JWTs, or raw database output to public

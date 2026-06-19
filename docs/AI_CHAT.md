@@ -1,7 +1,8 @@
 # AI_CHAT.md — RA Data Chatbot
 
-> **Status:** Planned. This is the canonical platform-level design for an RA-facing
-> LLM chatbot over lab data.
+> **Status:** Planned overall; initial authenticated backend route implemented
+> in T1818 with no data tools attached. This is the canonical platform-level
+> design for an RA-facing LLM chatbot over lab data.
 
 ---
 
@@ -37,6 +38,11 @@ All data access is mediated by FastAPI:
 The LLM may request approved tools, but it must not execute arbitrary SQL, select
 tables dynamically, call Supabase directly, trigger writes, import data, export
 files, or bypass server-side authorization.
+
+The initial `POST /chat` backend route fails closed while approved data tools are
+not yet attached. It validates the authenticated RA request and returns a typed
+tool-unavailable response instead of sending ungrounded study-data questions to
+OpenRouter.
 
 External research/search is also mediated by FastAPI. The LLM may request an
 approved web research tool for public research context, but it must not send
