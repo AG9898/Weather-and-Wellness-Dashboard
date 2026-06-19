@@ -226,7 +226,7 @@ export default function RaChatPanel() {
   const showEmptyState = turns.length === 0 && status !== "loading";
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-9rem)] w-full max-w-3xl flex-col px-4 sm:px-6">
+    <div className="mx-auto mt-10 flex h-[calc(100dvh-12rem)] w-full max-w-3xl flex-col px-4 sm:mt-14 sm:px-6">
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto py-6"
