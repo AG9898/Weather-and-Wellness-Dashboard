@@ -4027,7 +4027,7 @@
       "id": "T1820",
       "title": "AI chat - Scoped participant and session tools",
       "description": "Add bounded anonymous participant/session-level read tools for participant number lookup, session summaries, demographics, survey scores, and digit span summaries without exposing direct identifiers by default.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [

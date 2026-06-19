@@ -120,14 +120,16 @@
 
 ### POST /chat
 - **Auth:** RA required
-- **Status:** implemented (T1818; scoped aggregate tools added in T1819)
+- **Status:** implemented (T1818; scoped aggregate tools added in T1819;
+  bounded participant/session tools added in T1820)
 - **Classification:** internal-only backend chat coordinator
 - **Current same-origin caller:** planned `POST /api/ra/chat`
 - **Purpose:** Accept authenticated RA chat requests through the backend
-  coordinator. The route runs approved read-only aggregate tools for the
-  authenticated Weather-Wellness lab scope and returns bounded tool summaries.
-  The narrative model layer is not connected by this endpoint yet, so the
-  backend does not send ungrounded study-data questions to OpenRouter.
+  coordinator. The route runs approved read-only aggregate and anonymous
+  participant/session tools for the authenticated Weather-Wellness lab scope
+  and returns bounded tool summaries. The narrative model layer is not
+  connected by this endpoint yet, so the backend does not send ungrounded
+  study-data questions to OpenRouter.
 - **Request:** `RAChatRequest`
 
 ```json
@@ -179,7 +181,9 @@
   - implemented: study-window and linked session-count summaries
   - implemented: survey and digit span aggregate score summaries
   - implemented: weather/study-day summaries
-  - planned: anonymous participant/session lookup by participant number or bounded filters
+  - implemented: anonymous participant/session summaries by participant number
+    or bounded date filters, including demographics, survey scores, and digit
+    span summaries
   - report formatter over already retrieved scoped results
   - privacy-preserving public web research search/fetch for literature-backed
     context, source links, and citations
@@ -192,10 +196,13 @@
     return `blocked_reason="disallowed_data_access_request"`.
   - For normal aggregate requests, returns `model="aggregate-tools"` and a
     compact `tool_results` array with one summary per aggregate tool.
-  - Aggregate tools are capped at 400 local study days per request. When dates
-    are omitted, the tools use the latest available study day and a 30-day
-    window.
-  - Aggregate tools currently accept only the authenticated `lab_name="ww"`
+  - Aggregate and participant/session tools are capped at 400 local study days
+    per request. Participant/session summaries are additionally capped at 20
+    session rows per tool call and normal outputs use `participant_number`
+    while omitting raw `participant_uuid` and `session_id` values.
+  - When dates are omitted, the tools use the latest available study day and a
+    30-day window.
+  - Tools currently accept only the authenticated `lab_name="ww"`
     Weather-Wellness scope because persistent `lab_id` / `study_id` columns are
     not present on these tables yet; unsupported lab scopes return typed
     user-safe `permission_denied` tool summaries rather than broad reads.

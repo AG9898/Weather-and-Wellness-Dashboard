@@ -20,12 +20,16 @@ participants or sessions.
 - `app_metadata.role` holds `ra` or `admin`
 - All RA endpoints resolve the caller's lab from JWT claims via `get_current_lab_member`
 
-### RA Chatbot Scoping (planned)
+### RA Chatbot Scoping
 
-The planned RA data chatbot follows the same auth boundary. The LLM must not
-connect to Supabase directly or choose tables dynamically. FastAPI resolves the
+The RA data chatbot follows the same auth boundary. The LLM must not connect to
+Supabase directly or choose tables dynamically. FastAPI resolves the
 authenticated `LabMember`, applies lab/study scope inside approved read-only
-tools, and sends only scoped tool results to the model gateway. This does not
+tools, and sends only scoped tool results to the model gateway. Current
+aggregate and anonymous participant/session tools enforce the authenticated
+`lab_name="ww"` Weather-Wellness scope until persistent `lab_id` / `study_id`
+columns exist on all relevant study tables; unsupported lab scopes return
+typed `permission_denied` tool results without querying data. This does not
 resolve OPEN-05; it is compatible with the current app-layer scoping and with a
 future row-level or study-level database isolation strategy.
 

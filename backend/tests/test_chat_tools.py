@@ -70,7 +70,7 @@ class ChatAggregateToolsTests(IsolatedAsyncioTestCase):
         )
 
         assert {result.status for result in results} == {"permission_denied"}
-        assert len(results) == 4
+        assert len(results) == 5
         assert db.statements == []
 
     async def test_aggregate_tools_reject_unbounded_date_ranges(self) -> None:

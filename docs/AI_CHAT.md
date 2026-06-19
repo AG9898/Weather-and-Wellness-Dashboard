@@ -1,7 +1,8 @@
 # AI_CHAT.md — RA Data Chatbot
 
 > **Status:** Planned overall; authenticated backend route implemented in
-> T1818, with scoped aggregate data tools added in T1819. This is the canonical
+> T1818, with scoped aggregate data tools added in T1819 and bounded anonymous
+> participant/session summaries added in T1820. This is the canonical
 > platform-level design for an RA-facing LLM chatbot over lab data.
 
 ---
@@ -39,11 +40,11 @@ The LLM may request approved tools, but it must not execute arbitrary SQL, selec
 tables dynamically, call Supabase directly, trigger writes, import data, export
 files, or bypass server-side authorization.
 
-The initial `POST /chat` backend route now runs approved read-only aggregate
-tools for authenticated Weather-Wellness lab scope and returns bounded tool
-summaries. It still does not send ungrounded study-data questions to OpenRouter;
-the narrative model layer remains separate from the deterministic aggregate
-tool layer.
+The initial `POST /chat` backend route now runs approved read-only aggregate and
+anonymous participant/session summary tools for authenticated Weather-Wellness
+lab scope and returns bounded tool summaries. It still does not send ungrounded
+study-data questions to OpenRouter; the narrative model layer remains separate
+from the deterministic backend tool layer.
 
 External research/search is also mediated by FastAPI. The LLM may request an
 approved web research tool for public research context, but it must not send
@@ -193,26 +194,30 @@ Each chatbot data tool should be a narrow backend function with:
 - user-safe errors for unavailable data or insufficient permissions
 - tests for lab scoping and blocked/disallowed access
 
-Initial tool categories include implemented aggregate tools plus planned
-participant/session and research-context tools:
+Initial tool categories include implemented aggregate and participant/session
+tools plus planned research-context tools:
 
 - dashboard analytics summary for a bounded date range
 - study-window and linked session-count summaries
 - survey and digit span aggregate score summaries
 - weather/study-day summaries
-- participant/session lookup by anonymous participant number or bounded filters
+- implemented: anonymous participant/session summaries by participant number or
+  bounded date filters, including demographics, survey scores, and digit span
+  summaries; normal outputs use `participant_number` and omit raw UUIDs
 - report formatter over previously retrieved scoped results
 - public web research search/fetch for literature-backed context and citations
 
 Tool outputs should be compact. The model should receive summaries and selected
 rows, not entire tables.
 
-Implemented aggregate tools are capped at 400 local study days per request.
-When no explicit dates are supplied, they use the latest available study day and
-a 30-day window. They currently enforce the authenticated `lab_name="ww"` scope
-because the Weather-Wellness schema has not yet gained persistent `lab_id` /
-`study_id` columns; unsupported lab scopes return typed user-safe
-`permission_denied` tool results rather than falling back to broad reads.
+Implemented aggregate and participant/session tools are capped at 400 local
+study days per request. Participant/session summaries are additionally capped
+at 20 session rows per tool call. When no explicit dates are supplied, tools use
+the latest available study day and a 30-day window. They currently enforce the
+authenticated `lab_name="ww"` scope because the Weather-Wellness schema has not
+yet gained persistent `lab_id` / `study_id` columns; unsupported lab scopes
+return typed user-safe `permission_denied` tool results rather than falling back
+to broad reads.
 
 Web research tool outputs should include source titles, URLs, retrieval dates
 where available, and compact excerpts or summaries. The tool must enforce query

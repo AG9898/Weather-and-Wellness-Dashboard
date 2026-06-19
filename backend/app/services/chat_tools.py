@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import LabMember
 from app.models.digitspan import DigitSpanRun
+from app.models.participants import Participant
 from app.models.sessions import Session
 from app.models.surveys import SurveyCESD10, SurveyCogFunc8a, SurveyGAD7, SurveyULS8
 from app.models.weather import StudyDay, WeatherDaily
@@ -30,6 +31,7 @@ SUPPORTED_LAB_NAME = "ww"
 SUPPORTED_STUDY_SLUGS = frozenset({"weather-wellness", "ww"})
 DEFAULT_CHAT_TOOL_WINDOW_DAYS = 30
 MAX_CHAT_TOOL_WINDOW_DAYS = 400
+MAX_CHAT_TOOL_SESSION_ROWS = 20
 DEFAULT_WEATHER_STATION_ID = 3510
 
 
@@ -83,6 +85,7 @@ async def run_scoped_aggregate_tools(
         "study_window_session_counts",
         "survey_score_summary",
         "weather_study_day_summary",
+        "participant_session_summaries",
     ]
     if isinstance(resolved, _ScopeError):
         return [_result_from_scope_error(tool_name, resolved) for tool_name in tool_names]
@@ -92,6 +95,7 @@ async def run_scoped_aggregate_tools(
         await _study_window_session_counts(db, resolved),
         await _survey_score_summary(db, resolved),
         await _weather_study_day_summary(db, resolved),
+        await _participant_session_summaries(db, resolved),
     ]
 
 
@@ -143,6 +147,25 @@ async def get_weather_study_day_summary(
     return await _weather_study_day_summary(db, resolved)
 
 
+async def get_participant_session_summaries(
+    db: AsyncSession,
+    *,
+    lab_member: LabMember,
+    chat_scope: RAChatScope,
+    participant_number: int | None = None,
+    limit: int = MAX_CHAT_TOOL_SESSION_ROWS,
+) -> ChatAggregateToolResult:
+    resolved = await _resolve_tool_scope(db, lab_member=lab_member, chat_scope=chat_scope)
+    if isinstance(resolved, _ScopeError):
+        return _result_from_scope_error("participant_session_summaries", resolved)
+    return await _participant_session_summaries(
+        db,
+        resolved,
+        participant_number=participant_number,
+        limit=limit,
+    )
+
+
 async def _resolve_tool_scope(
     db: AsyncSession,
     *,
@@ -153,7 +176,7 @@ async def _resolve_tool_scope(
     if lab_name != SUPPORTED_LAB_NAME:
         return _ScopeError(
             status="permission_denied",
-            message="Aggregate chat tools are available only for the authenticated Weather-Wellness lab scope.",
+            message="Chat data tools are available only for the authenticated Weather-Wellness lab scope.",
             data={"lab_name": lab_name or None},
         )
 
@@ -429,6 +452,146 @@ async def _weather_study_day_summary(
     )
 
 
+async def _participant_session_summaries(
+    db: AsyncSession,
+    scope: _ResolvedToolScope,
+    *,
+    participant_number: int | None = None,
+    limit: int = MAX_CHAT_TOOL_SESSION_ROWS,
+) -> ChatAggregateToolResult:
+    if participant_number is not None and participant_number < 1:
+        return ChatAggregateToolResult(
+            tool_name="participant_session_summaries",
+            status="invalid_scope",
+            message="participant_number must be a positive integer.",
+            data={**_scope_data(scope), "participant_number": participant_number},
+        )
+
+    row_limit = min(max(int(limit), 1), MAX_CHAT_TOOL_SESSION_ROWS)
+    filters = [
+        StudyDay.date_local >= scope.date_from,
+        StudyDay.date_local <= scope.date_to,
+    ]
+    if participant_number is not None:
+        filters.append(Participant.participant_number == participant_number)
+
+    result = await db.execute(
+        select(
+            Participant.participant_number.label("participant_number"),
+            Participant.age_band.label("age_band"),
+            Participant.gender.label("gender"),
+            Participant.origin.label("origin"),
+            Participant.commute_method.label("commute_method"),
+            Participant.time_outside.label("time_outside"),
+            Participant.daylight_exposure_minutes.label("daylight_exposure_minutes"),
+            Session.status.label("session_status"),
+            Session.created_at.label("session_created_at"),
+            Session.completed_at.label("session_completed_at"),
+            StudyDay.date_local.label("date_local"),
+            SurveyULS8.score_0_100.label("uls8_score_0_100"),
+            SurveyULS8.legacy_mean_1_4.label("uls8_legacy_mean_1_4"),
+            SurveyCESD10.total_score.label("cesd10_total_score"),
+            SurveyCESD10.legacy_mean_1_4.label("cesd10_legacy_mean_1_4"),
+            SurveyGAD7.total_score.label("gad7_total_score"),
+            SurveyGAD7.severity_band.label("gad7_severity_band"),
+            SurveyGAD7.legacy_mean_1_4.label("gad7_legacy_mean_1_4"),
+            SurveyCogFunc8a.mean_score.label("cogfunc8a_mean_score"),
+            SurveyCogFunc8a.legacy_mean_1_5.label("cogfunc8a_legacy_mean_1_5"),
+            DigitSpanRun.total_correct.label("digitspan_total_correct"),
+            DigitSpanRun.max_span.label("digitspan_max_span"),
+            DigitSpanRun.data_source.label("digitspan_data_source"),
+        )
+        .select_from(Session)
+        .join(Participant, Session.participant_uuid == Participant.participant_uuid)
+        .join(StudyDay, Session.study_day_id == StudyDay.study_day_id)
+        .outerjoin(SurveyULS8, SurveyULS8.session_id == Session.session_id)
+        .outerjoin(SurveyCESD10, SurveyCESD10.session_id == Session.session_id)
+        .outerjoin(SurveyGAD7, SurveyGAD7.session_id == Session.session_id)
+        .outerjoin(SurveyCogFunc8a, SurveyCogFunc8a.session_id == Session.session_id)
+        .outerjoin(DigitSpanRun, DigitSpanRun.session_id == Session.session_id)
+        .where(*filters)
+        .order_by(Session.created_at.desc())
+        .limit(row_limit)
+    )
+    rows = result.mappings().all()[:row_limit]
+    if not rows:
+        scope_label = (
+            f"participant {participant_number}"
+            if participant_number is not None
+            else "the requested range"
+        )
+        return ChatAggregateToolResult(
+            tool_name="participant_session_summaries",
+            status="insufficient_data",
+            message=f"No participant/session rows are available for {scope_label}.",
+            data={
+                **_scope_data(scope),
+                "participant_number": participant_number,
+                "limit": row_limit,
+                "sessions": [],
+            },
+        )
+
+    sessions = [_participant_session_row(row) for row in rows]
+    participant_count = len({session["participant_number"] for session in sessions})
+    filter_label = (
+        f"participant {participant_number}"
+        if participant_number is not None
+        else f"{participant_count} participants"
+    )
+    return ChatAggregateToolResult(
+        tool_name="participant_session_summaries",
+        status="ready",
+        message=(
+            f"Found {len(sessions)} bounded anonymous session summaries for "
+            f"{filter_label}; responses use participant_number and omit raw UUIDs."
+        ),
+        data={
+            **_scope_data(scope),
+            "participant_number": participant_number,
+            "limit": row_limit,
+            "returned_sessions": len(sessions),
+            "sessions": sessions,
+        },
+    )
+
+
+def _participant_session_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "participant_number": _int(row["participant_number"]),
+        "date_local": row["date_local"],
+        "session": {
+            "status": row["session_status"],
+            "created_at": row["session_created_at"],
+            "completed_at": row["session_completed_at"],
+        },
+        "demographics": {
+            "age_band": row["age_band"],
+            "gender": row["gender"],
+            "origin": row["origin"],
+            "commute_method": row["commute_method"],
+            "time_outside": row["time_outside"],
+            "daylight_exposure_minutes": row["daylight_exposure_minutes"],
+        },
+        "survey_scores": {
+            "uls8_score_0_100": _round_float(row["uls8_score_0_100"]),
+            "uls8_legacy_mean_1_4": _round_float(row["uls8_legacy_mean_1_4"]),
+            "cesd10_total_score": _int_or_none(row["cesd10_total_score"]),
+            "cesd10_legacy_mean_1_4": _round_float(row["cesd10_legacy_mean_1_4"]),
+            "gad7_total_score": _int_or_none(row["gad7_total_score"]),
+            "gad7_severity_band": row["gad7_severity_band"],
+            "gad7_legacy_mean_1_4": _round_float(row["gad7_legacy_mean_1_4"]),
+            "cogfunc8a_mean_score": _round_float(row["cogfunc8a_mean_score"]),
+            "cogfunc8a_legacy_mean_1_5": _round_float(row["cogfunc8a_legacy_mean_1_5"]),
+        },
+        "digit_span": {
+            "total_correct": _int_or_none(row["digitspan_total_correct"]),
+            "max_span": _int_or_none(row["digitspan_max_span"]),
+            "data_source": row["digitspan_data_source"],
+        },
+    }
+
+
 async def _numeric_score_summary(
     db: AsyncSession,
     scope: _ResolvedToolScope,
@@ -516,12 +679,20 @@ def _int(value: Any) -> int:
     return int(value)
 
 
+def _int_or_none(value: Any) -> int | None:
+    if value is None:
+        return None
+    return int(value)
+
+
 __all__ = [
     "ChatAggregateToolResult",
     "ChatToolStatus",
     "DEFAULT_CHAT_TOOL_WINDOW_DAYS",
     "MAX_CHAT_TOOL_WINDOW_DAYS",
+    "MAX_CHAT_TOOL_SESSION_ROWS",
     "get_dashboard_analytics_summary",
+    "get_participant_session_summaries",
     "get_study_window_session_counts",
     "get_survey_score_summary",
     "get_weather_study_day_summary",
