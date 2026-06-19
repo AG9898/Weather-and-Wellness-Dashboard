@@ -87,6 +87,19 @@ authorization mechanisms.
   Public web research is allowed only through approved, privacy-preserving tools
   that do not send participant rows, identifiers, credentials, or sensitive lab
   data to external search providers.
+- Model tool *selection* is agentic but stays within the boundary: the model
+  chooses which allowlisted tools to call and their parameters, while FastAPI
+  injects the authenticated lab scope on every call. The model never controls
+  scope, table selection, or SQL. Tool calls run in a bounded loop (capped
+  rounds per turn) and stream back over SSE.
+- Methodology / "how is X scored" answers come from a **doc-grounded** explainer
+  tool that retrieves from the canonical scoring/design docs and cites them; it
+  must not read or introspect server-side scoring source code at runtime. This
+  keeps the feature read-only over curated documentation, not over code.
+- Every tool invocation is persisted to the read-only `chat_tool_invocations`
+  audit table (tool name, params, status, lab, conversation) for research-ethics
+  review. The audit table stores tool metadata, not raw participant data, and
+  adds no PII.
 - OpenRouter model/provider selection is env-configured. Privacy controls such
   as provider training opt-out, disabled logging, provider allowlists, and ZDR
   routing are required where available.
@@ -94,9 +107,10 @@ authorization mechanisms.
   eventual multi-lab schema isolation decision.
 
 **Affects:** `docs/AI_CHAT.md`, `docs/ARCHITECTURE.md`,
-`docs/ENV_VARS.md`, `docs/MULTI_LAB.md`,
+`docs/ENV_VARS.md`, `docs/MULTI_LAB.md`, `docs/SCHEMA.md`,
 `docs/labs/weather-wellness/weather/API.md`,
-`docs/labs/weather-wellness/weather/DESIGN_SPEC.md`.
+`docs/labs/weather-wellness/weather/DESIGN_SPEC.md`,
+`docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`.
 
 ### RESOLVED-01 — Database Platform: Supabase
 

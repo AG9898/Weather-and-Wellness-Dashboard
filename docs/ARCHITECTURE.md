@@ -34,11 +34,13 @@ Canonical request flow:
 2. The frontend calls `POST /api/ra/chat` on the same-origin Next.js layer.
 3. The Route Handler verifies the Supabase JWT and proxies to FastAPI.
 4. FastAPI `POST /chat` validates the same JWT with `get_current_lab_member`.
-5. FastAPI runs approved read-only data tools using the authenticated user's
-   `role` and `lab_name`.
-6. FastAPI sends bounded, scoped tool results to OpenRouter using server-only
-   environment variables.
-7. FastAPI returns a formatted assistant response and tool summary metadata.
+5. FastAPI runs a bounded agentic tool-calling loop: OpenRouter selects which
+   approved tools to call (or none), and FastAPI injects the authenticated
+   `role`/`lab_name` scope into every tool call. The model never supplies scope.
+6. FastAPI logs each tool invocation to `chat_tool_invocations` and sends bounded,
+   scoped tool results back to OpenRouter using server-only environment variables.
+7. FastAPI streams the formatted assistant response (SSE) plus tool summary
+   metadata back through the same-origin proxy.
 
 Hard boundaries:
 
@@ -51,8 +53,12 @@ Hard boundaries:
   should return a user-safe unavailable response rather than silently weakening
   privacy.
 
-The first implementation may use simple request/response behavior. Streaming can
-be added later only if it preserves the same auth, privacy, and tool boundaries.
+The agentic loop streams responses over SSE through the same-origin
+`POST /api/ra/chat` proxy; streaming preserves the same auth, privacy, and tool
+boundaries (the browser never reaches OpenRouter directly). Every tool call the
+model makes is persisted to the `chat_tool_invocations` audit table (see
+`docs/SCHEMA.md`). See `docs/AI_CHAT.md` for the canonical coordinator-loop,
+methodology-explainer, and web-research design.
 
 ## Dashboard Read Topology
 

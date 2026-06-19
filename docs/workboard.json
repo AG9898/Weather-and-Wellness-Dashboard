@@ -4118,6 +4118,312 @@
         "cd frontend && npm test -- --runInBand src/lib/components/RaChatPanel.test.tsx src/lib/components/RAFloatingChrome.test.tsx",
         "cd frontend && npm run build"
       ]
+    },
+    {
+      "id": "T1823",
+      "title": "AI chat - OpenRouter client and privacy config",
+      "description": "Add a server-only OpenRouter client wrapper in the backend that performs chat-completions with tool-calling support, driven by OPENROUTER_API_KEY/OPENROUTER_MODEL and enforcing privacy config: when OPENROUTER_REQUIRE_ZDR=true, require OPENROUTER_PROVIDER_ALLOWLIST and fail closed with a generic unavailable state if privacy cannot be satisfied. No browser-visible secret path. No business logic/tool execution here.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "OpenRouter client reads only backend env vars and never exposes secrets to the browser path",
+        "Missing/invalid privacy config (ZDR required without allowlist) returns a generic unavailable result instead of calling the model",
+        "Client supports passing tool/function schemas and receiving tool-call requests",
+        "Unit tests cover privacy fail-closed and config parsing"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/ENV_VARS.md"
+      ],
+      "files": [
+        "backend/app/services/openrouter_client.py",
+        "backend/tests/test_openrouter_client.py"
+      ],
+      "commands": [
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_openrouter_client.py"
+      ]
+    },
+    {
+      "id": "T1824",
+      "title": "AI chat - Tool dispatch registry with server-injected scope",
+      "description": "Refactor the existing scoped chat tools (dashboard_analytics_summary, study_window_session_counts, survey_score_summary, weather_study_day_summary, participant_session_summaries) into a registry that exposes each tool as an individually invocable unit with a typed JSON input schema (for model tool-calling) and a dispatch function that validates params and injects the authenticated lab scope server-side (model never supplies lab_id/lab_name). Preserve the ready/insufficient_data/permission_denied/invalid_scope status contract. Do not change the tools' query logic.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Each approved tool has a typed input schema and is invocable by name+params",
+        "Dispatch injects authenticated lab scope on every call; model-supplied scope is ignored",
+        "Disallowed/unknown tool names are rejected safely",
+        "Existing status taxonomy is preserved",
+        "Unit tests cover scope injection and unknown-tool rejection"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md"
+      ],
+      "files": [
+        "backend/app/services/chat_tools.py",
+        "backend/app/services/chat_tool_registry.py",
+        "backend/tests/test_chat_tool_registry.py"
+      ],
+      "commands": [
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_tool_registry.py"
+      ]
+    },
+    {
+      "id": "T1825",
+      "title": "AI chat - Data orientation tool",
+      "description": "Add a cheap summary-only data orientation tool (e.g. get_data_coverage) that returns participant counts and the actual available data date range for the authenticated scope, so the model anchors date windows to where data exists instead of a blind 30-day default. Register it in the tool dispatch registry. No row dumps.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1824"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Tool returns participant count and real min/max data dates for the authenticated scope",
+        "Tool is registered and invocable through the dispatch registry with injected scope",
+        "Output is bounded summary only, no participant rows",
+        "Unit tests cover empty-data and populated-data scopes"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md"
+      ],
+      "files": [
+        "backend/app/services/chat_tools.py",
+        "backend/app/services/chat_tool_registry.py",
+        "backend/tests/test_chat_tools.py"
+      ],
+      "commands": [
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_tools.py"
+      ]
+    },
+    {
+      "id": "T1826",
+      "title": "AI chat - Agentic coordinator loop",
+      "description": "Replace the stub coordinate_ra_chat with a bounded agentic tool-calling loop. Give OpenRouter the system prompt, conversation history, and registered tool schemas; let the model choose which tools to call (or none) with derived params; execute tools through the scope-injecting registry; feed results back; cap tool-call rounds per turn. The model narrates ready/insufficient_data/permission_denied/invalid_scope statuses into natural language rather than surfacing raw status lines. Ordinary conversational/informational questions are answered with no tool call. Non-streaming internally (returns the existing RAChatResponse shape). Keep the disallowed-raw-SQL/table gate.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1823",
+        "T1824",
+        "T1825"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Model selects tools and parameters; FastAPI injects scope; loop is capped at a max rounds per turn",
+        "Conversational questions return an answer with zero tool calls",
+        "Tool statuses are narrated, not surfaced as raw status lines",
+        "Raw-SQL/table-name requests remain blocked",
+        "Privacy-unavailable model config returns a user-safe unavailable response",
+        "Unit/route tests cover a tool-calling turn, a no-tool turn, and the round cap"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "files": [
+        "backend/app/services/chat_service.py",
+        "backend/tests/test_chat_router.py",
+        "backend/tests/test_chat_service.py"
+      ],
+      "commands": [
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_service.py tests/test_chat_router.py"
+      ]
+    },
+    {
+      "id": "T1827",
+      "title": "AI chat - Backend SSE streaming for /chat",
+      "description": "Stream the coordinator loop output from POST /chat over SSE: incremental assistant tokens plus tool lifecycle events (tool running / tool resolved with status). Preserve the same auth, privacy, scope, and tool boundaries as the non-streaming path.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1826"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "POST /chat can stream assistant tokens and tool lifecycle events over SSE",
+        "Auth, privacy, and scope-injection behavior is identical to non-streaming",
+        "Stream terminates cleanly on completion and on error with a user-safe event",
+        "Route tests cover a streamed tool-calling turn"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "files": [
+        "backend/app/routers/chat.py",
+        "backend/app/services/chat_service.py",
+        "backend/tests/test_chat_router.py"
+      ],
+      "commands": [
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_router.py"
+      ]
+    },
+    {
+      "id": "T1828",
+      "title": "AI chat - Frontend streaming UX",
+      "description": "Make the RA chat UI consume the SSE stream end-to-end: the same-origin POST /api/ra/chat route passes the stream through after JWT verification; the typed postRaChat wrapper exposes a streaming interface (no bare fetch in components); RaChatPanel renders tokens incrementally and shows transient 'running <tool>' affordances that resolve when tools return. Keep the retrieved-data vs interpretation vs methodology-citation distinction. No OpenRouter access from the browser.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1827"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "/api/ra/chat proxies the SSE stream after verifying the RA JWT",
+        "postRaChat exposes a typed streaming API used by RaChatPanel; no bare fetch in components",
+        "RaChatPanel renders tokens incrementally and shows running/resolved tool affordances",
+        "Browser never calls OpenRouter directly",
+        "Component/route tests cover the streaming path"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/app/api/ra/chat/route.ts",
+        "frontend/src/lib/api/index.ts",
+        "frontend/src/lib/components/RaChatPanel.tsx",
+        "frontend/src/lib/components/RaChatPanel.test.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm test -- src/lib/components/RaChatPanel.test.tsx",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T1829",
+      "title": "AI chat - Tool-call audit table and write path",
+      "description": "Add the chat_tool_invocations append-only audit table (id, conversation_id, lab_name, tool_name, params jsonb, status, created_at) documented in docs/SCHEMA.md, and write one row per tool invocation from the coordinator loop. The agent MUST create the Alembic migration AND apply it by running scripts/alembic-upgrade-head.sh (set DATABASE_MIGRATION_URL to the session pooler / direct URL, not the 6543 transaction pooler). Store tool metadata and status only, never raw participant rows or PII. Rows are inspectable in Supabase Studio.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1826"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Alembic migration creates chat_tool_invocations and is applied via scripts/alembic-upgrade-head.sh (alembic head advances)",
+        "Every tool call in the loop writes one audit row with tool, params, status, lab, conversation",
+        "Audit rows contain no participant PII",
+        "SQLAlchemy model matches docs/SCHEMA.md",
+        "Tests cover the write path"
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/AI_CHAT.md"
+      ],
+      "files": [
+        "backend/app/models/chat_tool_invocation.py",
+        "backend/alembic/versions/",
+        "backend/app/services/chat_service.py",
+        "backend/tests/test_chat_service.py"
+      ],
+      "commands": [
+        "scripts/alembic-upgrade-head.sh",
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_service.py"
+      ]
+    },
+    {
+      "id": "T1830",
+      "title": "AI chat - Methodology corpus doc-gap audit",
+      "description": "Audit the canonical scoring/design docs under docs/labs/weather-wellness/weather/** and docs/labs/weather-wellness/misokinesia/** for completeness as the methodology-explainer retrieval corpus (survey scoring GAD-7/CES-D-10/ULS-8/CogFunc8a, digit span and cognitive battery, misokinesia MKAQ/MAQ/GAD-7, study-day/derived fields). Fill documented gaps so each in-scope instrument's scoring is explained in docs (docs must track code per AGENTS.md). Docs-only task; no code.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "AI_CHAT",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Each v1 in-scope instrument has its scoring/methodology described in a canonical doc",
+        "Identified gaps are filled or explicitly noted with a follow-up",
+        "Affected indexes/links updated and valid",
+        "No source-code changes",
+        "In-scope scoring content is structured so it can be reliably extracted/bundled into the backend methodology corpus (clear per-instrument sections, not prose scattered across unrelated specs)"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/AI_CHAT.md"
+      ],
+      "files": [
+        "docs/labs/weather-wellness/weather/",
+        "docs/labs/weather-wellness/misokinesia/"
+      ],
+      "commands": []
+    },
+    {
+      "id": "T1831",
+      "title": "AI chat - Methodology explainer tool",
+      "description": "Add a doc-grounded methodology explainer tool (e.g. explain_methodology) that retrieves from a backend-bundled methodology corpus GENERATED FROM the canonical scoring/design docs (the repo-root docs/ tree does not ship with the backend, whose Railway root directory is backend/). Include a sync/generation step that produces the bundled corpus (e.g. backend/app/methodology/) from docs/labs/weather-wellness/{weather,misokinesia}/**, plus a drift check (script + CI) that fails if the bundled copy is out of sync with canonical docs. The tool returns a bounded summary plus a source-doc citation (path/heading) and must NOT read or introspect server-side scoring source code. Register it in the dispatch registry so the agentic loop can call it for 'how is X scored / how does the misokinesia section work' questions across both weather and misokinesia components. Answers the corpus cannot support must say so. The model only ever receives the tool's cited excerpts; it never accesses files.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1824",
+        "T1826",
+        "T1830"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Tool retrieves only from the backend-bundled corpus (never reads scoring source code or the repo-root docs/ tree at runtime)",
+        "A sync/generation step builds the bundled corpus from the canonical docs, and a drift check (script + CI) fails when the bundled copy diverges from docs/",
+        "Responses include a source-doc citation (path/heading)",
+        "Covers weather and misokinesia v1 scoring/instrument topics",
+        "Unsupported topics return a cant-answer result, not invented scoring",
+        "Registered and callable from the loop; unit tests cover a known instrument, an unsupported topic, and the drift check"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md"
+      ],
+      "files": [
+        "backend/app/services/chat_methodology_tool.py",
+        "backend/app/services/chat_tool_registry.py",
+        "backend/tests/test_chat_methodology_tool.py"
+      ],
+      "commands": [
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_methodology_tool.py"
+      ]
+    },
+    {
+      "id": "T1832",
+      "title": "AI chat - Privacy-sanitized web research tool",
+      "description": "Add the privacy-preserving web research tool (final phase), gated behind query sanitization that rejects searches containing participant rows, participant/session identifiers, credentials, JWTs, or sensitive lab data. Provider configured via CHAT_WEB_SEARCH_API_KEY (server-only); leave unset to disable web research. Outputs include source titles, URLs, retrieval dates, and compact summaries; register in the dispatch registry so the loop can request it for public research context with citations.",
+      "status": "todo",
+      "priority": "low",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1824",
+        "T1826"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Query sanitizer blocks participant identifiers/rows/credentials/sensitive lab data before any external call",
+        "Tool disabled cleanly when CHAT_WEB_SEARCH_API_KEY is unset",
+        "Results include source titles, URLs, retrieval dates, and compact summaries",
+        "Registered and callable from the loop with citations surfaced",
+        "Unit tests cover sanitizer rejection and disabled-state"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/ENV_VARS.md"
+      ],
+      "files": [
+        "backend/app/services/chat_web_research_tool.py",
+        "backend/app/services/chat_tool_registry.py",
+        "backend/tests/test_chat_web_research_tool.py"
+      ],
+      "commands": [
+        "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_web_research_tool.py"
+      ]
     }
   ],
   "last_updated": "2026-06-19"

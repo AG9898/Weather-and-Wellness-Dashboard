@@ -1,12 +1,20 @@
 # AI_CHAT.md — RA Data Chatbot
 
-> **Status:** Planned overall; authenticated backend route implemented in
-> T1818, with scoped aggregate data tools added in T1819 and bounded anonymous
-> participant/session summaries added in T1820. The same-origin `POST /api/ra/chat`
-> proxy and typed `postRaChat()` wrapper were added in T1821. The dedicated RA
-> `/chat` UI surface (page, `RaChatPanel`, and floating-dock entry) was added in
-> T1822. This is the canonical platform-level design for an RA-facing LLM chatbot
-> over lab data.
+> **Status:** Deterministic substrate shipped; agentic model layer planned.
+> The authenticated backend route was implemented in T1818, with scoped aggregate
+> data tools added in T1819 and bounded anonymous participant/session summaries
+> added in T1820. The same-origin `POST /api/ra/chat` proxy and typed
+> `postRaChat()` wrapper were added in T1821. The dedicated RA `/chat` UI surface
+> (page, `RaChatPanel`, and floating-dock entry) was added in T1822.
+>
+> The **agentic model layer** that connects OpenRouter on top of these tools is
+> planned in five phases: (1) the agentic coordinator loop, (2) SSE streaming,
+> (3) the tool-call audit table, (4) the doc-grounded methodology explainer, and
+> (5) privacy-sanitized web research. Until those land, the coordinator runs all
+> deterministic tools and returns bounded summaries without a narrative model.
+> This is the canonical platform-level design for an RA-facing LLM chatbot over
+> lab data, and it covers both Weather-Wellness components (`weather/` and
+> `misokinesia/`).
 
 ---
 
@@ -43,11 +51,16 @@ The LLM may request approved tools, but it must not execute arbitrary SQL, selec
 tables dynamically, call Supabase directly, trigger writes, import data, export
 files, or bypass server-side authorization.
 
-The initial `POST /chat` backend route now runs approved read-only aggregate and
-anonymous participant/session summary tools for authenticated Weather-Wellness
-lab scope and returns bounded tool summaries. It still does not send ungrounded
-study-data questions to OpenRouter; the narrative model layer remains separate
-from the deterministic backend tool layer.
+The agentic coordinator loop does not weaken this boundary. The model chooses
+*which* approved tools to call and *with what parameters*, but it never controls
+*whose* data it sees: FastAPI injects the authenticated `lab_name`/scope into
+every tool call on the server. The model cannot run SQL, name tables, select
+scope, write, export, or call Supabase. Tool selection is agency over an
+allowlist, not over the database.
+
+Before the agentic loop ships, the `POST /chat` backend route runs the approved
+read-only tools deterministically and returns bounded tool summaries without a
+narrative model.
 
 External research/search is also mediated by FastAPI. The LLM may request an
 approved web research tool for public research context, but it must not send
@@ -55,6 +68,36 @@ participant-level rows, participant identifiers, private lab-sensitive content,
 Supabase/JWT data, or direct database output to an external search provider.
 
 ---
+
+## Coordinator Loop (Agentic Tool Selection)
+
+The coordinator runs a bounded **agentic tool-calling loop** server-side in
+FastAPI. OpenRouter is given the system prompt, the conversation, and the typed
+schemas of the approved tools. Per turn:
+
+1. The model decides whether it needs data at all. Ordinary conversational or
+   informational questions (e.g. "help me word this", "what does a high GAD-7
+   suggest in general") are answered directly with **no tool call**.
+2. When the model does call a tool, FastAPI validates the call against the
+   allowlist, **injects the authenticated lab scope** (the model never supplies
+   `lab_id`/`lab_name`), executes the tool, and returns the typed result.
+3. The loop is capped at a small maximum number of tool-call rounds per turn to
+   bound latency and cost. On reaching the cap the model must answer from what it
+   has or state the limitation.
+4. The model narrates the results into report-style prose, keeping retrieved
+   data, interpretation, and cited context visually distinct.
+
+**Tool statuses are reasoning signal, not user-facing text.** The
+`ready` / `insufficient_data` / `permission_denied` / `invalid_scope` statuses
+returned by the tool layer are consumed by the model, which turns them into
+natural language ("there's no survey data in that range — your data runs
+March–June; want the full window?"). Raw `status: message` lines are never
+surfaced directly to the RA.
+
+**Data orientation before blind windows.** The model should call the data
+orientation tool (see Backend Tool Contract) before guessing date ranges, so it
+anchors queries to where data actually exists instead of a fixed default window
+that can land on an empty slice.
 
 ## Access Model
 
@@ -202,7 +245,7 @@ Each chatbot data tool should be a narrow backend function with:
 - tests for lab scoping and blocked/disallowed access
 
 Initial tool categories include implemented aggregate and participant/session
-tools plus planned research-context tools:
+tools plus planned orientation, methodology, and research-context tools:
 
 - dashboard analytics summary for a bounded date range
 - study-window and linked session-count summaries
@@ -211,8 +254,59 @@ tools plus planned research-context tools:
 - implemented: anonymous participant/session summaries by participant number or
   bounded date filters, including demographics, survey scores, and digit span
   summaries; normal outputs use `participant_number` and omit raw UUIDs
+- **planned data orientation/availability tool** (e.g. `get_data_coverage`):
+  returns participant counts and the actual available data date range for the
+  authenticated scope so the model anchors windows to real data instead of a
+  blind 30-day default. Cheap, summary-only, no row dumps.
+- **planned methodology explainer tool** (e.g. `explain_methodology`):
+  doc-grounded retrieval over the canonical scoring/design docs to answer
+  "how is X scored / how does the Y section work" questions. See
+  *Methodology Explainer* below.
 - report formatter over previously retrieved scoped results
 - public web research search/fetch for literature-backed context and citations
+
+### Methodology Explainer (doc-grounded)
+
+The methodology explainer answers platform-knowledge questions about *how the
+platform scores and runs its instruments* — for example "how is GAD-7 scored?"
+or "how does the misokinesia section work?".
+
+- **Source of truth is the canonical docs, never the scoring source code.** The
+  canonical scoring rules, design specs, and derived-field definitions live under
+  `docs/labs/weather-wellness/weather/**` and
+  `docs/labs/weather-wellness/misokinesia/**`. The tool must not read or
+  introspect server-side scoring functions at runtime.
+- **Runtime corpus is bundled into the backend, generated from those canonical
+  docs.** The Railway backend deploys only `backend/` (root directory `backend/`),
+  so the repo-root `docs/` tree is not on the runtime filesystem. The methodology
+  tool therefore retrieves from a backend-bundled corpus (e.g.
+  `backend/app/methodology/`) that is **generated from** the canonical docs by a
+  sync step, with a drift check (script + CI) that fails if the bundled copy falls
+  out of sync with `docs/`. The canonical `docs/` remain the single source of
+  truth; the bundled copy is a deployment artifact, not a second source. The
+  model never reads files — it only receives the tool's bounded, cited excerpts.
+- The model summarizes the retrieved sections and **cites the source doc**
+  (path/heading) so the RA can verify. Answers that the corpus cannot support
+  must say so rather than inventing scoring logic.
+- **v1 coverage is scoring + instruments only**, spanning both Weather-Wellness
+  components: survey scoring (GAD-7, CES-D-10, ULS-8, Cognitive Function 8a),
+  digit span and the cognitive battery, the misokinesia instruments
+  (MKAQ/MAQ/GAD-7), and documented study-day/derived fields. Broader
+  "how the platform works" topics (session/consent flow, timezone semantics,
+  weather linking, import/export) are out of scope for v1.
+- Because this depends on the docs being complete, a doc-gap check of the
+  scoring/design corpus is a prerequisite for the explainer to be reliable.
+- This stays within RESOLVED-20: it is read-only, sends no credentials, and
+  exposes no DB rows — only curated documentation context.
+
+### Tool-Call Audit
+
+Every tool invocation in the agentic loop is persisted to the
+`chat_tool_invocations` table (see `docs/SCHEMA.md`) for research-ethics review
+and debugging: `conversation_id`, `lab_name`, `tool_name`, `params` (JSONB),
+`status`, and `created_at`. The audit row stores tool inputs and status, not raw
+participant data, and is inspectable in Supabase Studio. Methodology and web
+research tool calls are logged the same way.
 
 Tool outputs should be compact. The model should receive summaries and selected
 rows, not entire tables.
@@ -255,11 +349,19 @@ project's color system and without third-party branding. It supports:
 - plain-language questions
 - formatted, report-style assistant text (paragraph and bullet structure) via a
   small dependency-free formatter, instead of an external markdown/HTML pipeline
+- **streamed assistant output (SSE):** tokens render incrementally and in-flight
+  tool calls surface as transient "running <tool>…" affordances that resolve
+  when the tool returns, so the panel feels live rather than batch
 - loading, empty, error, and privacy-unavailable states
-- clear distinction between retrieved data (compact backend tool summaries) and
-  model interpretation
-- source links or citations when responses include public web research URLs
+- clear distinction between retrieved data (compact backend tool summaries),
+  model interpretation, and **doc-cited methodology answers**
+- source links or citations when responses include public web research URLs, and
+  source-doc citations when responses include methodology explanations
 - no export/download action in v1
+
+Streaming preserves the same auth, privacy, and tool boundaries: the SSE stream
+flows backend → same-origin `POST /api/ra/chat` proxy → `RaChatPanel`, and the
+browser still never talks to OpenRouter directly.
 
 All frontend API calls must go through typed wrappers in `src/lib/api/`. Browser
 code must not call OpenRouter directly.

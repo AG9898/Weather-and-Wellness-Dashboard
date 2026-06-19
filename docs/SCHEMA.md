@@ -332,6 +332,33 @@ audit-logged in `admin_session_undo_log` instead of introducing soft-delete colu
 
 ---
 
+## Table: `chat_tool_invocations`
+
+> **Planned** (not yet applied). Added by the RA chatbot agentic-loop audit
+> migration. Append-only audit table recording every approved tool call the LLM
+> coordinator makes, for research-ethics review and debugging. See
+> `docs/AI_CHAT.md` (Tool-Call Audit) and `docs/DECISIONS.md` RESOLVED-20.
+
+
+| Column          | Type        | Constraints   | Notes                                                        |
+| --------------- | ----------- | ------------- | ------------------------------------------------------------ |
+| id              | UUID        | PK            | Generated server-side                                        |
+| conversation_id | UUID        | NOT NULL      | Chat conversation the call belongs to (not persisted itself) |
+| lab_name        | VARCHAR     | NOT NULL      | Authenticated lab scope at call time (`ww`, or admin marker) |
+| tool_name       | VARCHAR     | NOT NULL      | Approved tool invoked (e.g. `weather_study_day_summary`)     |
+| params          | JSONB       | NOT NULL      | Tool input parameters the model supplied                     |
+| status          | VARCHAR     | NOT NULL      | `ready` / `insufficient_data` / `permission_denied` / `invalid_scope` |
+| created_at      | TIMESTAMPTZ | DEFAULT NOW() | Audit timestamp                                              |
+
+
+**Behavior notes:**
+
+- Append-only; stores tool metadata and status, never raw participant rows or PII.
+- No FK to a conversation table (v1 does not persist conversations server-side).
+- Inspectable in Supabase Studio for ethics/audit review.
+
+---
+
 ## Table: `imported_session_measures`
 
 > Added by migration `20260228_000007` (T47). Stores imported legacy aggregate outcomes without forcing them into survey item tables.
@@ -1022,9 +1049,11 @@ Constraints/indexes:
 | 2026-06-03 | T199                  | Replace T184's six demographics columns with typed sourced-demographics columns from `reference/labs/Misokinesia/Demographics copy2.docx`                                                                                 |
 | 2026-06-05 | n/a                   | Revise misokinesia GAD-7 item storage to 0–3 scale and add conditional `difficulty_impact` column                                                                                                                   |
 | 2026-06-14 | T206                  | Add Weather-Wellness cognitive battery persistence: session task/rule orders, Stroop run/trial tables, and card sorting run/trial tables                                                                            |
+| planned    | RA chatbot audit      | Add `chat_tool_invocations` append-only audit table for the RA chatbot agentic loop (not yet applied)                                                                                                               |
 
 
 As of 2026-06-14, migration `20260614_000001` is the current head revision.
+The `chat_tool_invocations` table above is planned and not yet applied.
 
 ---
 

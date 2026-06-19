@@ -195,6 +195,12 @@ All scoring is server-side. See per-instrument docs for full formulas.
 > these stored scores and must not introduce alternate scoring formulas. See
 > `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 
+> **RA chatbot methodology explainer:** this scoring summary and the misokinesia
+> instrument docs are part of the doc-grounded corpus the RA data chatbot
+> retrieves to answer "how is X scored / how does the misokinesia section work"
+> questions, citing the source doc. The explainer reads these docs, never the
+> server-side scoring code. See `docs/AI_CHAT.md` (Methodology Explainer).
+
 ---
 
 # Design System — Phase 2 (T19+) + Phase 4 Theme Toggle (implemented)

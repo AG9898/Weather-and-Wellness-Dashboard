@@ -49,7 +49,15 @@ rendering the `RaChatPanel` component
   third-party branding.
 - Shows formatted, readable answers suitable for statistical summaries and
   short report-style text.
-- Distinguishes retrieved data from model interpretation when practical.
+- **Streams assistant output (SSE)** so tokens render incrementally, with
+  in-flight tool calls surfaced as transient "running <tool>…" affordances that
+  resolve when the tool returns.
+- Distinguishes retrieved data, model interpretation, and **doc-cited
+  methodology answers** when practical.
+- **Answers methodology questions** like "how is GAD-7 scored?" or "how does the
+  misokinesia section work?" from the doc-grounded methodology explainer, citing
+  the source doc. Coverage spans both Weather-Wellness components
+  (`weather/` and `misokinesia/` scoring + instruments). See `docs/AI_CHAT.md`.
 - Provides loading, empty, error, and privacy-unavailable states.
 - Does not collect participant names or direct identifiers.
 - Does not expose export/download controls in v1.
