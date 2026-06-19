@@ -75,6 +75,48 @@ Use GitHub Actions, select `Production Release`, then select `Run workflow`.
 
 Manual releases follow the same ordering and gates as push releases.
 
+## Backend Dependency Pinning
+
+The backend is deployed by Railway's **railpack** builder, which installs from
+`backend/requirements.txt`. CI (`Validate Build`) installs from the same file on
+Python 3.13. Both paths must resolve to an identical, reproducible set, so the
+following rules apply:
+
+- **All pins live inline in `backend/requirements.txt` as exact `==` versions**,
+  including transitive dependencies. Do **not** split pins into a separate
+  `constraints.txt` referenced with `-c`. Railpack copies only the detected
+  dependency file (`requirements.txt`) into its cached pip-install layer; a
+  `-c constraints.txt` reference points at a file that is not present in that
+  layer, so `pip install -r requirements.txt` fails the build immediately.
+- **The Python version is pinned in `backend/.python-version` (`3.13`).** The
+  inlined pins were frozen against the Python 3.13 CI resolver and rely on
+  `cp313` wheels. Pinning the interpreter keeps railpack on the same version its
+  wheels target; without it, a future railpack default (e.g. 3.14) could force
+  source builds or fail to find matching wheels. Keep this in sync with the
+  `python-version` used in `.github/workflows/production-release.yml`.
+- **Regenerate the whole pin block at once** when bumping any package: install
+  into a fresh Python 3.13 environment, run the backend suite, then capture the
+  full set with `pip freeze`. Do not hand-edit individual transitive lines.
+
+### Background: the June 2026 dependency-drift incident
+
+Recorded so the failure modes are not rediscovered:
+
+1. `backend/requirements.txt` originally used loose `>=` ranges, so every CI run
+   resolved the newest releases. A FastAPI/Starlette release drifted the route
+   API and broke `tests/test_chat_router.py`, which asserted against framework
+   route internals (`APIRoute.methods`, `route.response_model`). `Validate Build`
+   started failing.
+2. The first fix rewrote that test to assert against `GET /openapi.json` instead
+   of route internals (the durable fix) and pinned dependencies via a separate
+   `constraints.txt`. CI went green, but the Railway build began failing fast
+   (`BUILDING → FAILED`) because railpack could not see `constraints.txt` in its
+   pip-install layer.
+3. The second fix inlined every pin directly into `requirements.txt` and deleted
+   `constraints.txt`. Railway builds and CI both passed.
+4. This `.python-version` pin was added afterward to remove the remaining
+   implicit dependency on railpack's default interpreter happening to be 3.13.
+
 ## Migration Rules
 
 Migrations remain Alembic-only. Additive, backward-compatible migrations are the
