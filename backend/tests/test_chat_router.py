@@ -56,14 +56,14 @@ def test_route_requires_lab_member_authentication() -> None:
 
 
 def test_route_is_registered_on_backend_app() -> None:
-    app_route = next(
-        route
-        for route in backend_app.routes
-        if isinstance(route, APIRoute) and route.path == "/chat"
-    )
+    client = TestClient(backend_app)
 
-    assert app_route.methods == {"POST"}
-    assert app_route.response_model is RAChatResponse
+    openapi = client.get("/openapi.json").json()
+    chat_post = openapi["paths"]["/chat"]["post"]
+    response_schema = chat_post["responses"]["200"]["content"]["application/json"]["schema"]
+
+    assert set(openapi["paths"]["/chat"]) == {"post"}
+    assert response_schema["$ref"].endswith("/RAChatResponse")
 
 
 def test_route_returns_documented_aggregate_tool_response_shape(monkeypatch) -> None:
