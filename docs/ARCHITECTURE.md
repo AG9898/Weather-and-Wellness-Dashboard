@@ -20,7 +20,39 @@
 - **Database (Supabase current)**: Managed Postgres in the Canada Central (`ca-central-1`) Supabase project. Lab reads data via Supabase Studio.
 - **Admin data ops**: RA-only Import/Export endpoints on the backend service support legacy imports and controlled CSV/XLSX exports.
 - **Analytics layer**: backend-generated statistical snapshots now power the dashboard's model-based analytics surface via `GET /api/ra/dashboard/analytics`. See `docs/labs/weather-wellness/weather/ANALYTICS.md`.
+- **Planned RA data chatbot**: OpenRouter-backed, read-only Q&A over lab-scoped data. FastAPI owns auth, tool execution, and data minimization; the LLM never receives Supabase credentials. See `docs/AI_CHAT.md`.
 - **Session safety tool**: a narrow RA-only undo action for the latest native session is live on `/dashboard`, implemented as transactional hard delete plus audit log rather than soft delete.
+
+## RA Chatbot Read Topology (planned)
+
+The RA data chatbot is a planned read-only surface for natural-language data
+questions, statistical summaries, and on-screen report-style responses.
+
+Canonical request flow:
+
+1. RA browser UI calls a typed frontend API wrapper.
+2. The frontend calls `POST /api/ra/chat` on the same-origin Next.js layer.
+3. The Route Handler verifies the Supabase JWT and proxies to FastAPI.
+4. FastAPI `POST /chat` validates the same JWT with `get_current_lab_member`.
+5. FastAPI runs approved read-only data tools using the authenticated user's
+   `role` and `lab_name`.
+6. FastAPI sends bounded, scoped tool results to OpenRouter using server-only
+   environment variables.
+7. FastAPI returns a formatted assistant response and tool summary metadata.
+
+Hard boundaries:
+
+- Browser code must not call OpenRouter directly.
+- OpenRouter must not receive Supabase credentials, service-role keys, JWTs, or
+  direct database connection strings.
+- The LLM must not execute arbitrary SQL, choose tables dynamically, write data,
+  import files, or create downloadable exports.
+- If configured OpenRouter privacy controls cannot be satisfied, the chat route
+  should return a user-safe unavailable response rather than silently weakening
+  privacy.
+
+The first implementation may use simple request/response behavior. Streaming can
+be added later only if it preserves the same auth, privacy, and tool boundaries.
 
 ## Dashboard Read Topology
 
@@ -30,10 +62,12 @@ Current shipped dashboard reads are split across these same-origin Vercel Route 
 - `GET /api/ra/dashboard?mode=cached|live`
 - `GET /api/ra/weather/range?mode=cached|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
 - `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
+- Planned: `POST /api/ra/chat`
 
 FastAPI endpoints and same-origin Route Handlers are separate routing layers:
 
 - `docs/labs/weather-wellness/weather/API.md` is canonical for FastAPI endpoint contracts (Weather-Wellness dashboard, sessions, surveys, admin, auth endpoints).
+- `docs/AI_CHAT.md` is canonical for the planned chatbot's LLM data-access boundary.
 - `docs/labs/weather-wellness/misokinesia/API.md` is canonical for Misokinesia FastAPI endpoint contracts.
 - This document is canonical for Next.js Route Handler topology, cache behavior, and cross-tier request flow.
 
@@ -56,6 +90,7 @@ This section is the single routing inventory for dashboard-related reads across 
 | RA dashboard page (`/dashboard`) initial mount and post-undo refresh | `getDashboardWeatherBundle(mode)` | `GET /api/ra/dashboard?mode=cached\|live` | `GET /weather/daily?start=today&end=today&include_forecast_periods=false` | `canonical` | This is the canonical default dashboard read path. The bundle is intentionally weather-only because the current page renders weather but not operational summary KPIs. |
 | `WeatherUnifiedCard` on `/dashboard` | `getWeatherRangeBundle(mode, dateFrom, dateTo)` | `GET /api/ra/weather/range?mode=cached\|live&date_from&date_to` | `GET /weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` | `canonical` | Canonical weather range path for the dashboard trend chart. |
 | `DashboardAnalyticsSection` on `/dashboard` | `getDashboardAnalyticsBundle(mode, dateFrom, dateTo)` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live&date_from&date_to` | `GET /dashboard/analytics?date_from&date_to&mode=snapshot\|live` | `canonical` | Canonical analytics snapshot/live path for dashboard model outputs. The section owns its own study-window controls; `date_from` / `date_to` come from analytics state, not the weather card. |
+| RA chatbot (planned) | `sendRaChatMessage()` | `POST /api/ra/chat` | `POST /chat` | `canonical` | Planned read-only LLM data assistant. Same-origin route and backend route must both verify RA auth; backend tools apply lab/study scope before any model call. |
 
 ### Backend endpoint inventory
 
@@ -64,12 +99,14 @@ This section is the single routing inventory for dashboard-related reads across 
 | `GET /dashboard/study-window` | `GET /api/ra/dashboard/study-window` | `internal-only` | Canonical backend metadata primitive that returns the latest available `study_days.date_local` for dashboard anchoring. |
 | `GET /weather/daily` | `GET /api/ra/dashboard?mode=live`, `GET /api/ra/weather/range?mode=live` | `internal-only` | Canonical backend operational read primitive used by the shipped same-origin weather handlers. Router validation/auth lives in `backend/app/routers/weather.py`; DB read logic lives in `backend/app/services/weather_read_service.py`. |
 | `GET /dashboard/analytics` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live` | `internal-only` | Canonical backend analytics endpoint behind the same-origin analytics handler. |
+| `POST /chat` (planned) | `POST /api/ra/chat` | `internal-only` | Planned backend chat coordinator. It authenticates the RA, runs approved scoped data tools, calls OpenRouter with bounded context, and returns a formatted response. |
 
 ### Frontend page route inventory
 
 | Route | Auth | Classification | Notes |
 |---|---|---|---|
 | `/users` | RA required, admin role required in page guard | `canonical` | Admin page for app-owned invitations, role/lab edits, pending invite resend/revoke, and access revocation. |
+| `/chat` or dashboard-embedded chat (planned) | RA required (via `(ra)` layout) | `canonical` | Planned RA chatbot surface for lab-scoped Q&A and on-screen report-style summaries. |
 | `/misokinesia` | RA required (via `(ra)` layout) | `canonical` | RA page — launch a Misokinesia session via "Start Misokinesia Session" button |
 | `/misokinesia/[id]` | None | `canonical` | Participant task page — video clips + questionnaires; `id` = `misokinesia_participant_id` |
 

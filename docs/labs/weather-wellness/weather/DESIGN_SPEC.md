@@ -25,6 +25,26 @@ Visual language baseline: [docs/styleguide.md](../../../styleguide.md) · Animat
    - trial mode: no KPI/data changes (no writes)
 7. View data via Supabase Studio
 8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click either "Start Misokinesia Session" (backend-backed write path), "Run Short Trial", or "Run Full Trial" (read-only rehearsal paths) → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Design Spec](../misokinesia/DESIGN_SPEC.md).
+9. Planned: open the RA data chatbot from dashboard/navigation to ask
+   lab-scoped questions, request statistical summaries, and generate clean
+   report-style on-screen text. Chatbot answers are read-only and may use both
+   aggregate summaries and anonymous participant/session-level rows through
+   backend-approved tools. The UI must not offer CSV/XLSX/ZIP download actions
+   from chatbot responses.
+
+## RA Data Chatbot UX (planned)
+
+- Available to authenticated RA/admin users only.
+- Reachable from the RA dashboard/navigation without exposing it to participant
+  routes.
+- Shows formatted, readable answers suitable for statistical summaries and
+  short report-style text.
+- Distinguishes retrieved data from model interpretation when practical.
+- Provides loading, empty, error, and privacy-unavailable states.
+- Does not collect participant names or direct identifiers.
+- Does not expose export/download controls in v1.
+- Browser code calls app-owned typed API wrappers only; it must not call
+  OpenRouter directly.
 
 ## Participant Flow
 1. ULS-8 survey

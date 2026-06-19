@@ -3935,7 +3935,186 @@
         "cd frontend && npx tsc --noEmit",
         "cd frontend && npm run build"
       ]
+    },
+    {
+      "id": "T1817",
+      "title": "AI chat - Backend config and OpenRouter privacy client",
+      "description": "Add server-only OpenRouter configuration, a small client wrapper, and fail-closed privacy/provider checks for the planned RA chatbot without adding data tools yet.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "OpenRouter env vars are parsed server-side only",
+        "Missing or invalid privacy configuration returns user-safe unavailable errors",
+        "No browser-visible OpenRouter secret path exists"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/ENV_VARS.md"
+      ],
+      "files": [
+        "backend/app/config.py",
+        "backend/app/services/openrouter_client.py",
+        "backend/tests/test_openrouter_client.py"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_openrouter_client.py"
+      ]
+    },
+    {
+      "id": "T1818",
+      "title": "AI chat - Authenticated backend route and coordinator",
+      "description": "Implement the planned FastAPI POST /chat route with typed schemas, RA auth, bounded request validation, coordinator structure, and no-op/tool-unavailable behavior before real data tools are attached.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1817"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "POST /chat requires get_current_lab_member",
+        "Responses match the documented RAChatResponse shape",
+        "The route does not accept arbitrary SQL or table names"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/labs/weather-wellness/weather/API.md"
+      ],
+      "files": [
+        "backend/app/main.py",
+        "backend/app/routers/chat.py",
+        "backend/app/schemas/chat.py",
+        "backend/app/services/chat_service.py",
+        "backend/tests/test_chat_router.py"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_chat_router.py"
+      ]
+    },
+    {
+      "id": "T1819",
+      "title": "AI chat - Scoped aggregate data tools",
+      "description": "Add read-only aggregate tools for bounded dashboard analytics, study window, session counts, survey score summaries, and weather/study-day summaries using authenticated lab scope.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1818"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Aggregate tools enforce lab/study scope from LabMember",
+        "Tool outputs are bounded and JSON-serializable",
+        "Insufficient data returns typed user-safe messages"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/labs/weather-wellness/weather/API.md"
+      ],
+      "files": [
+        "backend/app/services/chat_tools.py",
+        "backend/app/services/chat_service.py",
+        "backend/tests/test_chat_tools.py"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_chat_tools.py tests/test_chat_router.py"
+      ]
+    },
+    {
+      "id": "T1820",
+      "title": "AI chat - Scoped participant and session tools",
+      "description": "Add bounded anonymous participant/session-level read tools for participant number lookup, session summaries, demographics, survey scores, and digit span summaries without exposing direct identifiers by default.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1818"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Participant/session tools are read-only and bounded",
+        "Normal responses prefer participant_number over UUIDs",
+        "Cross-lab access attempts return no data or 403"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/MULTI_LAB.md",
+        "docs/labs/weather-wellness/weather/API.md"
+      ],
+      "files": [
+        "backend/app/services/chat_tools.py",
+        "backend/tests/test_chat_tools_participants.py"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. .venv/bin/pytest tests/test_chat_tools_participants.py"
+      ]
+    },
+    {
+      "id": "T1821",
+      "title": "AI chat - Same-origin route and typed frontend wrapper",
+      "description": "Add POST /api/ra/chat as the Vercel same-origin proxy plus typed frontend API helpers, preserving JWT verification and preventing direct browser-to-OpenRouter calls.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1818"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Route Handler verifies RA bearer token before proxying",
+        "Frontend wrapper is typed and components do not use bare fetch",
+        "Route topology tests cover the new canonical path"
+      ],
+      "docs": [
+        "docs/ARCHITECTURE.md",
+        "docs/AI_CHAT.md"
+      ],
+      "files": [
+        "frontend/src/app/api/ra/chat/route.ts",
+        "frontend/src/app/api/ra/chat/route.test.ts",
+        "frontend/src/app/api/ra/route-topology.test.ts",
+        "frontend/src/lib/api/index.ts"
+      ],
+      "commands": [
+        "cd frontend && npm test -- --runInBand src/app/api/ra/chat/route.test.ts src/app/api/ra/route-topology.test.ts"
+      ]
+    },
+    {
+      "id": "T1822",
+      "title": "AI chat - RA chat UI surface",
+      "description": "Build the authenticated RA chatbot UI from dashboard/navigation with message input, formatted responses, loading/error/privacy-unavailable states, and no export/download controls.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "AI_CHAT",
+      "depends_on": [
+        "T1819",
+        "T1820",
+        "T1821"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "All RA/admin users can reach the chat surface",
+        "Responses render clean readable report-style text",
+        "The UI has no CSV/XLSX/ZIP download action"
+      ],
+      "docs": [
+        "docs/AI_CHAT.md",
+        "docs/labs/weather-wellness/weather/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/chat/page.tsx",
+        "frontend/src/app/(ra)/layout.tsx",
+        "frontend/src/lib/components/RaChatPanel.tsx",
+        "frontend/src/lib/components/RaChatPanel.test.tsx"
+      ],
+      "commands": [
+        "cd frontend && npm test -- --runInBand src/lib/components/RaChatPanel.test.tsx",
+        "cd frontend && npm run build"
+      ]
     }
   ],
-  "last_updated": "2026-06-14"
+  "last_updated": "2026-06-19"
 }

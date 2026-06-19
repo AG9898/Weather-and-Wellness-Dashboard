@@ -23,6 +23,10 @@ Lab data is accessed via **Supabase Studio**. There is no participant-facing
 data export. RA dashboard is read-only for data review; all bulk exports go through the
 `/import-export` page (RA-only).
 
+The planned RA data chatbot is a read-only, backend-mediated assistant for
+on-screen Q&A and report-style summaries over lab-scoped data. Its platform
+boundary is documented in [`docs/AI_CHAT.md`](../../AI_CHAT.md).
+
 ## Lab Slug
 
 `weather-wellness` — used as `app_metadata.lab` value in Supabase Auth and as `labs.slug`

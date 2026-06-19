@@ -51,6 +51,7 @@ Participant.
 
 - Start with `docs/INDEX.md` for the canonical documentation routing map.
 - For platform-wide concerns (architecture, conventions, decisions, schema, testing), use `docs/` root files.
+- For the planned RA data chatbot and LLM data-access boundary, use `docs/AI_CHAT.md`.
 - For lab-specific API contracts, design specs, and scoring rules, use `docs/labs/<lab-slug>/`.
 - **Lab component structure.** Each lab under `docs/labs/<lab-slug>/` is organized by component. The lab `README.md` is the navigation hub. Each component lives in its own subdirectory (`docs/labs/<lab-slug>/<component>/`) and contains its own `API.md`, `DESIGN_SPEC.md`, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: `weather/` and `misokinesia/`.
 - For study-specific research instruments and analysis scripts, use `reference/labs/<lab-slug>/`.

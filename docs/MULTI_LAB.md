@@ -20,6 +20,15 @@ participants or sessions.
 - `app_metadata.role` holds `ra` or `admin`
 - All RA endpoints resolve the caller's lab from JWT claims via `get_current_lab_member`
 
+### RA Chatbot Scoping (planned)
+
+The planned RA data chatbot follows the same auth boundary. The LLM must not
+connect to Supabase directly or choose tables dynamically. FastAPI resolves the
+authenticated `LabMember`, applies lab/study scope inside approved read-only
+tools, and sends only scoped tool results to the model gateway. This does not
+resolve OPEN-05; it is compatible with the current app-layer scoping and with a
+future row-level or study-level database isolation strategy.
+
 ### Planned Data Model
 
 ```
@@ -64,4 +73,5 @@ When a new lab is confirmed, this section will document:
 - `docs/DECISIONS.md` — OPEN-03 (multi-lab schema scoping)
 - `docs/ARCHITECTURE.md` — deployment topology
 - `docs/SCHEMA.md` — base schema with `labs` and `studies` table definitions
+- `docs/AI_CHAT.md` — planned RA chatbot data-access boundary
 - `docs/labs/weather-wellness/README.md` — first lab, reference implementation

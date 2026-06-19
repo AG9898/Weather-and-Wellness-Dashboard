@@ -61,6 +61,7 @@
 |--------|------|------|--------|----------------|
 | GET    | /dashboard/study-window | RA | implemented | T121 |
 | GET    | /dashboard/analytics | RA | implemented | T88 |
+| POST   | /chat | RA | planned | AI chat |
 | POST   | /participants | RA | implemented | T07 |
 | GET    | /participants | RA | implemented | T07 |
 | GET    | /participants/{uuid} | RA | implemented | T07 |
@@ -111,6 +112,76 @@
 > documented under `GET /weather/daily`.
 > Statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
 > in `docs/labs/weather-wellness/weather/ANALYTICS.md`.
+
+## RA Data Chatbot (planned)
+
+> Platform boundary: `docs/AI_CHAT.md`. Same-origin topology:
+> `docs/ARCHITECTURE.md`.
+
+### POST /chat
+- **Auth:** RA required
+- **Status:** planned
+- **Classification:** internal-only backend chat coordinator
+- **Current same-origin caller:** planned `POST /api/ra/chat`
+- **Purpose:** Answer RA questions about lab-scoped data using approved
+  read-only backend tools and OpenRouter-generated natural-language output.
+- **Request:** `RAChatRequest`
+
+```json
+{
+  "message": "Summarize anxiety scores for March and format it like a short report.",
+  "conversation_id": "uuid | null",
+  "history": [
+    {
+      "role": "user | assistant",
+      "content": "prior message text"
+    }
+  ],
+  "scope": {
+    "date_from": "YYYY-MM-DD | null",
+    "date_to": "YYYY-MM-DD | null",
+    "study_slug": "string | null"
+  }
+}
+```
+
+- **Response:** `RAChatResponse`
+
+```json
+{
+  "conversation_id": "uuid",
+  "message": "formatted assistant response text",
+  "model": "configured-openrouter-model",
+  "tool_results": [
+    {
+      "tool_name": "dashboard_analytics_summary",
+      "summary": "short user-safe description of the scoped data used"
+    }
+  ],
+  "blocked_reason": "string | null"
+}
+```
+
+- **Allowed data tools:**
+  - dashboard analytics summaries for bounded date ranges
+  - study-window and session-count summaries
+  - anonymous participant/session lookup by participant number or bounded filters
+  - survey and digit span score summaries
+  - weather/study-day summaries
+  - report formatter over already retrieved scoped results
+- **Behavior:**
+  - Validates the JWT with `get_current_lab_member` and uses the resolved
+    `role` and `lab_name` for every data tool.
+  - Does not expose database credentials, Supabase service keys, raw JWTs, or
+    direct SQL execution to OpenRouter.
+  - Sends only bounded scoped tool results to OpenRouter.
+  - Allows aggregate/statistical summaries and anonymous participant/session
+    rows when scoped to the user's lab.
+  - May produce clean report-style on-screen text.
+  - Does not write data, start sessions, import files, create downloadable
+    exports, or return unbounded table dumps.
+  - Returns a user-safe unavailable response when required OpenRouter privacy
+    controls or provider routing constraints cannot be satisfied.
 
 ### GET /dashboard/study-window
 - **Auth:** RA required

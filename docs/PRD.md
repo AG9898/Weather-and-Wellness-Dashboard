@@ -16,6 +16,8 @@ Internal lab-operated web app to:
 - Store data linked by participant + session
 - Provide data access via Supabase Studio (Phase 1 and after infra cutover)
 - Phase 3: provide an RA-only Import/Export page for legacy imports and controlled admin exports (CSV/XLSX)
+- Planned RA data chatbot: provide read-only, backend-mediated natural-language
+  Q&A, statistical summaries, and on-screen report-style text over lab-scoped data.
 
 ## Users
 - LabMember (RA/Admin)
@@ -42,10 +44,23 @@ Internal lab-operated web app to:
 - Add optional participant demographic/exposure fields to support legacy import mapping (no PII added), including a derived daylight exposure minutes field.
 - Dashboard date-range filtering (initially affects Created/Completed KPIs and dashboard weather date context).
 
+## Planned RA Chatbot Scope
+
+- Available to authenticated RA/admin users.
+- Uses FastAPI-mediated, lab-scoped read tools; the LLM never receives direct
+  Supabase access or database credentials.
+- Supports aggregate/statistical summaries and anonymous participant/session-level
+  reads when allowed by the RA's lab scope.
+- May generate clean, readable report-style responses on screen.
+- Does not write data, import data, expose participant-facing chat, or provide
+  downloadable exports in v1.
+- Canonical design: `docs/AI_CHAT.md`.
+
 ## Success Criteria
 - End-to-end session without manual scoring
 - All data linked to participant_uuid + session_id
 - Lab team can view stored results via Supabase Studio
+- RA chatbot answers are generated only from scoped backend-approved read tools.
 
 ## Infrastructure Direction
 - Current deployment: Vercel frontend + Railway FastAPI backend + Supabase project in Canada Central (`ca-central-1`)

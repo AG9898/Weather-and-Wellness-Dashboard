@@ -10,6 +10,7 @@ stub docs that only redirect to lab-specific paths.
 | Path | Purpose |
 |---|---|
 | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Deployment topology, runtime boundaries, routing architecture |
+| [`docs/AI_CHAT.md`](AI_CHAT.md) | Planned RA data chatbot architecture, privacy boundary, and allowed data modes |
 | [`docs/CONVENTIONS.md`](CONVENTIONS.md) | Coding and operational conventions |
 | [`docs/DECISIONS.md`](DECISIONS.md) | Open and resolved architectural decisions |
 | [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) | Production release pipeline, Railway/Vercel gates, and deployment secrets |

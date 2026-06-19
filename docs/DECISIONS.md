@@ -59,6 +59,40 @@ but the exact isolation strategy is not yet finalized.
 
 ## Resolved Decisions
 
+### RESOLVED-20 — LLM Data Access Is Backend-Mediated and Read-Only
+
+**Resolved:** 2026-06-19
+
+**Decision:** The planned RA data chatbot may use OpenRouter for model access,
+but the model must not receive database credentials, Supabase service keys, or
+direct Supabase access. The chatbot will retrieve research data only through
+FastAPI-approved, read-only tools that authenticate the RA with
+`get_current_lab_member`, apply lab/study scope on the server, and send bounded
+tool results to the model.
+
+**Why:** This gives RAs a useful natural-language analysis surface while
+preserving the platform's existing lab isolation model and avoiding a broad DB
+migration for the first version. It also keeps model privacy, provider routing,
+and OpenRouter configuration as operational controls rather than schema-level
+authorization mechanisms.
+
+**Constraints chosen:**
+- All authenticated `ra` and `admin` users may use the feature.
+- Data access includes aggregate/statistical summaries and anonymous
+  participant/session-level reads when scoped to the user's lab.
+- The chatbot is read-only: no imports, exports, downloads, scoring writes,
+  session starts, or arbitrary SQL.
+- OpenRouter model/provider selection is env-configured. Privacy controls such
+  as provider training opt-out, disabled logging, provider allowlists, and ZDR
+  routing are required where available.
+- The feature does not resolve OPEN-05 and must remain compatible with the
+  eventual multi-lab schema isolation decision.
+
+**Affects:** `docs/AI_CHAT.md`, `docs/ARCHITECTURE.md`,
+`docs/ENV_VARS.md`, `docs/MULTI_LAB.md`,
+`docs/labs/weather-wellness/weather/API.md`,
+`docs/labs/weather-wellness/weather/DESIGN_SPEC.md`.
+
 ### RESOLVED-01 — Database Platform: Supabase
 
 **Resolved:** Pre-project (before T01)
