@@ -2,7 +2,8 @@
 
 > **Status:** Planned overall; authenticated backend route implemented in
 > T1818, with scoped aggregate data tools added in T1819 and bounded anonymous
-> participant/session summaries added in T1820. This is the canonical
+> participant/session summaries added in T1820. The same-origin `POST /api/ra/chat`
+> proxy and typed `postRaChat()` wrapper were added in T1821. This is the canonical
 > platform-level design for an RA-facing LLM chatbot over lab data.
 
 ---
@@ -255,6 +256,14 @@ without third-party branding. It should support:
 
 All frontend API calls must go through typed wrappers in `src/lib/api/`. Browser
 code must not call OpenRouter directly.
+
+The browser-reachable entry point is the same-origin Next.js Route Handler
+`POST /api/ra/chat` (`frontend/src/app/api/ra/chat/route.ts`). It verifies the RA
+Supabase JWT before proxying the JSON body to the backend `POST /chat`
+coordinator; it never exposes OpenRouter credentials or a direct browser-to-model
+path. The typed wrapper is `postRaChat()` in `frontend/src/lib/api/index.ts`,
+which posts to the relative `/api/ra/chat` path so it resolves in both local dev
+and Vercel production.
 
 ---
 

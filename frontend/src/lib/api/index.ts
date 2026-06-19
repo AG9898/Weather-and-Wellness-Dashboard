@@ -679,6 +679,71 @@ export async function getParticipantDemographics(
   return res.json() as Promise<ParticipantResponse>;
 }
 
+// ── RA data chatbot types + wrapper ──
+
+export type RAChatMessageRole = "user" | "assistant";
+
+/** One prior conversation turn sent to the RA chatbot. */
+export interface RAChatMessage {
+  role: RAChatMessageRole;
+  content: string;
+}
+
+/** Optional bounded study scope forwarded to approved backend data tools. */
+export interface RAChatScope {
+  date_from?: string | null;
+  date_to?: string | null;
+  study_slug?: string | null;
+}
+
+/** Request body for POST /api/ra/chat (proxied to backend POST /chat). */
+export interface RAChatRequest {
+  message: string;
+  conversation_id?: string | null;
+  history?: RAChatMessage[];
+  scope?: RAChatScope;
+}
+
+/** Compact user-safe summary of an approved backend tool result. */
+export interface RAChatToolResult {
+  tool_name: string;
+  summary: string;
+}
+
+/** Typed response returned by the RA data chatbot coordinator. */
+export interface RAChatResponse {
+  conversation_id: string;
+  message: string;
+  model: string;
+  tool_results: RAChatToolResult[];
+  blocked_reason: string | null;
+}
+
+/**
+ * Send an RA chatbot request through the same-origin Vercel Route Handler.
+ *
+ * Uses the relative path /api/ra/chat so the browser never calls the backend or
+ * OpenRouter directly; the Route Handler verifies the RA JWT and proxies to the
+ * FastAPI coordinator server-side.
+ */
+export async function postRaChat(
+  payload: RAChatRequest
+): Promise<RAChatResponse> {
+  const res = await fetch("/api/ra/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await buildSameOriginAuthHeaders()),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json() as Promise<RAChatResponse>;
+}
+
 /** Trigger manual weather ingestion via LabMember JWT (RA-only). */
 export async function triggerWeatherIngest(): Promise<WeatherIngestResponse> {
   return apiPost<WeatherIngestResponse>(

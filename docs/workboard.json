@@ -4056,7 +4056,7 @@
       "id": "T1821",
       "title": "AI chat - Same-origin route and typed frontend wrapper",
       "description": "Add POST /api/ra/chat as the Vercel same-origin proxy plus typed frontend API helpers, preserving JWT verification and preventing direct browser-to-OpenRouter calls.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [
@@ -4079,7 +4079,7 @@
         "frontend/src/lib/api/index.ts"
       ],
       "commands": [
-        "cd frontend && npm test -- --runInBand src/app/api/ra/chat/route.test.ts src/app/api/ra/route-topology.test.ts"
+        "cd frontend && npm test -- --no-file-parallelism src/app/api/ra/chat/route.test.ts src/app/api/ra/route-topology.test.ts"
       ]
     },
     {

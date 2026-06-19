@@ -35,6 +35,15 @@ describe("RA route topology", () => {
     ]);
   });
 
+  it("ships the RA chatbot proxy route handler under /api/ra/chat", () => {
+    const raApiRoot = resolve(process.cwd(), "src/app/api/ra");
+    const routeFiles = collectRouteFiles(raApiRoot).filter((file) =>
+      file.startsWith("chat/")
+    );
+
+    expect(routeFiles).toEqual(["chat/route.ts"]);
+  });
+
   it("ships the participant demographics route handler under /api/ra/participants", () => {
     const raApiRoot = resolve(process.cwd(), "src/app/api/ra");
     const routeFiles = collectRouteFiles(raApiRoot).filter((file) =>
@@ -56,6 +65,10 @@ describe("RA route topology", () => {
 
   it("exports the participant demographics helper", () => {
     expect(api).toHaveProperty("getParticipantDemographics");
+  });
+
+  it("exports the RA chatbot wrapper", () => {
+    expect(api).toHaveProperty("postRaChat");
   });
 
   it("/account/password page exists under (ra) layout and middleware protects /account/*", () => {

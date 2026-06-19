@@ -62,7 +62,7 @@ Current shipped dashboard reads are split across these same-origin Vercel Route 
 - `GET /api/ra/dashboard?mode=cached|live`
 - `GET /api/ra/weather/range?mode=cached|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
 - `GET /api/ra/dashboard/analytics?mode=snapshot|live&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD`
-- Planned: `POST /api/ra/chat`
+- `POST /api/ra/chat`
 
 FastAPI endpoints and same-origin Route Handlers are separate routing layers:
 
@@ -90,7 +90,7 @@ This section is the single routing inventory for dashboard-related reads across 
 | RA dashboard page (`/dashboard`) initial mount and post-undo refresh | `getDashboardWeatherBundle(mode)` | `GET /api/ra/dashboard?mode=cached\|live` | `GET /weather/daily?start=today&end=today&include_forecast_periods=false` | `canonical` | This is the canonical default dashboard read path. The bundle is intentionally weather-only because the current page renders weather but not operational summary KPIs. |
 | `WeatherUnifiedCard` on `/dashboard` | `getWeatherRangeBundle(mode, dateFrom, dateTo)` | `GET /api/ra/weather/range?mode=cached\|live&date_from&date_to` | `GET /weather/daily?start=<date_from>&end=<date_to>&include_forecast_periods=false&include_latest_run=false` | `canonical` | Canonical weather range path for the dashboard trend chart. |
 | `DashboardAnalyticsSection` on `/dashboard` | `getDashboardAnalyticsBundle(mode, dateFrom, dateTo)` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live&date_from&date_to` | `GET /dashboard/analytics?date_from&date_to&mode=snapshot\|live` | `canonical` | Canonical analytics snapshot/live path for dashboard model outputs. The section owns its own study-window controls; `date_from` / `date_to` come from analytics state, not the weather card. |
-| RA chatbot (planned) | `sendRaChatMessage()` | `POST /api/ra/chat` | `POST /chat` | `canonical` | Planned read-only LLM data assistant. Same-origin route and backend route must both verify RA auth; backend tools apply lab/study scope before any model call. |
+| RA chatbot | `postRaChat()` | `POST /api/ra/chat` | `POST /chat` | `canonical` | Read-only LLM data assistant. The same-origin route verifies the RA JWT and proxies the JSON body to the backend coordinator; backend tools apply lab/study scope before any model call. The browser never calls OpenRouter directly. |
 
 ### Backend endpoint inventory
 
@@ -99,7 +99,7 @@ This section is the single routing inventory for dashboard-related reads across 
 | `GET /dashboard/study-window` | `GET /api/ra/dashboard/study-window` | `internal-only` | Canonical backend metadata primitive that returns the latest available `study_days.date_local` for dashboard anchoring. |
 | `GET /weather/daily` | `GET /api/ra/dashboard?mode=live`, `GET /api/ra/weather/range?mode=live` | `internal-only` | Canonical backend operational read primitive used by the shipped same-origin weather handlers. Router validation/auth lives in `backend/app/routers/weather.py`; DB read logic lives in `backend/app/services/weather_read_service.py`. |
 | `GET /dashboard/analytics` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live` | `internal-only` | Canonical backend analytics endpoint behind the same-origin analytics handler. |
-| `POST /chat` (planned) | `POST /api/ra/chat` | `internal-only` | Planned backend chat coordinator. It authenticates the RA, runs approved scoped data tools, calls OpenRouter with bounded context, and returns a formatted response. |
+| `POST /chat` | `POST /api/ra/chat` | `internal-only` | Backend chat coordinator. It authenticates the RA, runs approved scoped data tools, calls OpenRouter with bounded context, and returns a formatted response. The same-origin `POST /api/ra/chat` handler is its only browser-reachable caller. |
 
 ### Frontend page route inventory
 
