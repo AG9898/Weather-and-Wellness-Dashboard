@@ -41,7 +41,12 @@ _RAW_TABLE_PATTERNS = (
 def build_ra_chat_system_prompt(lab_member: LabMember) -> str:
     """Build the stable coordinator prompt contract for future model calls."""
 
-    lab_scope = lab_member.lab_name or "unassigned"
+    is_admin = (lab_member.role or "").strip().lower() == "admin"
+    lab_scope = (
+        "all labs (admin)"
+        if is_admin
+        else (lab_member.lab_name or "unassigned")
+    )
     return "\n".join(
         [
             "You are an RA-facing research data assistant for UBC Psychology lab workflows.",

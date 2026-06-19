@@ -62,6 +62,7 @@ class _ResolvedToolScope:
     date_to: date
     lab_name: str
     study_slug: str
+    is_admin: bool = False
 
 
 @dataclass(frozen=True)
@@ -173,7 +174,11 @@ async def _resolve_tool_scope(
     chat_scope: RAChatScope,
 ) -> _ResolvedToolScope | _ScopeError:
     lab_name = (lab_member.lab_name or "").strip().lower()
-    if lab_name != SUPPORTED_LAB_NAME:
+    is_admin = (lab_member.role or "").strip().lower() == "admin"
+    # Admins have whole-DB access: they bypass the per-lab allowlist, mirroring
+    # get_current_ra_for_lab in app/auth.py. Non-admin RAs remain restricted to
+    # the Weather-Wellness scope until OPEN-05 multi-lab isolation is resolved.
+    if not is_admin and lab_name != SUPPORTED_LAB_NAME:
         return _ScopeError(
             status="permission_denied",
             message="Chat data tools are available only for the authenticated Weather-Wellness lab scope.",
@@ -224,8 +229,9 @@ async def _resolve_tool_scope(
     return _ResolvedToolScope(
         date_from=date_from,
         date_to=date_to,
-        lab_name=lab_name,
+        lab_name=lab_name or SUPPORTED_LAB_NAME,
         study_slug=study_slug,
+        is_admin=is_admin,
     )
 
 
@@ -648,6 +654,7 @@ def _scope_data(scope: _ResolvedToolScope) -> dict[str, Any]:
         "study_slug": scope.study_slug,
         "date_from": scope.date_from,
         "date_to": scope.date_to,
+        "admin_all_labs": scope.is_admin,
     }
 
 

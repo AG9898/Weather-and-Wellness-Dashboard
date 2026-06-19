@@ -57,10 +57,14 @@ Supabase/JWT data, or direct database output to an external search provider.
 
 - All authenticated `ra` and `admin` users may use the chatbot.
 - Non-admin RAs are limited to their own `lab_name`.
-- Admin behavior must still be explicit: admin users may access the feature, but
-  broad cross-lab access must not happen accidentally through model prompting.
+- Admin users have whole-DB access: they bypass the per-lab allowlist and the
+  data tools read across all lab tables. This mirrors the existing
+  `get_current_ra_for_lab` admin bypass in `backend/app/auth.py`. Admin access is
+  driven by the verified `app_metadata.role` claim, not by model prompting, so it
+  is explicit rather than accidental. Tool results flag cross-lab reads with
+  `admin_all_labs: true` in their scope metadata.
 - Each backend data tool must apply the same lab/study scoping rules as existing
-  RA endpoints.
+  RA endpoints, including the admin bypass.
 - Chat access does not resolve `docs/DECISIONS.md` OPEN-05. The first version
   should work with current app-layer scoping and later benefit from row-level or
   study-level schema isolation when that decision is resolved.
@@ -213,11 +217,16 @@ rows, not entire tables.
 Implemented aggregate and participant/session tools are capped at 400 local
 study days per request. Participant/session summaries are additionally capped
 at 20 session rows per tool call. When no explicit dates are supplied, tools use
-the latest available study day and a 30-day window. They currently enforce the
-authenticated `lab_name="ww"` scope because the Weather-Wellness schema has not
-yet gained persistent `lab_id` / `study_id` columns; unsupported lab scopes
-return typed user-safe `permission_denied` tool results rather than falling back
-to broad reads.
+the latest available study day and a 30-day window. For non-admin callers they
+enforce the authenticated `lab_name="ww"` scope because the Weather-Wellness
+schema has not yet gained persistent `lab_id` / `study_id` columns; unsupported
+non-admin lab scopes return typed user-safe `permission_denied` tool results
+rather than falling back to broad reads. Admin callers (verified
+`app_metadata.role="admin"`) bypass this allowlist and read the whole DB; because
+no `lab_id` columns exist yet, the underlying queries are already unscoped, so the
+practical effect today is that admins are simply permitted to run the existing
+reads regardless of their `lab_name`. When OPEN-05 introduces real lab columns,
+the admin path is the seam where cross-lab reads will be widened explicitly.
 
 Web research tool outputs should include source titles, URLs, retrieval dates
 where available, and compact excerpts or summaries. The tool must enforce query

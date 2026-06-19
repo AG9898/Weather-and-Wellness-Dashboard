@@ -17,11 +17,11 @@ from app.services.chat_tools import (
 )
 
 
-def _lab_member(lab_name: str = "ww") -> LabMember:
+def _lab_member(lab_name: str = "ww", role: str = "ra") -> LabMember:
     return LabMember(
         id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         email="ra@example.com",
-        role="ra",
+        role=role,
         lab_name=lab_name,
     )
 
@@ -72,6 +72,37 @@ class ChatAggregateToolsTests(IsolatedAsyncioTestCase):
         assert {result.status for result in results} == {"permission_denied"}
         assert len(results) == 5
         assert db.statements == []
+
+    async def test_admin_bypasses_lab_allowlist_for_whole_db_access(self) -> None:
+        db = _FakeDb(
+            _FakeResult(rows=[{"study_day_count": 1}]),
+            _FakeResult(
+                rows=[
+                    {
+                        "weather_day_count": 1,
+                        "mean_temperature_c": Decimal("6.0"),
+                        "min_temperature_c": Decimal("6.0"),
+                        "max_temperature_c": Decimal("6.0"),
+                        "mean_precip_today_mm": Decimal("0.0"),
+                        "total_precip_today_mm": Decimal("0.0"),
+                        "mean_sunshine_duration_hours": Decimal("2.0"),
+                    }
+                ]
+            ),
+        )
+
+        result = await get_weather_study_day_summary(
+            db,
+            lab_member=_lab_member(lab_name="other-lab", role="admin"),
+            chat_scope=RAChatScope(
+                date_from=date(2026, 3, 1),
+                date_to=date(2026, 3, 1),
+            ),
+        )
+
+        assert result.status == "ready"
+        assert result.data["admin_all_labs"] is True
+        assert db.statements != []
 
     async def test_aggregate_tools_reject_unbounded_date_ranges(self) -> None:
         db = _FakeDb()
