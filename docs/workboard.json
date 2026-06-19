@@ -4086,7 +4086,7 @@
       "id": "T1822",
       "title": "AI chat - RA chat UI surface",
       "description": "Build a dedicated authenticated RA chatbot page at /chat, reachable by all RA/admin users from the floating bottom dock/navigation. The page should provide a very simple chat-first experience inspired by Claude.ai's minimal conversation UI, adapted to the project color system and without third-party branding, with message input, formatted responses, loading/error/privacy-unavailable states, source/citation display when provided, and no export/download controls.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "AI_CHAT",
       "depends_on": [

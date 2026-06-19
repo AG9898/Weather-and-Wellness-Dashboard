@@ -25,20 +25,25 @@ Visual language baseline: [docs/styleguide.md](../../../styleguide.md) · Animat
    - trial mode: no KPI/data changes (no writes)
 7. View data via Supabase Studio
 8. To run a Misokinesia session: click the **Misokinesia** entry in the floating dock → navigates to `/misokinesia` → click either "Start Misokinesia Session" (backend-backed write path), "Run Short Trial", or "Run Full Trial" (read-only rehearsal paths) → app navigates to `/misokinesia/[id]` participant task page (same device). See [Misokinesia Design Spec](../misokinesia/DESIGN_SPEC.md).
-9. Planned: open the RA data chatbot from the floating bottom dock/navigation
-   to visit the dedicated `/chat` page and ask
+9. Open the RA data chatbot from the **Chat** entry in the floating bottom
+   dock/navigation to visit the dedicated `/chat` page and ask
    lab-scoped questions, request statistical summaries, and generate clean
    report-style on-screen text. Chatbot answers are read-only and may use both
    aggregate summaries and anonymous participant/session-level rows through
    backend-approved tools. The UI must not offer CSV/XLSX/ZIP download actions
    from chatbot responses.
 
-## RA Data Chatbot UX (planned)
+## RA Data Chatbot UX
+
+Implemented in T1822 as the `/chat` page (`frontend/src/app/(ra)/chat/page.tsx`)
+rendering the `RaChatPanel` component
+(`frontend/src/lib/components/RaChatPanel.tsx`).
 
 - Available to authenticated RA/admin users only.
-- Implemented as a dedicated `/chat` page in the RA route group.
-- Reachable from the floating bottom dock/navigation without exposing it to
-  participant routes.
+- Implemented as a dedicated `/chat` page in the RA route group, guarded by the
+  RA middleware matcher (`/chat/:path*`) and the `(ra)/layout.tsx` auth guard.
+- Reachable from the non-admin **Chat** entry in the floating bottom
+  dock/navigation without exposing it to participant routes.
 - Uses a very simple chat-first interface inspired by Claude.ai's minimal
   conversation layout, adapted to the Weather-Wellness color system and without
   third-party branding.

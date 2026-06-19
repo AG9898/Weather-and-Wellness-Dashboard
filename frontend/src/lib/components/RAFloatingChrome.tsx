@@ -10,6 +10,7 @@ import {
   Home,
   KeyRound,
   LogOut,
+  MessageSquare,
   PanelTopClose,
   PanelTopOpen,
   Users,
@@ -35,6 +36,7 @@ interface DockItem {
 
 const ALL_DOCK_ITEMS: DockItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Home, adminOnly: false },
+  { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false },
   { href: "/misokinesia", label: "Misokinesia", icon: Video, adminOnly: false },
   { href: "/import-export", label: "Export", icon: ArrowUpDown, adminOnly: true },
   { href: "/users", label: "Users", icon: Users, adminOnly: true },
@@ -86,6 +88,7 @@ function dockLiftForDistance(distance: number, active: boolean): number {
 export function shouldShowRAFloatingChrome(pathname: string | null): boolean {
   return (
     pathname === "/dashboard" ||
+    pathname === "/chat" ||
     pathname === "/import-export" ||
     pathname === "/misokinesia" ||
     pathname === "/users" ||

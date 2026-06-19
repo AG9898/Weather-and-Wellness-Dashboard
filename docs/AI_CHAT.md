@@ -3,8 +3,10 @@
 > **Status:** Planned overall; authenticated backend route implemented in
 > T1818, with scoped aggregate data tools added in T1819 and bounded anonymous
 > participant/session summaries added in T1820. The same-origin `POST /api/ra/chat`
-> proxy and typed `postRaChat()` wrapper were added in T1821. This is the canonical
-> platform-level design for an RA-facing LLM chatbot over lab data.
+> proxy and typed `postRaChat()` wrapper were added in T1821. The dedicated RA
+> `/chat` UI surface (page, `RaChatPanel`, and floating-dock entry) was added in
+> T1822. This is the canonical platform-level design for an RA-facing LLM chatbot
+> over lab data.
 
 ---
 
@@ -238,20 +240,25 @@ identifiers, raw data rows, credentials, or private lab-sensitive content.
 
 ## Frontend UX
 
-The first UI should be a dedicated RA-authenticated `/chat` page reachable from
-the RA bottom dock/navigation. It should be available to all authenticated RA
-and admin users and must not be exposed to participant routes.
+The first UI is the dedicated RA-authenticated `/chat` page
+(`frontend/src/app/(ra)/chat/page.tsx`), reachable from the RA bottom
+dock/navigation. It is available to all authenticated RA and admin users (the
+dock `Chat` entry is not admin-only) and is guarded by both the RA middleware
+matcher (`/chat/:path*`) and the `(ra)/layout.tsx` auth guard, so it is never
+exposed to participant routes.
 
-The page should use a very simple chat-first layout inspired by Claude.ai's
-minimal conversation experience, adapted to this project's color system and
-without third-party branding. It should support:
+The page renders the `RaChatPanel` component
+(`frontend/src/lib/components/RaChatPanel.tsx`), a simple chat-first layout
+inspired by Claude.ai's minimal conversation experience, adapted to this
+project's color system and without third-party branding. It supports:
 
 - plain-language questions
-- formatted markdown-like responses for readable statistical summaries and
-  report-style text
+- formatted, report-style assistant text (paragraph and bullet structure) via a
+  small dependency-free formatter, instead of an external markdown/HTML pipeline
 - loading, empty, error, and privacy-unavailable states
-- clear distinction between retrieved data and model interpretation
-- source links or citations when responses rely on public web research
+- clear distinction between retrieved data (compact backend tool summaries) and
+  model interpretation
+- source links or citations when responses include public web research URLs
 - no export/download action in v1
 
 All frontend API calls must go through typed wrappers in `src/lib/api/`. Browser
