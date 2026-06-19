@@ -12,6 +12,14 @@
 > in T1823 (`backend/app/services/openrouter_client.py`); it owns the secret
 > boundary and exposes no business logic or tool execution yet.
 >
+> The **tool dispatch registry** (`backend/app/services/chat_tool_registry.py`)
+> was added in T1824. It exposes each approved read-only tool as an individually
+> invocable unit with a typed JSON input schema (for model tool-calling) and a
+> dispatch function that validates params and injects the authenticated lab scope
+> server-side; the model never supplies `lab_id`/`lab_name`. Unknown/disallowed
+> tool names are rejected without DB access, and the existing status taxonomy is
+> preserved.
+>
 > The **agentic model layer** that connects OpenRouter on top of these tools is
 > planned in five phases: (1) the agentic coordinator loop, (2) SSE streaming,
 > (3) the tool-call audit table, (4) the doc-grounded methodology explainer, and
@@ -270,6 +278,17 @@ Operational references:
 ---
 
 ## Backend Tool Contract
+
+The approved tools are exposed through a dispatch registry
+(`backend/app/services/chat_tool_registry.py`). Each registry entry pairs a fixed
+tool name with a typed Pydantic params model (serialized to JSON Schema /
+OpenRouter function specs via `chat_tool_specs()`) and a dispatch coroutine.
+`dispatch_tool(db, lab_member=..., tool_name=..., params=...)` validates the
+model-supplied params, injects the authenticated lab scope server-side (the
+params models expose no lab identity field, so model-supplied scope is
+structurally impossible), and delegates to the existing `chat_tools` query
+functions. Unknown tool names raise `UnknownChatToolError` without DB access;
+param-validation failures return a typed `invalid_scope` result.
 
 Each chatbot data tool should be a narrow backend function with:
 
