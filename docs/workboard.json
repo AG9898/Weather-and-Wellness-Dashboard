@@ -4274,7 +4274,7 @@
       "id": "T1828",
       "title": "AI chat - Frontend streaming UX",
       "description": "Make the RA chat UI consume the SSE stream end-to-end: the same-origin POST /api/ra/chat route passes the stream through after JWT verification; the typed postRaChat wrapper exposes a streaming interface (no bare fetch in components); RaChatPanel renders tokens incrementally and shows transient 'running <tool>' affordances that resolve when tools return. Keep the retrieved-data vs interpretation vs methodology-citation distinction. No OpenRouter access from the browser.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "AI_CHAT",
       "depends_on": [

@@ -13,11 +13,25 @@ import { fetchBackend } from "@/lib/server/route-handler-backend";
 import { requireRaBearerToken } from "@/lib/server/route-handler-auth";
 import { POST } from "./route";
 
-function chatRequest(body: unknown): NextRequest {
+function chatRequest(body: unknown, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest("http://localhost/api/ra/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
+  });
+}
+
+function sseBackendResponse(payload: string): Response {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode(payload));
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    status: 200,
+    headers: { "Content-Type": "text/event-stream" },
   });
 }
 
@@ -79,6 +93,49 @@ describe("POST /api/ra/chat", () => {
     );
 
     const response = await POST(chatRequest({ message: "hi" }));
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({ detail: "Chat is unavailable" });
+  });
+
+  it("proxies to /chat/stream and passes the SSE body through when streaming", async () => {
+    vi.mocked(requireRaBearerToken).mockResolvedValue({
+      ok: true,
+      token: "token",
+    });
+    const frame = 'data: {"type":"token","text":"hi"}\n\n';
+    vi.mocked(fetchBackend).mockResolvedValue(sseBackendResponse(frame));
+
+    const response = await POST(
+      chatRequest({ message: "stream please" }, { Accept: "text/event-stream" })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toContain("text/event-stream");
+    expect(response.headers.get("X-Accel-Buffering")).toBe("no");
+    expect(await response.text()).toBe(frame);
+    expect(fetchBackend).toHaveBeenCalledWith("/chat/stream", {
+      token: "token",
+      method: "POST",
+      body: JSON.stringify({ message: "stream please" }),
+      cache: "no-store",
+      headers: { Accept: "text/event-stream" },
+    });
+  });
+
+  it("surfaces a non-ok backend as JSON when a stream was requested", async () => {
+    vi.mocked(requireRaBearerToken).mockResolvedValue({
+      ok: true,
+      token: "token",
+    });
+    vi.mocked(fetchBackend).mockResolvedValue(
+      Response.json({ detail: "Chat is unavailable" }, { status: 503 })
+    );
+
+    const response = await POST(
+      chatRequest({ message: "hi" }, { Accept: "text/event-stream" })
+    );
     const body = await response.json();
 
     expect(response.status).toBe(503);

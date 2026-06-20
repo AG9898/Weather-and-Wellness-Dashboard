@@ -1,16 +1,22 @@
 "use client";
 
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUp, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowUp, Loader2, ShieldAlert, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   ApiError,
-  postRaChat,
+  streamRaChat,
   type RAChatMessage,
   type RAChatResponse,
   type RAChatToolResult,
 } from "@/lib/api";
+
+/** A tool call surfaced live in the conversation while it runs/resolves. */
+export interface ChatToolActivity {
+  toolName: string;
+  status: "running" | "resolved";
+}
 
 /** One rendered turn in the on-screen conversation. */
 export interface ChatTurn {
@@ -18,8 +24,33 @@ export interface ChatTurn {
   content: string;
   /** Compact backend tool summaries shown under an assistant turn. */
   toolResults?: RAChatToolResult[];
+  /** Transient running/resolved tool affordances shown during streaming. */
+  toolActivity?: ChatToolActivity[];
   /** Set when the backend declined to answer (privacy / scope / unavailable). */
   blockedReason?: string | null;
+}
+
+/**
+ * Fold a tool lifecycle event into the running activity list: mark a tool
+ * `resolved` when it returns, otherwise append it as `running`.
+ */
+export function applyToolActivity(
+  activity: ChatToolActivity[],
+  toolName: string,
+  status: "running" | "resolved"
+): ChatToolActivity[] {
+  if (status === "resolved") {
+    let matched = false;
+    const next = activity.map((entry) => {
+      if (!matched && entry.toolName === toolName && entry.status === "running") {
+        matched = true;
+        return { ...entry, status: "resolved" as const };
+      }
+      return entry;
+    });
+    return matched ? next : [...next, { toolName, status: "resolved" as const }];
+  }
+  return [...activity, { toolName, status: "running" as const }];
 }
 
 /** UI status for the chat surface. */
@@ -133,6 +164,26 @@ function SourceLinks({ text }: { text: string }) {
   );
 }
 
+function ToolActivityList({ activity }: { activity: ChatToolActivity[] }) {
+  const running = activity.filter((entry) => entry.status === "running");
+  if (running.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-1.5" aria-live="polite">
+      {running.map((entry, index) => (
+        <div
+          key={`${entry.toolName}-${index}`}
+          className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+        >
+          <Loader2 className="size-3.5 shrink-0 animate-spin text-primary" />
+          <span>
+            Running <span className="font-medium text-foreground">{entry.toolName}</span>…
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ToolSummaries({ results }: { results: RAChatToolResult[] }) {
   if (results.length === 0) return null;
   return (
@@ -183,29 +234,67 @@ export default function RaChatPanel() {
       content: turn.content,
     }));
 
-    setTurns((prev) => [...prev, { role: "user", content: trimmed }]);
+    // Push the user turn plus a placeholder assistant turn that fills in live as
+    // tokens and tool events stream back. The assistant turn is the last entry.
+    let assistantIndex = -1;
+    setTurns((prev) => {
+      assistantIndex = prev.length + 1;
+      return [
+        ...prev,
+        { role: "user", content: trimmed },
+        { role: "assistant", content: "", toolActivity: [] },
+      ];
+    });
     setInput("");
     setStatus("loading");
     setError(null);
 
+    const patchAssistant = (patch: (turn: ChatTurn) => ChatTurn) => {
+      setTurns((prev) =>
+        prev.map((turn, index) => (index === assistantIndex ? patch(turn) : turn))
+      );
+    };
+
     try {
-      const res: RAChatResponse = await postRaChat({
-        message: trimmed,
-        conversation_id: conversationId,
-        history,
-      });
-      setConversationId(res.conversation_id);
-      setTurns((prev) => [
-        ...prev,
+      const res: RAChatResponse = await streamRaChat(
+        { message: trimmed, conversation_id: conversationId, history },
         {
-          role: "assistant",
-          content: res.message,
-          toolResults: res.tool_results,
-          blockedReason: res.blocked_reason,
-        },
-      ]);
+          onToken: (text) =>
+            patchAssistant((turn) => ({ ...turn, content: turn.content + text })),
+          onToolRunning: (toolName) =>
+            patchAssistant((turn) => ({
+              ...turn,
+              toolActivity: applyToolActivity(
+                turn.toolActivity ?? [],
+                toolName,
+                "running"
+              ),
+            })),
+          onToolResolved: (event) =>
+            patchAssistant((turn) => ({
+              ...turn,
+              toolActivity: applyToolActivity(
+                turn.toolActivity ?? [],
+                event.tool_name,
+                "resolved"
+              ),
+            })),
+        }
+      );
+      setConversationId(res.conversation_id);
+      // Reconcile with the authoritative final payload (message, tool summaries,
+      // blocked reason) and clear transient running affordances.
+      patchAssistant((turn) => ({
+        ...turn,
+        content: res.message,
+        toolResults: res.tool_results,
+        toolActivity: [],
+        blockedReason: res.blocked_reason,
+      }));
       setStatus("ready");
     } catch (err) {
+      // Drop the empty assistant placeholder so only the error banner shows.
+      setTurns((prev) => prev.filter((_, index) => index !== assistantIndex));
       setError(chatErrorMessage(err));
       setStatus("error");
     }
@@ -278,25 +367,29 @@ export default function RaChatPanel() {
                       </div>
                     ) : (
                       <>
-                        <AssistantText text={turn.content} />
+                        {turn.content ? <AssistantText text={turn.content} /> : null}
+                        <ToolActivityList activity={turn.toolActivity ?? []} />
                         <ToolSummaries results={turn.toolResults ?? []} />
                         <SourceLinks text={turn.content} />
+                        {!turn.content &&
+                        !(turn.toolActivity ?? []).some(
+                          (entry) => entry.status === "running"
+                        ) ? (
+                          <div
+                            className="flex items-center gap-1.5"
+                            aria-label="Assistant is thinking"
+                          >
+                            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.2s]" />
+                            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.1s]" />
+                            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
+                          </div>
+                        ) : null}
                       </>
                     )}
                   </div>
                 </div>
               );
             })}
-
-            {status === "loading" ? (
-              <div className="flex justify-start" aria-label="Assistant is thinking">
-                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-border/70 bg-card/70 px-4 py-3">
-                  <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.2s]" />
-                  <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.1s]" />
-                  <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
-                </div>
-              </div>
-            ) : null}
           </div>
         )}
       </div>

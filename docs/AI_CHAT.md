@@ -1,6 +1,6 @@
 # AI_CHAT.md — RA Data Chatbot
 
-> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); SSE streaming landed (T1827); remaining model-layer phases planned.
+> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); backend SSE streaming landed (T1827); frontend streaming UX landed (T1828); remaining model-layer phases planned.
 > The authenticated backend route was implemented in T1818, with scoped aggregate
 > data tools added in T1819 and bounded anonymous participant/session summaries
 > added in T1820. The same-origin `POST /api/ra/chat` proxy and typed
@@ -505,11 +505,38 @@ code must not call OpenRouter directly.
 
 The browser-reachable entry point is the same-origin Next.js Route Handler
 `POST /api/ra/chat` (`frontend/src/app/api/ra/chat/route.ts`). It verifies the RA
-Supabase JWT before proxying the JSON body to the backend `POST /chat`
-coordinator; it never exposes OpenRouter credentials or a direct browser-to-model
-path. The typed wrapper is `postRaChat()` in `frontend/src/lib/api/index.ts`,
-which posts to the relative `/api/ra/chat` path so it resolves in both local dev
-and Vercel production.
+Supabase JWT before proxying the request to the backend coordinator; it never
+exposes OpenRouter credentials or a direct browser-to-model path. The handler is
+content-negotiated: a normal JSON request proxies to backend `POST /chat` and
+returns the response verbatim, while a request with `Accept: text/event-stream`
+proxies to backend `POST /chat/stream` and **passes the SSE body through
+unbuffered** (`Content-Type: text/event-stream`, `Cache-Control:
+no-cache, no-transform`, `X-Accel-Buffering: no`). A non-2xx backend never starts
+a stream, so the handler surfaces it as a JSON `{detail}` error the client wrapper
+can map without leaking internals.
+
+Two typed wrappers live in `frontend/src/lib/api/index.ts`, both posting to the
+relative `/api/ra/chat` path so they resolve in local dev and Vercel production:
+
+- `postRaChat()` — non-streaming; resolves with the full `RAChatResponse`.
+- `streamRaChat(payload, handlers, options)` — sends `Accept: text/event-stream`,
+  parses the SSE frames into the typed `RAChatStreamEvent` union
+  (`token` / `tool_running` / `tool_resolved` / `done` / `error`), and invokes
+  `onToken` / `onToolRunning` / `onToolResolved` callbacks as events arrive. It
+  resolves with the terminal `done` payload's `RAChatResponse` and throws
+  `ApiError` on a transport failure or a terminal `error` event. An optional
+  `AbortSignal` cancels the in-flight stream. Components use this wrapper rather
+  than a bare `fetch`.
+
+`RaChatPanel` consumes `streamRaChat`: on send it appends the user turn plus an
+empty assistant placeholder, appends `token` text into that placeholder as it
+streams, and folds tool lifecycle events into transient "Running &lt;tool&gt;…"
+affordances (`applyToolActivity` marks a running tool `resolved` when it returns).
+On the `done` event it reconciles the turn with the authoritative final message,
+compact tool summaries, and `blocked_reason`, clearing the running affordances. A
+thinking indicator shows only while the placeholder has no streamed text and no
+running tool. On error the empty placeholder is dropped and the error banner is
+shown.
 
 ---
 

@@ -744,6 +744,153 @@ export async function postRaChat(
   return res.json() as Promise<RAChatResponse>;
 }
 
+// ── RA data chatbot streaming (SSE) ──
+
+/** Incremental assistant text fragment. */
+export interface RAChatTokenEvent {
+  type: "token";
+  text: string;
+}
+
+/** A backend tool call has started. */
+export interface RAChatToolRunningEvent {
+  type: "tool_running";
+  tool_name: string;
+}
+
+/** A backend tool call has finished. */
+export interface RAChatToolResolvedEvent {
+  type: "tool_resolved";
+  tool_name: string;
+  summary: string;
+  status: string;
+}
+
+/** Terminal success event carrying the full coordinator response. */
+export interface RAChatDoneEvent {
+  type: "done";
+  response: RAChatResponse;
+}
+
+/** Terminal user-safe failure event. */
+export interface RAChatErrorEvent {
+  type: "error";
+  message: string;
+  blocked_reason?: string | null;
+}
+
+/** Discriminated union of every SSE frame emitted by POST /chat/stream. */
+export type RAChatStreamEvent =
+  | RAChatTokenEvent
+  | RAChatToolRunningEvent
+  | RAChatToolResolvedEvent
+  | RAChatDoneEvent
+  | RAChatErrorEvent;
+
+/** Callbacks the panel supplies to react to streamed events. */
+export interface RAChatStreamHandlers {
+  onToken?: (text: string) => void;
+  onToolRunning?: (toolName: string) => void;
+  onToolResolved?: (event: RAChatToolResolvedEvent) => void;
+  /** Optional escape hatch for events not covered by the typed callbacks. */
+  onEvent?: (event: RAChatStreamEvent) => void;
+}
+
+function parseSseEvent(raw: string): RAChatStreamEvent | null {
+  // Each SSE frame is one or more `data:` lines; the backend emits a single
+  // JSON object per frame. Concatenate data payloads, ignore comments/fields.
+  const data = raw
+    .split("\n")
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trim())
+    .join("");
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as RAChatStreamEvent;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Stream an RA chatbot turn over Server-Sent Events through the same-origin
+ * Route Handler. Resolves with the terminal {@link RAChatResponse} once the
+ * `done` event arrives; throws {@link ApiError} on a transport failure or a
+ * terminal `error` event. The browser never calls the backend or OpenRouter
+ * directly — the Route Handler verifies the RA JWT and proxies the stream.
+ */
+export async function streamRaChat(
+  payload: RAChatRequest,
+  handlers: RAChatStreamHandlers = {},
+  options: { signal?: AbortSignal } = {}
+): Promise<RAChatResponse> {
+  const res = await fetch("/api/ra/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      ...(await buildSameOriginAuthHeaders()),
+    },
+    body: JSON.stringify(payload),
+    signal: options.signal,
+  });
+
+  if (!res.ok || res.body === null) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let done: RAChatResponse | null = null;
+
+  const handle = (event: RAChatStreamEvent): void => {
+    handlers.onEvent?.(event);
+    switch (event.type) {
+      case "token":
+        handlers.onToken?.(event.text);
+        break;
+      case "tool_running":
+        handlers.onToolRunning?.(event.tool_name);
+        break;
+      case "tool_resolved":
+        handlers.onToolResolved?.(event);
+        break;
+      case "done":
+        done = event.response;
+        break;
+      case "error":
+        throw new ApiError(503, event.message);
+    }
+  };
+
+  for (;;) {
+    const { value, done: streamDone } = await reader.read();
+    if (value) {
+      buffer += decoder.decode(value, { stream: true });
+      // SSE frames are separated by a blank line.
+      let sep: number;
+      while ((sep = buffer.indexOf("\n\n")) !== -1) {
+        const frame = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        const event = parseSseEvent(frame);
+        if (event) handle(event);
+      }
+    }
+    if (streamDone) break;
+  }
+
+  // Flush any trailing frame without a terminating blank line.
+  const tail = parseSseEvent(buffer);
+  if (tail) handle(tail);
+
+  if (done === null) {
+    throw new ApiError(502, "The assistant stream ended without a response.");
+  }
+  return done;
+}
+
 /** Trigger manual weather ingestion via LabMember JWT (RA-only). */
 export async function triggerWeatherIngest(): Promise<WeatherIngestResponse> {
   return apiPost<WeatherIngestResponse>(
