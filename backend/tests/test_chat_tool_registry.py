@@ -41,6 +41,7 @@ APPROVED_TOOL_NAMES = {
     "get_data_coverage",
     "dashboard_analytics_summary",
     "explain_methodology",
+    "web_research",
     "study_window_session_counts",
     "survey_score_summary",
     "weather_study_day_summary",

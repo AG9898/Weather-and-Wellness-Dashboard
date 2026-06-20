@@ -44,6 +44,7 @@ from app.services.chat_tools import (
     get_weather_study_day_summary,
 )
 from app.services.chat_methodology_tool import explain_methodology
+from app.services.chat_web_research_tool import run_web_research
 
 
 class UnknownChatToolError(LookupError):
@@ -174,6 +175,28 @@ class MethodologyExplainerParams(BaseModel):
     )
 
 
+class WebResearchParams(BaseModel):
+    """Params for privacy-sanitized public web research."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(
+        min_length=1,
+        max_length=240,
+        description=(
+            "Public research question. Must not include participant rows, "
+            "participant/session identifiers, credentials, JWTs, or sensitive "
+            "lab data."
+        ),
+    )
+    max_results: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+        description="Maximum number of citeable public sources to return.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Registry entries
 # ---------------------------------------------------------------------------
@@ -278,6 +301,14 @@ async def _dispatch_methodology_explainer(
     return explain_methodology(params.question)
 
 
+async def _dispatch_web_research(
+    db: AsyncSession, lab_member: LabMember, params: BaseModel
+) -> ChatAggregateToolResult:
+    del db, lab_member
+    assert isinstance(params, WebResearchParams)
+    return run_web_research(params.query, max_results=params.max_results)
+
+
 _REGISTRY: dict[str, ChatTool] = {
     tool.name: tool
     for tool in (
@@ -352,6 +383,20 @@ _REGISTRY: dict[str, ChatTool] = {
             params_model=MethodologyExplainerParams,
             _dispatch=_dispatch_methodology_explainer,
         ),
+        ChatTool(
+            name="web_research",
+            description=(
+                "Search public web sources for research context and return "
+                "compact cited source metadata (titles, URLs, retrieval dates, "
+                "and summaries). The query is privacy-sanitized before any "
+                "external call and is rejected if it contains participant rows, "
+                "participant/session identifiers, credentials, JWTs, or "
+                "sensitive lab data. Disabled cleanly when the server-only "
+                "CHAT_WEB_SEARCH_API_KEY is unset."
+            ),
+            params_model=WebResearchParams,
+            _dispatch=_dispatch_web_research,
+        ),
     )
 }
 
@@ -416,6 +461,7 @@ __all__ = [
     "SurveyScoreSummaryParams",
     "UnknownChatToolError",
     "WeatherStudyDaySummaryParams",
+    "WebResearchParams",
     "chat_tool_specs",
     "dispatch_tool",
     "get_chat_tool",

@@ -1,6 +1,6 @@
 # AI_CHAT.md — RA Data Chatbot
 
-> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); backend SSE streaming landed (T1827); frontend streaming UX landed (T1828); methodology explainer landed (T1831); remaining model-layer phases planned.
+> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); backend SSE streaming landed (T1827); frontend streaming UX landed (T1828); methodology explainer landed (T1831); privacy-sanitized web research landed (T1832).
 > The authenticated backend route was implemented in T1818, with scoped aggregate
 > data tools added in T1819 and bounded anonymous participant/session summaries
 > added in T1820. The same-origin `POST /api/ra/chat` proxy and typed
@@ -30,11 +30,12 @@
 > (4) the doc-grounded methodology explainer — **landed in T1831**
 > (`backend/app/services/chat_methodology_tool.py`,
 > `backend/app/methodology/corpus.json`, `scripts/sync_methodology_corpus.py`), and
-> (5) privacy-sanitized web research. With the coordinator loop landed,
+> (5) the privacy-sanitized web research tool — **landed in T1832**
+> (`backend/app/services/chat_web_research_tool.py`). With the coordinator loop landed,
 > `coordinate_ra_chat` now drives a bounded model-driven tool-calling loop:
 > OpenRouter selects which approved tools to call (or none), FastAPI injects the
 > authenticated lab scope and executes them through the registry, and the model
-> narrates the results. Phases 4 and 5 remain planned. This is the canonical
+> narrates the results. This is the canonical
 > platform-level design for an RA-facing LLM chatbot over lab data, and it covers
 > both Weather-Wellness components (`weather/` and `misokinesia/`).
 
@@ -365,8 +366,8 @@ Each chatbot data tool should be a narrow backend function with:
 - user-safe errors for unavailable data or insufficient permissions
 - tests for lab scoping and blocked/disallowed access
 
-Initial tool categories include implemented aggregate and participant/session
-tools plus planned orientation, methodology, and research-context tools:
+Initial tool categories include implemented aggregate, participant/session,
+orientation, methodology, and research-context tools:
 
 - dashboard analytics summary for a bounded date range
 - study-window and linked session-count summaries
@@ -392,7 +393,9 @@ tools plus planned orientation, methodology, and research-context tools:
   "how is X scored / how does the Y section work" questions. See
   *Methodology Explainer* below.
 - report formatter over previously retrieved scoped results
-- public web research search/fetch for literature-backed context and citations
+- **implemented public web research tool** (`web_research`): privacy-sanitized
+  public search for literature-backed context and citations. See *Web Research*
+  below.
 
 ### Methodology Explainer (doc-grounded)
 
@@ -445,6 +448,32 @@ or "how does the misokinesia section work?".
 - This stays within RESOLVED-20: it is read-only, sends no credentials, and
   exposes no DB rows — only curated documentation context.
 
+### Web Research
+
+The implemented web research tool (`web_research`) lets the coordinator request
+public research context when an answer depends on literature, current public
+guidance, or citations beyond the platform's bundled methodology docs.
+
+- **Disabled by default.** The tool returns a typed `insufficient_data` result
+  when `CHAT_WEB_SEARCH_API_KEY` is unset. No external request is attempted in
+  that state.
+- **Sanitization runs before any provider call.** Queries are normalized and
+  rejected with `invalid_scope` before network access if they contain
+  participant/session UUIDs or identifier fields, participant/session rows,
+  private table names, credentials, JWTs, service keys, raw private lab data, or
+  participant-level score snippets. The model-facing schema exposes only
+  `query` and `max_results`; it never accepts lab identity.
+- **Provider boundary is server-only.** The search API key is read only from
+  backend environment variables. The browser and OpenRouter never receive the
+  key. The provider receives only the sanitized public query.
+- **Outputs are citeable and compact.** Results include source title, URL,
+  retrieval date, and a compact summary. The full cited JSON is fed back to the
+  model through the tool result, and the compact tool summary is surfaced in the
+  RA chat response/tool lifecycle events.
+- **Audit rows remain metadata-only.** As with other chat tools, the
+  `chat_tool_invocations` row records the tool name, model-supplied params, and
+  status, not returned source payloads or raw participant data.
+
 ### Tool-Call Audit
 
 Every tool invocation in the agentic loop is persisted to the
@@ -481,10 +510,10 @@ practical effect today is that admins are simply permitted to run the existing
 reads regardless of their `lab_name`. When OPEN-05 introduces real lab columns,
 the admin path is the seam where cross-lab reads will be widened explicitly.
 
-Web research tool outputs should include source titles, URLs, retrieval dates
-where available, and compact excerpts or summaries. The tool must enforce query
-sanitization and should reject searches that appear to include participant
-identifiers, raw data rows, credentials, or private lab-sensitive content.
+Web research tool outputs include source titles, URLs, retrieval dates, and
+compact excerpts or summaries. The tool enforces query sanitization and rejects
+searches that appear to include participant identifiers, raw data rows,
+credentials, JWTs, or private lab-sensitive content.
 
 ---
 

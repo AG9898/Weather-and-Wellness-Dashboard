@@ -4400,7 +4400,7 @@
       "id": "T1832",
       "title": "AI chat - Privacy-sanitized web research tool",
       "description": "Add the privacy-preserving web research tool (final phase), gated behind query sanitization that rejects searches containing participant rows, participant/session identifiers, credentials, JWTs, or sensitive lab data. Provider configured via CHAT_WEB_SEARCH_API_KEY (server-only); leave unset to disable web research. Outputs include source titles, URLs, retrieval dates, and compact summaries; register in the dispatch registry so the loop can request it for public research context with citations.",
-      "status": "todo",
+      "status": "done",
       "priority": "low",
       "group_id": "AI_CHAT",
       "depends_on": [

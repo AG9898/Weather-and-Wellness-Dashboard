@@ -88,6 +88,10 @@ def build_ra_chat_system_prompt(lab_member: LabMember) -> str:
             "Separate retrieved study data, statistical summaries, interpretation, "
             "and public research context. State when data is insufficient or tools "
             "are unavailable. Prefer anonymous participant_number over raw UUIDs.",
+            "Use web_research only for public research context that needs citations. "
+            "Generalize web queries; never include participant rows, participant or "
+            "session identifiers, credentials, JWTs, private lab notes, or sensitive "
+            "database output in a web query.",
         ]
     )
 
