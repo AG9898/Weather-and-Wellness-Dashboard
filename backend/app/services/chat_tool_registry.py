@@ -37,6 +37,7 @@ from app.services.chat_tools import (
     MAX_CHAT_TOOL_SESSION_ROWS,
     ChatAggregateToolResult,
     get_dashboard_analytics_summary,
+    get_data_coverage,
     get_participant_session_summaries,
     get_study_window_session_counts,
     get_survey_score_summary,
@@ -99,6 +100,27 @@ class _ScopedToolParams(BaseModel):
             date_to=self.date_to,
             study_slug=self.study_slug,
         )
+
+
+class DataCoverageParams(BaseModel):
+    """Params for the cheap data-orientation/coverage tool.
+
+    This tool reports the real available data range, so it deliberately exposes
+    no date window for the model to choose. Only an optional study slug within
+    the authenticated lab scope is accepted; lab identity is never model-facing.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    study_slug: str | None = Field(
+        default=None,
+        max_length=64,
+        pattern=r"^[a-z0-9][a-z0-9-]*$",
+        description="Optional study slug within the authenticated lab scope.",
+    )
+
+    def to_scope(self) -> RAChatScope:
+        return RAChatScope(study_slug=self.study_slug)
 
 
 class DashboardAnalyticsSummaryParams(_ScopedToolParams):
@@ -174,6 +196,15 @@ class ChatTool:
         }
 
 
+async def _dispatch_data_coverage(
+    db: AsyncSession, lab_member: LabMember, params: BaseModel
+) -> ChatAggregateToolResult:
+    assert isinstance(params, DataCoverageParams)
+    return await get_data_coverage(
+        db, lab_member=lab_member, chat_scope=params.to_scope()
+    )
+
+
 async def _dispatch_dashboard_analytics_summary(
     db: AsyncSession, lab_member: LabMember, params: BaseModel
 ) -> ChatAggregateToolResult:
@@ -226,6 +257,18 @@ async def _dispatch_participant_session_summaries(
 _REGISTRY: dict[str, ChatTool] = {
     tool.name: tool
     for tool in (
+        ChatTool(
+            name="get_data_coverage",
+            description=(
+                "Cheap orientation tool. Return the participant count and the "
+                "real available data date range (earliest/latest study-day-linked "
+                "session) for the authenticated scope. Call this before guessing "
+                "date windows so they anchor to where data actually exists "
+                "instead of a blind default. Summary only, no rows."
+            ),
+            params_model=DataCoverageParams,
+            _dispatch=_dispatch_data_coverage,
+        ),
         ChatTool(
             name="dashboard_analytics_summary",
             description=(
@@ -329,6 +372,7 @@ async def dispatch_tool(
 
 __all__ = [
     "ChatTool",
+    "DataCoverageParams",
     "DashboardAnalyticsSummaryParams",
     "ParticipantSessionSummariesParams",
     "StudyWindowSessionCountsParams",

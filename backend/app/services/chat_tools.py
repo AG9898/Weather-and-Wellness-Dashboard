@@ -100,6 +100,88 @@ async def run_scoped_aggregate_tools(
     ]
 
 
+async def get_data_coverage(
+    db: AsyncSession,
+    *,
+    lab_member: LabMember,
+    chat_scope: RAChatScope,
+) -> ChatAggregateToolResult:
+    """Cheap orientation tool: participant counts and the real data date range.
+
+    Unlike the windowed aggregate tools, this tool does not impose the default
+    30-day window. It reports where data actually exists for the authenticated
+    scope so the model can anchor its subsequent date windows to real data
+    instead of a blind default. Summary counts and date bounds only — no rows.
+    """
+
+    scope_check = await _check_tool_permission(lab_member=lab_member, chat_scope=chat_scope)
+    if isinstance(scope_check, _ScopeError):
+        return _result_from_scope_error("get_data_coverage", scope_check)
+    lab_name, study_slug, is_admin = scope_check
+
+    participant_count = _int(
+        (await db.execute(select(func.count(Participant.participant_uuid)))).scalar_one()
+    )
+
+    coverage_result = await db.execute(
+        select(
+            func.count(Session.session_id).label("linked_session_count"),
+            func.count(func.distinct(Session.participant_uuid)).label(
+                "participants_with_sessions"
+            ),
+            func.min(StudyDay.date_local).label("earliest_data_date"),
+            func.max(StudyDay.date_local).label("latest_data_date"),
+        )
+        .select_from(Session)
+        .join(StudyDay, Session.study_day_id == StudyDay.study_day_id)
+    )
+    coverage = coverage_result.mappings().one()
+    linked_session_count = _int(coverage["linked_session_count"])
+    earliest = coverage["earliest_data_date"]
+    latest = coverage["latest_data_date"]
+
+    data = {
+        "lab_name": lab_name,
+        "study_slug": study_slug,
+        "admin_all_labs": is_admin,
+        "participant_count": participant_count,
+        "participants_with_linked_sessions": _int(coverage["participants_with_sessions"]),
+        "linked_session_count": linked_session_count,
+        "earliest_data_date": earliest,
+        "latest_data_date": latest,
+    }
+
+    if participant_count == 0 and linked_session_count == 0:
+        return ChatAggregateToolResult(
+            tool_name="get_data_coverage",
+            status="insufficient_data",
+            message="No participants or study-day-linked sessions exist for this scope yet.",
+            data=data,
+        )
+
+    if earliest is None or latest is None:
+        return ChatAggregateToolResult(
+            tool_name="get_data_coverage",
+            status="ready",
+            message=(
+                f"{participant_count} participants exist, but no sessions are linked to "
+                "study days yet; there is no dated data window to anchor to."
+            ),
+            data=data,
+        )
+
+    return ChatAggregateToolResult(
+        tool_name="get_data_coverage",
+        status="ready",
+        message=(
+            f"Data spans {earliest.isoformat()} to {latest.isoformat()} across "
+            f"{participant_count} participants and {linked_session_count} linked "
+            "sessions. Anchor date windows to this range instead of a blind default."
+        ),
+        data=data,
+    )
+
+
 async def get_dashboard_analytics_summary(
     db: AsyncSession,
     *,
@@ -167,12 +249,18 @@ async def get_participant_session_summaries(
     )
 
 
-async def _resolve_tool_scope(
-    db: AsyncSession,
+async def _check_tool_permission(
     *,
     lab_member: LabMember,
     chat_scope: RAChatScope,
-) -> _ResolvedToolScope | _ScopeError:
+) -> tuple[str, str, bool] | _ScopeError:
+    """Validate lab/study scope without resolving the date window.
+
+    Returns ``(lab_name, study_slug, is_admin)`` on success, or a ``_ScopeError``
+    for an unsupported lab or study. Shared by the windowed aggregate tools and
+    the windowless data-orientation tool.
+    """
+
     lab_name = (lab_member.lab_name or "").strip().lower()
     is_admin = (lab_member.role or "").strip().lower() == "admin"
     # Admins have whole-DB access: they bypass the per-lab allowlist, mirroring
@@ -192,6 +280,20 @@ async def _resolve_tool_scope(
             message="The requested study is not available in this lab scope.",
             data={"study_slug": study_slug},
         )
+
+    return lab_name or SUPPORTED_LAB_NAME, study_slug, is_admin
+
+
+async def _resolve_tool_scope(
+    db: AsyncSession,
+    *,
+    lab_member: LabMember,
+    chat_scope: RAChatScope,
+) -> _ResolvedToolScope | _ScopeError:
+    scope_check = await _check_tool_permission(lab_member=lab_member, chat_scope=chat_scope)
+    if isinstance(scope_check, _ScopeError):
+        return scope_check
+    lab_name, study_slug, is_admin = scope_check
 
     date_from = chat_scope.date_from
     date_to = chat_scope.date_to
@@ -699,6 +801,7 @@ __all__ = [
     "MAX_CHAT_TOOL_WINDOW_DAYS",
     "MAX_CHAT_TOOL_SESSION_ROWS",
     "get_dashboard_analytics_summary",
+    "get_data_coverage",
     "get_participant_session_summaries",
     "get_study_window_session_counts",
     "get_survey_score_summary",

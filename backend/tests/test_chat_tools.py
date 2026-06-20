@@ -12,9 +12,11 @@ from app.schemas.chat import RAChatScope
 from app.services.chat_tools import (
     MAX_CHAT_TOOL_WINDOW_DAYS,
     get_dashboard_analytics_summary,
+    get_data_coverage,
     get_weather_study_day_summary,
     run_scoped_aggregate_tools,
 )
+from app.services.chat_tool_registry import dispatch_tool, get_chat_tool
 
 
 def _lab_member(lab_name: str = "ww", role: str = "ra") -> LabMember:
@@ -41,6 +43,9 @@ class _FakeResult:
         return self._rows
 
     def scalar_one_or_none(self):
+        return self._scalar
+
+    def scalar_one(self):
         return self._scalar
 
 
@@ -185,3 +190,138 @@ class ChatAggregateToolsTests(IsolatedAsyncioTestCase):
         assert result.status == "insufficient_data"
         assert result.tool_name == "dashboard_analytics_summary"
         assert "No dashboard analytics snapshot" in result.message
+
+
+class DataCoverageToolTests(IsolatedAsyncioTestCase):
+    async def test_coverage_reports_real_range_for_populated_scope(self) -> None:
+        db = _FakeDb(
+            _FakeResult(scalar=12),
+            _FakeResult(
+                rows=[
+                    {
+                        "linked_session_count": 34,
+                        "participants_with_sessions": 10,
+                        "earliest_data_date": date(2026, 1, 5),
+                        "latest_data_date": date(2026, 4, 18),
+                    }
+                ]
+            ),
+        )
+
+        result = await get_data_coverage(
+            db,
+            lab_member=_lab_member(),
+            chat_scope=RAChatScope(),
+        )
+
+        payload = result.to_json()
+        assert result.status == "ready"
+        assert result.tool_name == "get_data_coverage"
+        assert payload["data"]["participant_count"] == 12
+        assert payload["data"]["linked_session_count"] == 34
+        assert payload["data"]["earliest_data_date"] == "2026-01-05"
+        assert payload["data"]["latest_data_date"] == "2026-04-18"
+        # Bounded summary only: no participant rows leaked.
+        assert "sessions" not in payload["data"]
+        json.dumps(payload)
+
+    async def test_coverage_reports_insufficient_data_for_empty_scope(self) -> None:
+        db = _FakeDb(
+            _FakeResult(scalar=0),
+            _FakeResult(
+                rows=[
+                    {
+                        "linked_session_count": 0,
+                        "participants_with_sessions": 0,
+                        "earliest_data_date": None,
+                        "latest_data_date": None,
+                    }
+                ]
+            ),
+        )
+
+        result = await get_data_coverage(
+            db,
+            lab_member=_lab_member(),
+            chat_scope=RAChatScope(),
+        )
+
+        assert result.status == "insufficient_data"
+        assert result.data["participant_count"] == 0
+        assert result.data["earliest_data_date"] is None
+
+    async def test_coverage_rejects_unsupported_lab_without_querying(self) -> None:
+        db = _FakeDb()
+
+        result = await get_data_coverage(
+            db,
+            lab_member=_lab_member("other-lab"),
+            chat_scope=RAChatScope(),
+        )
+
+        assert result.status == "permission_denied"
+        assert db.statements == []
+
+    async def test_coverage_handles_participants_without_linked_sessions(self) -> None:
+        db = _FakeDb(
+            _FakeResult(scalar=5),
+            _FakeResult(
+                rows=[
+                    {
+                        "linked_session_count": 0,
+                        "participants_with_sessions": 0,
+                        "earliest_data_date": None,
+                        "latest_data_date": None,
+                    }
+                ]
+            ),
+        )
+
+        result = await get_data_coverage(
+            db,
+            lab_member=_lab_member(),
+            chat_scope=RAChatScope(),
+        )
+
+        assert result.status == "ready"
+        assert "no dated data window" in result.message
+
+    async def test_coverage_is_registered_and_invocable_via_dispatch(self) -> None:
+        assert get_chat_tool("get_data_coverage").name == "get_data_coverage"
+
+        db = _FakeDb(
+            _FakeResult(scalar=3),
+            _FakeResult(
+                rows=[
+                    {
+                        "linked_session_count": 7,
+                        "participants_with_sessions": 3,
+                        "earliest_data_date": date(2026, 2, 1),
+                        "latest_data_date": date(2026, 2, 20),
+                    }
+                ]
+            ),
+        )
+
+        result = await dispatch_tool(
+            db,
+            lab_member=_lab_member(),
+            tool_name="get_data_coverage",
+            params={},
+        )
+
+        assert result.status == "ready"
+        assert result.data["participant_count"] == 3
+
+    async def test_coverage_rejects_lab_identity_params_via_dispatch(self) -> None:
+        db = _FakeDb()
+
+        result = await dispatch_tool(
+            db,
+            lab_member=_lab_member(),
+            tool_name="get_data_coverage",
+            params={"lab_name": "other-lab"},
+        )
+
+        assert result.status == "invalid_scope"
+        assert db.statements == []

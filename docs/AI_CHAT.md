@@ -310,10 +310,18 @@ tools plus planned orientation, methodology, and research-context tools:
 - implemented: anonymous participant/session summaries by participant number or
   bounded date filters, including demographics, survey scores, and digit span
   summaries; normal outputs use `participant_number` and omit raw UUIDs
-- **planned data orientation/availability tool** (e.g. `get_data_coverage`):
-  returns participant counts and the actual available data date range for the
-  authenticated scope so the model anchors windows to real data instead of a
-  blind 30-day default. Cheap, summary-only, no row dumps.
+- **implemented data orientation/availability tool** (`get_data_coverage`):
+  cheap, summary-only orientation tool that returns the total participant count,
+  the count of participants with study-day-linked sessions, the linked session
+  count, and the real `earliest_data_date` / `latest_data_date` (min/max
+  study-day date over linked sessions) for the authenticated scope. Unlike the
+  windowed aggregate tools it imposes no default 30-day window — its purpose is
+  to expose where data actually exists so the model anchors subsequent windows
+  to real data instead of a blind default. Its params model exposes only an
+  optional `study_slug` (no date window, no lab identity). It returns
+  `insufficient_data` when no participants or linked sessions exist, and a
+  `ready` result with null date bounds when participants exist but no sessions
+  are linked to study days yet. No row dumps.
 - **planned methodology explainer tool** (e.g. `explain_methodology`):
   doc-grounded retrieval over the canonical scoring/design docs to answer
   "how is X scored / how does the Y section work" questions. See

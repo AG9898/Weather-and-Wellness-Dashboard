@@ -38,6 +38,7 @@ class _NoQueryDb:
 
 
 APPROVED_TOOL_NAMES = {
+    "get_data_coverage",
     "dashboard_analytics_summary",
     "study_window_session_counts",
     "survey_score_summary",

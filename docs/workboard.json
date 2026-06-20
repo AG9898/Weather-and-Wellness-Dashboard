@@ -4181,7 +4181,7 @@
       "id": "T1825",
       "title": "AI chat - Data orientation tool",
       "description": "Add a cheap summary-only data orientation tool (e.g. get_data_coverage) that returns participant counts and the actual available data date range for the authenticated scope, so the model anchors date windows to where data exists instead of a blind 30-day default. Register it in the tool dispatch registry. No row dumps.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [
