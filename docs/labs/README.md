@@ -8,18 +8,29 @@ For the canonical multi-lab model and isolation rules, see [`docs/MULTI_LAB.md`]
 Create these files for each new lab:
 
 - `docs/labs/<lab-slug>/README.md` (lab overview and local doc index)
-- `docs/labs/<lab-slug>/API.md` (lab-specific API contracts)
-- `docs/labs/<lab-slug>/SCORING.md` (scoring rules and server-side derivations)
-- `docs/labs/<lab-slug>/DESIGN_SPEC.md` (participant and RA UX/task behavior)
+
+For each active lab component, create a component directory:
+
+- `docs/labs/<lab-slug>/<component>/API.md` (component-specific API contracts)
+- `docs/labs/<lab-slug>/<component>/DESIGN_SPEC.md` (participant and RA UX/task behavior)
+- `docs/labs/<lab-slug>/<component>/<COMPONENT>.md` (task or instrument protocol)
+- `docs/labs/<lab-slug>/<component>/SCORING.md` when the component has server-side scoring or derived fields
 
 ## Optional Files
 
 Create optional docs only when the lab actually needs them:
 
-- `docs/labs/<lab-slug>/ANALYTICS.md` for derived analytics workflows and outputs
-- `docs/labs/<lab-slug>/WEATHER_INGESTION.md` for weather data pipelines
-- `docs/labs/<lab-slug>/HISTORICAL_WEATHER_BACKFILL.md` for one-time backfills
-- `docs/labs/<lab-slug>/tasks/*.md` and `docs/labs/<lab-slug>/surveys/*.md` for instrument-level specs
+- `docs/labs/<lab-slug>/<component>/ANALYTICS.md` for derived analytics workflows and outputs
+- `docs/labs/<lab-slug>/<component>/WEATHER_INGESTION.md` for weather data pipelines
+- `docs/labs/<lab-slug>/<component>/HISTORICAL_WEATHER_BACKFILL.md` for one-time backfills
+- Additional instrument docs under the component directory when a component contains multiple tasks or surveys
+
+## Known Labs
+
+| Lab slug | Display name | Components |
+|---|---|---|
+| `weather-wellness` | Weather & Wellness | `weather`, `misokinesia` |
+| `ihtt` | Interhemispheric Transfer Time | `poffenberger` |
 
 ## New Lab Checklist
 

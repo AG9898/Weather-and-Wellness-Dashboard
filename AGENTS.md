@@ -53,7 +53,7 @@ Participant.
 - For platform-wide concerns (architecture, conventions, decisions, schema, testing), use `docs/` root files.
 - For the planned RA data chatbot and LLM data-access boundary, use `docs/AI_CHAT.md`.
 - For lab-specific API contracts, design specs, and scoring rules, use `docs/labs/<lab-slug>/`.
-- **Lab component structure.** Each lab under `docs/labs/<lab-slug>/` is organized by component. The lab `README.md` is the navigation hub. Each component lives in its own subdirectory (`docs/labs/<lab-slug>/<component>/`) and contains its own `API.md`, `DESIGN_SPEC.md`, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: `weather/` and `misokinesia/`.
+- **Lab component structure.** Each lab under `docs/labs/<lab-slug>/` is organized by component. The lab `README.md` is the navigation hub. Each component lives in its own subdirectory (`docs/labs/<lab-slug>/<component>/`) and contains its own `API.md`, `DESIGN_SPEC.md`, and component-specific assets. Lab-level docs cover cross-component concerns only. Weather-Wellness components: `weather/` and `misokinesia/`. IHTT component: `poffenberger/`.
 - For study-specific research instruments and analysis scripts, use `reference/labs/<lab-slug>/`.
 - For universal UI assets (branding, logos, component mockups), use `reference/UI Reference/`.
 - For UI style, `docs/styleguide.md` is the canonical reference. `docs/UI_REDESIGN_2026.md` is historical context only and is not active implementation guidance.

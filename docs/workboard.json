@@ -4427,7 +4427,254 @@
       "commands": [
         "set -a && source .env && set +a && cd backend && PYTHONPATH=. pytest tests/test_chat_web_research_tool.py"
       ]
+    },
+    {
+      "id": "T1833",
+      "title": "IHTT Poffenberger - Schema migration and models",
+      "description": "Add the persistence layer for the IHTT Poffenberger component using Alembic and SQLAlchemy models. Create run-level and trial-level tables that are linked to both participant_uuid and session_id, store the server-generated manifest/trial assignments, preserve raw trial timing data, and persist the RA-required four-condition reaction-time and accuracy summaries plus crossed/uncrossed derived fields. Keep this scoped to schema, models, schemas, and documentation; do not implement routes or frontend UI in this task.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "IHTT_POFFENBERGER",
+      "depends_on": [
+        "T1832"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Alembic migration adds IHTT Poffenberger run and trial tables with participant_uuid and session_id foreign keys",
+        "Run table supports one completed Poffenberger run per recorded session and stores four-condition RT/accuracy summaries",
+        "Trial table stores practice/scored flags, block/trial order, response hand, visual field, jitter, response key, RT, timeout, validity, and accuracy fields",
+        "SQLAlchemy models and Pydantic schemas match the migrated columns",
+        "docs/SCHEMA.md and IHTT Poffenberger docs are updated with final table and column names",
+        "Migration applies locally with the repo Alembic workflow"
+      ],
+      "docs": [
+        "docs/SCHEMA.md",
+        "docs/labs/ihtt/poffenberger/POFFENBERGER.md",
+        "docs/labs/ihtt/poffenberger/SCORING.md",
+        "docs/labs/ihtt/poffenberger/API.md"
+      ],
+      "files": [
+        "backend/alembic/versions/",
+        "backend/app/models/",
+        "backend/app/schemas/",
+        "docs/SCHEMA.md"
+      ],
+      "commands": [
+        "scripts/alembic-upgrade-head.sh",
+        "cd backend && PYTHONPATH=. pytest tests -k 'ihtt or poffenberger or schema'"
+      ]
+    },
+    {
+      "id": "T1834",
+      "title": "IHTT Poffenberger - Manifest generation and start API",
+      "description": "Implement the RA-protected IHTT Poffenberger start contract. The start endpoint must require an authenticated ihtt lab member or admin, accept the platform-required anonymous start-session demographics, create an anonymous participant/session/run, generate a production manifest from the RA brief, and return the participant task path. Production manifest requirements are 10 right-hand practice trials, 12 experimental blocks, 50 trials per block, six blocks per hand, 25 LVF and 25 RVF trials per block, randomized counterbalanced visual-field order, and 1000-2000 ms jitter values.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "IHTT_POFFENBERGER",
+      "depends_on": [
+        "T1833"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "POST /ihtt/poffenberger/start is RA-protected and rejects non-ihtt non-admin callers",
+        "Recorded start stores platform start-session demographics on participants and creates an active session plus Poffenberger run",
+        "Generated production manifest exactly matches the documented practice, block, hand, LVF/RVF balance, and jitter requirements",
+        "Manifest generation is deterministic enough to test for counts and constraints without depending on a fixed random order",
+        "Endpoint response includes run_id, session_id, participant_uuid, start_path, and manifest",
+        "Route tests cover auth scope, manifest constraints, and start success"
+      ],
+      "docs": [
+        "docs/labs/ihtt/poffenberger/API.md",
+        "docs/labs/ihtt/poffenberger/POFFENBERGER.md",
+        "docs/labs/ihtt/poffenberger/DESIGN_SPEC.md"
+      ],
+      "files": [
+        "backend/app/routers/ihtt_poffenberger.py",
+        "backend/app/schemas/",
+        "backend/app/models/",
+        "backend/tests/"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests -k 'ihtt or poffenberger'"
+      ]
+    },
+    {
+      "id": "T1835",
+      "title": "IHTT Poffenberger - Scoring and submit API",
+      "description": "Implement pure server-side Poffenberger scoring plus the participant-facing production submit endpoint. The backend must validate submitted trials against the stored manifest, reject duplicate or inactive submissions, exclude practice trials from production summaries, enforce the 2000 ms cutoff, compute RA-required RT and accuracy summaries for lh_lvf, lh_rvf, rh_lvf, and rh_rvf, and compute complementary crossed/uncrossed IHTT fields. The frontend must remain untrusted for scores and condition summaries.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "IHTT_POFFENBERGER",
+      "depends_on": [
+        "T1833",
+        "T1834"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Pure scoring function computes per-condition counts, accuracy, mean RT, median RT, SD RT, crossed/uncrossed means, and ihtt_difference_ms",
+        "POST /ihtt/poffenberger/runs/{run_id}/submit validates active session state, stored manifest consistency, duplicate submit, and malformed trial payloads",
+        "Timeouts, invalid keys, and RTs outside 1-2000 ms are handled according to docs/labs/ihtt/poffenberger/SCORING.md",
+        "Successful submit persists raw trial rows and run-level summaries and returns the computed summary payload",
+        "Route and scoring tests cover success, timeout/late trials, invalid key, duplicate submit, and manifest mismatch"
+      ],
+      "docs": [
+        "docs/labs/ihtt/poffenberger/API.md",
+        "docs/labs/ihtt/poffenberger/SCORING.md",
+        "docs/SCHEMA.md"
+      ],
+      "files": [
+        "backend/app/scoring/poffenberger.py",
+        "backend/app/routers/ihtt_poffenberger.py",
+        "backend/app/schemas/",
+        "backend/tests/"
+      ],
+      "commands": [
+        "cd backend && PYTHONPATH=. pytest tests -k 'poffenberger'"
+      ]
+    },
+    {
+      "id": "T1836",
+      "title": "IHTT Poffenberger - Frontend API wrappers and trial helpers",
+      "description": "Add typed frontend API wrappers and pure trial/manifest helpers for the IHTT Poffenberger component. All network calls must go through src/lib/api, with no bare fetch in components. Include types for start responses, manifests, raw trial submit payloads, and server summaries. Add no-write short/full trial state helpers that generate fake trial IDs and balanced manifests without calling recorded write endpoints.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "IHTT_POFFENBERGER",
+      "depends_on": [
+        "T1834",
+        "T1835"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Typed wrappers exist for recorded start and recorded submit endpoints",
+        "IHTT manifest and trial response types match the backend API docs",
+        "Pure helper creates short-trial and full-trial manifests with both hands and both visual fields represented",
+        "Trial helpers use fake trial IDs and never call recorded start, submit, or session-complete endpoints",
+        "Unit tests cover manifest constraints and no-write trial state creation",
+        "Frontend typecheck passes"
+      ],
+      "docs": [
+        "docs/labs/ihtt/poffenberger/API.md",
+        "docs/labs/ihtt/poffenberger/POFFENBERGER.md",
+        "docs/TRIAL_MODE.md"
+      ],
+      "files": [
+        "frontend/src/lib/api/",
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/lib/"
+      ],
+      "commands": [
+        "cd frontend && npm test -- ihtt poffenberger trial-mode",
+        "cd frontend && npx tsc --noEmit"
+      ]
+    },
+    {
+      "id": "T1837",
+      "title": "IHTT Poffenberger - RA launch page",
+      "description": "Build the initial RA-facing IHTT Poffenberger page as a simple operational launch surface, not a dashboard. The page must expose Start Poffenberger Session, Run Short Trial, and Run Full Trial actions; collect the platform-required anonymous start-session demographics before recorded start; call only typed API wrappers; and route to the participant task page on success. Do not add recent sessions, metrics cards, leaderboards, or placeholder analytics.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "IHTT_POFFENBERGER",
+      "depends_on": [
+        "T1836"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "RA launch route exists for authenticated ihtt lab members and admins",
+        "Recorded start path collects required anonymous start-session demographics and calls the typed start wrapper",
+        "Short Trial and Full Trial actions create local no-write trial state and route into the participant task",
+        "No recent-session, metric, or analytics placeholder UI is added",
+        "The page follows docs/styleguide.md and uses existing RA navigation/chrome patterns",
+        "Frontend tests or Storybook coverage verify launch states and disabled/loading/error states"
+      ],
+      "docs": [
+        "docs/labs/ihtt/poffenberger/DESIGN_SPEC.md",
+        "docs/labs/ihtt/poffenberger/API.md",
+        "docs/styleguide.md"
+      ],
+      "files": [
+        "frontend/src/app/(ra)/",
+        "frontend/src/lib/api/",
+        "frontend/src/stories/"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T1838",
+      "title": "IHTT Poffenberger - Participant task UI",
+      "description": "Implement the recorded participant Poffenberger task route. The UI must render instructions, the 10-trial right-hand practice segment, 12 experimental blocks, stable fixation/stimulus presentation, 1000-2000 ms jitter, 2000 ms response cutoff, keyboard response capture by assigned hand, raw trial timing collection, submit/retry behavior, and completion. Keep all scoring on the backend and avoid RA chrome during active timed trials.",
+      "status": "todo",
+      "priority": "high",
+      "group_id": "IHTT_POFFENBERGER",
+      "depends_on": [
+        "T1835",
+        "T1836"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Participant route renders production manifest-driven practice and experimental blocks",
+        "Timing logic records stimulus onset to accepted keypress RT and applies the 2000 ms cutoff",
+        "Experimental block flow gives no score feedback and preserves raw trial data until submit succeeds",
+        "Submit payload contains raw timing/response rows only; no client-computed scores are sent as trusted values",
+        "Completion flow marks the task/session complete only after backend submit succeeds",
+        "Frontend tests cover response capture, timeout behavior, and submit payload shape"
+      ],
+      "docs": [
+        "docs/labs/ihtt/poffenberger/POFFENBERGER.md",
+        "docs/labs/ihtt/poffenberger/DESIGN_SPEC.md",
+        "docs/labs/ihtt/poffenberger/API.md"
+      ],
+      "files": [
+        "frontend/src/app/ihtt/poffenberger/",
+        "frontend/src/lib/api/",
+        "frontend/src/lib/"
+      ],
+      "commands": [
+        "cd frontend && npm test -- ihtt poffenberger",
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
+    },
+    {
+      "id": "T1839",
+      "title": "IHTT Poffenberger - Short and full trial flows",
+      "description": "Complete the IHTT no-write rehearsal experience by wiring the RA launch actions into short and full Poffenberger trial runs. Short Trial should be quick but cover both hands and both visual fields; Full Trial should mirror production trial counts and timing as closely as practical. Both modes must use fake IDs, local manifests, local simulated submit success, and no recorded write endpoints. Add Storybook or focused UI test coverage for launch, active task, timeout, completion, and trial-vs-production differences.",
+      "status": "todo",
+      "priority": "medium",
+      "group_id": "IHTT_POFFENBERGER",
+      "depends_on": [
+        "T1837",
+        "T1838"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria": [
+        "Run Short Trial launches a no-write Poffenberger rehearsal with both hands and both visual fields represented",
+        "Run Full Trial launches a no-write production-length Poffenberger rehearsal",
+        "Trial runs never call recorded start, submit, or session-complete endpoints",
+        "Trial state uses shared fake ID conventions and remains isolated from recorded participant/session IDs",
+        "Storybook or frontend tests cover short trial, full trial, production comparison, timeout, and completion states",
+        "docs/TRIAL_MODE.md and IHTT docs describe the shipped trial behavior"
+      ],
+      "docs": [
+        "docs/TRIAL_MODE.md",
+        "docs/labs/ihtt/poffenberger/POFFENBERGER.md",
+        "docs/labs/ihtt/poffenberger/DESIGN_SPEC.md",
+        "docs/labs/ihtt/poffenberger/API.md"
+      ],
+      "files": [
+        "frontend/src/lib/trial-mode.ts",
+        "frontend/src/app/(ra)/",
+        "frontend/src/app/ihtt/poffenberger/",
+        "frontend/src/stories/"
+      ],
+      "commands": [
+        "cd frontend && npm test -- ihtt poffenberger trial-mode",
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ]
     }
   ],
-  "last_updated": "2026-06-19"
+  "last_updated": "2026-06-20"
 }
