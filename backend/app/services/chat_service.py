@@ -4,11 +4,12 @@ import json
 import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import LabMember
+from app.models.chat_tool_invocation import ChatToolInvocation
 from app.schemas.chat import RAChatRequest, RAChatResponse, RAChatToolResult
 from app.services.chat_tool_registry import (
     UnknownChatToolError,
@@ -111,6 +112,52 @@ def _build_messages(
     return messages
 
 
+def _audit_lab_name(lab_member: LabMember) -> str:
+    """Resolve the lab-scope marker stored on the audit row.
+
+    Mirrors the coordinator's scope semantics: admins read across all labs, so
+    their audit rows carry an explicit ``admin:all`` marker instead of their
+    individual ``lab_name``.
+    """
+
+    if (lab_member.role or "").strip().lower() == "admin":
+        return "admin:all"
+    return lab_member.lab_name or "unassigned"
+
+
+async def _audit_tool_invocation(
+    db: AsyncSession,
+    *,
+    conversation_id: UUID,
+    lab_member: LabMember,
+    tool_name: str,
+    params: Mapping[str, Any],
+    status: str,
+) -> None:
+    """Append one audit row for a tool invocation.
+
+    Stores tool metadata, the model-supplied params, and the resulting status
+    only — never raw participant rows or PII. Best-effort: when ``db`` does not
+    expose a session-like ``add``/``flush`` interface (e.g. unit tests pass a
+    bare sentinel), the write is skipped so the coordinator stays unit-testable
+    without a database.
+    """
+
+    if not (hasattr(db, "add") and hasattr(db, "flush")):
+        return
+
+    db.add(
+        ChatToolInvocation(
+            conversation_id=conversation_id,
+            lab_name=_audit_lab_name(lab_member),
+            tool_name=tool_name or "unknown",
+            params=dict(params),
+            status=status,
+        )
+    )
+    await db.flush()
+
+
 def _parse_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
     """Parse the JSON arguments string a model returns for a tool call.
 
@@ -133,6 +180,7 @@ def _parse_tool_call_arguments(raw_arguments: Any) -> dict[str, Any]:
 async def _run_tool_calls(
     tool_calls: Sequence[Mapping[str, Any]],
     *,
+    conversation_id: UUID,
     lab_member: LabMember,
     db: AsyncSession,
     tool_results: list[RAChatToolResult],
@@ -142,7 +190,8 @@ async def _run_tool_calls(
     Scope is injected server-side by ``dispatch_tool``. Each tool's compact
     status summary is appended to ``tool_results`` for the typed response and the
     full JSON payload is fed back to the model as a ``tool`` message keyed by the
-    originating ``tool_call_id``.
+    originating ``tool_call_id``. Every invocation — including rejected unknown
+    tool names — is persisted to the ``chat_tool_invocations`` audit table.
     """
 
     tool_messages: list[dict[str, Any]] = []
@@ -160,6 +209,14 @@ async def _run_tool_calls(
                 params=params,
             )
         except UnknownChatToolError as exc:
+            await _audit_tool_invocation(
+                db,
+                conversation_id=conversation_id,
+                lab_member=lab_member,
+                tool_name=tool_name,
+                params=params,
+                status="invalid_scope",
+            )
             tool_results.append(
                 RAChatToolResult(
                     tool_name=tool_name or "unknown",
@@ -178,6 +235,14 @@ async def _run_tool_calls(
             )
             continue
 
+        await _audit_tool_invocation(
+            db,
+            conversation_id=conversation_id,
+            lab_member=lab_member,
+            tool_name=result.tool_name,
+            params=params,
+            status=result.status,
+        )
         tool_results.append(
             RAChatToolResult(
                 tool_name=result.tool_name,
@@ -275,6 +340,7 @@ async def coordinate_ra_chat(
 
             tool_messages = await _run_tool_calls(
                 completion.tool_calls,
+                conversation_id=conversation_id,
                 lab_member=lab_member,
                 db=db,
                 tool_results=tool_results,

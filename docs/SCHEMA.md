@@ -334,10 +334,15 @@ audit-logged in `admin_session_undo_log` instead of introducing soft-delete colu
 
 ## Table: `chat_tool_invocations`
 
-> **Planned** (not yet applied). Added by the RA chatbot agentic-loop audit
-> migration. Append-only audit table recording every approved tool call the LLM
-> coordinator makes, for research-ethics review and debugging. See
-> `docs/AI_CHAT.md` (Tool-Call Audit) and `docs/DECISIONS.md` RESOLVED-20.
+> Added by migration `20260620_000001` (T1829). Append-only audit table
+> recording every approved tool call the LLM coordinator makes, for
+> research-ethics review and debugging. SQLAlchemy model:
+> `backend/app/models/chat_tool_invocation.py` (`ChatToolInvocation`). One row
+> is written per tool invocation from the coordinator loop
+> (`backend/app/services/chat_service.py`), including rejected unknown tool
+> names (logged with `status="invalid_scope"`). For admin callers `lab_name`
+> records the `admin:all` cross-lab marker. See `docs/AI_CHAT.md`
+> (Tool-Call Audit) and `docs/DECISIONS.md` RESOLVED-20.
 
 
 | Column          | Type        | Constraints   | Notes                                                        |
@@ -1049,11 +1054,10 @@ Constraints/indexes:
 | 2026-06-03 | T199                  | Replace T184's six demographics columns with typed sourced-demographics columns from `reference/labs/Misokinesia/Demographics copy2.docx`                                                                                 |
 | 2026-06-05 | n/a                   | Revise misokinesia GAD-7 item storage to 0–3 scale and add conditional `difficulty_impact` column                                                                                                                   |
 | 2026-06-14 | T206                  | Add Weather-Wellness cognitive battery persistence: session task/rule orders, Stroop run/trial tables, and card sorting run/trial tables                                                                            |
-| planned    | RA chatbot audit      | Add `chat_tool_invocations` append-only audit table for the RA chatbot agentic loop (not yet applied)                                                                                                               |
+| 2026-06-20 | T1829                 | Add `chat_tool_invocations` append-only audit table for the RA chatbot agentic loop                                                                                                                                |
 
 
-As of 2026-06-14, migration `20260614_000001` is the current head revision.
-The `chat_tool_invocations` table above is planned and not yet applied.
+As of 2026-06-20, migration `20260620_000001` is the current head revision.
 
 ---
 

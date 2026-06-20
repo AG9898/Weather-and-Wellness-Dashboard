@@ -24,6 +24,7 @@ from .misokinesia import (
     MisokinesiaTrialResponse,
 )
 from .invitations import RAInvitation
+from .chat_tool_invocation import ChatToolInvocation
 
 __all__ = [
     "Participant",
@@ -50,4 +51,5 @@ __all__ = [
     "MisokinesiaParticipant",
     "MisokinesiaTrialResponse",
     "RAInvitation",
+    "ChatToolInvocation",
 ]

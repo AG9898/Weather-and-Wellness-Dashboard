@@ -23,12 +23,14 @@
 > The **agentic model layer** that connects OpenRouter on top of these tools is
 > delivered in five phases: (1) the agentic coordinator loop — **landed in
 > T1826** (`backend/app/services/chat_service.py`), (2) SSE streaming, (3) the
-> tool-call audit table, (4) the doc-grounded methodology explainer, and
+> tool-call audit table — **landed in T1829**
+> (`backend/app/models/chat_tool_invocation.py`, migration `20260620_000001`),
+> (4) the doc-grounded methodology explainer, and
 > (5) privacy-sanitized web research. With the coordinator loop landed,
 > `coordinate_ra_chat` now drives a bounded model-driven tool-calling loop:
 > OpenRouter selects which approved tools to call (or none), FastAPI injects the
 > authenticated lab scope and executes them through the registry, and the model
-> narrates the results. Phases 2–5 remain planned. This is the canonical
+> narrates the results. Phases 2, 4, and 5 remain planned. This is the canonical
 > platform-level design for an RA-facing LLM chatbot over lab data, and it covers
 > both Weather-Wellness components (`weather/` and `misokinesia/`).
 
@@ -392,6 +394,16 @@ and debugging: `conversation_id`, `lab_name`, `tool_name`, `params` (JSONB),
 `status`, and `created_at`. The audit row stores tool inputs and status, not raw
 participant data, and is inspectable in Supabase Studio. Methodology and web
 research tool calls are logged the same way.
+
+**Implemented (T1829).** `coordinate_ra_chat` writes one audit row per tool
+invocation via `_audit_tool_invocation` (`backend/app/services/chat_service.py`)
+using the `ChatToolInvocation` model. The row records the model-supplied params
+and the tool's resulting `status`, never the returned tool payload. Rejected
+unknown tool names are still audited (`status="invalid_scope"`). `lab_name`
+mirrors the coordinator's scope: a non-admin caller's `lab_name`, or the
+`admin:all` marker for admin (cross-lab) callers. The write is best-effort and
+session-injected, so the coordinator stays unit-testable when no database
+session is supplied.
 
 Tool outputs should be compact. The model should receive summaries and selected
 rows, not entire tables.

@@ -13,6 +13,7 @@ from app.services.chat_service import (
     MAX_TOOL_CALL_ROUNDS,
     coordinate_ra_chat,
 )
+from app.models.chat_tool_invocation import ChatToolInvocation
 from app.services.chat_tool_registry import UnknownChatToolError
 from app.services.chat_tools import ChatAggregateToolResult
 from app.services.openrouter_client import (
@@ -71,6 +72,29 @@ class _FakeClient:
 
 def _factory(client: _FakeClient):
     return lambda: client
+
+
+def _admin_lab_member() -> LabMember:
+    return LabMember(
+        id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+        email="admin@example.com",
+        role="admin",
+        lab_name="ww",
+    )
+
+
+class _FakeSession:
+    """Session-like stub that records audit rows added by the coordinator."""
+
+    def __init__(self) -> None:
+        self.added: list[ChatToolInvocation] = []
+        self.flush_count = 0
+
+    def add(self, instance: ChatToolInvocation) -> None:
+        self.added.append(instance)
+
+    async def flush(self) -> None:
+        self.flush_count += 1
 
 
 class CoordinatorLoopTests(IsolatedAsyncioTestCase):
@@ -244,3 +268,130 @@ class CoordinatorLoopTests(IsolatedAsyncioTestCase):
             response.tool_results[0].tool_name, "definitely_not_a_tool"
         )
         self.assertIn("invalid_scope", response.tool_results[0].summary)
+
+
+class ToolInvocationAuditTests(IsolatedAsyncioTestCase):
+    async def test_each_tool_call_writes_one_audit_row(self) -> None:
+        async def _fake_dispatch(db, *, lab_member, tool_name, params):
+            return ChatAggregateToolResult(
+                tool_name=tool_name,
+                status="ready",
+                message="Found 31 study days.",
+                data={"study_days": 31},
+            )
+
+        client = _FakeClient(
+            [
+                _completion(
+                    tool_calls=[
+                        _tool_call(
+                            "weather_study_day_summary", {"study_slug": "ww"}
+                        )
+                    ]
+                ),
+                _completion("There are 31 study days in range."),
+            ]
+        )
+        request = RAChatRequest(message="How many study days do we have?")
+        session = _FakeSession()
+
+        with patch("app.services.chat_service.dispatch_tool", _fake_dispatch):
+            response = await coordinate_ra_chat(
+                request,
+                lab_member=_lab_member(),
+                db=session,
+                client_factory=_factory(client),
+            )
+
+        self.assertEqual(len(session.added), 1)
+        row = session.added[0]
+        self.assertIsInstance(row, ChatToolInvocation)
+        self.assertEqual(row.tool_name, "weather_study_day_summary")
+        self.assertEqual(row.status, "ready")
+        self.assertEqual(row.lab_name, "ww")
+        self.assertEqual(row.params, {"study_slug": "ww"})
+        self.assertEqual(row.conversation_id, response.conversation_id)
+        # Audit rows carry tool metadata only — never the retrieved data.
+        self.assertNotIn("study_days", row.params)
+        self.assertGreaterEqual(session.flush_count, 1)
+
+    async def test_admin_caller_audited_with_all_labs_marker(self) -> None:
+        async def _fake_dispatch(db, *, lab_member, tool_name, params):
+            return ChatAggregateToolResult(
+                tool_name=tool_name,
+                status="ready",
+                message="ok",
+                data={},
+            )
+
+        client = _FakeClient(
+            [
+                _completion(tool_calls=[_tool_call("get_data_coverage", {})]),
+                _completion("Here is the coverage."),
+            ]
+        )
+        request = RAChatRequest(message="What data do we have?")
+        session = _FakeSession()
+
+        with patch("app.services.chat_service.dispatch_tool", _fake_dispatch):
+            await coordinate_ra_chat(
+                request,
+                lab_member=_admin_lab_member(),
+                db=session,
+                client_factory=_factory(client),
+            )
+
+        self.assertEqual(len(session.added), 1)
+        self.assertEqual(session.added[0].lab_name, "admin:all")
+
+    async def test_unknown_tool_is_still_audited(self) -> None:
+        async def _raising_dispatch(db, *, lab_member, tool_name, params):
+            raise UnknownChatToolError(tool_name)
+
+        client = _FakeClient(
+            [
+                _completion(tool_calls=[_tool_call("definitely_not_a_tool", {})]),
+                _completion("That tool isn't available."),
+            ]
+        )
+        request = RAChatRequest(message="Use a secret tool.")
+        session = _FakeSession()
+
+        with patch("app.services.chat_service.dispatch_tool", _raising_dispatch):
+            await coordinate_ra_chat(
+                request,
+                lab_member=_lab_member(),
+                db=session,
+                client_factory=_factory(client),
+            )
+
+        self.assertEqual(len(session.added), 1)
+        self.assertEqual(session.added[0].tool_name, "definitely_not_a_tool")
+        self.assertEqual(session.added[0].status, "invalid_scope")
+
+    async def test_sentinel_db_skips_audit_without_crashing(self) -> None:
+        async def _fake_dispatch(db, *, lab_member, tool_name, params):
+            return ChatAggregateToolResult(
+                tool_name=tool_name,
+                status="ready",
+                message="ok",
+                data={},
+            )
+
+        client = _FakeClient(
+            [
+                _completion(tool_calls=[_tool_call("get_data_coverage", {})]),
+                _completion("Done."),
+            ]
+        )
+        request = RAChatRequest(message="coverage?")
+
+        with patch("app.services.chat_service.dispatch_tool", _fake_dispatch):
+            response = await coordinate_ra_chat(
+                request,
+                lab_member=_lab_member(),
+                db=object(),
+                client_factory=_factory(client),
+            )
+
+        self.assertEqual(response.message, "Done.")

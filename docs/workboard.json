@@ -4307,7 +4307,7 @@
       "id": "T1829",
       "title": "AI chat - Tool-call audit table and write path",
       "description": "Add the chat_tool_invocations append-only audit table (id, conversation_id, lab_name, tool_name, params jsonb, status, created_at) documented in docs/SCHEMA.md, and write one row per tool invocation from the coordinator loop. The agent MUST create the Alembic migration AND apply it by running scripts/alembic-upgrade-head.sh (set DATABASE_MIGRATION_URL to the session pooler / direct URL, not the 6543 transaction pooler). Store tool metadata and status only, never raw participant rows or PII. Rows are inspectable in Supabase Studio.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [
