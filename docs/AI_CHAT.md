@@ -1,6 +1,6 @@
 # AI_CHAT.md — RA Data Chatbot
 
-> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); backend SSE streaming landed (T1827); frontend streaming UX landed (T1828); remaining model-layer phases planned.
+> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); backend SSE streaming landed (T1827); frontend streaming UX landed (T1828); methodology explainer landed (T1831); remaining model-layer phases planned.
 > The authenticated backend route was implemented in T1818, with scoped aggregate
 > data tools added in T1819 and bounded anonymous participant/session summaries
 > added in T1820. The same-origin `POST /api/ra/chat` proxy and typed
@@ -27,7 +27,9 @@
 > `stream_ra_chat` in `backend/app/services/chat_service.py`), (3) the
 > tool-call audit table — **landed in T1829**
 > (`backend/app/models/chat_tool_invocation.py`, migration `20260620_000001`),
-> (4) the doc-grounded methodology explainer, and
+> (4) the doc-grounded methodology explainer — **landed in T1831**
+> (`backend/app/services/chat_methodology_tool.py`,
+> `backend/app/methodology/corpus.json`, `scripts/sync_methodology_corpus.py`), and
 > (5) privacy-sanitized web research. With the coordinator loop landed,
 > `coordinate_ra_chat` now drives a bounded model-driven tool-calling loop:
 > OpenRouter selects which approved tools to call (or none), FastAPI injects the
@@ -385,7 +387,7 @@ tools plus planned orientation, methodology, and research-context tools:
   `insufficient_data` when no participants or linked sessions exist, and a
   `ready` result with null date bounds when participants exist but no sessions
   are linked to study days yet. No row dumps.
-- **planned methodology explainer tool** (e.g. `explain_methodology`):
+- **implemented methodology explainer tool** (`explain_methodology`):
   doc-grounded retrieval over the canonical scoring/design docs to answer
   "how is X scored / how does the Y section work" questions. See
   *Methodology Explainer* below.
@@ -394,7 +396,8 @@ tools plus planned orientation, methodology, and research-context tools:
 
 ### Methodology Explainer (doc-grounded)
 
-The methodology explainer answers platform-knowledge questions about *how the
+The implemented methodology explainer (`explain_methodology`) answers
+platform-knowledge questions about *how the
 platform scores and runs its instruments* — for example "how is GAD-7 scored?"
 or "how does the misokinesia section work?".
 
@@ -406,12 +409,14 @@ or "how does the misokinesia section work?".
 - **Runtime corpus is bundled into the backend, generated from those canonical
   docs.** The Railway backend deploys only `backend/` (root directory `backend/`),
   so the repo-root `docs/` tree is not on the runtime filesystem. The methodology
-  tool therefore retrieves from a backend-bundled corpus (e.g.
-  `backend/app/methodology/`) that is **generated from** the canonical docs by a
-  sync step, with a drift check (script + CI) that fails if the bundled copy falls
-  out of sync with `docs/`. The canonical `docs/` remain the single source of
-  truth; the bundled copy is a deployment artifact, not a second source. The
-  model never reads files — it only receives the tool's bounded, cited excerpts.
+  tool therefore retrieves from `backend/app/methodology/corpus.json`, a
+  backend-bundled corpus that is **generated from** the canonical docs by
+  `python scripts/sync_methodology_corpus.py`. CI runs
+  `python scripts/sync_methodology_corpus.py --check` and fails if the bundled
+  copy falls out of sync with `docs/`. The canonical `docs/` remain the single
+  source of truth; the bundled copy is a deployment artifact, not a second
+  source. The model never reads files — it only receives the tool's bounded,
+  cited excerpts.
 - The model summarizes the retrieved sections and **cites the source doc**
   (path/heading) so the RA can verify. Answers that the corpus cannot support
   must say so rather than inventing scoring logic.

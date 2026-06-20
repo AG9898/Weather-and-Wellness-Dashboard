@@ -6,8 +6,11 @@ on:
       - main
     paths:
       - "backend/**"
+      - "docs/labs/weather-wellness/misokinesia/**"
+      - "docs/labs/weather-wellness/weather/**"
       - "frontend/**"
       - ".github/workflows/production-release.yml"
+      - "scripts/sync_methodology_corpus.py"
   workflow_dispatch:
 
 concurrency:
@@ -89,6 +92,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pytest==9.1.1
+
+      - name: Check methodology corpus drift
+        run: python scripts/sync_methodology_corpus.py --check
 
       - name: Run backend tests
         working-directory: backend

@@ -43,6 +43,7 @@ from app.services.chat_tools import (
     get_survey_score_summary,
     get_weather_study_day_summary,
 )
+from app.services.chat_methodology_tool import explain_methodology
 
 
 class UnknownChatToolError(LookupError):
@@ -158,6 +159,21 @@ class ParticipantSessionSummariesParams(_ScopedToolParams):
     )
 
 
+class MethodologyExplainerParams(BaseModel):
+    """Params for the backend-bundled methodology explainer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(
+        min_length=1,
+        max_length=240,
+        description=(
+            "Question about documented Weather-Wellness scoring, instruments, "
+            "cognitive tasks, misokinesia measures, or study-day derived fields."
+        ),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Registry entries
 # ---------------------------------------------------------------------------
@@ -254,6 +270,14 @@ async def _dispatch_participant_session_summaries(
     )
 
 
+async def _dispatch_methodology_explainer(
+    db: AsyncSession, lab_member: LabMember, params: BaseModel
+) -> ChatAggregateToolResult:
+    del db, lab_member
+    assert isinstance(params, MethodologyExplainerParams)
+    return explain_methodology(params.question)
+
+
 _REGISTRY: dict[str, ChatTool] = {
     tool.name: tool
     for tool in (
@@ -316,6 +340,18 @@ _REGISTRY: dict[str, ChatTool] = {
             params_model=ParticipantSessionSummariesParams,
             _dispatch=_dispatch_participant_session_summaries,
         ),
+        ChatTool(
+            name="explain_methodology",
+            description=(
+                "Answer questions about documented Weather-Wellness scoring, "
+                "instrument administration, cognitive tasks, misokinesia measures, "
+                "and study-day derived fields using the backend-bundled methodology "
+                "corpus only. Returns a bounded cited excerpt; unsupported topics "
+                "return insufficient_data."
+            ),
+            params_model=MethodologyExplainerParams,
+            _dispatch=_dispatch_methodology_explainer,
+        ),
     )
 }
 
@@ -374,6 +410,7 @@ __all__ = [
     "ChatTool",
     "DataCoverageParams",
     "DashboardAnalyticsSummaryParams",
+    "MethodologyExplainerParams",
     "ParticipantSessionSummariesParams",
     "StudyWindowSessionCountsParams",
     "SurveyScoreSummaryParams",

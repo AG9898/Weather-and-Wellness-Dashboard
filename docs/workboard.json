@@ -4367,7 +4367,7 @@
       "id": "T1831",
       "title": "AI chat - Methodology explainer tool",
       "description": "Add a doc-grounded methodology explainer tool (e.g. explain_methodology) that retrieves from a backend-bundled methodology corpus GENERATED FROM the canonical scoring/design docs (the repo-root docs/ tree does not ship with the backend, whose Railway root directory is backend/). Include a sync/generation step that produces the bundled corpus (e.g. backend/app/methodology/) from docs/labs/weather-wellness/{weather,misokinesia}/**, plus a drift check (script + CI) that fails if the bundled copy is out of sync with canonical docs. The tool returns a bounded summary plus a source-doc citation (path/heading) and must NOT read or introspect server-side scoring source code. Register it in the dispatch registry so the agentic loop can call it for 'how is X scored / how does the misokinesia section work' questions across both weather and misokinesia components. Answers the corpus cannot support must say so. The model only ever receives the tool's cited excerpts; it never accesses files.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "AI_CHAT",
       "depends_on": [
