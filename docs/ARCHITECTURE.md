@@ -53,12 +53,16 @@ Hard boundaries:
   should return a user-safe unavailable response rather than silently weakening
   privacy.
 
-The agentic loop streams responses over SSE through the same-origin
-`POST /api/ra/chat` proxy; streaming preserves the same auth, privacy, and tool
-boundaries (the browser never reaches OpenRouter directly). Every tool call the
-model makes is persisted to the `chat_tool_invocations` audit table (see
-`docs/SCHEMA.md`). See `docs/AI_CHAT.md` for the canonical coordinator-loop,
-methodology-explainer, and web-research design.
+The agentic loop also streams responses over SSE: the backend `POST /chat/stream`
+route (`stream_ra_chat`) emits incremental `token` events plus
+`tool_running` / `tool_resolved` lifecycle events and a terminal `done` (full
+`RAChatResponse`) or `error` event, all as `text/event-stream` frames. Streaming
+preserves the same auth, privacy, scope-injection, and tool boundaries as the
+non-streaming `POST /chat` route (the browser never reaches OpenRouter directly).
+Every tool call the model makes is persisted to the `chat_tool_invocations` audit
+table (see `docs/SCHEMA.md`). See `docs/AI_CHAT.md` for the canonical
+coordinator-loop, SSE event protocol, methodology-explainer, and web-research
+design.
 
 ## Dashboard Read Topology
 
@@ -106,6 +110,7 @@ This section is the single routing inventory for dashboard-related reads across 
 | `GET /weather/daily` | `GET /api/ra/dashboard?mode=live`, `GET /api/ra/weather/range?mode=live` | `internal-only` | Canonical backend operational read primitive used by the shipped same-origin weather handlers. Router validation/auth lives in `backend/app/routers/weather.py`; DB read logic lives in `backend/app/services/weather_read_service.py`. |
 | `GET /dashboard/analytics` | `GET /api/ra/dashboard/analytics?mode=snapshot\|live` | `internal-only` | Canonical backend analytics endpoint behind the same-origin analytics handler. |
 | `POST /chat` | `POST /api/ra/chat` | `internal-only` | Backend chat coordinator. It authenticates the RA, runs approved scoped data tools, calls OpenRouter with bounded context, and returns a formatted response. The same-origin `POST /api/ra/chat` handler is its only browser-reachable caller. |
+| `POST /chat/stream` | `POST /api/ra/chat` (planned proxy) | `internal-only` | SSE variant of the chat coordinator. Same auth, privacy, scope, and tool boundaries as `POST /chat`; streams `token` plus `tool_running` / `tool_resolved` events and a terminal `done` / `error` event as `text/event-stream`. |
 
 ### Frontend page route inventory
 

@@ -4244,7 +4244,7 @@
       "id": "T1827",
       "title": "AI chat - Backend SSE streaming for /chat",
       "description": "Stream the coordinator loop output from POST /chat over SSE: incremental assistant tokens plus tool lifecycle events (tool running / tool resolved with status). Preserve the same auth, privacy, scope, and tool boundaries as the non-streaming path.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "AI_CHAT",
       "depends_on": [

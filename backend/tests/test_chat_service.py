@@ -12,6 +12,7 @@ from app.schemas.chat import RAChatRequest
 from app.services.chat_service import (
     MAX_TOOL_CALL_ROUNDS,
     coordinate_ra_chat,
+    stream_ra_chat,
 )
 from app.models.chat_tool_invocation import ChatToolInvocation
 from app.services.chat_tool_registry import UnknownChatToolError
@@ -395,3 +396,142 @@ class ToolInvocationAuditTests(IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(response.message, "Done.")
+
+
+async def _drain(agen) -> list[dict[str, Any]]:
+    return [event async for event in agen]
+
+
+class StreamCoordinatorTests(IsolatedAsyncioTestCase):
+    async def test_stream_tool_calling_turn_emits_lifecycle_and_tokens(self) -> None:
+        dispatched: list[dict[str, Any]] = []
+
+        async def _fake_dispatch(db, *, lab_member, tool_name, params):
+            dispatched.append({"tool_name": tool_name, "params": params})
+            return ChatAggregateToolResult(
+                tool_name=tool_name,
+                status="ready",
+                message="Found 31 study days.",
+                data={"study_days": 31},
+            )
+
+        client = _FakeClient(
+            [
+                _completion(
+                    tool_calls=[
+                        _tool_call("weather_study_day_summary", {"study_slug": "ww"})
+                    ]
+                ),
+                _completion("There are 31 study days in range."),
+            ]
+        )
+        request = RAChatRequest(message="How many study days do we have?")
+        session = _FakeSession()
+
+        with patch("app.services.chat_service.dispatch_tool", _fake_dispatch):
+            events = await _drain(
+                stream_ra_chat(
+                    request,
+                    lab_member=_lab_member(),
+                    db=session,
+                    client_factory=_factory(client),
+                )
+            )
+
+        types = [event["type"] for event in events]
+        self.assertEqual(types[0], "tool_running")
+        self.assertEqual(types[1], "tool_resolved")
+        self.assertEqual(types[-1], "done")
+        self.assertIn("token", types)
+
+        running = events[0]
+        self.assertEqual(running["tool_name"], "weather_study_day_summary")
+        resolved = events[1]
+        self.assertEqual(resolved["status"], "ready")
+        self.assertTrue(resolved["summary"].startswith("ready:"))
+
+        streamed_text = "".join(e["text"] for e in events if e["type"] == "token")
+        self.assertEqual(streamed_text, "There are 31 study days in range.")
+
+        done = events[-1]["response"]
+        self.assertEqual(done["message"], "There are 31 study days in range.")
+        self.assertIsNone(done["blocked_reason"])
+        self.assertEqual(len(done["tool_results"]), 1)
+
+        # Scope injection and audit are preserved on the streaming path.
+        self.assertEqual(
+            dispatched,
+            [{"tool_name": "weather_study_day_summary", "params": {"study_slug": "ww"}}],
+        )
+        self.assertEqual(len(session.added), 1)
+        self.assertEqual(session.added[0].status, "ready")
+
+    async def test_stream_blocks_raw_sql_request_before_any_model_call(self) -> None:
+        request = RAChatRequest(message="SELECT * FROM participants")
+
+        def _unreachable_factory():
+            raise AssertionError("client must not be built for blocked requests")
+
+        events = await _drain(
+            stream_ra_chat(
+                request,
+                lab_member=_lab_member(),
+                db=object(),
+                client_factory=_unreachable_factory,
+            )
+        )
+
+        self.assertEqual(events[-1]["type"], "done")
+        done = events[-1]["response"]
+        self.assertEqual(done["blocked_reason"], "disallowed_data_access_request")
+        self.assertEqual(done["model"], "tool-unavailable")
+        self.assertEqual(done["tool_results"], [])
+
+    async def test_stream_privacy_unavailable_emits_error_event(self) -> None:
+        def _failing_factory():
+            raise OpenRouterUnavailableError("missing provider allowlist for ZDR")
+
+        request = RAChatRequest(message="Summarize this week.")
+
+        events = await _drain(
+            stream_ra_chat(
+                request,
+                lab_member=_lab_member(),
+                db=object(),
+                client_factory=_failing_factory,
+            )
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["type"], "error")
+        self.assertEqual(events[0]["blocked_reason"], "model_unavailable")
+        self.assertIn("privacy", events[0]["message"].lower())
+
+    async def test_stream_round_cap_tags_terminal_done(self) -> None:
+        async def _fake_dispatch(db, *, lab_member, tool_name, params):
+            return ChatAggregateToolResult(
+                tool_name=tool_name, status="ready", message="ok", data={}
+            )
+
+        completions = [
+            _completion(tool_calls=[_tool_call("get_data_coverage", {}, call_id=f"c{i}")])
+            for i in range(MAX_TOOL_CALL_ROUNDS)
+        ]
+        completions.append(_completion("Hit the limit; here is what I found."))
+        client = _FakeClient(completions)
+        request = RAChatRequest(message="Keep digging.")
+
+        with patch("app.services.chat_service.dispatch_tool", _fake_dispatch):
+            events = await _drain(
+                stream_ra_chat(
+                    request,
+                    lab_member=_lab_member(),
+                    db=object(),
+                    client_factory=_factory(client),
+                )
+            )
+
+        done = events[-1]
+        self.assertEqual(done["type"], "done")
+        self.assertEqual(done["response"]["blocked_reason"], "tool_round_cap_reached")
+        self.assertEqual(client.calls[-1]["tool_choice"], "none")

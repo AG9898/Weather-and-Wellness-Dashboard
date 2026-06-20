@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -374,8 +374,280 @@ async def coordinate_ra_chat(
     )
 
 
+# --- SSE streaming -----------------------------------------------------------
+#
+# The streaming path reuses the exact same coordinator boundaries as
+# ``coordinate_ra_chat``: the disallowed-raw-SQL/table gate, the fail-closed
+# client factory, the bounded agentic loop, server-side scope injection, and the
+# per-invocation audit. It differs only in transport: instead of returning a
+# single ``RAChatResponse``, it yields a sequence of typed SSE event payloads:
+#
+#   {"type": "token",         "text": "..."}              incremental assistant text
+#   {"type": "tool_running",  "tool_name": "..."}         a tool call has started
+#   {"type": "tool_resolved", "tool_name": "...",
+#                              "summary": "...",
+#                              "status": "..."}           a tool call has finished
+#   {"type": "done",          "response": {...}}          terminal RAChatResponse
+#   {"type": "error",         "message": "...",
+#                              "blocked_reason": "..."}    user-safe terminal error
+#
+# The underlying OpenRouter client is non-streaming, so assistant "tokens" are
+# chunked from the completed message text. This keeps the secret boundary and
+# tool semantics identical while still letting the UI render progressively and
+# show in-flight tool affordances.
+
+# Whitespace-preserving word chunks for incremental assistant rendering.
+_TOKEN_CHUNK_PATTERN = re.compile(r"\S+\s*")
+
+
+def _chunk_assistant_text(text: str) -> list[str]:
+    """Split assistant text into whitespace-preserving chunks for streaming.
+
+    Chunks rejoin to exactly ``text`` (no characters added or dropped) so the
+    client can concatenate ``token`` events without reconstructing spacing.
+    """
+
+    if not text:
+        return []
+    chunks = _TOKEN_CHUNK_PATTERN.findall(text)
+    return chunks or [text]
+
+
+async def _stream_assistant_text(text: str) -> AsyncIterator[dict[str, Any]]:
+    for chunk in _chunk_assistant_text(text):
+        yield {"type": "token", "text": chunk}
+
+
+async def _stream_tool_calls(
+    tool_calls: Sequence[Mapping[str, Any]],
+    *,
+    conversation_id: UUID,
+    lab_member: LabMember,
+    db: AsyncSession,
+    tool_results: list[RAChatToolResult],
+    tool_messages: list[dict[str, Any]],
+) -> AsyncIterator[dict[str, Any]]:
+    """Execute tool calls, yielding running/resolved events as each completes.
+
+    Mirrors ``_run_tool_calls`` (same scope injection, audit, and status
+    taxonomy) but emits a ``tool_running`` event before each call and a
+    ``tool_resolved`` event after. The caller-owned ``tool_messages`` list is
+    extended with the tool-role messages so the model conversation can be
+    continued after the events are drained.
+    """
+
+    for call in tool_calls:
+        call_id = call.get("id") or ""
+        function = call.get("function") or {}
+        tool_name = function.get("name") or ""
+        params = _parse_tool_call_arguments(function.get("arguments"))
+
+        yield {"type": "tool_running", "tool_name": tool_name or "unknown"}
+
+        try:
+            result = await dispatch_tool(
+                db,
+                lab_member=lab_member,
+                tool_name=tool_name,
+                params=params,
+            )
+        except UnknownChatToolError as exc:
+            await _audit_tool_invocation(
+                db,
+                conversation_id=conversation_id,
+                lab_member=lab_member,
+                tool_name=tool_name,
+                params=params,
+                status="invalid_scope",
+            )
+            summary = "invalid_scope: requested tool is not approved."
+            tool_results.append(
+                RAChatToolResult(tool_name=tool_name or "unknown", summary=summary)
+            )
+            tool_messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "name": tool_name or "unknown",
+                    "content": json.dumps({"status": "invalid_scope", "error": str(exc)}),
+                }
+            )
+            yield {
+                "type": "tool_resolved",
+                "tool_name": tool_name or "unknown",
+                "summary": summary,
+                "status": "invalid_scope",
+            }
+            continue
+
+        await _audit_tool_invocation(
+            db,
+            conversation_id=conversation_id,
+            lab_member=lab_member,
+            tool_name=result.tool_name,
+            params=params,
+            status=result.status,
+        )
+        summary = result.response_summary()
+        tool_results.append(
+            RAChatToolResult(tool_name=result.tool_name, summary=summary)
+        )
+        tool_messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": call_id,
+                "name": result.tool_name,
+                "content": json.dumps(result.to_json()),
+            }
+        )
+        yield {
+            "type": "tool_resolved",
+            "tool_name": result.tool_name,
+            "summary": summary,
+            "status": result.status,
+        }
+
+
+async def stream_ra_chat(
+    request: RAChatRequest,
+    *,
+    lab_member: LabMember,
+    db: AsyncSession,
+    client_factory: ClientFactory = OpenRouterClient.from_env,
+) -> AsyncIterator[dict[str, Any]]:
+    """Stream the coordinator loop as typed SSE event payloads.
+
+    Preserves every boundary of ``coordinate_ra_chat`` — the disallowed-data gate,
+    fail-closed client factory, bounded loop, server-side scope injection, and
+    per-invocation audit — while emitting incremental ``token`` events and
+    ``tool_running``/``tool_resolved`` lifecycle events. The stream always ends
+    with exactly one terminal event (``done`` on success, ``error`` on a
+    user-safe failure).
+    """
+
+    conversation_id = request.conversation_id or uuid4()
+
+    if _contains_disallowed_data_access_request(request):
+        message = (
+            "I cannot run SQL, inspect raw database tables, or accept table-name "
+            "instructions. Ask for a bounded summary in natural language and I "
+            "will use the approved read-only data tools."
+        )
+        async for event in _stream_assistant_text(message):
+            yield event
+        yield {
+            "type": "done",
+            "response": RAChatResponse(
+                conversation_id=conversation_id,
+                message=message,
+                model=_TOOL_UNAVAILABLE_MODEL,
+                tool_results=[],
+                blocked_reason=_DISALLOWED_DATA_ACCESS_REASON,
+            ).model_dump(mode="json"),
+        }
+        return
+
+    try:
+        client = client_factory()
+    except OpenRouterUnavailableError as exc:
+        yield {
+            "type": "error",
+            "message": exc.public_message,
+            "blocked_reason": _PRIVACY_UNAVAILABLE_REASON,
+        }
+        return
+
+    messages = _build_messages(request, lab_member=lab_member)
+    tool_specs = chat_tool_specs()
+    tool_results: list[RAChatToolResult] = []
+    served_model = ""
+    final_message = ""
+    blocked_reason: str | None = None
+
+    try:
+        for _round_index in range(MAX_TOOL_CALL_ROUNDS):
+            completion = client.create_chat_completion(messages, tools=tool_specs)
+            served_model = completion.served_model
+            messages.append(_assistant_message_from_completion(completion))
+
+            if not completion.tool_calls:
+                final_message = (
+                    completion.content
+                    or "I do not have anything to add for that request."
+                )
+                async for event in _stream_assistant_text(final_message):
+                    yield event
+                yield {
+                    "type": "done",
+                    "response": RAChatResponse(
+                        conversation_id=conversation_id,
+                        message=final_message,
+                        model=served_model,
+                        tool_results=tool_results,
+                        blocked_reason=None,
+                    ).model_dump(mode="json"),
+                }
+                return
+
+            tool_messages: list[dict[str, Any]] = []
+            async for event in _stream_tool_calls(
+                completion.tool_calls,
+                conversation_id=conversation_id,
+                lab_member=lab_member,
+                db=db,
+                tool_results=tool_results,
+                tool_messages=tool_messages,
+            ):
+                yield event
+            messages.extend(tool_messages)
+
+        # Round cap reached: one final completion with no further tool calls.
+        final = client.create_chat_completion(
+            messages, tools=tool_specs, tool_choice="none"
+        )
+        served_model = final.served_model
+        blocked_reason = _LOOP_CAP_REASON
+        final_message = (
+            final.content
+            or "I reached the tool-call limit for this turn. Here is what I gathered."
+        )
+    except OpenRouterUnavailableError as exc:
+        yield {
+            "type": "error",
+            "message": exc.public_message,
+            "blocked_reason": _PRIVACY_UNAVAILABLE_REASON,
+        }
+        return
+
+    async for event in _stream_assistant_text(final_message):
+        yield event
+    yield {
+        "type": "done",
+        "response": RAChatResponse(
+            conversation_id=conversation_id,
+            message=final_message,
+            model=served_model,
+            tool_results=tool_results,
+            blocked_reason=blocked_reason,
+        ).model_dump(mode="json"),
+    }
+
+
+def format_sse_event(event: Mapping[str, Any]) -> str:
+    """Serialize one event payload as an SSE ``data:`` frame.
+
+    Each event is a single JSON object on one ``data:`` line, terminated by a
+    blank line per the SSE wire format. The ``type`` field discriminates the
+    event for the client.
+    """
+
+    return f"data: {json.dumps(dict(event))}\n\n"
+
+
 __all__ = [
     "MAX_TOOL_CALL_ROUNDS",
     "build_ra_chat_system_prompt",
     "coordinate_ra_chat",
+    "format_sse_event",
+    "stream_ra_chat",
 ]

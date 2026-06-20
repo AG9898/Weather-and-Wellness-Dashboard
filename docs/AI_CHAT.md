@@ -1,6 +1,6 @@
 # AI_CHAT.md — RA Data Chatbot
 
-> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); remaining model-layer phases planned.
+> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); SSE streaming landed (T1827); remaining model-layer phases planned.
 > The authenticated backend route was implemented in T1818, with scoped aggregate
 > data tools added in T1819 and bounded anonymous participant/session summaries
 > added in T1820. The same-origin `POST /api/ra/chat` proxy and typed
@@ -22,7 +22,9 @@
 >
 > The **agentic model layer** that connects OpenRouter on top of these tools is
 > delivered in five phases: (1) the agentic coordinator loop — **landed in
-> T1826** (`backend/app/services/chat_service.py`), (2) SSE streaming, (3) the
+> T1826** (`backend/app/services/chat_service.py`), (2) SSE streaming — **landed
+> in T1827** (`backend/app/routers/chat.py` `POST /chat/stream`,
+> `stream_ra_chat` in `backend/app/services/chat_service.py`), (3) the
 > tool-call audit table — **landed in T1829**
 > (`backend/app/models/chat_tool_invocation.py`, migration `20260620_000001`),
 > (4) the doc-grounded methodology explainer, and
@@ -30,7 +32,7 @@
 > `coordinate_ra_chat` now drives a bounded model-driven tool-calling loop:
 > OpenRouter selects which approved tools to call (or none), FastAPI injects the
 > authenticated lab scope and executes them through the registry, and the model
-> narrates the results. Phases 2, 4, and 5 remain planned. This is the canonical
+> narrates the results. Phases 4 and 5 remain planned. This is the canonical
 > platform-level design for an RA-facing LLM chatbot over lab data, and it covers
 > both Weather-Wellness components (`weather/` and `misokinesia/`).
 
@@ -134,6 +136,44 @@ surfaced directly to the RA.
 orientation tool (see Backend Tool Contract) before guessing date ranges, so it
 anchors queries to where data actually exists instead of a fixed default window
 that can land on an empty slice.
+
+### SSE Streaming (`POST /chat/stream`)
+
+Alongside the non-streaming `POST /chat` route, `POST /chat/stream`
+(`backend/app/routers/chat.py`) streams the same coordinator turn over
+Server-Sent Events via `stream_ra_chat` (`backend/app/services/chat_service.py`).
+The response is `text/event-stream` with `Cache-Control: no-cache, no-transform`
+and `X-Accel-Buffering: no` so intermediaries do not buffer the stream.
+
+**Identical boundaries, different transport.** `stream_ra_chat` reuses every
+boundary of `coordinate_ra_chat`: the same `Depends(get_current_lab_member)`
+auth, the disallowed-raw-SQL/table gate (short-circuits before any model call),
+the fail-closed `client_factory`, the bounded `MAX_TOOL_CALL_ROUNDS` loop,
+server-side scope injection on every tool call, and one `chat_tool_invocations`
+audit row per invocation. The browser still never talks to OpenRouter directly.
+
+**Event protocol.** Each SSE frame is one JSON object on a single `data:` line
+(terminated by a blank line), discriminated by a `type` field:
+
+- `{"type": "token", "text": "..."}` — incremental assistant text. The underlying
+  OpenRouter client is non-streaming, so assistant text is chunked into
+  whitespace-preserving word fragments that reconcatenate exactly to the final
+  message; the client can append tokens without re-deriving spacing.
+- `{"type": "tool_running", "tool_name": "..."}` — a tool call has started.
+- `{"type": "tool_resolved", "tool_name": "...", "summary": "...", "status": "..."}`
+  — a tool call has finished (status drawn from the same
+  `ready` / `insufficient_data` / `permission_denied` / `invalid_scope` taxonomy).
+- `{"type": "done", "response": {...}}` — terminal success event carrying the full
+  `RAChatResponse` JSON (`conversation_id`, `message`, `model`, `tool_results`,
+  `blocked_reason`), so a client can ignore tokens and use the final payload.
+- `{"type": "error", "message": "...", "blocked_reason": "..."}` — terminal
+  user-safe failure (e.g. a privacy-incomplete configuration yields
+  `blocked_reason="model_unavailable"` with the generic privacy message).
+
+The stream always terminates with exactly one terminal event (`done` or
+`error`). The disallowed-data gate and the round-cap path both stream their
+message as `token` events and then a `done` event carrying the corresponding
+`blocked_reason` (`disallowed_data_access_request` / `tool_round_cap_reached`).
 
 ## Access Model
 
