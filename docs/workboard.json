@@ -4210,7 +4210,7 @@
       "id": "T1826",
       "title": "AI chat - Agentic coordinator loop",
       "description": "Replace the stub coordinate_ra_chat with a bounded agentic tool-calling loop. Give OpenRouter the system prompt, conversation history, and registered tool schemas; let the model choose which tools to call (or none) with derived params; execute tools through the scope-injecting registry; feed results back; cap tool-call rounds per turn. The model narrates ready/insufficient_data/permission_denied/invalid_scope statuses into natural language rather than surfacing raw status lines. Ordinary conversational/informational questions are answered with no tool call. Non-streaming internally (returns the existing RAChatResponse shape). Keep the disallowed-raw-SQL/table gate.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "AI_CHAT",
       "depends_on": [

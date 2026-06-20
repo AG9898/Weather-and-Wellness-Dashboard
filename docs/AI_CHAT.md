@@ -1,6 +1,6 @@
 # AI_CHAT.md — RA Data Chatbot
 
-> **Status:** Deterministic substrate shipped; agentic model layer planned.
+> **Status:** Deterministic substrate shipped; agentic coordinator loop landed (T1826); remaining model-layer phases planned.
 > The authenticated backend route was implemented in T1818, with scoped aggregate
 > data tools added in T1819 and bounded anonymous participant/session summaries
 > added in T1820. The same-origin `POST /api/ra/chat` proxy and typed
@@ -21,13 +21,16 @@
 > preserved.
 >
 > The **agentic model layer** that connects OpenRouter on top of these tools is
-> planned in five phases: (1) the agentic coordinator loop, (2) SSE streaming,
-> (3) the tool-call audit table, (4) the doc-grounded methodology explainer, and
-> (5) privacy-sanitized web research. Until those land, the coordinator runs all
-> deterministic tools and returns bounded summaries without a narrative model.
-> This is the canonical platform-level design for an RA-facing LLM chatbot over
-> lab data, and it covers both Weather-Wellness components (`weather/` and
-> `misokinesia/`).
+> delivered in five phases: (1) the agentic coordinator loop — **landed in
+> T1826** (`backend/app/services/chat_service.py`), (2) SSE streaming, (3) the
+> tool-call audit table, (4) the doc-grounded methodology explainer, and
+> (5) privacy-sanitized web research. With the coordinator loop landed,
+> `coordinate_ra_chat` now drives a bounded model-driven tool-calling loop:
+> OpenRouter selects which approved tools to call (or none), FastAPI injects the
+> authenticated lab scope and executes them through the registry, and the model
+> narrates the results. Phases 2–5 remain planned. This is the canonical
+> platform-level design for an RA-facing LLM chatbot over lab data, and it covers
+> both Weather-Wellness components (`weather/` and `misokinesia/`).
 
 ---
 
@@ -71,9 +74,11 @@ every tool call on the server. The model cannot run SQL, name tables, select
 scope, write, export, or call Supabase. Tool selection is agency over an
 allowlist, not over the database.
 
-Before the agentic loop ships, the `POST /chat` backend route runs the approved
-read-only tools deterministically and returns bounded tool summaries without a
-narrative model.
+The `POST /chat` backend route runs the agentic coordinator loop
+(`coordinate_ra_chat`). The disallowed-raw-SQL/table gate still short-circuits
+before any model call, and a privacy-incomplete model configuration returns a
+user-safe unavailable response (`blocked_reason="model_unavailable"`) before any
+tool runs.
 
 External research/search is also mediated by FastAPI. The LLM may request an
 approved web research tool for public research context, but it must not send
@@ -94,11 +99,27 @@ schemas of the approved tools. Per turn:
 2. When the model does call a tool, FastAPI validates the call against the
    allowlist, **injects the authenticated lab scope** (the model never supplies
    `lab_id`/`lab_name`), executes the tool, and returns the typed result.
-3. The loop is capped at a small maximum number of tool-call rounds per turn to
-   bound latency and cost. On reaching the cap the model must answer from what it
-   has or state the limitation.
+3. The loop is capped at a small maximum number of tool-call rounds per turn
+   (`MAX_TOOL_CALL_ROUNDS`, currently 4) to bound latency and cost. On reaching
+   the cap, FastAPI issues one final completion with `tool_choice="none"` so the
+   model must answer from what it gathered; that response is tagged
+   `blocked_reason="tool_round_cap_reached"`.
 4. The model narrates the results into report-style prose, keeping retrieved
    data, interpretation, and cited context visually distinct.
+
+**Implementation notes.** The coordinator is non-streaming internally and returns
+the existing `RAChatResponse` shape (`conversation_id`, `message`, `model`,
+`tool_results`, `blocked_reason`). The served `model` field carries the
+OpenRouter `served_model` slug for the turn. Each executed tool contributes one
+compact `RAChatToolResult` (`{tool_name, summary}` where `summary` is the tool's
+`status: message` line) for transparency, while the full JSON tool result is fed
+back to the model as a `tool`-role message. Tool-call arguments arrive as a
+JSON-encoded string; malformed arguments degrade to empty params, which the
+registry rejects with a typed `invalid_scope` result rather than crashing. A
+model request for an unapproved tool name is caught (`UnknownChatToolError`) and
+narrated rather than surfaced as an error. The OpenRouter client is obtained
+through an injectable `client_factory` (default `OpenRouterClient.from_env`) so
+the loop is unit-testable without env or network.
 
 **Tool statuses are reasoning signal, not user-facing text.** The
 `ready` / `insufficient_data` / `permission_denied` / `invalid_scope` statuses
