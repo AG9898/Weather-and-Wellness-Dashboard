@@ -422,7 +422,21 @@ or "how does the misokinesia section work?".
   "how the platform works" topics (session/consent flow, timezone semantics,
   weather linking, import/export) are out of scope for v1.
 - Because this depends on the docs being complete, a doc-gap check of the
-  scoring/design corpus is a prerequisite for the explainer to be reliable.
+  scoring/design corpus is a prerequisite for the explainer to be reliable. That
+  audit (T1830) confirmed each v1 in-scope instrument has a clear, extraction-ready
+  per-instrument scoring section in the canonical source docs below:
+
+  | Instrument(s) | Canonical scoring source doc |
+  |---|---|
+  | GAD-7, CES-D-10, ULS-8, CogFunc 8a | `docs/labs/weather-wellness/weather/GAD7.md`, `CESD10.md`, `ULS8.md`, `COGFUNC8A.md` (indexed by `weather/SCORING.md`) |
+  | Backwards Digit Span, Stroop, Card Sorting (cognitive battery) | `docs/labs/weather-wellness/weather/DIGITSPAN.md`, `STROOP.md`, `CARD_SORTING.md` |
+  | Misokinesia MkAQ, MAQ, GAD-7, per-clip reactivity | `docs/labs/weather-wellness/misokinesia/SCORING.md` (item wording in `MISOKINESIA.md`) |
+
+  The misokinesia scoring rules were previously embedded as prose in
+  `MISOKINESIA.md`; T1830 consolidated them into the dedicated
+  `misokinesia/SCORING.md` so each instrument has a clean, bundle-ready section.
+  Study-day/derived fields used by these instruments are documented in
+  `weather/ANALYTICS.md` and `weather/WEATHER_INGESTION.md`.
 - This stays within RESOLVED-20: it is read-only, sends no credentials, and
   exposes no DB rows — only curated documentation context.
 

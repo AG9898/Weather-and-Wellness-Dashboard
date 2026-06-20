@@ -4340,7 +4340,7 @@
       "id": "T1830",
       "title": "AI chat - Methodology corpus doc-gap audit",
       "description": "Audit the canonical scoring/design docs under docs/labs/weather-wellness/weather/** and docs/labs/weather-wellness/misokinesia/** for completeness as the methodology-explainer retrieval corpus (survey scoring GAD-7/CES-D-10/ULS-8/CogFunc8a, digit span and cognitive battery, misokinesia MKAQ/MAQ/GAD-7, study-day/derived fields). Fill documented gaps so each in-scope instrument's scoring is explained in docs (docs must track code per AGENTS.md). Docs-only task; no code.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "AI_CHAT",
       "depends_on": [],

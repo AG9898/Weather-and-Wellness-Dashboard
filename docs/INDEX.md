@@ -65,6 +65,22 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/labs/weather-wellness/misokinesia/API.md`](labs/weather-wellness/misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
 | [`docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`](labs/weather-wellness/misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`](labs/weather-wellness/misokinesia/MISOKINESIA.md) | Misokinesia task specification |
+| [`docs/labs/weather-wellness/misokinesia/SCORING.md`](labs/weather-wellness/misokinesia/SCORING.md) | Per-instrument scoring corpus (MkAQ, MAQ, GAD-7, per-clip) |
+
+### IHTT (`docs/labs/ihtt/`)
+
+| Path | Purpose |
+|---|---|
+| [`docs/labs/ihtt/README.md`](labs/ihtt/README.md) | Interhemispheric Transfer Time lab overview and doc index |
+
+#### Poffenberger Component
+
+| Path | Purpose |
+|---|---|
+| [`docs/labs/ihtt/poffenberger/API.md`](labs/ihtt/poffenberger/API.md) | Planned FastAPI contracts - IHTT Poffenberger launch, trial manifests, and run submission |
+| [`docs/labs/ihtt/poffenberger/DESIGN_SPEC.md`](labs/ihtt/poffenberger/DESIGN_SPEC.md) | IHTT Poffenberger RA launch and participant UX specifications |
+| [`docs/labs/ihtt/poffenberger/POFFENBERGER.md`](labs/ihtt/poffenberger/POFFENBERGER.md) | IHTT Poffenberger task protocol and data collection requirements |
+| [`docs/labs/ihtt/poffenberger/SCORING.md`](labs/ihtt/poffenberger/SCORING.md) | IHTT Poffenberger server-side scoring and derived summaries |
 
 ## Archive Docs (Historical Context Only)
 

@@ -12,7 +12,7 @@ Research assistants (RAs) administer a fixed battery of instruments per session:
 - **CogFunc 8a** — cognitive function (PROMIS SF v2.0, 8-item)
 - **Randomized cognitive task battery** — Backward Digit Span, Stroop, and
   WCST-64-inspired card sorting in a per-session stored order
-- **Misokinesia task** — 29-clip video sensitivity task (optional, separate session)
+- **Misokinesia task** — video sensitivity task over the active clip manifest (optional, separate session; see [`misokinesia/MISOKINESIA.md`](misokinesia/MISOKINESIA.md) for the current active pool)
 
 Sessions are anonymous. Participants have no accounts; identity is a stable `participant_uuid`
 assigned at first session.
@@ -65,6 +65,7 @@ docs cover cross-component concerns only.
 | [`misokinesia/API.md`](misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
 | [`misokinesia/DESIGN_SPEC.md`](misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`misokinesia/MISOKINESIA.md`](misokinesia/MISOKINESIA.md) | Misokinesia task specification |
+| [`misokinesia/SCORING.md`](misokinesia/SCORING.md) | Server-side scoring rules for MkAQ, MAQ, GAD-7, and per-clip reactivity |
 
 ## Reference Materials
 

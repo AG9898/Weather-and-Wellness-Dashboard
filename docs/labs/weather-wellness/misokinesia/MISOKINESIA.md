@@ -1,6 +1,6 @@
 # MISOKINESIA.md — Misokinesia Video Task
 
-> Canonical spec for the Misokinesia module. For endpoint contracts see `docs/labs/weather-wellness/misokinesia/API.md`. For schema see `docs/SCHEMA.md`. For auth/stimulus management decisions see `docs/DECISIONS.md` (OPEN-02).
+> Canonical spec for the Misokinesia module. For endpoint contracts see `docs/labs/weather-wellness/misokinesia/API.md`. For the structured per-instrument scoring corpus (MkAQ, MAQ, GAD-7, per-clip reactivity) see [`docs/labs/weather-wellness/misokinesia/SCORING.md`](./SCORING.md). For schema see `docs/SCHEMA.md`. For auth/stimulus management decisions see `docs/DECISIONS.md` (OPEN-02).
 
 ---
 
@@ -190,6 +190,8 @@ See `docs/labs/weather-wellness/misokinesia/API.md` for full request/response sc
 ## Post-Video Surveys
 
 Three surveys are administered after the video loop, in the randomised order given by `post_survey_order` from the session manifest. The frontend drives the sequence; all three must be submitted before `PATCH .../end-of-task` is accepted.
+
+Scoring rules for all three surveys (and the per-clip questionnaire) are consolidated in [`SCORING.md`](./SCORING.md), the canonical extraction source for the methodology corpus. The per-survey sections below cover item wording and UI layout.
 
 ---
 
