@@ -359,8 +359,9 @@ For this workflow, GitHub Actions uses `WEATHER_INGEST_BASE_URL` and
 - Production service host: Railway.
 - Railway project: `ubcpsych`; backend service: `backend`.
 - Production Railway backend URL: `https://backend-production-5809.up.railway.app`.
-- Deploy the backend service from the backend directory as the archive root:
-  `railway up backend --path-as-root --service backend`.
+- Deploy the backend service from the repo root so Railway's configured backend
+  root directory is present in the uploaded archive:
+  `railway up --service backend`.
 - Backend startup is defined in `backend/Procfile`.
 - Health check path: `/health` → returns `{"status":"ok"}`.
 - Local backend tasks do not require Railway unless inspecting production service state.

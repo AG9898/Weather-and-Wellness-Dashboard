@@ -5,9 +5,10 @@ FastAPI chatbot coordinator, never OpenRouter directly. The client supports
 tool/function calling and an optional, owner-approved non-ZDR availability
 fallback (see docs/AI_CHAT.md and docs/DECISIONS.md): when a fallback model is
 configured, a primary ZDR-required request that fails because of provider
-unavailability/upstream error retries once on the fallback model with ZDR
-routing relaxed. Misconfiguration always fails closed and never triggers the
-fallback; when no fallback model is configured the primary failure fails closed.
+unavailability/upstream error retries once on the fallback model with ZDR and
+training/data-collection restrictions relaxed. Misconfiguration always fails
+closed and never triggers the fallback; when no fallback model is configured the
+primary failure fails closed.
 """
 from __future__ import annotations
 
@@ -76,13 +77,13 @@ def _primary_provider_config(config: OpenRouterConfig) -> dict[str, Any]:
 def _fallback_provider_config(config: OpenRouterConfig) -> dict[str, Any]:
     """Deliberately-relaxed provider routing for the non-ZDR fallback request.
 
-    ZDR is intentionally not enforced here: this path trades ZDR for
-    availability when the sole free ZDR provider is down (owner-approved). The
-    training opt-out (`data_collection: deny`) is still requested. An optional
+    ZDR and training/data-collection restrictions are intentionally not enforced
+    here: this path trades the primary privacy route for availability when the
+    sole free ZDR provider is down or rate-limited (owner-approved). An optional
     fallback allowlist may scope the route; otherwise OpenRouter routes freely.
     """
     provider: dict[str, Any] = {
-        "data_collection": "deny",
+        "data_collection": "allow",
     }
     if config.fallback_provider_allowlist:
         provider["only"] = list(config.fallback_provider_allowlist)
@@ -172,11 +173,11 @@ class OpenRouterClient:
         Provider/privacy configuration is sent with every request. The primary
         request uses the privacy-preserving ZDR routing. If that request fails
         because of provider unavailability/upstream error AND a fallback model
-        is configured, the call retries once on the fallback model with ZDR
-        routing relaxed. When no fallback model is configured, the primary
-        failure fails closed. HTTP and response-shape failures are mapped to the
-        same user-safe unavailable error that routes can expose without leaking
-        provider details.
+        is configured, the call retries once on the fallback model with ZDR and
+        training/data-collection restrictions relaxed. When no fallback model is
+        configured, the primary failure fails closed. HTTP and response-shape
+        failures are mapped to the same user-safe unavailable error that routes
+        can expose without leaking provider details.
         """
         try:
             return self._request(
@@ -193,7 +194,7 @@ class OpenRouterClient:
             if not self._config.has_fallback:
                 raise
 
-        # Deliberate, owner-approved non-ZDR retry for availability only.
+        # Deliberate, owner-approved relaxed-privacy retry for availability only.
         return self._request(
             model=self._config.fallback_model,
             served_route=ROUTE_FALLBACK,

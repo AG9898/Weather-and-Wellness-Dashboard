@@ -330,12 +330,14 @@ class TestOpenRouterAvailabilityFallback:
             )
 
         assert mock_post.call_count == 2
-        # Primary used ZDR routing; fallback relaxed it (no zdr key) and used
-        # the fallback model.
+        # Primary used ZDR/no-training routing; fallback relaxes both ZDR and
+        # data-collection policy and uses the fallback model.
         primary_payload = mock_post.call_args_list[0].kwargs["json"]
         fallback_payload = mock_post.call_args_list[1].kwargs["json"]
         assert primary_payload["provider"].get("zdr") is True
+        assert primary_payload["provider"]["data_collection"] == "deny"
         assert "zdr" not in fallback_payload["provider"]
+        assert fallback_payload["provider"]["data_collection"] == "allow"
         assert fallback_payload["model"] == "nvidia/nemotron-3-super-120b-a12b:free"
 
         assert result.served_route == ROUTE_FALLBACK
@@ -358,6 +360,7 @@ class TestOpenRouterAvailabilityFallback:
         fallback_provider = mock_post.call_args_list[1].kwargs["json"]["provider"]
         assert fallback_provider["only"] == ["Nvidia"]
         assert fallback_provider["allow_fallbacks"] is False
+        assert fallback_provider["data_collection"] == "allow"
         assert "zdr" not in fallback_provider
 
     def test_fallback_also_failing_raises_user_safe_unavailable(self) -> None:
