@@ -103,10 +103,10 @@ measurement anchored to visual dot onset.
 The RA brief requires response by assigned hand but does not specify exact keys.
 Implementation must choose and document keys before build completion.
 
-Recommended default:
+Selected default:
 
-- left-hand blocks: a left-side key such as `f`
-- right-hand blocks: a right-side key such as `j`
+- left-hand blocks: `f`
+- right-hand blocks and practice trials: `j`
 
 The selected key for the current block should be displayed on instruction and
 block transition screens. The backend must validate submitted responses against

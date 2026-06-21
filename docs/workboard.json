@@ -4468,7 +4468,7 @@
       "id": "T1834",
       "title": "IHTT Poffenberger - Manifest generation and start API",
       "description": "Implement the RA-protected IHTT Poffenberger start contract. The start endpoint must require an authenticated ihtt lab member or admin, accept the platform-required anonymous start-session demographics, create an anonymous participant/session/run, generate a production manifest from the RA brief, and return the participant task path. Production manifest requirements are 10 right-hand practice trials, 12 experimental blocks, 50 trials per block, six blocks per hand, 25 LVF and 25 RVF trials per block, randomized counterbalanced visual-field order, and 1000-2000 ms jitter values.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "IHTT_POFFENBERGER",
       "depends_on": [

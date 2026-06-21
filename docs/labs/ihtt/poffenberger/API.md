@@ -39,14 +39,14 @@ completion rows. It should use fake IDs in the shared `trial-<sequence>` format.
 
 | Method | Path | Auth | Status | Purpose |
 |---|---|---|---|---|
-| `POST` | `/ihtt/poffenberger/start` | RA | planned | Create anonymous participant/session/run and return production manifest |
+| `POST` | `/ihtt/poffenberger/start` | RA | implemented | Create anonymous participant/session/run and return production manifest |
 | `GET` | `/ihtt/poffenberger/trial-manifest` | RA | planned | Return short or full no-write manifest, if manifest generation is server-owned |
 | `POST` | `/ihtt/poffenberger/runs/{run_id}/submit` | None | planned | Submit raw production trial data and receive server-computed summaries |
 
 ## POST /ihtt/poffenberger/start
 
 - **Auth:** RA required, scoped to `ihtt`.
-- **Status:** planned.
+- **Status:** implemented.
 - **Request body:** the platform-required anonymous start-session demographics.
   The RA brief does not define additional IHTT-specific demographic fields.
 - **Response:** HTTP 201.
@@ -63,6 +63,7 @@ completion rows. It should use fake IDs in the shared `trial-<sequence>` format.
         "trial_number": 1,
         "response_hand": "right",
         "visual_field": "lvf",
+        "expected_key": "j",
         "jitter_ms": 1432
       }
     ],
@@ -70,6 +71,7 @@ completion rows. It should use fake IDs in the shared `trial-<sequence>` format.
       {
         "block_number": 1,
         "response_hand": "left",
+        "expected_key": "f",
         "trials": [
           {
             "trial_number": 1,
@@ -97,6 +99,8 @@ Notes:
 - Each experimental block has 25 LVF and 25 RVF trials in randomized,
   counterbalanced order.
 - Six experimental blocks are left-hand blocks and six are right-hand blocks.
+- Left-hand blocks use expected key `f`; right-hand blocks and practice trials
+  use expected key `j`.
 - `start_path` routes the browser to the participant task page on the same
   device.
 

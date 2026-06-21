@@ -7,6 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.schemas.sessions import StartSessionCreate
+
 
 PoffenbergerResponseHand = Literal["left", "right"]
 PoffenbergerVisualField = Literal["lvf", "rvf"]
@@ -31,6 +33,49 @@ class PoffenbergerRunCreate(BaseModel):
     manifest_json: dict[str, Any]
     total_practice_trials: int = Field(default=0, ge=0)
     total_experimental_trials: int = Field(default=0, ge=0)
+
+
+class PoffenbergerStartRequest(StartSessionCreate):
+    """Demographics payload for recorded IHTT Poffenberger start."""
+
+
+class PoffenbergerPracticeTrialManifest(BaseModel):
+    trial_number: int = Field(..., ge=1)
+    response_hand: Literal["right"] = "right"
+    visual_field: PoffenbergerVisualField
+    expected_key: str = Field(..., min_length=1)
+    jitter_ms: int = Field(..., ge=1000, le=2000)
+
+
+class PoffenbergerExperimentalTrialManifest(BaseModel):
+    trial_number: int = Field(..., ge=1, le=50)
+    global_trial_number: int = Field(..., ge=1, le=600)
+    visual_field: PoffenbergerVisualField
+    jitter_ms: int = Field(..., ge=1000, le=2000)
+
+
+class PoffenbergerBlockManifest(BaseModel):
+    block_number: int = Field(..., ge=1, le=12)
+    response_hand: PoffenbergerResponseHand
+    expected_key: str = Field(..., min_length=1)
+    trials: list[PoffenbergerExperimentalTrialManifest] = Field(
+        ..., min_length=50, max_length=50
+    )
+
+
+class PoffenbergerManifest(BaseModel):
+    practice_trials: list[PoffenbergerPracticeTrialManifest] = Field(
+        ..., min_length=10, max_length=10
+    )
+    blocks: list[PoffenbergerBlockManifest] = Field(..., min_length=12, max_length=12)
+
+
+class PoffenbergerStartResponse(BaseModel):
+    run_id: UUID
+    session_id: UUID
+    participant_uuid: UUID
+    start_path: str
+    manifest: PoffenbergerManifest
 
 
 class PoffenbergerRunResponse(BaseModel):
@@ -143,9 +188,15 @@ class PoffenbergerTrialResponse(PoffenbergerTrialCreate):
 __all__ = [
     "PoffenbergerConditionKey",
     "PoffenbergerConditionSummary",
+    "PoffenbergerBlockManifest",
+    "PoffenbergerExperimentalTrialManifest",
+    "PoffenbergerManifest",
+    "PoffenbergerPracticeTrialManifest",
     "PoffenbergerResponseHand",
     "PoffenbergerRunCreate",
     "PoffenbergerRunResponse",
+    "PoffenbergerStartRequest",
+    "PoffenbergerStartResponse",
     "PoffenbergerTrialCreate",
     "PoffenbergerTrialResponse",
     "PoffenbergerVisualField",

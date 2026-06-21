@@ -54,9 +54,9 @@ Production consists of:
 
 The task must use a manifest generated before the participant starts the
 experimental trials. The manifest records block number, assigned response hand,
-trial number, and visual field for each trial. The frontend may use the manifest
-to present stimuli and capture client-side timing, but condition assignment and
-summary scoring remain server-owned.
+trial number, visual field, jitter, and expected response key. The frontend may
+use the manifest to present stimuli and capture client-side timing, but
+condition assignment and summary scoring remain server-owned.
 
 ## Trial Definition
 
@@ -76,6 +76,8 @@ reduce expectancy effects. The jitter occurs before the next dot appears.
 - Response hand values: `left`, `right`.
 - Stimulus: a brief dot presented lateralized to the left or right visual field.
 - Response: keyboard button press using the hand assigned for the current block.
+- Expected keys: left-hand blocks use `f`; right-hand blocks and practice trials
+  use `j`.
 - Participants are instructed to react as fast as possible after perceiving a
   stimulus, regardless of the visual half field where it appears.
 
@@ -207,12 +209,12 @@ practice/scored flags, block/trial/global order, response hand, visual field,
 condition key, expected/pressed keys, reaction time, timeout/validity/accuracy
 flags, jitter, and raw client timing timestamps for audit/debugging.
 
-Routes, manifest generation, scoring services, and participant/RA UI are
-implemented by follow-on tasks. See `docs/SCHEMA.md` for the full column list.
+The recorded start route and production manifest generation are implemented.
+Scoring services, submit routes, and participant/RA UI are implemented by
+follow-on tasks. See `docs/SCHEMA.md` for the full column list.
 
 ## Open Items
 
-- Exact response keys for left-hand and right-hand blocks.
 - Dot size, dot duration, color, background, fixation mark, and screen distance
   assumptions.
 - Whether to add the optional Millisecond-style pre-stimulus audio cue in a
