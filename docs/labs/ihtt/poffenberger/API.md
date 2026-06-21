@@ -41,12 +41,12 @@ completion rows. It should use fake IDs in the shared `trial-<sequence>` format.
 |---|---|---|---|---|
 | `POST` | `/ihtt/poffenberger/start` | RA | implemented | Create anonymous participant/session/run and return production manifest |
 | `GET` | `/ihtt/poffenberger/trial-manifest` | RA | planned | Return short or full no-write manifest, if manifest generation is server-owned |
-| `POST` | `/ihtt/poffenberger/runs/{run_id}/submit` | None | planned | Submit raw production trial data and receive server-computed summaries |
+| `POST` | `/ihtt/poffenberger/runs/{run_id}/submit` | None | implemented | Submit raw production trial data and receive server-computed summaries |
 
 ## POST /ihtt/poffenberger/start
 
 - **Auth:** RA required, scoped to `ihtt`.
-- **Status:** implemented.
+- **Status:** planned.
 - **Request body:** the platform-required anonymous start-session demographics.
   The RA brief does not define additional IHTT-specific demographic fields.
 - **Response:** HTTP 201.
@@ -107,7 +107,7 @@ Notes:
 ## GET /ihtt/poffenberger/trial-manifest
 
 - **Auth:** RA required, scoped to `ihtt`.
-- **Status:** planned.
+- **Status:** implemented.
 - **Query params:**
   - `mode`: `"short"` or `"full"`.
 - **Response:** HTTP 200.
@@ -135,7 +135,7 @@ Notes:
 ## POST /ihtt/poffenberger/runs/{run_id}/submit
 
 - **Auth:** none; validates `run_id`, active session, and server manifest.
-- **Status:** planned.
+- **Status:** implemented.
 - **Response:** HTTP 201.
 
 ```json
@@ -149,12 +149,15 @@ Notes:
       "trial_number": 1,
       "response_hand": "left",
       "visual_field": "rvf",
-      "expected_key": "a",
-      "pressed_key": "a",
+      "expected_key": "f",
+      "pressed_key": "f",
       "reaction_time_ms": 342,
       "is_timeout": false,
+      "is_practice": false,
+      "client_trial_started_at_ms": 123000.0,
       "client_stimulus_onset_ms": 123456.7,
-      "client_response_at_ms": 123798.7
+      "client_response_at_ms": 123798.7,
+      "client_trial_ended_at_ms": 123820.0
     }
   ]
 }
@@ -184,12 +187,20 @@ Response:
 Notes:
 
 - Backend validates that submitted trials match the stored manifest.
+- The submit payload must include all 600 experimental trials. Practice trials
+  are optional, but if any practice trial is submitted then all 10 practice
+  trials must be submitted.
+- Experimental `global_trial_number` may use the experimental manifest sequence
+  (`1-600`) or the persisted full-task sequence (`11-610`). Persisted trial
+  rows use the full-task sequence so practice rows (`1-10`) do not collide with
+  experimental rows.
 - Persists accepted raw trial rows in `ihtt_poffenberger_trials`; each row
   includes `participant_uuid`, `session_id`, `run_id`, block/trial/global order,
   assignment fields, response fields, timeout/validity/accuracy flags, jitter,
   and raw client timing timestamps.
 - Persists server-computed four-condition and crossed/uncrossed summaries on
   `ihtt_poffenberger_runs`.
+- Marks the Poffenberger run complete and marks the active session complete.
 - Backend recomputes condition keys, accuracy, timeout status, and all summary
   fields.
 - Reaction-time means exclude practice trials, timeouts, invalid responses, and

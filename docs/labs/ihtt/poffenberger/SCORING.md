@@ -46,6 +46,8 @@ For v1:
 - A valid reaction-time trial has an accepted response with
   `0 < reaction_time_ms <= 2000`.
 - Timeout trials and late responses are excluded from reaction-time means.
+- Late responses with `reaction_time_ms > 2000` may be retained in raw trial
+  rows for audit, but the backend marks them as timeout-equivalent for scoring.
 - Timeout trials and invalid-key responses still count in accuracy denominators
   unless the RA later requests a different accuracy definition.
 - A trial is accurate when the accepted key matches the expected key for the
@@ -136,7 +138,7 @@ Trial-level table: `ihtt_poffenberger_trials`.
 - `is_scored`
 - `expected_key`
 - `pressed_key`
-- `reaction_time_ms`
+- `reaction_time_ms` (may exceed 2000 ms for retained late responses)
 - `is_valid_response`
 - `is_timeout`
 - `is_accurate`
@@ -147,3 +149,8 @@ Trial-level table: `ihtt_poffenberger_trials`.
 
 All rows must be session-scoped and participant-scoped. No result row may be
 orphaned from `participant_uuid` or `session_id`.
+
+The production submit endpoint accepts all experimental trials and optional
+practice trials. When practice rows are submitted, persisted
+`global_trial_number` values use the full task order: practice rows are `1-10`
+and experimental rows are offset to `11-610`.

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import random
 from datetime import datetime, timezone
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +12,7 @@ from app.auth import LabMember, get_current_ra_for_lab
 from app.config import compute_daylight_exposure_minutes
 from app.db import get_session
 from app.models.participants import Participant
-from app.models.poffenberger import PoffenbergerRun
+from app.models.poffenberger import PoffenbergerRun, PoffenbergerTrial
 from app.models.sessions import Session as SessionModel
 from app.schemas.poffenberger import (
     PoffenbergerBlockManifest,
@@ -20,6 +21,13 @@ from app.schemas.poffenberger import (
     PoffenbergerPracticeTrialManifest,
     PoffenbergerStartRequest,
     PoffenbergerStartResponse,
+    PoffenbergerSubmitRequest,
+    PoffenbergerSubmitResponse,
+)
+from app.scoring.poffenberger import (
+    PoffenbergerScoringError,
+    TrialInput,
+    score as score_poffenberger,
 )
 
 router = APIRouter(prefix="/ihtt/poffenberger", tags=["ihtt-poffenberger"])
@@ -163,4 +171,166 @@ async def start_poffenberger_session(
         participant_uuid=participant.participant_uuid,
         start_path=f"/ihtt/poffenberger/{run.run_id}",
         manifest=manifest,
+    )
+
+
+def _apply_condition_summary(
+    run: PoffenbergerRun,
+    condition_key: str,
+    summary: object,
+) -> None:
+    for field_name in (
+        "total_trials",
+        "valid_rt_trials",
+        "timeout_trials",
+        "invalid_trials",
+        "accurate_trials",
+        "accuracy",
+        "mean_rt_ms",
+        "median_rt_ms",
+        "sd_rt_ms",
+    ):
+        setattr(run, f"{condition_key}_{field_name}", getattr(summary, field_name))
+
+
+@router.post(
+    "/runs/{run_id}/submit",
+    response_model=PoffenbergerSubmitResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def submit_poffenberger_run(
+    run_id: UUID,
+    payload: PoffenbergerSubmitRequest,
+    db: AsyncSession = Depends(get_session),
+) -> PoffenbergerSubmitResponse:
+    if payload.run_id != run_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Payload run_id must match path run_id",
+        )
+
+    result = await db.execute(
+        select(PoffenbergerRun).where(PoffenbergerRun.run_id == run_id)
+    )
+    run = result.scalar_one_or_none()
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Poffenberger run not found",
+        )
+    if payload.session_id != run.session_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Payload session_id does not match run",
+        )
+    if run.is_complete:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Poffenberger run already submitted",
+        )
+
+    session_result = await db.execute(
+        select(SessionModel).where(SessionModel.session_id == run.session_id)
+    )
+    session_obj = session_result.scalar_one_or_none()
+    if session_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+    if session_obj.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Session is not active",
+        )
+
+    try:
+        manifest = PoffenbergerManifest.model_validate(run.manifest_json)
+        scored = score_poffenberger(
+            [
+                TrialInput(
+                    block_number=trial.block_number,
+                    trial_number=trial.trial_number,
+                    global_trial_number=trial.global_trial_number,
+                    response_hand=trial.response_hand,
+                    visual_field=trial.visual_field,
+                    expected_key=trial.expected_key,
+                    pressed_key=trial.pressed_key,
+                    reaction_time_ms=trial.reaction_time_ms,
+                    is_timeout=trial.is_timeout,
+                    is_practice=trial.is_practice,
+                    client_trial_started_at_ms=trial.client_trial_started_at_ms,
+                    client_stimulus_onset_ms=trial.client_stimulus_onset_ms,
+                    client_response_at_ms=trial.client_response_at_ms,
+                    client_trial_ended_at_ms=trial.client_trial_ended_at_ms,
+                )
+                for trial in payload.trials
+            ],
+            manifest,
+        )
+    except PoffenbergerScoringError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Stored Poffenberger manifest is invalid",
+        ) from exc
+
+    for condition_key, summary in scored.condition_summaries.items():
+        _apply_condition_summary(run, condition_key, summary)
+    run.mean_rt_crossed_ms = scored.mean_rt_crossed_ms
+    run.mean_rt_uncrossed_ms = scored.mean_rt_uncrossed_ms
+    run.ihtt_difference_ms = scored.ihtt_difference_ms
+    run.accuracy_crossed = scored.accuracy_crossed
+    run.accuracy_uncrossed = scored.accuracy_uncrossed
+    completed_at = datetime.now(timezone.utc)
+    run.completed_at = completed_at
+    run.is_complete = True
+    session_obj.status = "complete"
+    session_obj.completed_at = completed_at
+
+    for trial in scored.trials:
+        db.add(
+            PoffenbergerTrial(
+                run_id=run.run_id,
+                session_id=run.session_id,
+                participant_uuid=run.participant_uuid,
+                block_number=trial.block_number,
+                trial_number=trial.trial_number,
+                global_trial_number=trial.global_trial_number,
+                response_hand=trial.response_hand,
+                visual_field=trial.visual_field,
+                condition_key=trial.condition_key,
+                is_practice=trial.is_practice,
+                is_scored=trial.is_scored,
+                expected_key=trial.expected_key,
+                pressed_key=trial.pressed_key,
+                reaction_time_ms=trial.reaction_time_ms,
+                is_valid_response=trial.is_valid_response,
+                is_timeout=trial.is_timeout,
+                is_accurate=trial.is_accurate,
+                jitter_ms=trial.jitter_ms,
+                client_trial_started_at_ms=trial.client_trial_started_at_ms,
+                client_stimulus_onset_ms=trial.client_stimulus_onset_ms,
+                client_response_at_ms=trial.client_response_at_ms,
+                client_trial_ended_at_ms=trial.client_trial_ended_at_ms,
+            )
+        )
+
+    await db.commit()
+    await db.refresh(run)
+
+    return PoffenbergerSubmitResponse(
+        run_id=run.run_id,
+        session_id=run.session_id,
+        condition_summaries=scored.condition_summaries,
+        mean_rt_crossed_ms=scored.mean_rt_crossed_ms,
+        mean_rt_uncrossed_ms=scored.mean_rt_uncrossed_ms,
+        ihtt_difference_ms=scored.ihtt_difference_ms,
+        accuracy_crossed=scored.accuracy_crossed,
+        accuracy_uncrossed=scored.accuracy_uncrossed,
+        is_complete=run.is_complete,
     )

@@ -4502,7 +4502,7 @@
       "id": "T1835",
       "title": "IHTT Poffenberger - Scoring and submit API",
       "description": "Implement pure server-side Poffenberger scoring plus the participant-facing production submit endpoint. The backend must validate submitted trials against the stored manifest, reject duplicate or inactive submissions, exclude practice trials from production summaries, enforce the 2000 ms cutoff, compute RA-required RT and accuracy summaries for lh_lvf, lh_rvf, rh_lvf, and rh_rvf, and compute complementary crossed/uncrossed IHTT fields. The frontend must remain untrusted for scores and condition summaries.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "IHTT_POFFENBERGER",
       "depends_on": [

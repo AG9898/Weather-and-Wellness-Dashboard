@@ -78,6 +78,43 @@ class PoffenbergerStartResponse(BaseModel):
     manifest: PoffenbergerManifest
 
 
+class PoffenbergerSubmittedTrial(BaseModel):
+    block_number: int = Field(..., ge=0)
+    trial_number: int = Field(..., ge=1)
+    global_trial_number: int = Field(..., ge=1)
+    response_hand: PoffenbergerResponseHand
+    visual_field: PoffenbergerVisualField
+    expected_key: str = Field(..., min_length=1)
+    pressed_key: str | None = None
+    reaction_time_ms: int | None = Field(default=None, ge=1)
+    is_timeout: bool = False
+    is_practice: bool = False
+    client_trial_started_at_ms: Decimal | None = Field(default=None, ge=0)
+    client_stimulus_onset_ms: Decimal | None = Field(default=None, ge=0)
+    client_response_at_ms: Decimal | None = Field(default=None, ge=0)
+    client_trial_ended_at_ms: Decimal | None = Field(default=None, ge=0)
+
+
+class PoffenbergerSubmitRequest(BaseModel):
+    run_id: UUID
+    session_id: UUID
+    trials: list[PoffenbergerSubmittedTrial] = Field(
+        ..., min_length=600, max_length=610
+    )
+
+
+class PoffenbergerSubmitResponse(BaseModel):
+    run_id: UUID
+    session_id: UUID
+    condition_summaries: dict[PoffenbergerConditionKey, PoffenbergerConditionSummary]
+    mean_rt_crossed_ms: Decimal | None = None
+    mean_rt_uncrossed_ms: Decimal | None = None
+    ihtt_difference_ms: Decimal | None = None
+    accuracy_crossed: Decimal | None = None
+    accuracy_uncrossed: Decimal | None = None
+    is_complete: bool
+
+
 class PoffenbergerRunResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -173,8 +210,6 @@ class PoffenbergerTrialCreate(BaseModel):
         )
         if self.condition_key != expected_condition:
             raise ValueError("condition_key must match response_hand and visual_field")
-        if self.is_timeout and self.reaction_time_ms is not None:
-            raise ValueError("timeout trials must not carry reaction_time_ms")
         return self
 
 
@@ -197,6 +232,9 @@ __all__ = [
     "PoffenbergerRunResponse",
     "PoffenbergerStartRequest",
     "PoffenbergerStartResponse",
+    "PoffenbergerSubmittedTrial",
+    "PoffenbergerSubmitRequest",
+    "PoffenbergerSubmitResponse",
     "PoffenbergerTrialCreate",
     "PoffenbergerTrialResponse",
     "PoffenbergerVisualField",

@@ -593,9 +593,9 @@ a future import policy defines a mapping.
 ## Tables: IHTT Poffenberger
 
 > Applied by migration `20260621_000001` (T1833). Scope is limited to
-> persistence models and schemas for the IHTT Poffenberger component; routes,
-> manifest generation, scoring services, and frontend UI are implemented by
-> follow-on tasks.
+> persistence models and schemas for the IHTT Poffenberger component. The
+> recorded start endpoint was added by T1834, and the production submit/scoring
+> endpoint was added by T1835.
 
 ### Table: `ihtt_poffenberger_runs`
 
@@ -652,7 +652,7 @@ remain session-scoped and participant-scoped.
 | participant_uuid | UUID | FK, NOT NULL | -> participants.participant_uuid |
 | block_number | INT | NOT NULL | 0 for practice, 1-12 for production blocks |
 | trial_number | INT | NOT NULL | 1-based within the practice segment or block |
-| global_trial_number | INT | NOT NULL, UNIQUE with `run_id` | 1-based persisted trial order |
+| global_trial_number | INT | NOT NULL, UNIQUE with `run_id` | 1-based persisted full-task trial order; practice rows use `1-10`, experimental rows use `11-610` |
 | response_hand | VARCHAR | NOT NULL | `left` or `right` |
 | visual_field | VARCHAR | NOT NULL | `lvf` or `rvf` |
 | condition_key | VARCHAR | NOT NULL | `lh_lvf`, `lh_rvf`, `rh_lvf`, or `rh_rvf` |
@@ -660,7 +660,7 @@ remain session-scoped and participant-scoped.
 | is_scored | BOOLEAN | NOT NULL | False for practice; true for experimental rows used in summaries |
 | expected_key | VARCHAR | NOT NULL | Server-assigned key for the response hand |
 | pressed_key | VARCHAR | NULLABLE | Raw key captured by the client; null for timeout/no response |
-| reaction_time_ms | INT | NULLABLE | Client-measured RT; null for timeout/no response |
+| reaction_time_ms | INT | NULLABLE | Client-measured RT; null for no response; late RTs over 2000 ms may be retained for audit but are excluded from scoring |
 | is_valid_response | BOOLEAN | NOT NULL | Backend validation result |
 | is_timeout | BOOLEAN | NOT NULL | No accepted response before the 2000 ms cutoff |
 | is_accurate | BOOLEAN | NOT NULL | Expected key before timeout |
