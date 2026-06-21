@@ -4605,7 +4605,7 @@
       "id": "T1838",
       "title": "IHTT Poffenberger - Participant task UI",
       "description": "Implement the recorded participant Poffenberger task route. The UI must render instructions, the 10-trial right-hand practice segment, 12 experimental blocks, stable fixation/stimulus presentation, 1000-2000 ms jitter, 2000 ms response cutoff, keyboard response capture by assigned hand, raw trial timing collection, submit/retry behavior, and completion. Keep all scoring on the backend and avoid RA chrome during active timed trials.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "IHTT_POFFENBERGER",
       "depends_on": [

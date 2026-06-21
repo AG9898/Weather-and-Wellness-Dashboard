@@ -60,6 +60,12 @@ The task should use a stable fixed-format stage for fixation, dot presentation,
 and response capture. Text-heavy instructions belong before timed trials, not
 during them.
 
+Implementation note: the participant route is `/ihtt/poffenberger/[run_id]`.
+For recorded sessions it expects the RA launch flow to place the backend start
+response in browser session storage before navigation. For trial runs it can use
+the local no-write Poffenberger trial state. No RA layout or floating RA chrome
+wraps the timed route.
+
 ## Screen Flow
 
 1. Loading/error state.
@@ -138,6 +144,8 @@ must never appear in recorded participant sessions.
 - Start failures return the RA to the launch page with an inline error.
 - Participant submit failures preserve captured trial data in memory so the
   participant or RA can retry.
+- Completion is shown only after the backend submit succeeds in recorded mode;
+  local trial runs simulate submit success without writing rows.
 - If timing data is incomplete or malformed, show a clear task error rather than
   silently completing the run.
 

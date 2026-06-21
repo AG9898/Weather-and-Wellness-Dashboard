@@ -13,7 +13,7 @@ export const TRIAL_RUN_QUERY_VALUE = "1";
 export const TRIAL_RUN_STORAGE_KEY = "ww:trial-run";
 export const TRIAL_RUN_ID_PREFIX = "trial-local";
 
-export type TrialRunFlow = "weather-wellness" | "misokinesia";
+export type TrialRunFlow = "weather-wellness" | "misokinesia" | "ihtt-poffenberger";
 export type TrialSubmitMode = "production" | "trial";
 export type MisokinesiaTrialMode = "short" | "full";
 export type WeatherWellnessTrialMode = "short" | "full";
@@ -24,8 +24,13 @@ export interface TrialRunState {
   flow: TrialRunFlow;
   misokinesia_trial_mode?: MisokinesiaTrialMode;
   weather_wellness_trial_mode?: WeatherWellnessTrialMode;
+  poffenberger_trial_mode?: PoffenbergerTrialMode;
   session_id?: string;
   misokinesia_participant_id?: string;
+  run_id?: string;
+  participant_uuid?: string;
+  start_path?: string;
+  manifest?: PoffenbergerManifest;
   cognitive_task_order?: CognitiveTaskKey[];
   created_at: string;
 }
@@ -54,7 +59,7 @@ export interface TrialRunMisokinesiaManifest {
   clips: TrialRunMisokinesiaClip[];
 }
 
-export interface TrialRunPoffenbergerState {
+export interface TrialRunPoffenbergerState extends TrialRunState {
   mode: "trial";
   flow: "ihtt-poffenberger";
   poffenberger_trial_mode: PoffenbergerTrialMode;
@@ -77,7 +82,7 @@ interface TrialRunLocation {
  * participant pages can recover the signal after route transitions.
  */
 export function createTrialRunState(
-  flow: TrialRunFlow,
+  flow: Exclude<TrialRunFlow, "ihtt-poffenberger">,
   trialMode: MisokinesiaTrialMode | WeatherWellnessTrialMode = "short"
 ): TrialRunState {
   const createdAt = new Date().toISOString();
@@ -519,7 +524,11 @@ export function isTrialRunActiveForLocation(location: TrialRunLocation): boolean
     return false;
   }
 
-  return state.session_id === routeId || state.misokinesia_participant_id === routeId;
+  return (
+    state.session_id === routeId ||
+    state.misokinesia_participant_id === routeId ||
+    state.run_id === routeId
+  );
 }
 
 export function adoptTrialRunStateFromLocation(location: TrialRunLocation): TrialRunState | null {
@@ -533,13 +542,19 @@ export function adoptTrialRunStateFromLocation(location: TrialRunLocation): Tria
   }
 
   const existing = readTrialRunState();
-  if (existing?.session_id === routeId || existing?.misokinesia_participant_id === routeId) {
+  if (
+    existing?.session_id === routeId ||
+    existing?.misokinesia_participant_id === routeId ||
+    existing?.run_id === routeId
+  ) {
     return existing;
   }
 
   const flow: TrialRunFlow = location.pathname.startsWith("/misokinesia/")
     ? "misokinesia"
-    : "weather-wellness";
+    : location.pathname.startsWith("/ihtt/poffenberger/")
+      ? "ihtt-poffenberger"
+      : "weather-wellness";
   const state: TrialRunState =
     flow === "misokinesia"
       ? {
@@ -550,12 +565,19 @@ export function adoptTrialRunStateFromLocation(location: TrialRunLocation): Tria
           misokinesia_participant_id: routeId,
           created_at: new Date().toISOString(),
         }
-      : {
-          mode: "trial",
-          flow,
-          session_id: routeId,
-          created_at: new Date().toISOString(),
-        };
+      : flow === "ihtt-poffenberger"
+        ? createTrialRunPoffenbergerState("short")
+        : {
+            mode: "trial",
+            flow,
+            session_id: routeId,
+            created_at: new Date().toISOString(),
+          };
+
+  if (flow === "ihtt-poffenberger") {
+    state.run_id = routeId;
+    state.start_path = `/ihtt/poffenberger/${routeId}`;
+  }
 
   persistTrialRunState(state);
   return state;
@@ -585,6 +607,9 @@ function readTrialRunIdFromPath(pathname: string): string | null {
   if (parts[0] === "misokinesia" && parts[1]) {
     return parts[1];
   }
+  if (parts[0] === "ihtt" && parts[1] === "poffenberger" && parts[2]) {
+    return parts[2];
+  }
   return null;
 }
 
@@ -592,7 +617,13 @@ function isTrialRunState(value: unknown): value is TrialRunState {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<TrialRunState>;
   if (candidate.mode !== "trial") return false;
-  if (candidate.flow !== "weather-wellness" && candidate.flow !== "misokinesia") return false;
+  if (
+    candidate.flow !== "weather-wellness" &&
+    candidate.flow !== "misokinesia" &&
+    candidate.flow !== "ihtt-poffenberger"
+  ) {
+    return false;
+  }
   if (
     candidate.misokinesia_trial_mode !== undefined &&
     candidate.misokinesia_trial_mode !== "short" &&
@@ -604,6 +635,13 @@ function isTrialRunState(value: unknown): value is TrialRunState {
     candidate.weather_wellness_trial_mode !== undefined &&
     candidate.weather_wellness_trial_mode !== "short" &&
     candidate.weather_wellness_trial_mode !== "full"
+  ) {
+    return false;
+  }
+  if (
+    candidate.poffenberger_trial_mode !== undefined &&
+    candidate.poffenberger_trial_mode !== "short" &&
+    candidate.poffenberger_trial_mode !== "full"
   ) {
     return false;
   }
@@ -622,6 +660,22 @@ function isTrialRunState(value: unknown): value is TrialRunState {
     !isTrialRunId(candidate.misokinesia_participant_id)
   ) {
     return false;
+  }
+  if (candidate.run_id !== undefined && !isTrialRunId(candidate.run_id)) return false;
+  if (
+    candidate.participant_uuid !== undefined &&
+    !isTrialRunId(candidate.participant_uuid)
+  ) {
+    return false;
+  }
+  if (candidate.flow === "ihtt-poffenberger") {
+    return Boolean(
+      candidate.run_id &&
+        candidate.session_id &&
+        candidate.participant_uuid &&
+        candidate.start_path &&
+        candidate.manifest
+    );
   }
   return Boolean(candidate.session_id || candidate.misokinesia_participant_id);
 }

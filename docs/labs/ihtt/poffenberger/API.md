@@ -189,8 +189,9 @@ Response:
 Notes:
 
 - Backend validates that submitted trials match the stored manifest.
-- The submit payload must include all 600 experimental trials. Practice trials
-  are optional, but if any practice trial is submitted then all 10 practice
+- The production participant UI submits all 10 practice trials plus all 600
+  experimental trials as raw timing rows. Practice trials are optional at the
+  API boundary, but if any practice trial is submitted then all 10 practice
   trials must be submitted.
 - Experimental `global_trial_number` may use the experimental manifest sequence
   (`1-600`) or the persisted full-task sequence (`11-610`). Persisted trial

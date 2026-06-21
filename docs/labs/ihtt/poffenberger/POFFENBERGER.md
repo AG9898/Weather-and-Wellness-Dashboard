@@ -212,11 +212,14 @@ practice/scored flags, block/trial/global order, response hand, visual field,
 condition key, expected/pressed keys, reaction time, timeout/validity/accuracy
 flags, jitter, and raw client timing timestamps for audit/debugging.
 
-The recorded start route, production manifest generation, scoring service, and
-submit route are implemented. Frontend API wrappers exist for recorded start and
-submit, and frontend trial helpers create no-write short/full manifests. The
-participant/RA UI is implemented by follow-on tasks. See `docs/SCHEMA.md` for
-the full column list.
+The recorded start route, production manifest generation, scoring service,
+submit route, frontend API wrappers, and the participant task route are
+implemented. The recorded participant route reads the launch-time run bundle
+from browser session storage, presents the manifest-driven practice and
+experimental trials, captures raw client timing rows, and submits those rows to
+the backend. Frontend trial helpers create no-write short/full manifests for
+local rehearsal runs. The RA launch UI is implemented by a follow-on task. See
+`docs/SCHEMA.md` for the full column list.
 
 ## Open Items
 
