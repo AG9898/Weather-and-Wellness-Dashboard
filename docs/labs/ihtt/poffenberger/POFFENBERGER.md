@@ -190,6 +190,26 @@ Raw trial storage should retain enough detail to recompute all summaries:
 Practice trials are useful for QA but are excluded from production condition
 summaries unless the RA later asks to analyze them.
 
+## Persistence
+
+The v1 persistence layer was added by migration `20260621_000001` (T1833).
+Recorded runs are stored in `ihtt_poffenberger_runs`; raw practice and
+experimental trials are stored in `ihtt_poffenberger_trials`.
+
+`ihtt_poffenberger_runs` has one row per recorded session (`session_id` is
+unique), links to both `participant_uuid` and `session_id`, stores the
+server-generated `manifest_json`, and persists the four RA-required condition
+summaries (`lh_lvf`, `lh_rvf`, `rh_lvf`, `rh_rvf`) plus crossed/uncrossed
+derived fields.
+
+`ihtt_poffenberger_trials` stores each persisted assignment and response row:
+practice/scored flags, block/trial/global order, response hand, visual field,
+condition key, expected/pressed keys, reaction time, timeout/validity/accuracy
+flags, jitter, and raw client timing timestamps for audit/debugging.
+
+Routes, manifest generation, scoring services, and participant/RA UI are
+implemented by follow-on tasks. See `docs/SCHEMA.md` for the full column list.
+
 ## Open Items
 
 - Exact response keys for left-hand and right-hand blocks.

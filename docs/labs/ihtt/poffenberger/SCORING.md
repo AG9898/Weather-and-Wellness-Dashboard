@@ -100,22 +100,27 @@ interpretation, but they are complementary to the four condition outputs:
 `ihtt_difference_ms` should be null when either crossed or uncrossed mean cannot
 be computed from valid trials.
 
-## Persistence Recommendation
+## Persistence
 
-Persist both run-level summaries and raw trial rows.
+Persist both run-level summaries and raw trial rows. The schema was added by
+migration `20260621_000001` (T1833).
 
-Run-level table should include:
+Run-level table: `ihtt_poffenberger_runs`.
 
 - `run_id`
 - `participant_uuid`
 - `session_id`
+- `manifest_json`
 - `started_at`
 - `completed_at`
+- `is_complete`
+- `total_practice_trials`
 - `total_experimental_trials`
-- per-condition RT and accuracy fields
-- crossed/uncrossed derived fields
+- per-condition count, accuracy, mean/median RT, and RT SD fields for
+  `lh_lvf`, `lh_rvf`, `rh_lvf`, and `rh_rvf`
+- crossed/uncrossed mean RT, accuracy, and `ihtt_difference_ms` fields
 
-Trial-level table should include:
+Trial-level table: `ihtt_poffenberger_trials`.
 
 - `trial_id`
 - `run_id`
@@ -128,6 +133,7 @@ Trial-level table should include:
 - `visual_field`
 - `condition_key`
 - `is_practice`
+- `is_scored`
 - `expected_key`
 - `pressed_key`
 - `reaction_time_ms`
@@ -135,6 +141,9 @@ Trial-level table should include:
 - `is_timeout`
 - `is_accurate`
 - `jitter_ms`
+- raw client timing timestamps (`client_trial_started_at_ms`,
+  `client_stimulus_onset_ms`, `client_response_at_ms`,
+  `client_trial_ended_at_ms`)
 
 All rows must be session-scoped and participant-scoped. No result row may be
 orphaned from `participant_uuid` or `session_id`.

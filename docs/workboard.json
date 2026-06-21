@@ -4432,7 +4432,7 @@
       "id": "T1833",
       "title": "IHTT Poffenberger - Schema migration and models",
       "description": "Add the persistence layer for the IHTT Poffenberger component using Alembic and SQLAlchemy models. Create run-level and trial-level tables that are linked to both participant_uuid and session_id, store the server-generated manifest/trial assignments, preserve raw trial timing data, and persist the RA-required four-condition reaction-time and accuracy summaries plus crossed/uncrossed derived fields. Keep this scoped to schema, models, schemas, and documentation; do not implement routes or frontend UI in this task.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "IHTT_POFFENBERGER",
       "depends_on": [

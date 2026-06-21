@@ -88,6 +88,8 @@ Notes:
 
 - Atomically creates an anonymous participant, active session, Poffenberger run,
   and production manifest.
+- Persists the run shell in `ihtt_poffenberger_runs`, including
+  `participant_uuid`, `session_id`, and the server-generated `manifest_json`.
 - Stores platform start-session demographics on `participants` only, consistent
   with the existing platform rule.
 - Production manifest has 10 right-hand practice trials and 12 experimental
@@ -178,6 +180,12 @@ Response:
 Notes:
 
 - Backend validates that submitted trials match the stored manifest.
+- Persists accepted raw trial rows in `ihtt_poffenberger_trials`; each row
+  includes `participant_uuid`, `session_id`, `run_id`, block/trial/global order,
+  assignment fields, response fields, timeout/validity/accuracy flags, jitter,
+  and raw client timing timestamps.
+- Persists server-computed four-condition and crossed/uncrossed summaries on
+  `ihtt_poffenberger_runs`.
 - Backend recomputes condition keys, accuracy, timeout status, and all summary
   fields.
 - Reaction-time means exclude practice trials, timeouts, invalid responses, and

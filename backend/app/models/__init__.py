@@ -25,6 +25,7 @@ from .misokinesia import (
 )
 from .invitations import RAInvitation
 from .chat_tool_invocation import ChatToolInvocation
+from .poffenberger import PoffenbergerRun, PoffenbergerTrial
 
 __all__ = [
     "Participant",
@@ -52,4 +53,6 @@ __all__ = [
     "MisokinesiaTrialResponse",
     "RAInvitation",
     "ChatToolInvocation",
+    "PoffenbergerRun",
+    "PoffenbergerTrial",
 ]
