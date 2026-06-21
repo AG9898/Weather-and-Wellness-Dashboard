@@ -91,6 +91,13 @@ Practice trials may provide minimal feedback if useful for RA verification, but
 the RA brief does not require feedback. If feedback is added, keep it out of
 experimental blocks.
 
+No audio cue is part of the v1 timed-trial UI. The Millisecond/Inquisit
+reference task includes a short tone before the light flash, but the RA-provided
+brief does not require it. If added later, audio should be implemented with the
+Web Audio API after an explicit start action unlocks an `AudioContext`; schedule
+a short low-volume oscillator tone before dot onset, and keep reaction-time
+measurement anchored to visual dot onset.
+
 ## Response Keys
 
 The RA brief requires response by assigned hand but does not specify exact keys.
@@ -145,3 +152,5 @@ do not fully apply during timed trials. Still:
 - text must not overlap controls on desktop or mobile
 - the task should warn the RA before starting if the viewport is too small for a
   reliable lateralized stimulus presentation
+- if a future audio cue is enabled, the task should provide a clear pre-start
+  audio readiness check and a non-audio fallback for muted or blocked playback

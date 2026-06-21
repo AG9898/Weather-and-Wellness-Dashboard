@@ -85,6 +85,27 @@ conservative defaults from the established Poffenberger literature and keep them
 documented here once chosen. The task should avoid adding multiple dot
 eccentricities in v1 unless the RA explicitly requests them.
 
+### Audio Cue Scope
+
+The Millisecond/Inquisit reference task includes a short pre-stimulus audio cue,
+but the RA-provided v1 brief does not require audio. For the current planned
+implementation, Poffenberger is a visual reaction-time task only: reaction time
+starts at visual dot onset, and no beep or tone is played during trials.
+
+If the lab later asks for the reference-task audio cue, implement it as a
+frontend-only timing cue using the Web Audio API. The recommended shape is:
+
+- create or resume an `AudioContext` from an explicit user action before timed
+  trials begin, so browser autoplay restrictions are satisfied
+- generate a short oscillator tone, for example a 1000 Hz sine wave for 100 ms,
+  through a low-gain `GainNode`
+- schedule the tone before visual stimulus onset without changing the server
+  manifest or scoring contract
+- continue measuring reaction time from visual dot onset only, not from tone
+  onset
+- keep audio disabled by default for v1 trial and production sessions unless a
+  future task explicitly enables and tests it
+
 ## Participant Flow
 
 1. RA opens the IHTT launch page.
@@ -174,6 +195,8 @@ summaries unless the RA later asks to analyze them.
 - Exact response keys for left-hand and right-hand blocks.
 - Dot size, dot duration, color, background, fixation mark, and screen distance
   assumptions.
+- Whether to add the optional Millisecond-style pre-stimulus audio cue in a
+  future version. This is explicitly out of scope for v1.
 - Whether the RA wants any participant demographic fields beyond the platform's
   required anonymous start-session demographics. The current RA brief does not
   request any.
