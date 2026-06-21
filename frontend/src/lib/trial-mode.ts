@@ -1,5 +1,12 @@
 import type { PostSurveyKey } from "@/lib/misokinesia-phase";
-import type { CognitiveTaskKey } from "@/lib/api";
+import type {
+  CognitiveTaskKey,
+  PoffenbergerBlockManifest,
+  PoffenbergerManifest,
+  PoffenbergerPracticeTrialManifest,
+  PoffenbergerResponseHand,
+  PoffenbergerVisualField,
+} from "@/lib/api";
 
 export const TRIAL_RUN_QUERY_PARAM = "trial";
 export const TRIAL_RUN_QUERY_VALUE = "1";
@@ -10,6 +17,7 @@ export type TrialRunFlow = "weather-wellness" | "misokinesia";
 export type TrialSubmitMode = "production" | "trial";
 export type MisokinesiaTrialMode = "short" | "full";
 export type WeatherWellnessTrialMode = "short" | "full";
+export type PoffenbergerTrialMode = "short" | "full";
 
 export interface TrialRunState {
   mode: "trial";
@@ -31,6 +39,11 @@ export interface TrialRunMisokinesiaClip {
 
 export const TRIAL_MKAQ_ITEM_COUNT = 10;
 export const TRIAL_MAQ_ITEM_COUNT = 10;
+export const POFFENBERGER_SHORT_TRIAL_BLOCKS = 2;
+export const POFFENBERGER_SHORT_TRIALS_PER_BLOCK = 4;
+export const POFFENBERGER_FULL_PRACTICE_TRIALS = 10;
+export const POFFENBERGER_FULL_BLOCKS = 12;
+export const POFFENBERGER_FULL_TRIALS_PER_BLOCK = 50;
 
 export interface TrialRunMisokinesiaManifest {
   misokinesia_participant_id: string;
@@ -39,6 +52,18 @@ export interface TrialRunMisokinesiaManifest {
   trial_mode?: MisokinesiaTrialMode;
   post_survey_order: string;
   clips: TrialRunMisokinesiaClip[];
+}
+
+export interface TrialRunPoffenbergerState {
+  mode: "trial";
+  flow: "ihtt-poffenberger";
+  poffenberger_trial_mode: PoffenbergerTrialMode;
+  run_id: string;
+  session_id: string;
+  participant_uuid: string;
+  start_path: string;
+  manifest: PoffenbergerManifest;
+  created_at: string;
 }
 
 interface TrialRunLocation {
@@ -138,6 +163,97 @@ export function createTrialRunMisokinesiaManifest(
     post_survey_order: postSurveyOrder.join(","),
     clips: clips.map((clip) => ({ ...clip })),
   };
+}
+
+export function createTrialRunPoffenbergerState(
+  mode: PoffenbergerTrialMode = "short"
+): TrialRunPoffenbergerState {
+  const runId = createTrialRunId("ihtt-poffenberger-run");
+  return {
+    mode: "trial",
+    flow: "ihtt-poffenberger",
+    poffenberger_trial_mode: mode,
+    run_id: runId,
+    session_id: createTrialRunSessionId(),
+    participant_uuid: createTrialRunId("ihtt-participant"),
+    start_path: `/ihtt/poffenberger/${runId}`,
+    manifest: createTrialRunPoffenbergerManifest(mode),
+    created_at: new Date().toISOString(),
+  };
+}
+
+export function createTrialRunPoffenbergerManifest(
+  mode: PoffenbergerTrialMode = "short"
+): PoffenbergerManifest {
+  return mode === "full"
+    ? createPoffenbergerManifest({
+        practiceTrials: POFFENBERGER_FULL_PRACTICE_TRIALS,
+        blocks: POFFENBERGER_FULL_BLOCKS,
+        trialsPerBlock: POFFENBERGER_FULL_TRIALS_PER_BLOCK,
+      })
+    : createPoffenbergerManifest({
+        practiceTrials: 4,
+        blocks: POFFENBERGER_SHORT_TRIAL_BLOCKS,
+        trialsPerBlock: POFFENBERGER_SHORT_TRIALS_PER_BLOCK,
+      });
+}
+
+function createPoffenbergerManifest(config: {
+  practiceTrials: number;
+  blocks: number;
+  trialsPerBlock: number;
+}): PoffenbergerManifest {
+  const practiceFields = balancedVisualFields(config.practiceTrials);
+  const practice_trials: PoffenbergerPracticeTrialManifest[] = practiceFields.map(
+    (visualField, index) => ({
+      trial_number: index + 1,
+      response_hand: "right",
+      visual_field: visualField,
+      expected_key: "j",
+      jitter_ms: trialJitterMs(index),
+    })
+  );
+
+  const handOrder = balancedResponseHands(config.blocks);
+  let globalTrialNumber = 1;
+  const blocks: PoffenbergerBlockManifest[] = handOrder.map((responseHand, blockIndex) => {
+    const visualFields = balancedVisualFields(config.trialsPerBlock);
+    const trials = visualFields.map((visualField, trialIndex) => ({
+      trial_number: trialIndex + 1,
+      global_trial_number: globalTrialNumber++,
+      visual_field: visualField,
+      jitter_ms: trialJitterMs(blockIndex * config.trialsPerBlock + trialIndex),
+    }));
+
+    return {
+      block_number: blockIndex + 1,
+      response_hand: responseHand,
+      expected_key: responseHand === "left" ? "f" : "j",
+      trials,
+    };
+  });
+
+  return { practice_trials, blocks };
+}
+
+function balancedResponseHands(blocks: number): PoffenbergerResponseHand[] {
+  const hands: PoffenbergerResponseHand[] = [];
+  for (let index = 0; index < blocks; index += 1) {
+    hands.push(index % 2 === 0 ? "left" : "right");
+  }
+  return hands;
+}
+
+function balancedVisualFields(count: number): PoffenbergerVisualField[] {
+  const fields: PoffenbergerVisualField[] = [];
+  for (let index = 0; index < count; index += 1) {
+    fields.push(index % 2 === 0 ? "lvf" : "rvf");
+  }
+  return fields;
+}
+
+function trialJitterMs(index: number): number {
+  return 1000 + ((index * 137) % 1001);
 }
 
 export function createTrialSurveyOrder(): PostSurveyKey[] {

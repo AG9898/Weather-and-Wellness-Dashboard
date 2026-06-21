@@ -84,3 +84,20 @@ Canonical specification for trial-run behavior across WW and Misokinesia partici
   (the Trial Run watermark holds the top-center), and the session shell adds
   bottom padding so the jumper stays clear of task prompts, inputs, feedback, and
   primary buttons on mobile and desktop.
+
+## IHTT Poffenberger Short And Full Trial Modes
+
+- IHTT Poffenberger trial helpers live in `frontend/src/lib/trial-mode.ts`.
+  `createTrialRunPoffenbergerState(mode)` creates local fake run, session, and
+  participant IDs plus a manifest. It does not call recorded start, submit, or
+  session-complete endpoints.
+- `createTrialRunPoffenbergerManifest("short")` returns a shortened rehearsal
+  manifest with practice trials and two experimental blocks. The experimental
+  blocks cover both response hands and each block balances LVF/RVF trials.
+- `createTrialRunPoffenbergerManifest("full")` returns a production-length
+  no-write manifest: 10 practice trials, 12 experimental blocks, 50 trials per
+  block, six left-hand blocks, six right-hand blocks, and 25 LVF plus 25 RVF
+  trials per block.
+- Poffenberger trial runs use local simulated completion. Recorded writes remain
+  limited to `startPoffenbergerSession` and `submitPoffenbergerRun` in
+  `frontend/src/lib/api/index.ts`.

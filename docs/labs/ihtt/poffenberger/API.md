@@ -33,20 +33,21 @@ The IHTT RA launch page exposes:
 
 Trial mode must not call recorded start or submit endpoints and must not write
 participants, sessions, Poffenberger runs, Poffenberger trials, or session
-completion rows. It should use fake IDs in the shared `trial-<sequence>` format.
+completion rows. The frontend owns local trial manifest generation for v1 and
+uses fake IDs in the shared trial-run format.
 
 ## Endpoint Index
 
 | Method | Path | Auth | Status | Purpose |
 |---|---|---|---|---|
 | `POST` | `/ihtt/poffenberger/start` | RA | implemented | Create anonymous participant/session/run and return production manifest |
-| `GET` | `/ihtt/poffenberger/trial-manifest` | RA | planned | Return short or full no-write manifest, if manifest generation is server-owned |
+| `GET` | `/ihtt/poffenberger/trial-manifest` | RA | not used in v1 | Return short or full no-write manifest, if manifest generation is server-owned |
 | `POST` | `/ihtt/poffenberger/runs/{run_id}/submit` | None | implemented | Submit raw production trial data and receive server-computed summaries |
 
 ## POST /ihtt/poffenberger/start
 
 - **Auth:** RA required, scoped to `ihtt`.
-- **Status:** planned.
+- **Status:** implemented.
 - **Request body:** the platform-required anonymous start-session demographics.
   The RA brief does not define additional IHTT-specific demographic fields.
 - **Response:** HTTP 201.
@@ -107,7 +108,7 @@ Notes:
 ## GET /ihtt/poffenberger/trial-manifest
 
 - **Auth:** RA required, scoped to `ihtt`.
-- **Status:** implemented.
+- **Status:** not used in v1.
 - **Query params:**
   - `mode`: `"short"` or `"full"`.
 - **Response:** HTTP 200.
@@ -125,7 +126,8 @@ Notes:
 Notes:
 
 - This endpoint is optional. If the frontend can generate trial manifests with a
-  pure helper, no backend endpoint is required.
+  pure helper, no backend endpoint is required. The v1 frontend uses the pure
+  helper path and does not call this endpoint.
 - If implemented, it is read-only and must not create or update rows.
 - `mode=full` returns a production-length manifest without participant/session
   identifiers.

@@ -478,6 +478,98 @@ export interface CognitiveBatteryResponse {
   card_sorting_rule_order: CardSortingRuleKey[];
 }
 
+export type PoffenbergerResponseHand = "left" | "right";
+export type PoffenbergerVisualField = "lvf" | "rvf";
+export type PoffenbergerConditionKey =
+  | "lh_lvf"
+  | "lh_rvf"
+  | "rh_lvf"
+  | "rh_rvf";
+
+export interface PoffenbergerPracticeTrialManifest {
+  trial_number: number;
+  response_hand: "right";
+  visual_field: PoffenbergerVisualField;
+  expected_key: "j";
+  jitter_ms: number;
+}
+
+export interface PoffenbergerExperimentalTrialManifest {
+  trial_number: number;
+  global_trial_number: number;
+  visual_field: PoffenbergerVisualField;
+  jitter_ms: number;
+}
+
+export interface PoffenbergerBlockManifest {
+  block_number: number;
+  response_hand: PoffenbergerResponseHand;
+  expected_key: "f" | "j";
+  trials: PoffenbergerExperimentalTrialManifest[];
+}
+
+export interface PoffenbergerManifest {
+  practice_trials: PoffenbergerPracticeTrialManifest[];
+  blocks: PoffenbergerBlockManifest[];
+}
+
+export type PoffenbergerStartRequest = StartSessionCreate;
+
+export interface PoffenbergerStartResponse {
+  run_id: string;
+  session_id: string;
+  participant_uuid: string;
+  start_path: string;
+  manifest: PoffenbergerManifest;
+}
+
+export interface PoffenbergerSubmittedTrial {
+  block_number: number;
+  trial_number: number;
+  global_trial_number: number;
+  response_hand: PoffenbergerResponseHand;
+  visual_field: PoffenbergerVisualField;
+  expected_key: "f" | "j";
+  pressed_key: string | null;
+  reaction_time_ms: number | null;
+  is_timeout: boolean;
+  is_practice: boolean;
+  client_trial_started_at_ms?: number | null;
+  client_stimulus_onset_ms?: number | null;
+  client_response_at_ms?: number | null;
+  client_trial_ended_at_ms?: number | null;
+}
+
+export interface PoffenbergerSubmitRequest {
+  run_id: string;
+  session_id: string;
+  trials: PoffenbergerSubmittedTrial[];
+}
+
+export interface PoffenbergerConditionSummary {
+  total_trials: number;
+  valid_rt_trials: number;
+  timeout_trials: number;
+  invalid_trials: number;
+  accurate_trials: number;
+  accuracy: number | string | null;
+  mean_rt_ms: number | string | null;
+  median_rt_ms: number | string | null;
+  sd_rt_ms: number | string | null;
+}
+
+export interface PoffenbergerSubmitResponse {
+  run_id: string;
+  session_id: string;
+  condition_summaries: Record<PoffenbergerConditionKey, PoffenbergerConditionSummary>;
+  mean_rt_crossed_ms: number | string | null;
+  mean_rt_uncrossed_ms: number | string | null;
+  ihtt_difference_ms: number | string | null;
+  accuracy_crossed: number | string | null;
+  accuracy_uncrossed: number | string | null;
+  is_complete: boolean;
+}
+
 /**
  * Bundle returned by GET /api/ra/dashboard (Vercel Route Handler).
  * Contains only the current-day weather payload rendered by the default dashboard.
@@ -543,6 +635,26 @@ export async function getCognitiveBattery(
 ): Promise<CognitiveBatteryResponse> {
   return apiGet<CognitiveBatteryResponse>(
     `/sessions/${encodeURIComponent(sessionId)}/cognitive-battery`
+  );
+}
+
+/** RA-triggered: creates anonymous IHTT participant + active session + Poffenberger run. */
+export async function startPoffenbergerSession(
+  payload: PoffenbergerStartRequest
+): Promise<PoffenbergerStartResponse> {
+  return apiPost<PoffenbergerStartResponse>("/ihtt/poffenberger/start", payload, {
+    auth: true,
+  });
+}
+
+/** Submit raw Poffenberger timing rows. Backend validates manifest and computes scores. */
+export async function submitPoffenbergerRun(
+  runId: string,
+  payload: PoffenbergerSubmitRequest
+): Promise<PoffenbergerSubmitResponse> {
+  return apiPost<PoffenbergerSubmitResponse>(
+    `/ihtt/poffenberger/runs/${encodeURIComponent(runId)}/submit`,
+    payload
   );
 }
 

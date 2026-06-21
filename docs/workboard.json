@@ -4536,7 +4536,7 @@
       "id": "T1836",
       "title": "IHTT Poffenberger - Frontend API wrappers and trial helpers",
       "description": "Add typed frontend API wrappers and pure trial/manifest helpers for the IHTT Poffenberger component. All network calls must go through src/lib/api, with no bare fetch in components. Include types for start responses, manifests, raw trial submit payloads, and server summaries. Add no-write short/full trial state helpers that generate fake trial IDs and balanced manifests without calling recorded write endpoints.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "IHTT_POFFENBERGER",
       "depends_on": [

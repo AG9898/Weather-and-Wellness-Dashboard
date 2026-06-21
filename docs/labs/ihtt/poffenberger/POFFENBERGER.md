@@ -152,9 +152,12 @@ Full Trial:
 - Uses local fake IDs and local simulated submit success.
 - Performs no backend writes.
 
-Trial mode may generate manifests locally if no read-only backend manifest
-endpoint is needed. If the backend owns manifest generation for consistency, the
-trial manifest endpoint must be read-only and RA-protected.
+Trial mode generates manifests locally in the frontend v1 helper layer. The
+short helper creates practice trials plus two balanced experimental blocks, one
+per hand. The full helper mirrors the production 10-practice-trial,
+12-block, 600-experimental-trial structure. Both modes use fake local run,
+session, and participant IDs and do not call recorded start, submit, or
+session-complete endpoints.
 
 ## Data Collection Requirements
 
@@ -209,9 +212,11 @@ practice/scored flags, block/trial/global order, response hand, visual field,
 condition key, expected/pressed keys, reaction time, timeout/validity/accuracy
 flags, jitter, and raw client timing timestamps for audit/debugging.
 
-The recorded start route and production manifest generation are implemented.
-Scoring services, submit routes, and participant/RA UI are implemented by
-follow-on tasks. See `docs/SCHEMA.md` for the full column list.
+The recorded start route, production manifest generation, scoring service, and
+submit route are implemented. Frontend API wrappers exist for recorded start and
+submit, and frontend trial helpers create no-write short/full manifests. The
+participant/RA UI is implemented by follow-on tasks. See `docs/SCHEMA.md` for
+the full column list.
 
 ## Open Items
 
