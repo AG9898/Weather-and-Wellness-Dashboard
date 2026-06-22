@@ -111,3 +111,85 @@ describe("IHTT Poffenberger no-write trial helpers", () => {
     expect(source).not.toContain("patchSessionStatus(");
   });
 });
+
+describe("IHTT Poffenberger full trial vs production comparison", () => {
+  // Canonical production counts, mirrored from the backend RA protocol in
+  // backend/app/routers/ihtt_poffenberger.py (_PRACTICE_TRIALS=10, _BLOCKS=12,
+  // _TRIALS_PER_VISUAL_FIELD_PER_BLOCK=25 → 50 trials/block).
+  const PRODUCTION_PRACTICE_TRIALS = 10;
+  const PRODUCTION_BLOCKS = 12;
+  const PRODUCTION_TRIALS_PER_BLOCK = 50;
+  const PRODUCTION_TRIALS_PER_VISUAL_FIELD = 25;
+
+  it("full trial mirrors backend production trial counts", () => {
+    expect(POFFENBERGER_FULL_PRACTICE_TRIALS).toBe(PRODUCTION_PRACTICE_TRIALS);
+    expect(POFFENBERGER_FULL_BLOCKS).toBe(PRODUCTION_BLOCKS);
+    expect(POFFENBERGER_FULL_TRIALS_PER_BLOCK).toBe(PRODUCTION_TRIALS_PER_BLOCK);
+
+    const manifest = createTrialRunPoffenbergerManifest("full");
+    expect(manifest.practice_trials).toHaveLength(PRODUCTION_PRACTICE_TRIALS);
+    expect(manifest.blocks).toHaveLength(PRODUCTION_BLOCKS);
+
+    const handCounts = countValues(allBlockHands(manifest));
+    expect(handCounts.left).toBe(PRODUCTION_BLOCKS / 2);
+    expect(handCounts.right).toBe(PRODUCTION_BLOCKS / 2);
+
+    manifest.blocks.forEach((block) => {
+      const fieldCounts = countValues(block.trials.map((trial) => trial.visual_field));
+      expect(fieldCounts.lvf).toBe(PRODUCTION_TRIALS_PER_VISUAL_FIELD);
+      expect(fieldCounts.rvf).toBe(PRODUCTION_TRIALS_PER_VISUAL_FIELD);
+    });
+  });
+
+  it("short trial is a shortened rehearsal, strictly smaller than production length", () => {
+    const short = createTrialRunPoffenbergerManifest("short");
+    const full = createTrialRunPoffenbergerManifest("full");
+
+    expect(short.practice_trials.length).toBeLessThan(full.practice_trials.length);
+    expect(short.blocks.length).toBeLessThan(full.blocks.length);
+
+    const shortExperimental = short.blocks.flatMap((block) => block.trials).length;
+    const fullExperimental = full.blocks.flatMap((block) => block.trials).length;
+    expect(shortExperimental).toBeLessThan(fullExperimental);
+
+    // Short still covers both hands and both visual fields for QA coverage.
+    expect(new Set(allBlockHands(short))).toEqual(new Set(["left", "right"]));
+    short.blocks.forEach((block) => {
+      expectBalancedFields(block.trials.map((trial) => trial.visual_field));
+    });
+  });
+});
+
+describe("IHTT Poffenberger trial runs never call recorded write endpoints", () => {
+  it("RA launch page routes trial actions through no-write local state only", () => {
+    const source = readFrontendFile("src/app/(ra)/ihtt/poffenberger/page.tsx");
+
+    // Trial handler exists and persists local state + navigates only.
+    expect(source).toContain("createTrialRunPoffenbergerState(mode)");
+    expect(source).toContain("persistTrialRunState(trialState)");
+    expect(source).toContain("buildTrialRunPath(trialState.start_path)");
+
+    // The only recorded write (startPoffenbergerSession) lives in the recorded
+    // handleStart path, never in the trial handler.
+    const trialHandler = source.slice(source.indexOf("function startTrial"));
+    expect(trialHandler).not.toContain("startPoffenbergerSession");
+    expect(trialHandler).not.toContain("submitPoffenbergerRun");
+  });
+
+  it("participant task page simulates completion locally in trial mode", () => {
+    const source = readFrontendFile("src/app/ihtt/poffenberger/[run_id]/page.tsx");
+
+    // Trial submit returns to complete without any recorded write call.
+    expect(source).toContain("if (isTrialMode) {");
+    const submitBody = source.slice(
+      source.indexOf("async function submitRows"),
+      source.indexOf("function startTrial(trial")
+    );
+    const trialBranchIndex = submitBody.indexOf("if (isTrialMode) {");
+    const beforeProductionSubmit = submitBody.slice(0, submitBody.indexOf("submitPoffenbergerRun"));
+    // The trial-mode early return precedes the recorded submit call.
+    expect(trialBranchIndex).toBeGreaterThanOrEqual(0);
+    expect(beforeProductionSubmit).toContain("if (isTrialMode) {");
+    expect(beforeProductionSubmit).toContain('setPhase("complete")');
+  });
+});

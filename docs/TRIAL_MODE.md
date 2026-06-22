@@ -101,3 +101,11 @@ Canonical specification for trial-run behavior across WW and Misokinesia partici
 - Poffenberger trial runs use local simulated completion. Recorded writes remain
   limited to `startPoffenbergerSession` and `submitPoffenbergerRun` in
   `frontend/src/lib/api/index.ts`.
+- The full-trial manifest mirrors the backend production protocol
+  (`backend/app/routers/ihtt_poffenberger.py`: 10 practice trials, 12 blocks, 50
+  trials per block); the short-trial manifest is strictly smaller while still
+  covering both response hands and balanced LVF/RVF fields. This trial-vs-production
+  equivalence, the short-trial reduction, and the no-write guarantees on the RA
+  launch page and participant task page are covered by
+  `frontend/src/lib/ihtt-poffenberger-trial-mode.test.ts` and
+  `frontend/src/lib/ihtt-poffenberger-task.test.ts`.

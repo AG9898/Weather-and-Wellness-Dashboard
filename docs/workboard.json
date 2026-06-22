@@ -4641,7 +4641,7 @@
       "id": "T1839",
       "title": "IHTT Poffenberger - Short and full trial flows",
       "description": "Complete the IHTT no-write rehearsal experience by wiring the RA launch actions into short and full Poffenberger trial runs. Short Trial should be quick but cover both hands and both visual fields; Full Trial should mirror production trial counts and timing as closely as practical. Both modes must use fake IDs, local manifests, local simulated submit success, and no recorded write endpoints. Add Storybook or focused UI test coverage for launch, active task, timeout, completion, and trial-vs-production differences.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "IHTT_POFFENBERGER",
       "depends_on": [
