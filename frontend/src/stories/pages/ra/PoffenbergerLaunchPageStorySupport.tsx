@@ -4,6 +4,7 @@ import PoffenbergerLaunchPage, {
   EMPTY_POFFENBERGER_FORM,
   type PoffenbergerDemoForm,
 } from "@/lib/components/PoffenbergerLaunchPage";
+import type { PoffenbergerDashboardResponse } from "@/lib/api/ihtt-poffenberger";
 import RAFloatingChrome from "@/lib/components/RAFloatingChrome";
 import { RAUserContext } from "@/lib/contexts/RAUserContext";
 
@@ -33,6 +34,44 @@ function initialFormFor(state: PoffenbergerLaunchStoryState): PoffenbergerDemoFo
   return state === "empty" ? EMPTY_POFFENBERGER_FORM : COMPLETE_FORM;
 }
 
+const DEMO_DASHBOARD: PoffenbergerDashboardResponse = {
+  total_runs: 18,
+  completed_runs: 15,
+  avg_ihtt_difference_ms: "3.4",
+  recent_runs: [
+    {
+      participant_number: 42,
+      started_at: new Date(Date.now() - 8 * 60_000).toISOString(),
+      completed_at: null,
+      is_complete: false,
+      age_band: "18-24",
+      gender: "Woman",
+      origin: "Class",
+      ihtt_difference_ms: null,
+    },
+    {
+      participant_number: 41,
+      started_at: new Date(Date.now() - 95 * 60_000).toISOString(),
+      completed_at: new Date(Date.now() - 70 * 60_000).toISOString(),
+      is_complete: true,
+      age_band: "25-31",
+      gender: "Man",
+      origin: "Library",
+      ihtt_difference_ms: "2.8",
+    },
+    {
+      participant_number: 40,
+      started_at: new Date(Date.now() - 26 * 60 * 60_000).toISOString(),
+      completed_at: new Date(Date.now() - 25.5 * 60 * 60_000).toISOString(),
+      is_complete: true,
+      age_band: "32-38",
+      gender: "Non-binary",
+      origin: "Home",
+      ihtt_difference_ms: "4.1",
+    },
+  ],
+};
+
 export function PoffenbergerLaunchStoryShell({
   state = "ready",
 }: PoffenbergerLaunchStoryShellProps) {
@@ -55,6 +94,7 @@ export function PoffenbergerLaunchStoryShell({
                 ? "Server error (500): Could not start a session. Please try again."
                 : null
             }
+            dashboard={DEMO_DASHBOARD}
           />
         </main>
         <RAFloatingChrome />

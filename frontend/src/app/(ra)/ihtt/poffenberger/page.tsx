@@ -7,6 +7,10 @@ import {
   ApiError,
   type PoffenbergerStartRequest,
 } from "@/lib/api";
+import {
+  getPoffenbergerDashboard,
+  type PoffenbergerDashboardResponse,
+} from "@/lib/api/ihtt-poffenberger";
 import { useRAUser } from "@/lib/contexts/RAUserContext";
 import { canAccessLab } from "@/lib/labs";
 import PoffenbergerLaunchPage, {
@@ -33,6 +37,9 @@ export default function PoffenbergerLaunchRoute() {
   const [shortTrialStarting, setShortTrialStarting] = useState(false);
   const [fullTrialStarting, setFullTrialStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<PoffenbergerDashboardResponse | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   const authorized = canAccessLab(role, lab_name, "ihtt");
 
@@ -41,6 +48,34 @@ export default function PoffenbergerLaunchRoute() {
       router.replace("/unauthorized");
     }
   }, [authorized, router]);
+
+  useEffect(() => {
+    if (!authorized) return;
+    let cancelled = false;
+
+    async function loadDashboard() {
+      setDashboardLoading(true);
+      setDashboardError(null);
+      try {
+        const result = await getPoffenbergerDashboard();
+        if (!cancelled) setDashboard(result);
+      } catch (err) {
+        if (cancelled) return;
+        setDashboardError(
+          err instanceof ApiError
+            ? `Dashboard failed to load (${err.status}): ${err.message}`
+            : "Dashboard failed to load. Please refresh and try again."
+        );
+      } finally {
+        if (!cancelled) setDashboardLoading(false);
+      }
+    }
+
+    void loadDashboard();
+    return () => {
+      cancelled = true;
+    };
+  }, [authorized]);
 
   if (!authorized) {
     return (
@@ -97,7 +132,8 @@ export default function PoffenbergerLaunchRoute() {
   }
 
   function startTrial(mode: PoffenbergerTrialMode) {
-    if (!isPoffenbergerFormComplete(form)) return;
+    // No-write trials create no records, so they do not require demographics.
+    if (starting || shortTrialStarting || fullTrialStarting) return;
     if (mode === "full") {
       setFullTrialStarting(true);
     } else {
@@ -130,6 +166,9 @@ export default function PoffenbergerLaunchRoute() {
       onStart={handleStart}
       onStartShortTrial={() => startTrial("short")}
       onStartFullTrial={() => startTrial("full")}
+      dashboard={dashboard}
+      dashboardLoading={dashboardLoading}
+      dashboardError={dashboardError}
     />
   );
 }

@@ -78,6 +78,30 @@ class PoffenbergerStartResponse(BaseModel):
     manifest: PoffenbergerManifest
 
 
+class PoffenbergerDashboardRunItem(BaseModel):
+    """One recorded Poffenberger run for the RA operations ledger."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    participant_number: int
+    started_at: datetime
+    completed_at: datetime | None = None
+    is_complete: bool
+    age_band: str | None = None
+    gender: str | None = None
+    origin: str | None = None
+    ihtt_difference_ms: Decimal | None = None
+
+
+class PoffenbergerDashboardResponse(BaseModel):
+    """RA-only dashboard summary for the IHTT Poffenberger operations page."""
+
+    total_runs: int = Field(default=0, ge=0)
+    completed_runs: int = Field(default=0, ge=0)
+    avg_ihtt_difference_ms: Decimal | None = None
+    recent_runs: list[PoffenbergerDashboardRunItem]
+
+
 class PoffenbergerSubmittedTrial(BaseModel):
     block_number: int = Field(..., ge=0)
     trial_number: int = Field(..., ge=1)
@@ -223,6 +247,8 @@ class PoffenbergerTrialResponse(PoffenbergerTrialCreate):
 __all__ = [
     "PoffenbergerConditionKey",
     "PoffenbergerConditionSummary",
+    "PoffenbergerDashboardResponse",
+    "PoffenbergerDashboardRunItem",
     "PoffenbergerBlockManifest",
     "PoffenbergerExperimentalTrialManifest",
     "PoffenbergerManifest",

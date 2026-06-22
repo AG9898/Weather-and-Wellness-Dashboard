@@ -16,6 +16,8 @@ from app.models.poffenberger import PoffenbergerRun, PoffenbergerTrial
 from app.models.sessions import Session as SessionModel
 from app.schemas.poffenberger import (
     PoffenbergerBlockManifest,
+    PoffenbergerDashboardResponse,
+    PoffenbergerDashboardRunItem,
     PoffenbergerExperimentalTrialManifest,
     PoffenbergerManifest,
     PoffenbergerPracticeTrialManifest,
@@ -171,6 +173,72 @@ async def start_poffenberger_session(
         participant_uuid=participant.participant_uuid,
         start_path=f"/ihtt/poffenberger/{run.run_id}",
         manifest=manifest,
+    )
+
+
+@router.get(
+    "/dashboard",
+    response_model=PoffenbergerDashboardResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_ra_for_lab("ihtt"))],
+)
+async def get_poffenberger_dashboard(
+    db: AsyncSession = Depends(get_session),
+) -> PoffenbergerDashboardResponse:
+    """RA-only dashboard summary for the IHTT Poffenberger operations page.
+
+    Only IHTT creates Poffenberger runs, so the recorded-run set is already
+    study-scoped without a separate lab filter (mirrors the misokinesia board).
+    """
+    agg_stmt = select(
+        func.count(PoffenbergerRun.run_id).label("total_runs"),
+        func.count(PoffenbergerRun.run_id)
+        .filter(PoffenbergerRun.is_complete.is_(True))
+        .label("completed_runs"),
+        func.avg(PoffenbergerRun.ihtt_difference_ms)
+        .filter(PoffenbergerRun.is_complete.is_(True))
+        .label("avg_ihtt_difference_ms"),
+    )
+    agg = (await db.execute(agg_stmt)).mappings().all()
+    agg_row = agg[0] if agg else {}
+
+    recent_stmt = (
+        select(
+            Participant.participant_number,
+            PoffenbergerRun.started_at,
+            PoffenbergerRun.completed_at,
+            PoffenbergerRun.is_complete,
+            Participant.age_band,
+            Participant.gender,
+            Participant.origin,
+            PoffenbergerRun.ihtt_difference_ms,
+        )
+        .join(
+            Participant,
+            Participant.participant_uuid == PoffenbergerRun.participant_uuid,
+        )
+        .order_by(PoffenbergerRun.started_at.desc())
+        .limit(10)
+    )
+    recent_rows = (await db.execute(recent_stmt)).mappings().all()
+
+    return PoffenbergerDashboardResponse(
+        total_runs=int(agg_row.get("total_runs") or 0),
+        completed_runs=int(agg_row.get("completed_runs") or 0),
+        avg_ihtt_difference_ms=agg_row.get("avg_ihtt_difference_ms"),
+        recent_runs=[
+            PoffenbergerDashboardRunItem(
+                participant_number=row["participant_number"],
+                started_at=row["started_at"],
+                completed_at=row["completed_at"],
+                is_complete=row["is_complete"],
+                age_band=row["age_band"],
+                gender=row["gender"],
+                origin=row["origin"],
+                ihtt_difference_ms=row["ihtt_difference_ms"],
+            )
+            for row in recent_rows
+        ],
     )
 
 

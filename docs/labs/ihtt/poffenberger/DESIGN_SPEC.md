@@ -16,36 +16,48 @@ v1 is intentionally narrow:
 - participant task screens
 - completion screen
 
-No IHTT dashboard, recent-session ledger, metrics cards, leaderboard, export UI,
-or analytics view is included in v1.
+No leaderboard, export UI, or weather-style analytics view is included in v1.
 
-## RA Launch Page
+## RA Launch Page (operations dashboard)
 
 Route recommendation: `/ihtt/poffenberger`.
 
+The front surface is an operations dashboard that mirrors the misokinesia launch
+board, rather than opening directly into the demographics form. It shows:
+
+- A header with the launch actions (below).
+- A **Completed runs** headline metric (`completed_runs` of `total_runs`).
+- A **Recent runs** ledger (up to 10 runs: participant number, relative start
+  time, demographics, and the IHTT difference for completed runs / "In progress"
+  otherwise).
+- A **Run summary** panel (completed, in progress, average IHTT difference).
+
+These are backed by `GET /ihtt/poffenberger/dashboard` (see `API.md`).
+
 Required actions:
 
-- **Start Poffenberger Session** - creates a recorded participant/session/run and
-  navigates to the participant task route.
-- **Run Short Trial** - creates local fake trial state and opens a shortened
+- **Start Poffenberger Session** - opens a dialog that collects the platform-
+  required anonymous start-session demographics, then creates a recorded
+  participant/session/run and navigates to the participant task route.
+- **Short Trial** - creates local fake trial state and opens a shortened no-write
+  rehearsal.
+- **Full Trial** - creates local fake trial state and opens a production-length
   no-write rehearsal.
-- **Run Full Trial** - creates local fake trial state and opens a production-
-  length no-write rehearsal.
 
-The page should be quiet and operational. It should not show placeholder
-dashboard cards. If no recorded-session summary endpoint exists, do not mock one.
+Because the no-write trials create no records, they launch directly and do **not**
+require demographics; only the recorded Start collects them (in the dialog).
 
 The launch page is RA-only and available to authenticated users scoped to
 `app_metadata.lab_name == "ihtt"` plus admins.
 
 Implementation note: the launch surface is `frontend/src/app/(ra)/ihtt/poffenberger/page.tsx`,
 served at `/ihtt/poffenberger` inside the `(ra)` auth-guarded route group (RA
-navigation chrome wraps it). It renders the presentational
-`PoffenbergerLaunchPage` component and gates access client-side to ihtt lab
-members and admins (non-matching RAs are redirected to `/unauthorized`); the
-backend `start` endpoint remains the authoritative lab-scope check. It is a quiet
-operational page with no recent-session ledger, metric cards, or analytics. The
-recorded Start action stores the backend start response via
+navigation chrome wraps it). It fetches the dashboard via
+`getPoffenbergerDashboard` (`frontend/src/lib/api/ihtt-poffenberger.ts`) and
+renders the presentational `PoffenbergerLaunchPage` component, gating access
+client-side to ihtt lab members and admins (non-matching RAs are redirected to
+`/unauthorized`); the backend endpoints remain the authoritative lab-scope check.
+The recorded Start action stores the backend start response via
 `persistPoffenbergerRunState` before navigating to the participant task route,
 and the trial actions persist a local no-write `TrialRunPoffenbergerState`.
 

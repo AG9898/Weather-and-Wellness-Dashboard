@@ -40,9 +40,49 @@ uses fake IDs in the shared trial-run format.
 
 | Method | Path | Auth | Status | Purpose |
 |---|---|---|---|---|
+| `GET` | `/ihtt/poffenberger/dashboard` | RA | implemented | RA operations summary: run counts, average IHTT difference, recent recorded runs |
 | `POST` | `/ihtt/poffenberger/start` | RA | implemented | Create anonymous participant/session/run and return production manifest |
 | `GET` | `/ihtt/poffenberger/trial-manifest` | RA | not used in v1 | Return short or full no-write manifest, if manifest generation is server-owned |
 | `POST` | `/ihtt/poffenberger/runs/{run_id}/submit` | None | implemented | Submit raw production trial data and receive server-computed summaries |
+
+## GET /ihtt/poffenberger/dashboard
+
+- **Auth:** RA required, scoped to `ihtt`.
+- **Status:** implemented.
+- **Response:** HTTP 200.
+
+```json
+{
+  "total_runs": 18,
+  "completed_runs": 15,
+  "avg_ihtt_difference_ms": "3.40",
+  "recent_runs": [
+    {
+      "participant_number": 42,
+      "started_at": "2026-06-21T12:00:00Z",
+      "completed_at": null,
+      "is_complete": false,
+      "age_band": "18-24",
+      "gender": "Woman",
+      "origin": "Class",
+      "ihtt_difference_ms": null
+    }
+  ]
+}
+```
+
+Notes:
+
+- Backs the RA-facing Poffenberger operations dashboard (the front surface of the
+  `/ihtt/poffenberger` page), mirroring the misokinesia launch board.
+- `total_runs` / `completed_runs` count all recorded `ihtt_poffenberger_runs`; only
+  IHTT creates Poffenberger runs, so the set is already study-scoped without a
+  separate lab filter.
+- `avg_ihtt_difference_ms` averages `ihtt_difference_ms` (crossed minus uncrossed
+  mean reaction time) over completed runs only; `null` when none are complete.
+- `recent_runs` returns up to 10 runs ordered by `started_at` descending, joining
+  the start-session demographics stored on `participants`.
+- Read-only: no new tables or columns; no Alembic migration required.
 
 ## POST /ihtt/poffenberger/start
 
