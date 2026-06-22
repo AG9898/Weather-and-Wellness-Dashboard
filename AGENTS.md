@@ -37,6 +37,7 @@ Participant.
 - **Auth adapter.** `Depends(get_current_lab_member)` on all RA endpoints. Isolate Supabase JWT/SDK logic in `backend/app/auth.py`.
 - **No bare fetch.** All frontend API calls go through typed wrappers in `src/lib/api/`. Never call `fetch` directly from a component.
 - **Alembic only.** Never alter schema by editing DDL directly. All migrations via `alembic upgrade head`.
+- **Pinned backend deps.** `backend/requirements.txt` (runtime) and `backend/requirements-dev.txt` (test toolchain) are exact-pinned and are the single source of truth CI and Railway install from. When adding/bumping a backend dependency, edit these files (never install ad-hoc), and run `scripts/check-deps.sh --fix` to sync `backend/.venv`. Run `scripts/check-deps.sh` before backend tests so local matches CI; do not "fix" a CI-only test failure without first ruling out venv drift via that script.
 - **Active task board.** Use `docs/workboard.json` as the canonical active task queue. `docs/progress/PROGRESS_LOG.md` is archive history only.
 - **Repo-local task skills.** Use the repo-local workflow skills under `.codex/skills/` (`project-plan`, `query-workboard`, `start-task`, `ralphloop`) for planning, board execution, or delegated loops. These are symlinked from `.agents/skills/`, where the canonical implementations live. `ralph_loop.sh` is CLI fallback only.
   - To inspect the active queue without executing: use `query-workboard`.
@@ -114,9 +115,12 @@ These rules are not optional and apply to every task, not just doc-specific task
 set -a && source .env && set +a && cd backend && PYTHONPATH=. uvicorn app.main:app --reload   # start backend
 cd frontend && npm run dev                    # start frontend
 scripts/alembic-upgrade-head.sh                    # apply migrations
+scripts/check-deps.sh                         # verify backend/.venv matches the pins
+scripts/check-deps.sh --fix                   # reinstall venv to match the pins
 ```
 
 All backend commands must be run from the repo root using the `cd backend && PYTHONPATH=.` prefix pattern shown above after loading repo-root `.env`, except migrations, which should use `scripts/alembic-upgrade-head.sh`.
+Before running backend tests, run `scripts/check-deps.sh` (or `--fix`) so the local `backend/.venv` matches the pins CI installs — a stale venv makes tests pass locally but fail in CI (and vice versa).
 Copy `.env.example` → `.env` at the repo root.
 See `docs/ENV_VARS.md` for the full variable reference (including conditional requirements).
 If `.env.example` is missing, derive required variables from the Railway/Vercel/current backend sections in `docs/ARCHITECTURE.md` and `docs/ENV_VARS.md`.

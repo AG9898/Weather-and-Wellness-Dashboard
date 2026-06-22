@@ -1,0 +1,4 @@
+# Pinned backend dev/test-only dependencies.
+# Single source of truth for the test toolchain, installed alongside
+# requirements.txt in CI and locally. Keep exact pins so local == CI.
+pytest==9.1.1

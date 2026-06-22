@@ -12,9 +12,13 @@ HOST="${HOST:-127.0.0.1}"
 
 if [[ ! -d "$BACKEND_DIR/.venv" ]]; then
   echo "Missing backend virtualenv at backend/.venv"
-  echo "Run: cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
+  echo "Run: cd backend && python3 -m venv .venv && scripts/check-deps.sh --fix"
   exit 1
 fi
+
+# Self-heal: keep the local venv in lockstep with the pinned requirements so
+# local runs match what CI/Railway install. Auto-syncs if the pins were bumped.
+"$ROOT_DIR/scripts/check-deps.sh" --fix
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing root .env file at $ENV_FILE"

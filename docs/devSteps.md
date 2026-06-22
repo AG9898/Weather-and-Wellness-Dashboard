@@ -118,8 +118,23 @@ Install/update backend deps as usual (deployed service or local):
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements.txt              # pinned runtime deps
+pip install -r requirements-dev.txt          # pinned test toolchain (pytest)
 ```
+
+`backend/requirements.txt` (runtime) and `backend/requirements-dev.txt` (test) are
+exact-pinned and are the single source of truth that CI and Railway install from.
+A long-lived local `.venv` can drift when these pins are bumped but the venv is not
+reinstalled — which makes local tests pass while CI fails (or vice versa). Guard
+against that:
+
+```bash
+scripts/check-deps.sh          # fail if backend/.venv differs from the pins
+scripts/check-deps.sh --fix    # reinstall the venv to match the pins
+```
+
+`scripts/dev.sh` runs `check-deps.sh --fix` on startup, so the dev server always
+runs against the pinned set.
 
 ### 1b) Backend environment variables (Phase 3)
 
