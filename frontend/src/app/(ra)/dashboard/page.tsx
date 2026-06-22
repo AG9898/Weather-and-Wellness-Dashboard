@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import DashboardAnalyticsSection from "@/lib/components/DashboardAnalyticsSection";
 import AnalyticsTemperatureSummaryCard from "@/lib/components/AnalyticsTemperatureSummaryCard";
+import LabGuard from "@/lib/components/LabGuard";
 import PageContainer from "@/lib/components/PageContainer";
 import UndoLastSessionControl from "@/lib/components/UndoLastSessionControl";
 import WeatherUnifiedCard from "@/lib/components/WeatherUnifiedCard";
@@ -24,7 +25,17 @@ function getStudyToday(): string {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// The Weather-Wellness dashboard is this lab's landing page; guard it so only
+// ww RAs (and admins) can reach it by direct URL.
 export default function DashboardPage() {
+  return (
+    <LabGuard lab="ww">
+      <DashboardPageContent />
+    </LabGuard>
+  );
+}
+
+function DashboardPageContent() {
   const router = useRouter();
 
   const [weatherData, setWeatherData] = useState<WeatherDailyResponse | null>(null);

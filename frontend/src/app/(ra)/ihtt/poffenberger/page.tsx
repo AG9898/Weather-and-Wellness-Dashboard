@@ -8,6 +8,7 @@ import {
   type PoffenbergerStartRequest,
 } from "@/lib/api";
 import { useRAUser } from "@/lib/contexts/RAUserContext";
+import { canAccessLab } from "@/lib/labs";
 import PoffenbergerLaunchPage, {
   EMPTY_POFFENBERGER_FORM,
   isPoffenbergerFormComplete,
@@ -24,13 +25,6 @@ import {
   type PoffenbergerTrialMode,
 } from "@/lib/trial-mode";
 
-const IHTT_LAB_NAME = "ihtt";
-
-/** True when the RA may operate the IHTT launch page: ihtt lab members and admins. */
-function canAccessIhtt(role: string, labName: string): boolean {
-  return role === "admin" || labName.toLowerCase() === IHTT_LAB_NAME;
-}
-
 export default function PoffenbergerLaunchRoute() {
   const router = useRouter();
   const { role, lab_name } = useRAUser();
@@ -40,7 +34,7 @@ export default function PoffenbergerLaunchRoute() {
   const [fullTrialStarting, setFullTrialStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const authorized = canAccessIhtt(role, lab_name);
+  const authorized = canAccessLab(role, lab_name, "ihtt");
 
   useEffect(() => {
     if (!authorized) {

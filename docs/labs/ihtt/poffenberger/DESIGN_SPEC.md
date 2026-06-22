@@ -49,6 +49,14 @@ recorded Start action stores the backend start response via
 `persistPoffenbergerRunState` before navigating to the participant task route,
 and the trial actions persist a local no-write `TrialRunPoffenbergerState`.
 
+Navigation: the RA floating dock (`RAFloatingChrome`) is lab-scoped. Dock items
+come from the per-lab registry in `frontend/src/lib/labs.ts`; for the `ihtt` lab
+this page is surfaced as the lab's **Dashboard** entry (IHTT has no separate
+weather dashboard in v1). IHTT RAs land here by default; admins reach it by
+selecting IHTT in the admin-only lab switcher in the dock's utility menu, which
+swaps the dock to that lab's items. Weather-Wellness items (weather dashboard,
+Chat, Misokinesia) are not shown while IHTT is the active lab.
+
 Recorded session launch must collect the platform-required anonymous
 start-session demographics before calling the recorded start endpoint. The
 RA-provided IHTT brief does not define additional IHTT-specific demographic

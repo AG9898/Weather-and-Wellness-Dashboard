@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import LabGuard from "@/lib/components/LabGuard";
 import MisokinesiaLaunchPage from "@/lib/components/MisokinesiaLaunchPage";
 import {
   startMisokinesiaSession,
@@ -26,7 +27,16 @@ import {
 const MISOKINESIA_MANIFEST_KEY = "misokinesia_manifest";
 const SHORT_TRIAL_CLIP_COUNT = 5;
 
+// Misokinesia is a Weather-Wellness instrument; guard against out-of-lab access.
 export default function MisokinesiaPage() {
+  return (
+    <LabGuard lab="ww">
+      <MisokinesiaPageContent />
+    </LabGuard>
+  );
+}
+
+function MisokinesiaPageContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [shortTrialLoading, setShortTrialLoading] = useState(false);

@@ -1,20 +1,16 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { animate, spring, utils } from "animejs";
 import {
-  ArrowUpDown,
-  Home,
+  Building2,
   KeyRound,
   LogOut,
-  MessageSquare,
   PanelTopClose,
   PanelTopOpen,
-  Users,
-  Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,25 +18,23 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ThemeToggle from "@/lib/components/ThemeToggle";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useRAUser } from "@/lib/contexts/RAUserContext";
-
-interface DockItem {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  adminOnly: boolean;
-}
-
-const ALL_DOCK_ITEMS: DockItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Home, adminOnly: false },
-  { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false },
-  { href: "/misokinesia", label: "Misokinesia", icon: Video, adminOnly: false },
-  { href: "/import-export", label: "Export", icon: ArrowUpDown, adminOnly: true },
-  { href: "/users", label: "Users", icon: Users, adminOnly: true },
-];
+import {
+  LAB_REGISTRY,
+  buildDockItems,
+  useActiveLab,
+  type LabSlug,
+} from "@/lib/labs";
 
 const DOCK_DISTANCE_LIMIT = 180;
 const DOCK_BASE_ACTIVE_SCALE = 1;
@@ -110,6 +104,7 @@ export default function RAFloatingChrome() {
   const pathname = usePathname();
   const router = useRouter();
   const { role, lab_name, email } = useRAUser();
+  const { activeLab, setActiveLab, canSwitch, availableLabs } = useActiveLab();
   const prefersReducedMotion = usePrefersReducedMotion();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeHint, setActiveHint] = useState<string | null>(null);
@@ -129,11 +124,11 @@ export default function RAFloatingChrome() {
 
   const resolvedItems = useMemo(
     () =>
-      ALL_DOCK_ITEMS.filter((item) => !item.adminOnly || role === "admin").map((item) => ({
+      buildDockItems(activeLab, role).map((item) => ({
         ...item,
         active: isActivePath(pathname, item.href),
       })),
-    [pathname, role]
+    [pathname, role, activeLab]
   );
 
   useEffect(() => {
@@ -433,6 +428,39 @@ export default function RAFloatingChrome() {
                   </p>
                 </div>
                 <div className="my-1 h-px bg-border/50" />
+                {canSwitch && availableLabs.length > 1 && (
+                  <>
+                    <div className="mb-1 px-3 pt-1.5">
+                      <label
+                        htmlFor="ra-active-lab"
+                        className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground"
+                      >
+                        <Building2 className="size-3.5" />
+                        Active lab
+                      </label>
+                      <Select
+                        value={activeLab}
+                        onValueChange={(value) => setActiveLab(value as LabSlug)}
+                      >
+                        <SelectTrigger
+                          id="ra-active-lab"
+                          className="h-10 w-full rounded-2xl text-sm"
+                          aria-label="Active lab"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableLabs.map((slug) => (
+                            <SelectItem key={slug} value={slug}>
+                              {LAB_REGISTRY[slug].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="my-1 h-px bg-border/50" />
+                  </>
+                )}
                 <ThemeToggle variant="menu" className="mb-1" />
                 <Button
                   asChild

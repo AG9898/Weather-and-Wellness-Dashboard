@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { shouldShowRAFloatingChrome } from "@/lib/components/RAFloatingChrome";
+import { LAB_REGISTRY, buildDockItems } from "@/lib/labs";
 
 function readFrontendFile(path: string): string {
   return readFileSync(join(process.cwd(), path), "utf8");
@@ -27,15 +28,12 @@ describe("shouldShowRAFloatingChrome", () => {
 });
 
 describe("RA dock Chat entry", () => {
-  const source = readFrontendFile("src/lib/components/RAFloatingChrome.tsx");
-
-  it("includes a non-admin Chat dock item pointing at /chat", () => {
-    expect(source).toContain('href: "/chat"');
-    expect(source).toContain('label: "Chat"');
-    // The Chat entry must be reachable by all RA/admin users (not adminOnly).
-    const chatEntry = source.match(/\{[^}]*href:\s*"\/chat"[^}]*\}/);
-    expect(chatEntry).not.toBeNull();
-    expect(chatEntry?.[0]).toContain("adminOnly: false");
+  it("exposes Chat as a Weather-Wellness dock item pointing at /chat", () => {
+    const chat = LAB_REGISTRY.ww.items.find((item) => item.href === "/chat");
+    expect(chat).toBeDefined();
+    expect(chat?.label).toBe("Chat");
+    // Chat is a shared RA surface, reachable without admin role.
+    expect(buildDockItems("ww", "ra").some((item) => item.href === "/chat")).toBe(true);
   });
 
   it("guards /chat behind RA middleware", () => {
