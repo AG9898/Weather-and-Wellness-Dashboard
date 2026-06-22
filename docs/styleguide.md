@@ -1,6 +1,6 @@
 # styleguide.md — UI Implementation Reference (CLI Agent)
 
-> **Related docs:** [storybook.md](storybook.md) · [shadcn.md](shadcn.md) · [animejs.md](animejs.md)
+> **Related docs:** [shadcn.md](shadcn.md) · [animejs.md](animejs.md)
 
 Use this document as the canonical UI style reference for frontend implementation tasks.
 It defines the shared look-and-feel across pages so individual page work stays consistent.
@@ -186,12 +186,10 @@ When asked to build/update a frontend page:
 3. Reuse existing project components before creating new ones.
 4. Keep visual language consistent between RA and participant pages.
 5. If a requested reference conflicts with this guide, follow user direction but preserve core tokens and type system.
-6. For isolated UI review and story expectations, follow `docs/storybook.md`.
 
 ## 11) shadcn/ui Usage
 
 - Use `docs/shadcn.md` as the implementation guide for adding and composing shadcn components in this repo.
-- Use `docs/storybook.md` when a reusable component or page section should be reviewed in isolation.
 - Keep shadcn semantic tokens (`bg-background`, `text-foreground`, `border-border`, `ring-ring`) aligned to this style guide's UBC-based token direction.
 - Prefer token-level updates in `frontend/src/app/globals.css` over scattered per-component color overrides.
 

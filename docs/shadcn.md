@@ -1,6 +1,6 @@
 # shadcn.md — Component Library Guide (CLI Agent)
 
-> **Related docs:** [styleguide.md](styleguide.md) · [storybook.md](storybook.md) · [animejs.md](animejs.md) (imperative animation)
+> **Related docs:** [styleguide.md](styleguide.md) · [animejs.md](animejs.md) (imperative animation)
 
 Use this guide for all `shadcn/ui` work in this repo. It defines how to install, add, and style components consistently with our existing UI conventions.
 
@@ -50,7 +50,6 @@ Run all commands from `frontend/`.
 4. Validate:
    - `npm run lint`
    - `npm run build`
-5. If the work introduces or changes reusable UI, follow `docs/storybook.md` for isolated review/story expectations.
 
 ## 4) Styling and Consistency Rules
 
@@ -87,7 +86,6 @@ Do:
 - Use the CLI (`npx shadcn@latest add ...`) instead of manually copying from the website.
 - Keep edits local to needed components and call sites.
 - Preserve existing aliases and file locations.
-- Keep reusable component behavior/story states aligned with `docs/storybook.md` when Storybook work is requested or available.
 
 Don't:
 - Introduce another component library for primitives that shadcn already provides.

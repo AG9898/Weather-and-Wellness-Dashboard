@@ -23,7 +23,6 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/devSteps.md`](devSteps.md) | Development and verification runbook |
 | [`docs/styleguide.md`](styleguide.md) | UI style system and visual direction |
 | [`docs/shadcn.md`](shadcn.md) | shadcn usage guidance |
-| [`docs/storybook.md`](storybook.md) | Storybook workflow and review expectations |
 | [`docs/migrations/README.md`](migrations/README.md) | Migration planning/archive docs (Alembic scripts live in `backend/alembic/`) |
 | [`docs/workboard.json`](workboard.json) | Active task queue (canonical board) |
 | [`docs/workboard.schema.json`](workboard.schema.json) | JSON Schema for workboard validation (`ajv-cli validate -s docs/workboard.schema.json -d docs/workboard.json`) |

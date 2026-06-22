@@ -125,12 +125,6 @@ stage of the flow instead of clicking through every step. It is a rehearsal/QA a
 See `docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md` ("Trial Section Jumper") for the
 visual placement and theming spec.
 
-Storybook coverage for the participant page is mocked and page-first. The
-`Pages/Participant/MisokinesiaTask` stories include trial states for Intro, Clips, MkAQ, GAD-7,
-MAQ, End, and Done with the section jumper visible, a recorded-session questionnaire comparison
-with the jumper absent, and short/full trial survey variants that preserve the correct MkAQ and MAQ
-item sets without live backend calls.
-
 ## RA Flow
 
 Navigate to `/misokinesia` via the floating dock present on all RA pages. Click "Start Misokinesia Session". The backend creates the anonymous participant and session and returns the manifest. The app navigates to `/misokinesia/[id]` on the same device — no external URL or participant handoff.
