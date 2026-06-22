@@ -91,6 +91,7 @@ export function shouldShowRAFloatingChrome(pathname: string | null): boolean {
     pathname === "/chat" ||
     pathname === "/import-export" ||
     pathname === "/misokinesia" ||
+    pathname === "/ihtt/poffenberger" ||
     pathname === "/users" ||
     pathname === "/account/password"
   );

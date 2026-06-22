@@ -36,7 +36,18 @@ The page should be quiet and operational. It should not show placeholder
 dashboard cards. If no recorded-session summary endpoint exists, do not mock one.
 
 The launch page is RA-only and available to authenticated users scoped to
-`app_metadata.lab == "ihtt"` plus admins.
+`app_metadata.lab_name == "ihtt"` plus admins.
+
+Implementation note: the launch surface is `frontend/src/app/(ra)/ihtt/poffenberger/page.tsx`,
+served at `/ihtt/poffenberger` inside the `(ra)` auth-guarded route group (RA
+navigation chrome wraps it). It renders the presentational
+`PoffenbergerLaunchPage` component and gates access client-side to ihtt lab
+members and admins (non-matching RAs are redirected to `/unauthorized`); the
+backend `start` endpoint remains the authoritative lab-scope check. It is a quiet
+operational page with no recent-session ledger, metric cards, or analytics. The
+recorded Start action stores the backend start response via
+`persistPoffenbergerRunState` before navigating to the participant task route,
+and the trial actions persist a local no-write `TrialRunPoffenbergerState`.
 
 Recorded session launch must collect the platform-required anonymous
 start-session demographics before calling the recorded start endpoint. The

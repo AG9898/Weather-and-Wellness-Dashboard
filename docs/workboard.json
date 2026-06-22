@@ -4571,7 +4571,7 @@
       "id": "T1837",
       "title": "IHTT Poffenberger - RA launch page",
       "description": "Build the initial RA-facing IHTT Poffenberger page as a simple operational launch surface, not a dashboard. The page must expose Start Poffenberger Session, Run Short Trial, and Run Full Trial actions; collect the platform-required anonymous start-session demographics before recorded start; call only typed API wrappers; and route to the participant task page on success. Do not add recent sessions, metrics cards, leaderboards, or placeholder analytics.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "IHTT_POFFENBERGER",
       "depends_on": [
