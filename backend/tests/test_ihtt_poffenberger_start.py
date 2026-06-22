@@ -119,14 +119,30 @@ def test_start_route_is_registered_with_ihtt_ra_dependency() -> None:
     assert route.response_model is PoffenbergerStartResponse
 
 
+def _iter_api_routes(routes: Any) -> Any:
+    """Yield every APIRoute reachable from ``routes``.
+
+    Starlette 1.x mounts included routers as nested ``_IncludedRouter`` objects
+    instead of flattening their routes onto ``app.routes``, so a top-level scan
+    no longer sees router endpoints. Descend into nested routers (via ``routes``
+    or the ``_IncludedRouter.original_router`` it wraps) to stay version-robust.
+    """
+    for route in routes:
+        if isinstance(route, APIRoute):
+            yield route
+        nested = getattr(route, "routes", None) or getattr(
+            getattr(route, "original_router", None), "routes", None
+        )
+        if nested:
+            yield from _iter_api_routes(nested)
+
+
 def test_main_app_includes_ihtt_poffenberger_start_route() -> None:
     from app.main import app
 
     assert any(
-        isinstance(route, APIRoute)
-        and route.path == "/ihtt/poffenberger/start"
-        and "POST" in (route.methods or set())
-        for route in app.routes
+        route.path == "/ihtt/poffenberger/start" and "POST" in (route.methods or set())
+        for route in _iter_api_routes(app.routes)
     )
 
 
