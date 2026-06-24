@@ -47,6 +47,7 @@ export const config = {
     "/new-session/:path*",
     "/import-export/:path*",
     "/misokinesia/:path*",
+    "/ihtt/:path*",
     "/users/:path*",
     "/account/:path*",
   ],

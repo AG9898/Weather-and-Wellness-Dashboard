@@ -112,6 +112,16 @@ export function canAccessLab(
   return role === "admin" || normalizeLabSlug(labName) === lab;
 }
 
+/** First page an authenticated user should see when no explicit `next` route exists. */
+export function resolveLabLandingPath(
+  role: string,
+  labName: string | null | undefined,
+  stored: string | null = null
+): string {
+  const lab = resolveInitialActiveLab(role, labName, stored);
+  return LAB_REGISTRY[lab].items[0]?.href ?? "/dashboard";
+}
+
 /** Dock items for a lab: its own items, plus admin items for admins. */
 export function buildDockItems(lab: LabSlug, role: string): LabDockItem[] {
   const items = [...LAB_REGISTRY[lab].items];

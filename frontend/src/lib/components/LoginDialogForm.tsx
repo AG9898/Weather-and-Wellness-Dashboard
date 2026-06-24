@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resolveLabLandingPath } from "@/lib/labs";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginDialogForm() {
@@ -40,7 +41,7 @@ export default function LoginDialogForm() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -51,7 +52,10 @@ export default function LoginDialogForm() {
       return;
     }
 
-    const next = searchParams.get("next") ?? "/dashboard";
+    const meta = data.user?.app_metadata ?? {};
+    const role = typeof meta.role === "string" ? meta.role : "ra";
+    const labName = typeof meta.lab_name === "string" ? meta.lab_name : "";
+    const next = searchParams.get("next") ?? resolveLabLandingPath(role, labName);
     router.replace(next);
   };
 

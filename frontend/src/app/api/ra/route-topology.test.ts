@@ -84,4 +84,12 @@ describe("RA route topology", () => {
     );
     expect(middlewareSrc).toContain('"/account/:path*"');
   });
+
+  it("protects IHTT RA pages in middleware", () => {
+    const middlewareSrc = readFileSync(
+      resolve(process.cwd(), "src/middleware.ts"),
+      "utf8"
+    );
+    expect(middlewareSrc).toContain('"/ihtt/:path*"');
+  });
 });

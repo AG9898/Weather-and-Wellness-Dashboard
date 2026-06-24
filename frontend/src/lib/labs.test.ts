@@ -8,6 +8,7 @@ import {
   normalizeLabSlug,
   resolveAvailableLabs,
   resolveInitialActiveLab,
+  resolveLabLandingPath,
 } from "@/lib/labs";
 
 describe("normalizeLabSlug", () => {
@@ -53,6 +54,18 @@ describe("resolveInitialActiveLab", () => {
   it("defaults an admin to their own lab when storage is empty or invalid", () => {
     expect(resolveInitialActiveLab("admin", "ihtt", null)).toBe("ihtt");
     expect(resolveInitialActiveLab("admin", "ww", "bogus")).toBe("ww");
+  });
+});
+
+describe("resolveLabLandingPath", () => {
+  it("routes regular RAs to their lab landing page", () => {
+    expect(resolveLabLandingPath("ra", "ww")).toBe("/dashboard");
+    expect(resolveLabLandingPath("ra", "ihtt")).toBe("/ihtt/poffenberger");
+  });
+
+  it("uses the stored active lab for admins when available", () => {
+    expect(resolveLabLandingPath("admin", "ww", "ihtt")).toBe("/ihtt/poffenberger");
+    expect(resolveLabLandingPath("admin", "ihtt", "ww")).toBe("/dashboard");
   });
 });
 
