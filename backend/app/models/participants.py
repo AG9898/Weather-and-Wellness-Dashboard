@@ -22,9 +22,10 @@ class Participant(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    # Phase 3 demographic / exposure columns (all nullable; collected at session start)
+    # Demographic / exposure columns (all nullable; collected at component-specific starts)
     age_band: Mapped[str | None] = mapped_column(String, nullable=True)
     gender: Mapped[str | None] = mapped_column(String, nullable=True)
+    handedness: Mapped[str | None] = mapped_column(String, nullable=True)
     origin: Mapped[str | None] = mapped_column(String, nullable=True)
     origin_other_text: Mapped[str | None] = mapped_column(String, nullable=True)
     commute_method: Mapped[str | None] = mapped_column(String, nullable=True)

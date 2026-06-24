@@ -7,7 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.schemas.sessions import StartSessionCreate
+from app.schemas.sessions import AGE_BAND_OPTIONS, GENDER_OPTIONS
 
 
 PoffenbergerResponseHand = Literal["left", "right"]
@@ -35,8 +35,43 @@ class PoffenbergerRunCreate(BaseModel):
     total_experimental_trials: int = Field(default=0, ge=0)
 
 
-class PoffenbergerStartRequest(StartSessionCreate):
-    """Demographics payload for recorded IHTT Poffenberger start."""
+HANDEDNESS_OPTIONS = frozenset({
+    "Left-handed",
+    "Right-handed",
+    "Ambidextrous",
+    "Prefer not to say",
+})
+
+
+class PoffenbergerStartRequest(BaseModel):
+    """IHTT demographics payload for recorded Poffenberger start."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    age_band: str
+    gender: str
+    handedness: str
+
+    @model_validator(mode="after")
+    def validate_demographics(self) -> "PoffenbergerStartRequest":
+        errors: list[str] = []
+
+        if self.age_band not in AGE_BAND_OPTIONS:
+            errors.append(
+                f"age_band must be one of: {', '.join(sorted(AGE_BAND_OPTIONS))}"
+            )
+        if self.gender not in GENDER_OPTIONS:
+            errors.append(
+                f"gender must be one of: {', '.join(sorted(GENDER_OPTIONS))}"
+            )
+        if self.handedness not in HANDEDNESS_OPTIONS:
+            errors.append(
+                f"handedness must be one of: {', '.join(sorted(HANDEDNESS_OPTIONS))}"
+            )
+
+        if errors:
+            raise ValueError(errors)
+        return self
 
 
 class PoffenbergerPracticeTrialManifest(BaseModel):
@@ -89,7 +124,7 @@ class PoffenbergerDashboardRunItem(BaseModel):
     is_complete: bool
     age_band: str | None = None
     gender: str | None = None
-    origin: str | None = None
+    handedness: str | None = None
     ihtt_difference_ms: Decimal | None = None
 
 
@@ -264,4 +299,5 @@ __all__ = [
     "PoffenbergerTrialCreate",
     "PoffenbergerTrialResponse",
     "PoffenbergerVisualField",
+    "HANDEDNESS_OPTIONS",
 ]

@@ -20,10 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import type { PoffenbergerDashboardResponse } from "@/lib/api/ihtt-poffenberger";
 
-// ── Demographic option sets (platform start-session presets) ────────────────
+// ── Demographic option sets ─────────────────────────────────────────────────
 
 export const POFFENBERGER_AGE_BAND_OPTIONS = [
   "Under 18",
@@ -38,26 +37,11 @@ export const POFFENBERGER_GENDER_OPTIONS = [
   "Non-binary",
   "Prefer not to say",
 ];
-export const POFFENBERGER_ORIGIN_OPTIONS = [
-  "Home",
-  "Work",
-  "Class",
-  "Library",
-  "Gym/Recreation Center",
-  "Other",
-];
-export const POFFENBERGER_COMMUTE_OPTIONS = [
-  "Walk",
-  "Transit",
-  "Car",
-  "Bike/Scooter",
-  "Other",
-];
-export const POFFENBERGER_TIME_OUTSIDE_OPTIONS = [
-  "Never (0-30 minutes)",
-  "Rarely (31 minutes- 60 minutes)",
-  "Sometimes (61 minutes - 90 minutes)",
-  "Often (over 90 minutes)",
+export const POFFENBERGER_HANDEDNESS_OPTIONS = [
+  "Left-handed",
+  "Right-handed",
+  "Ambidextrous",
+  "Prefer not to say",
 ];
 
 // ── Form model ──────────────────────────────────────────────────────────────
@@ -65,31 +49,18 @@ export const POFFENBERGER_TIME_OUTSIDE_OPTIONS = [
 export interface PoffenbergerDemoForm {
   age_band: string;
   gender: string;
-  origin: string;
-  origin_other_text: string;
-  commute_method: string;
-  commute_method_other_text: string;
-  time_outside: string;
+  handedness: string;
 }
 
 export const EMPTY_POFFENBERGER_FORM: PoffenbergerDemoForm = {
   age_band: "",
   gender: "",
-  origin: "",
-  origin_other_text: "",
-  commute_method: "",
-  commute_method_other_text: "",
-  time_outside: "",
+  handedness: "",
 };
 
-/** True when every required demographic value is selected and any required other-text is filled. */
+/** True when every required IHTT demographic value is selected. */
 export function isPoffenbergerFormComplete(f: PoffenbergerDemoForm): boolean {
-  if (!f.age_band || !f.gender || !f.origin || !f.commute_method || !f.time_outside) {
-    return false;
-  }
-  if (f.origin === "Other" && !f.origin_other_text.trim()) return false;
-  if (f.commute_method === "Other" && !f.commute_method_other_text.trim()) return false;
-  return true;
+  return Boolean(f.age_band && f.gender && f.handedness);
 }
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
@@ -194,101 +165,21 @@ function DemographicsFields({ form, onFormChange, busy }: DemographicsFieldsProp
         </Select>
       </div>
 
-      {/* Origin */}
+      {/* Handedness */}
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="origin" className="text-sm text-foreground">
-          Coming from
+        <Label htmlFor="handedness" className="text-sm text-foreground">
+          Handedness
         </Label>
         <Select
-          value={form.origin}
-          onValueChange={(v) => update({ origin: v, origin_other_text: "" })}
+          value={form.handedness}
+          onValueChange={(v) => update({ handedness: v })}
           disabled={busy}
         >
-          <SelectTrigger id="origin" className="border-border bg-input/30 focus:ring-ring">
-            <SelectValue placeholder="Select origin" />
+          <SelectTrigger id="handedness" className="border-border bg-input/30 focus:ring-ring">
+            <SelectValue placeholder="Select handedness" />
           </SelectTrigger>
           <SelectContent>
-            {POFFENBERGER_ORIGIN_OPTIONS.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {form.origin === "Other" && (
-          <div className="mt-1 flex flex-col gap-1.5">
-            <Input
-              id="origin_other_text"
-              value={form.origin_other_text}
-              onChange={(e) => update({ origin_other_text: e.target.value })}
-              placeholder="Describe origin (no names or personal details)"
-              disabled={busy}
-              className="border-border bg-input/30 focus-visible:ring-ring"
-              maxLength={200}
-            />
-            <p className="text-xs text-muted-foreground">
-              Do not enter names, initials, or any information that could identify the
-              participant.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Commute method */}
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="commute_method" className="text-sm text-foreground">
-          Commute method
-        </Label>
-        <Select
-          value={form.commute_method}
-          onValueChange={(v) => update({ commute_method: v, commute_method_other_text: "" })}
-          disabled={busy}
-        >
-          <SelectTrigger id="commute_method" className="border-border bg-input/30 focus:ring-ring">
-            <SelectValue placeholder="Select commute method" />
-          </SelectTrigger>
-          <SelectContent>
-            {POFFENBERGER_COMMUTE_OPTIONS.map((o) => (
-              <SelectItem key={o} value={o}>
-                {o}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {form.commute_method === "Other" && (
-          <div className="mt-1 flex flex-col gap-1.5">
-            <Input
-              id="commute_method_other_text"
-              value={form.commute_method_other_text}
-              onChange={(e) => update({ commute_method_other_text: e.target.value })}
-              placeholder="Describe commute method (no names or personal details)"
-              disabled={busy}
-              className="border-border bg-input/30 focus-visible:ring-ring"
-              maxLength={200}
-            />
-            <p className="text-xs text-muted-foreground">
-              Do not enter names, initials, or any information that could identify the
-              participant.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Time outside */}
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="time_outside" className="text-sm text-foreground">
-          Time spent outside today
-        </Label>
-        <Select
-          value={form.time_outside}
-          onValueChange={(v) => update({ time_outside: v })}
-          disabled={busy}
-        >
-          <SelectTrigger id="time_outside" className="border-border bg-input/30 focus:ring-ring">
-            <SelectValue placeholder="Select time outside" />
-          </SelectTrigger>
-          <SelectContent>
-            {POFFENBERGER_TIME_OUTSIDE_OPTIONS.map((o) => (
+            {POFFENBERGER_HANDEDNESS_OPTIONS.map((o) => (
               <SelectItem key={o} value={o}>
                 {o}
               </SelectItem>
@@ -320,7 +211,7 @@ interface PoffenbergerLaunchPageProps {
 /**
  * RA-facing IHTT Poffenberger operations dashboard. The front surface mirrors the
  * misokinesia board: a header with launch actions, a headline metric, and a recent
- * recorded-run ledger. Required start-session demographics are collected in a
+ * recorded-run ledger. IHTT demographics are collected in a
  * dialog opened by "Start Poffenberger Session"; the no-write Short/Full trials
  * launch directly (they create no records, so no demographics are required).
  */
@@ -466,7 +357,7 @@ export default function PoffenbergerLaunchPage({
                     {formatRelativeTime(row.started_at)}
                   </span>
                   <span className="min-w-0 truncate text-muted-foreground">
-                    {formatDemographics(row.age_band, row.gender, row.origin)}
+                    {formatDemographics(row.age_band, row.gender, row.handedness)}
                   </span>
                   <span
                     className="tabular-nums text-muted-foreground sm:text-right"
@@ -521,7 +412,7 @@ export default function PoffenbergerLaunchPage({
           <DialogHeader>
             <DialogTitle>Start Poffenberger session</DialogTitle>
             <DialogDescription>
-              Select the required participant demographics, then start the recorded
+              Select the IHTT participant demographics, then start the recorded
               session. All fields are required.
             </DialogDescription>
           </DialogHeader>

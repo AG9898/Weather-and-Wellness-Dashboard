@@ -7,7 +7,7 @@ export interface PoffenbergerDashboardRunItem {
   is_complete: boolean;
   age_band: string | null;
   gender: string | null;
-  origin: string | null;
+  handedness: string | null;
   // Decimal columns serialize as strings over JSON.
   ihtt_difference_ms: number | string | null;
 }

@@ -115,7 +115,7 @@ class PoffenbergerDashboardHandlerTests(IsolatedAsyncioTestCase):
                 "is_complete": False,
                 "age_band": "18-24",
                 "gender": "Woman",
-                "origin": "Class",
+                "handedness": "Right-handed",
                 "ihtt_difference_ms": None,
             },
             {
@@ -125,7 +125,7 @@ class PoffenbergerDashboardHandlerTests(IsolatedAsyncioTestCase):
                 "is_complete": True,
                 "age_band": "25-31",
                 "gender": "Man",
-                "origin": "Library",
+                "handedness": "Left-handed",
                 "ihtt_difference_ms": Decimal("2.80"),
             },
         ]

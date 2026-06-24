@@ -64,7 +64,7 @@ uses fake IDs in the shared trial-run format.
       "is_complete": false,
       "age_band": "18-24",
       "gender": "Woman",
-      "origin": "Class",
+      "handedness": "Right-handed",
       "ihtt_difference_ms": null
     }
   ]
@@ -81,16 +81,30 @@ Notes:
 - `avg_ihtt_difference_ms` averages `ihtt_difference_ms` (crossed minus uncrossed
   mean reaction time) over completed runs only; `null` when none are complete.
 - `recent_runs` returns up to 10 runs ordered by `started_at` descending, joining
-  the start-session demographics stored on `participants`.
-- Read-only: no new tables or columns; no Alembic migration required.
+  the IHTT demographics stored on `participants`.
+- Read-only endpoint. The `handedness` demographic it returns is stored on the
+  shared `participants` table by migration `20260624_000001`.
 
 ## POST /ihtt/poffenberger/start
 
 - **Auth:** RA required, scoped to `ihtt`.
 - **Status:** implemented.
-- **Request body:** the platform-required anonymous start-session demographics.
-  The RA brief does not define additional IHTT-specific demographic fields.
+- **Request body:** IHTT Poffenberger anonymous demographics only.
 - **Response:** HTTP 201.
+
+```json
+{
+  "age_band": "18-24",
+  "gender": "Woman",
+  "handedness": "Right-handed"
+}
+```
+
+Preset options are validated server-side:
+
+- `age_band`: `"Under 18"`, `"18-24"`, `"25-31"`, `"32-38"`, `">38"`
+- `gender`: `"Woman"`, `"Man"`, `"Non-binary"`, `"Prefer not to say"`
+- `handedness`: `"Left-handed"`, `"Right-handed"`, `"Ambidextrous"`, `"Prefer not to say"`
 
 ```json
 {
@@ -133,8 +147,10 @@ Notes:
   and production manifest.
 - Persists the run shell in `ihtt_poffenberger_runs`, including
   `participant_uuid`, `session_id`, and the server-generated `manifest_json`.
-- Stores platform start-session demographics on `participants` only, consistent
-  with the existing platform rule.
+- Stores IHTT Poffenberger demographics (`age_band`, `gender`, `handedness`) on
+  `participants` only. Weather-Wellness-only exposure fields (`origin`,
+  `commute_method`, `time_outside`, and `daylight_exposure_minutes`) remain null
+  for Poffenberger-created participants.
 - Production manifest has 10 right-hand practice trials and 12 experimental
   blocks of 50 trials each.
 - Each experimental block has 25 LVF and 25 RVF trials in randomized,

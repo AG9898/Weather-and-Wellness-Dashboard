@@ -36,8 +36,8 @@ These are backed by `GET /ihtt/poffenberger/dashboard` (see `API.md`).
 
 Required actions:
 
-- **Start Poffenberger Session** - opens a dialog that collects the platform-
-  required anonymous start-session demographics, then creates a recorded
+- **Start Poffenberger Session** - opens a dialog that collects the IHTT
+  anonymous demographics (age band, gender, handedness), then creates a recorded
   participant/session/run and navigates to the participant task route.
 - **Short Trial** - creates local fake trial state and opens a shortened no-write
   rehearsal.
@@ -69,10 +69,10 @@ selecting IHTT in the admin-only lab switcher in the dock's utility menu, which
 swaps the dock to that lab's items. Weather-Wellness items (weather dashboard,
 Chat, Misokinesia) are not shown while IHTT is the active lab.
 
-Recorded session launch must collect the platform-required anonymous
-start-session demographics before calling the recorded start endpoint. The
-RA-provided IHTT brief does not define additional IHTT-specific demographic
-questions.
+Recorded session launch must collect age band, gender, and handedness before
+calling the recorded start endpoint. The RA-provided IHTT brief does not define
+a broader demographic instrument, and Weather-Wellness exposure questions
+(`origin`, `commute_method`, `time_outside`) do not apply to Poffenberger.
 
 ## Participant Task Route
 

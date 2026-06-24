@@ -50,6 +50,9 @@ describe("IHTT Poffenberger API wrappers", () => {
     expect(source).toContain('`/ihtt/poffenberger/runs/${encodeURIComponent(runId)}/submit`');
     expect(source).toContain("PoffenbergerStartResponse");
     expect(source).toContain("PoffenbergerSubmitRequest");
+    expect(source).toContain("export interface PoffenbergerStartRequest");
+    expect(source).toContain("handedness: string");
+    expect(source).not.toContain("export type PoffenbergerStartRequest = StartSessionCreate");
   });
 });
 
@@ -183,7 +186,7 @@ describe("IHTT Poffenberger trial runs never call recorded write endpoints", () 
     expect(source).toContain("if (isTrialMode) {");
     const submitBody = source.slice(
       source.indexOf("async function submitRows"),
-      source.indexOf("function startTrial(trial")
+      source.indexOf('if (phase === "loading")')
     );
     const trialBranchIndex = submitBody.indexOf("if (isTrialMode) {");
     const beforeProductionSubmit = submitBody.slice(0, submitBody.indexOf("submitPoffenbergerRun"));

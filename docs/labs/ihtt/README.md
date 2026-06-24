@@ -14,9 +14,9 @@ available for later literature review but is not part of the v1 source of truth.
 
 The RA brief specifies task output requirements only: categorized reaction time
 and categorized accuracy for the four response-hand by visual-field conditions.
-It does not specify additional IHTT-specific participant demographics. The
-platform's required anonymous start-session demographic intake still applies
-unless the project owner changes that platform rule.
+It does not specify a full IHTT-specific demographic instrument. For v1 recorded
+Poffenberger starts, the project-owned IHTT intake collects only age band,
+gender, and handedness; Weather-Wellness exposure fields do not apply.
 
 ## Data Access
 

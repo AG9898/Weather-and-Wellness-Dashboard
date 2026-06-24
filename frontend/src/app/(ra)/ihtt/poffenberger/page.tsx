@@ -93,12 +93,7 @@ export default function PoffenbergerLaunchRoute() {
     const payload: PoffenbergerStartRequest = {
       age_band: form.age_band,
       gender: form.gender,
-      origin: form.origin,
-      origin_other_text: form.origin === "Other" ? form.origin_other_text.trim() : null,
-      commute_method: form.commute_method,
-      commute_method_other_text:
-        form.commute_method === "Other" ? form.commute_method_other_text.trim() : null,
-      time_outside: form.time_outside,
+      handedness: form.handedness,
     };
 
     try {

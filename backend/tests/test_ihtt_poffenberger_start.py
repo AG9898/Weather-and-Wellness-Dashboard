@@ -76,9 +76,7 @@ def _start_payload() -> PoffenbergerStartRequest:
     return PoffenbergerStartRequest(
         age_band="18-24",
         gender="Woman",
-        origin="Class",
-        commute_method="Walk",
-        time_outside="Sometimes (61 minutes - 90 minutes)",
+        handedness="Right-handed",
     )
 
 
@@ -163,6 +161,27 @@ def test_start_route_requires_auth_and_rejects_non_ihtt_non_admin() -> None:
     assert wrong_lab.status_code == 403
 
 
+def test_start_payload_rejects_weather_wellness_demographics() -> None:
+    client = _route_client()
+    body = {
+        "age_band": "18-24",
+        "gender": "Woman",
+        "handedness": "Right-handed",
+        "origin": "Class",
+        "commute_method": "Walk",
+        "time_outside": "Sometimes (61 minutes - 90 minutes)",
+    }
+
+    with patch.dict("os.environ", {"SUPABASE_JWT_SECRET": "test-secret"}):
+        response = client.post(
+            "/ihtt/poffenberger/start",
+            json=body,
+            headers={"Authorization": f"Bearer {_auth_token()}"},
+        )
+
+    assert response.status_code == 422
+
+
 def test_manifest_generation_meets_production_constraints() -> None:
     manifest = generate_production_manifest(random.Random(7))
 
@@ -202,15 +221,11 @@ class PoffenbergerStartTests(IsolatedAsyncioTestCase):
             lab_name="ihtt",
         )
 
-        with patch(
-            "app.routers.ihtt_poffenberger.compute_daylight_exposure_minutes",
-            return_value=123,
-        ):
-            response = await start_poffenberger_session(
-                payload=_start_payload(),
-                _member=member,
-                db=db,
-            )
+        response = await start_poffenberger_session(
+            payload=_start_payload(),
+            _member=member,
+            db=db,
+        )
 
         participant = db.added[0]
         session = db.added[1]
@@ -220,10 +235,11 @@ class PoffenbergerStartTests(IsolatedAsyncioTestCase):
         assert participant.participant_number == 42
         assert participant.age_band == "18-24"
         assert participant.gender == "Woman"
-        assert participant.origin == "Class"
-        assert participant.commute_method == "Walk"
-        assert participant.time_outside == "Sometimes (61 minutes - 90 minutes)"
-        assert participant.daylight_exposure_minutes == 123
+        assert participant.handedness == "Right-handed"
+        assert participant.origin is None
+        assert participant.commute_method is None
+        assert participant.time_outside is None
+        assert participant.daylight_exposure_minutes is None
 
         assert isinstance(session, Session)
         assert session.participant_uuid == _PARTICIPANT_UUID

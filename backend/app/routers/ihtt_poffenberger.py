@@ -9,7 +9,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import LabMember, get_current_ra_for_lab
-from app.config import compute_daylight_exposure_minutes
 from app.db import get_session
 from app.models.participants import Participant
 from app.models.poffenberger import PoffenbergerRun, PoffenbergerTrial
@@ -125,9 +124,6 @@ async def start_poffenberger_session(
     _member: LabMember = Depends(get_current_ra_for_lab("ihtt")),
     db: AsyncSession = Depends(get_session),
 ) -> PoffenbergerStartResponse:
-    session_start_utc = datetime.now(timezone.utc)
-    daylight_minutes = compute_daylight_exposure_minutes(session_start_utc)
-
     result = await db.execute(select(func.max(Participant.participant_number)))
     current_max: int | None = result.scalar_one()
     next_number = (current_max or 0) + 1
@@ -136,12 +132,7 @@ async def start_poffenberger_session(
         participant_number=next_number,
         age_band=payload.age_band,
         gender=payload.gender,
-        origin=payload.origin,
-        origin_other_text=payload.origin_other_text,
-        commute_method=payload.commute_method,
-        commute_method_other_text=payload.commute_method_other_text,
-        time_outside=payload.time_outside,
-        daylight_exposure_minutes=daylight_minutes,
+        handedness=payload.handedness,
     )
     db.add(participant)
     await db.flush()
@@ -210,7 +201,7 @@ async def get_poffenberger_dashboard(
             PoffenbergerRun.is_complete,
             Participant.age_band,
             Participant.gender,
-            Participant.origin,
+            Participant.handedness,
             PoffenbergerRun.ihtt_difference_ms,
         )
         .join(
@@ -234,7 +225,7 @@ async def get_poffenberger_dashboard(
                 is_complete=row["is_complete"],
                 age_band=row["age_band"],
                 gender=row["gender"],
-                origin=row["origin"],
+                handedness=row["handedness"],
                 ihtt_difference_ms=row["ihtt_difference_ms"],
             )
             for row in recent_rows

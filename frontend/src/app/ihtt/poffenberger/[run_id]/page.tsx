@@ -87,6 +87,33 @@ export default function PoffenbergerTaskPage() {
     };
   }, []);
 
+  function startTrial(trial: PoffenbergerTaskTrial) {
+    clearActiveTimer(timeoutRef);
+    answeredRef.current = false;
+    const trialStartedAt = performance.now();
+    timingRef.current = {
+      client_trial_started_at_ms: trialStartedAt,
+      client_stimulus_onset_ms: trialStartedAt,
+      client_response_at_ms: null,
+      client_trial_ended_at_ms: trialStartedAt,
+    };
+    setPhase("waiting");
+
+    timeoutRef.current = setTimeout(() => {
+      const onset = performance.now();
+      timingRef.current = {
+        client_trial_started_at_ms: trialStartedAt,
+        client_stimulus_onset_ms: onset,
+        client_response_at_ms: null,
+        client_trial_ended_at_ms: onset,
+      };
+      setPhase("stimulus");
+      timeoutRef.current = setTimeout(() => {
+        finishTrialRef.current(null);
+      }, POFFENBERGER_RESPONSE_CUTOFF_MS);
+    }, trial.jitter_ms);
+  }
+
   const finishTrial = useCallback(
     (pressedKey: string | null) => {
       if (!currentTrial || !timingRef.current || answeredRef.current) return;
@@ -161,33 +188,6 @@ export default function PoffenbergerTaskPage() {
       setSubmitError(getParticipantErrorMessage(err));
       setPhase("ready-submit");
     }
-  }
-
-  function startTrial(trial: PoffenbergerTaskTrial) {
-    clearActiveTimer(timeoutRef);
-    answeredRef.current = false;
-    const trialStartedAt = performance.now();
-    timingRef.current = {
-      client_trial_started_at_ms: trialStartedAt,
-      client_stimulus_onset_ms: trialStartedAt,
-      client_response_at_ms: null,
-      client_trial_ended_at_ms: trialStartedAt,
-    };
-    setPhase("waiting");
-
-    timeoutRef.current = setTimeout(() => {
-      const onset = performance.now();
-      timingRef.current = {
-        client_trial_started_at_ms: trialStartedAt,
-        client_stimulus_onset_ms: onset,
-        client_response_at_ms: null,
-        client_trial_ended_at_ms: onset,
-      };
-      setPhase("stimulus");
-      timeoutRef.current = setTimeout(() => {
-        finishTrialRef.current(null);
-      }, POFFENBERGER_RESPONSE_CUTOFF_MS);
-    }, trial.jitter_ms);
   }
 
   if (phase === "loading") {

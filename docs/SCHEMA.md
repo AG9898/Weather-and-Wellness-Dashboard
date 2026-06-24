@@ -17,7 +17,7 @@
 - **FKs:** Enforced at DB level, not just application level
 
 > Migration head check: `alembic current -v` should report
-> `Rev: 20260621_000001 (head)`.
+> `Rev: 20260624_000001 (head)`.
 > Keep this value in sync after every new migration.
 
 ---
@@ -140,7 +140,7 @@ Addition to `sessions` applied in migration `20260226_000005`:
 
 Participants are anonymous: no names or other direct identifiers are stored. The only human-facing identifier is `participant_number`; `participant_uuid` is the internal stable key.
 
-> Phase 3 demographic/exposure columns were added by migration `20260228_000007` (T47). All columns are nullable; collected at session start or populated by legacy import.
+> Phase 3 demographic/exposure columns were added by migration `20260228_000007` (T47). `handedness` was added by migration `20260624_000001` for IHTT Poffenberger demographics. All columns are nullable; collected by component-specific session starts or populated by legacy import where applicable.
 
 
 | Column                    | Type        | Constraints      | Notes                                                                                                                                                  |
@@ -150,6 +150,7 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 | created_at                | TIMESTAMPTZ | DEFAULT NOW()    |                                                                                                                                                        |
 | age_band                  | VARCHAR     | NULLABLE         | Categorical age band (e.g. "18-24")                                                                                                                    |
 | gender                    | VARCHAR     | NULLABLE         | Stored as free-text/category string                                                                                                                    |
+| handedness                | VARCHAR     | NULLABLE         | IHTT Poffenberger categorical handedness (`Left-handed`, `Right-handed`, `Ambidextrous`, `Prefer not to say`)                                         |
 | origin                    | VARCHAR     | NULLABLE         | Stored as free-text/category string                                                                                                                    |
 | origin_other_text         | VARCHAR     | NULLABLE         | Detail when `origin` is `"Other"` (length-limited; avoid PII)                                                                                          |
 | commute_method            | VARCHAR     | NULLABLE         | Stored as free-text/category string                                                                                                                    |
@@ -162,6 +163,11 @@ Participants are anonymous: no names or other direct identifiers are stored. The
 
 - `age_band`, `gender`, `origin`, `origin_other_text`, `commute_method`, `commute_method_other_text`, `time_outside` stored directly from validated preset values.
 - `daylight_exposure_minutes` computed at request time via `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
+
+**IHTT Poffenberger mapping (2026-06-24):** `POST /ihtt/poffenberger/start` demographics payload
+
+- Stores only `age_band`, `gender`, and `handedness` on `participants`.
+- Weather-Wellness-only exposure fields (`origin`, `commute_method`, `time_outside`, and `daylight_exposure_minutes`) remain null for Poffenberger-created participants.
 
 **Legacy import mapping (Phase 3):** `reference/data_complete.xlsx`
 
@@ -303,8 +309,9 @@ audit-logged in `admin_session_undo_log` instead of introducing soft-delete colu
 | 2026-06-14 | T206                  | Add Weather-Wellness cognitive battery persistence: session task/rule orders, Stroop run/trial tables, and card sorting run/trial tables                                                                            |
 | 2026-06-20 | T1829                 | Add `chat_tool_invocations` append-only audit table for the RA chatbot agentic loop                                                                                                                                |
 | 2026-06-21 | T1833                 | Add IHTT Poffenberger run/trial persistence tables, server manifest storage, raw timing fields, and condition/crossed summary columns                                                                               |
+| 2026-06-24 | n/a                   | Add nullable `participants.handedness` for IHTT Poffenberger demographics and split Poffenberger start demographics from Weather-Wellness exposure fields                                                           |
 
 
-As of 2026-06-21, migration `20260621_000001` is the current head revision.
+As of 2026-06-24, migration `20260624_000001` is the current head revision.
 
 ---

@@ -146,6 +146,7 @@ export interface ParticipantResponse {
   // Phase 3 demographic / exposure fields (nullable)
   age_band: string | null;
   gender: string | null;
+  handedness: string | null;
   origin: string | null;
   origin_other_text: string | null;
   commute_method: string | null;
@@ -513,7 +514,11 @@ export interface PoffenbergerManifest {
   blocks: PoffenbergerBlockManifest[];
 }
 
-export type PoffenbergerStartRequest = StartSessionCreate;
+export interface PoffenbergerStartRequest {
+  age_band: string;
+  gender: string;
+  handedness: string;
+}
 
 export interface PoffenbergerStartResponse {
   run_id: string;

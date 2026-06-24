@@ -117,9 +117,8 @@ frontend-only timing cue using the Web Audio API. The recommended shape is:
    - **Run Short Trial** - no-write rehearsal with fewer blocks/trials.
    - **Run Full Trial** - no-write rehearsal using production-length timing and
      trial structure.
-3. For a recorded session, the RA completes the platform-required anonymous
-   start-session demographics. The RA brief does not add IHTT-specific
-   demographic questions.
+3. For a recorded session, the RA completes the IHTT anonymous demographics:
+   age band, gender, and handedness.
 4. Backend creates an anonymous participant, active session, Poffenberger run,
    and production manifest.
 5. Participant completes a UI-only consent gate if the component uses the shared
@@ -227,7 +226,6 @@ local rehearsal runs. The RA launch UI is implemented by a follow-on task. See
   assumptions.
 - Whether to add the optional Millisecond-style pre-stimulus audio cue in a
   future version. This is explicitly out of scope for v1.
-- Whether the RA wants any participant demographic fields beyond the platform's
-  required anonymous start-session demographics. The current RA brief does not
-  request any.
+- Whether the RA wants a fuller participant demographic instrument beyond age
+  band, gender, and handedness. The current RA brief does not request one.
 - Whether practice trials should be stored for QA or kept local-only.

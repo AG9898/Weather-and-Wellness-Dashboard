@@ -12,6 +12,11 @@ sessions (1) ──────────────────── (1) ih
 ihtt_poffenberger_runs (1) ────── (many) ihtt_poffenberger_trials
 ```
 
+Recorded Poffenberger starts also store anonymous demographics on the shared
+`participants` row: `age_band`, `gender`, and `handedness`. The `handedness`
+column was added by migration `20260624_000001`; the run and trial tables remain
+task-persistence tables only.
+
 ---
 
 ## Tables: IHTT Poffenberger

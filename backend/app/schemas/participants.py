@@ -16,6 +16,7 @@ class ParticipantResponse(BaseModel):
     # Phase 3 demographic / exposure columns (nullable)
     age_band: str | None = None
     gender: str | None = None
+    handedness: str | None = None
     origin: str | None = None
     origin_other_text: str | None = None
     commute_method: str | None = None
