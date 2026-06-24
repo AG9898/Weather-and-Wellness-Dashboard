@@ -219,7 +219,7 @@ from browser session storage, presents the manifest-driven practice and
 experimental trials, captures raw client timing rows, and submits those rows to
 the backend. Frontend trial helpers create no-write short/full manifests for
 local rehearsal runs. The RA launch UI is implemented by a follow-on task. See
-`docs/SCHEMA.md` for the full column list.
+`docs/labs/ihtt/poffenberger/SCHEMA.md` for the full column list.
 
 ## Open Items
 

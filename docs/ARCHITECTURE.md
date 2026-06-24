@@ -381,6 +381,6 @@ defaults, and ownership by environment.
 - All results are linked by `participant_uuid` and `session_id`.
 - Participants are anonymous: do not collect or store names or other direct identifiers.
 - Day-level semantics (study days, weather day linking, dashboard filtering) use the study timezone `America/Vancouver`.
-- Schema details live in `docs/SCHEMA.md`.
+- Shared schema details live in `docs/SCHEMA.md`; component-owned result and workflow tables live in the relevant `docs/labs/<lab>/<component>/SCHEMA.md`.
 - Analytics dataset rules live in `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 - Undo-last-session behavior removes only session-domain rows and must not mutate weather-domain rows.

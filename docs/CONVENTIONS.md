@@ -188,10 +188,10 @@
 
 Follow this sequence when adding any new instrument in future phases:
 
-1. Confirm exact scoring rules and Likert range with project owner; update `docs/SCORING.md`
+1. Confirm exact scoring rules and Likert range with project owner; update the relevant component `SCORING.md`
 2. Create scoring module in `backend/app/scoring/<instrument>.py`
 3. Create Pydantic schemas in `backend/app/schemas/`
-4. Create Alembic migration for the new survey table; update `docs/SCHEMA.md` migration history
+4. Create Alembic migration for the new survey table; update the relevant component `SCHEMA.md` and `docs/SCHEMA.md` migration history
 5. Add POST endpoint in `backend/app/routers/surveys.py`; update `docs/labs/weather-wellness/weather/API.md`
 6. Create Next.js survey route under `src/app/session/[session_id]/<instrument>/page.tsx`
 7. Wire new route into the session flow sequence in the appropriate layout or store

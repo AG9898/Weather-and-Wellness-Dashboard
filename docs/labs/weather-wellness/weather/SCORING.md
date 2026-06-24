@@ -37,7 +37,7 @@ All lab forms use present-tense wording ("Right now...") and uniform scales:
 
 The authoritative legacy workbook `reference/data_complete.xlsx` stores
 aggregate scores, not raw survey item responses. The older
-`reference/data_full_1-230.xlsx` file remains a historical pre-extension
+`reference/labs/weather-wellness/data_full_1-230.xlsx` file remains a historical pre-extension
 snapshot only.
 
 - `anxiety`, `loneliness`, `depression`, and `self_report` are participant-level derived means

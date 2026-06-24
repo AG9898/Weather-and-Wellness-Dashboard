@@ -1,9 +1,9 @@
 # ANALYTICS.md - Planned Statistical Analytics Specification
 
 > Canonical source for dashboard statistical analysis requirements derived from
-> `reference/Weather_MLM.R`. This document defines the planned Python-side
+> `reference/labs/weather-wellness/Weather_MLM.R`. This document defines the planned Python-side
 > analytics layer only. It does not change survey scoring formulas or storage
-> semantics already defined in `docs/SCORING.md`.
+> semantics already defined in `docs/labs/weather-wellness/weather/SCORING.md`.
 
 ---
 
@@ -12,7 +12,7 @@
 - **Implementation status:** partially implemented
 - **Implemented through:** T83-T92 and T118 (response schema, durable storage, canonical dataset builder, mixed-model fitting, snapshot orchestration, backend API endpoint, effect-plot and weather-annotation serialization, temperature-summary engine)
 - **Still pending:** end-to-end analytics/dashboard verification tasks and any later live snapshot/route wiring polish; the dashboard filter split gives analytics its own independent range controls anchored to the latest study day and the weather chart is no longer linked to analytics annotations.
-- **Source reference:** `reference/Weather_MLM.R`
+- **Source reference:** `reference/labs/weather-wellness/Weather_MLM.R`
 - **Scope:** analysis dataset construction, mixed-effects model definitions, KPI
   serialization, day-level temperature summaries, snapshot/cache behavior
 - **Non-scope:** changing instrument scoring, changing the existing study schema,
@@ -43,7 +43,7 @@ one-off R outputs.
 
 ### 1. Legacy ETL / manual score cleaning
 
-The early sections of `reference/Weather_MLM.R`:
+The early sections of `reference/labs/weather-wellness/Weather_MLM.R`:
 
 - read a Qualtrics Excel export from a desktop path
 - split selected columns into demographics / ULS / CES-D / GAD / cognitive files
@@ -78,7 +78,7 @@ It then produces partial-residual plots for selected predictors.
 ## Analytics Design Principles
 
 - **Scoring stays unchanged.** Existing survey and digit span scoring formulas
-  remain exactly as documented in `docs/SCORING.md` and the per-instrument docs.
+  remain exactly as documented in `docs/labs/weather-wellness/weather/SCORING.md` and the per-instrument docs.
 - **No manual Excel pipeline in production.** Analytics must be derived from the
   backend database, not desktop file paths or hard-coded column positions.
 - **One canonical analysis dataset.** Native and imported rows must be mapped to
@@ -406,7 +406,7 @@ with zero counts instead of treating the window as an error.
 
 The current authoritative workbook is used as a legacy reference source for
 import validation and secondary analytics spot-checks. It supersedes
-`reference/data_full_1-230.xlsx`, which remains a historical pre-extension
+`reference/labs/weather-wellness/data_full_1-230.xlsx`, which remains a historical pre-extension
 snapshot.
 
 - `reference/data_complete.xlsx` extends imported participant-session coverage
@@ -641,11 +641,11 @@ Implemented high-level response shape:
 
 ## Documentation Relationships
 
-- `docs/SCORING.md`: unchanged scoring formulas
-- `docs/SCHEMA.md`: current persisted schema and logical analytics-source notes
+- `docs/labs/weather-wellness/weather/SCORING.md`: unchanged scoring formulas
+- `docs/labs/weather-wellness/weather/SCHEMA.md`: current persisted weather component schema and logical analytics-source notes
 - `docs/labs/weather-wellness/weather/API.md`: endpoint contract status for analytics
 - `docs/ARCHITECTURE.md`: cache/snapshot/recompute architecture
-- `docs/DESIGN_SPEC.md`: dashboard UX and KPI presentation
+- `docs/labs/weather-wellness/weather/DESIGN_SPEC.md`: dashboard UX and KPI presentation
 
 ---
 

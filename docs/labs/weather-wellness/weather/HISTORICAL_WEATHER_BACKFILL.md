@@ -8,7 +8,7 @@
 >
 > Related docs:
 > - API contract: `docs/labs/weather-wellness/weather/API.md` (Weather section — `POST /weather/backfill/historical`)
-> - Schema: `docs/SCHEMA.md` (`weather_daily.sunshine_duration_hours`)
+> - Schema: `docs/labs/weather-wellness/weather/SCHEMA.md` (`weather_daily.sunshine_duration_hours`)
 > - UBC EOS live ingest: `docs/labs/weather-wellness/weather/WEATHER_INGESTION.md`
 
 ---
@@ -327,7 +327,7 @@ ALTER TABLE weather_daily
 
 Migration file: `backend/alembic/versions/20260303_000001_add_sunshine_duration.py`
 
-See `docs/SCHEMA.md` — `weather_daily` table for the full column reference.
+See `docs/labs/weather-wellness/weather/SCHEMA.md` — `weather_daily` table for the full column reference.
 
 ---
 

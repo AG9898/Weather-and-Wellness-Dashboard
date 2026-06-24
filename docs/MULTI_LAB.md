@@ -76,6 +76,6 @@ When a new lab is confirmed, this section will document:
 
 - `docs/DECISIONS.md` — OPEN-03 (multi-lab schema scoping)
 - `docs/ARCHITECTURE.md` — deployment topology
-- `docs/SCHEMA.md` — base schema with `labs` and `studies` table definitions
+- `docs/SCHEMA.md` — shared platform schema and component schema routing
 - `docs/AI_CHAT.md` — planned RA chatbot data-access boundary
 - `docs/labs/weather-wellness/README.md` — first lab, reference implementation

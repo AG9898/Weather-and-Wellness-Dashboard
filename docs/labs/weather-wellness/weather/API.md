@@ -110,7 +110,7 @@
 > The dashboard router serves analytics plus the study-window metadata read.
 > Shipped operational dashboard reads still use the weather router primitive
 > documented under `GET /weather/daily`.
-> Statistical dashboard KPIs derived from `reference/Weather_MLM.R` are defined
+> Statistical dashboard KPIs derived from `reference/labs/weather-wellness/Weather_MLM.R` are defined
 > in `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 
 ## RA Data Chatbot
@@ -385,7 +385,7 @@
   - `visualizations.effect_plots[]` for separate linked analysis charts
   - `visualizations.weather_annotations` for lightweight date-based metadata only
 - **Notes:**
-  - This endpoint surfaces the mixed-effects analysis derived from `reference/Weather_MLM.R` using the backend dataset/modeling/snapshot pipeline implemented in T83–T88.
+  - This endpoint surfaces the mixed-effects analysis derived from `reference/labs/weather-wellness/Weather_MLM.R` using the backend dataset/modeling/snapshot pipeline implemented in T83–T88.
   - The v2 analytics contract changes weather standardization semantics: `temperature`, `precipitation`, and `daylight_hours` are standardized across unique `date_local` values in the complete-case model sample, then mapped back to participant rows for mixed-model fitting.
   - Participant-level predictors and outcomes (`anxiety`, `depression`, `loneliness`, `self_report`, `digit_span_score`) remain standardized across participant rows in the complete-case model sample.
   - `temperature_summary` is descriptive and day-level. It does not alter the model formulas or the participant-row sample used by the mixed models.
@@ -935,7 +935,7 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
 > Imports must be preview-first (no writes on preview), then explicit commit.
 >
 > Authoritative legacy reference file: `reference/data_complete.xlsx` (single-sheet workbook).
-> Historical predecessor: `reference/data_full_1-230.xlsx`.
+> Historical predecessor: `reference/labs/weather-wellness/data_full_1-230.xlsx`.
 > Expected header columns (exact, case-insensitive, whitespace-trimmed):
 > `participant ID`, `date`, `age`, `gender`, `origin`, `commute_method`, `time_outside`, `precipitation`,
 > `temperature`, `daytime`, `anxiety`, `loneliness`, `depression`, `digit_span_score`, `self_report`.

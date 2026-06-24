@@ -12,6 +12,7 @@ Create these files for each new lab:
 For each active lab component, create a component directory:
 
 - `docs/labs/<lab-slug>/<component>/API.md` (component-specific API contracts)
+- `docs/labs/<lab-slug>/<component>/SCHEMA.md` (component-specific database tables)
 - `docs/labs/<lab-slug>/<component>/DESIGN_SPEC.md` (participant and RA UX/task behavior)
 - `docs/labs/<lab-slug>/<component>/<COMPONENT>.md` (task or instrument protocol)
 - `docs/labs/<lab-slug>/<component>/SCORING.md` when the component has server-side scoring or derived fields

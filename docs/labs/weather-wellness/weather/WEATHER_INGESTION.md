@@ -6,7 +6,7 @@
 >
 > Related docs:
 > - API contract: `docs/labs/weather-wellness/weather/API.md` (Weather section)
-> - Planned schema additions: `docs/SCHEMA.md` (Planned Additions section)
+> - Schema: `docs/labs/weather-wellness/weather/SCHEMA.md`
 > - Deployment boundaries: `docs/ARCHITECTURE.md` (Scheduled Jobs section)
 > - Historical gap-fill spec: `docs/labs/weather-wellness/weather/HISTORICAL_WEATHER_BACKFILL.md`
 
@@ -95,7 +95,7 @@ WHERE s.status = 'complete';
 - `weather_daily` (one row per station per study day; idempotent upsert target)
 - `weather_ingest_runs` (append-only audit/debug record for every ingest attempt)
 
-See `docs/SCHEMA.md` for the column-level schema.
+See `docs/labs/weather-wellness/weather/SCHEMA.md` for the column-level schema.
 
 ### Timestamp policy
 - Keep ingest/observation timestamps as metadata only:
@@ -128,7 +128,7 @@ When the live UBC EOS scraper was not yet running (before the study started usin
 | `temperature_2m_min` | `forecast_low_c` | Daily low (°C) |
 | `relative_humidity_2m_mean` | `current_relative_humidity_pct` | Cast to integer |
 | `precipitation_sum` | `current_precip_today_mm` | Daily total (mm) |
-| `sunshine_duration` | `sunshine_duration_hours` | Seconds ÷ 3600; new column (see `docs/SCHEMA.md`) |
+| `sunshine_duration` | `sunshine_duration_hours` | Seconds ÷ 3600; new column (see `docs/labs/weather-wellness/weather/SCHEMA.md`) |
 
 ### Precedence rules
 

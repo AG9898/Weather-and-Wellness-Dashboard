@@ -186,7 +186,7 @@ All scoring is server-side. See per-instrument docs for full formulas.
 - **GAD-7:** raw 0-3, sum → total 0-21 + severity band; collect the conditional difficulty impact question when any problem is endorsed
 - **CogFunc 8a:** raw 1-5, reverse all (`6 - raw`) for computed scores, sum (8-40) + mean (1.0-5.0)
 
-> Planned dashboard analytics derived from `reference/Weather_MLM.R` must reuse
+> Planned dashboard analytics derived from `reference/labs/weather-wellness/Weather_MLM.R` must reuse
 > these stored scores and must not introduce alternate scoring formulas. See
 > `docs/labs/weather-wellness/weather/ANALYTICS.md`.
 
@@ -545,7 +545,7 @@ All four surveys use the shared `SurveyForm` component with:
 
 The Import/Export page at `/import-export` is RA-only and contains two sections:
 
-1. **Import (drag + drop)** — accepts `.csv` or `.xlsx` files (authoritative workbook: `reference/data_complete.xlsx`; historical predecessor: `reference/data_full_1-230.xlsx`). Upload flow is preview-first:
+1. **Import (drag + drop)** — accepts `.csv` or `.xlsx` files (authoritative workbook: `reference/data_complete.xlsx`; historical predecessor: `reference/labs/weather-wellness/data_full_1-230.xlsx`). Upload flow is preview-first:
    - On file selection, the backend returns a preview (counts + row-level validation issues).
    - UI shows a confirmation panel including the number of participants/sessions that will be created/updated.
    - A single explicit "Confirm import" action performs the write.

@@ -1,6 +1,6 @@
 # MISOKINESIA.md — Misokinesia Video Task
 
-> Canonical spec for the Misokinesia module. For endpoint contracts see `docs/labs/weather-wellness/misokinesia/API.md`. For the structured per-instrument scoring corpus (MkAQ, MAQ, GAD-7, per-clip reactivity) see [`docs/labs/weather-wellness/misokinesia/SCORING.md`](./SCORING.md). For schema see `docs/SCHEMA.md`. For auth/stimulus management decisions see `docs/DECISIONS.md` (OPEN-02).
+> Canonical spec for the Misokinesia module. For endpoint contracts see `docs/labs/weather-wellness/misokinesia/API.md`. For the structured per-instrument scoring corpus (MkAQ, MAQ, GAD-7, per-clip reactivity) see [`docs/labs/weather-wellness/misokinesia/SCORING.md`](./SCORING.md). For schema see `docs/labs/weather-wellness/misokinesia/SCHEMA.md`. For auth/stimulus management decisions see `docs/DECISIONS.md` (OPEN-02).
 
 ---
 
@@ -145,7 +145,7 @@ Four core tables were added by migration `20260317_000001`. The planned MkAQ add
 | `misokinesia_gad7_responses` | One GAD-7 response per participant (miso-isolated table) | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `r1`–`r7` (SMALLINT 0–3), `difficulty_impact` (nullable), `total_score` (0–21), `severity_band`, UNIQUE (`misokinesia_participant_id`) |
 | `misokinesia_maq_responses` | One MAQ response per participant | `response_id` (UUID PK), `misokinesia_participant_id` (FK), `session_id` (FK), `participant_uuid` (FK), `q1`–`q21` (SMALLINT 0–3), `total_score` (0–63), UNIQUE (`misokinesia_participant_id`) |
 
-See `docs/SCHEMA.md` — "Phase 4 Additions — Misokinesia Module" for the full column list.
+See `docs/labs/weather-wellness/misokinesia/SCHEMA.md` for the full column list.
 
 ---
 

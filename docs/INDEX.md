@@ -12,13 +12,13 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Deployment topology, runtime boundaries, routing architecture |
 | [`docs/AI_CHAT.md`](AI_CHAT.md) | Planned RA data chatbot architecture, privacy boundary, and allowed data modes |
 | [`docs/CONVENTIONS.md`](CONVENTIONS.md) | Coding and operational conventions |
-| [`docs/DECISIONS.md`](DECISIONS.md) | Open and resolved architectural decisions |
+| [`docs/DECISIONS.md`](DECISIONS.md) | Active open decisions and compact resolved-decision routing |
 | [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) | Production release pipeline, Railway/Vercel gates, and deployment secrets |
 | [`docs/ENV_VARS.md`](ENV_VARS.md) | Canonical environment variable matrix and ownership |
 | [`docs/TRIAL_MODE.md`](TRIAL_MODE.md) | Canonical trial-run behavior (IDs, watermark, consent, module boundaries) |
 | [`docs/MULTI_LAB.md`](MULTI_LAB.md) | Multi-lab model and onboarding guidance |
 | [`docs/PRD.md`](PRD.md) | Product requirements and scope framing |
-| [`docs/SCHEMA.md`](SCHEMA.md) | Database schema and migration history |
+| [`docs/SCHEMA.md`](SCHEMA.md) | Shared platform schema, component schema routing, and migration history |
 | [`docs/TESTING.md`](TESTING.md) | Testing strategy, patterns, and references |
 | [`docs/devSteps.md`](devSteps.md) | Development and verification runbook |
 | [`docs/styleguide.md`](styleguide.md) | UI style system and visual direction |
@@ -44,6 +44,7 @@ stub docs that only redirect to lab-specific paths.
 | Path | Purpose |
 |---|---|
 | [`docs/labs/weather-wellness/weather/API.md`](labs/weather-wellness/weather/API.md) | FastAPI contracts — Weather-Wellness dashboard, sessions, surveys, admin, auth |
+| [`docs/labs/weather-wellness/weather/SCHEMA.md`](labs/weather-wellness/weather/SCHEMA.md) | Weather component database tables — weather ingest, imports, surveys, cognitive tasks, analytics |
 | [`docs/labs/weather-wellness/weather/ANALYTICS.md`](labs/weather-wellness/weather/ANALYTICS.md) | Analytics snapshot/modeling design |
 | [`docs/labs/weather-wellness/weather/DESIGN_SPEC.md`](labs/weather-wellness/weather/DESIGN_SPEC.md) | WW participant and RA UX specifications |
 | [`docs/labs/weather-wellness/weather/SCORING.md`](labs/weather-wellness/weather/SCORING.md) | Instrument scoring rules |
@@ -62,6 +63,7 @@ stub docs that only redirect to lab-specific paths.
 | Path | Purpose |
 |---|---|
 | [`docs/labs/weather-wellness/misokinesia/API.md`](labs/weather-wellness/misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
+| [`docs/labs/weather-wellness/misokinesia/SCHEMA.md`](labs/weather-wellness/misokinesia/SCHEMA.md) | Misokinesia component database tables |
 | [`docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`](labs/weather-wellness/misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`](labs/weather-wellness/misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 | [`docs/labs/weather-wellness/misokinesia/SCORING.md`](labs/weather-wellness/misokinesia/SCORING.md) | Per-instrument scoring corpus (MkAQ, MAQ, GAD-7, per-clip) |
@@ -77,6 +79,7 @@ stub docs that only redirect to lab-specific paths.
 | Path | Purpose |
 |---|---|
 | [`docs/labs/ihtt/poffenberger/API.md`](labs/ihtt/poffenberger/API.md) | Planned FastAPI contracts - IHTT Poffenberger launch, trial manifests, and run submission |
+| [`docs/labs/ihtt/poffenberger/SCHEMA.md`](labs/ihtt/poffenberger/SCHEMA.md) | IHTT Poffenberger component database tables |
 | [`docs/labs/ihtt/poffenberger/DESIGN_SPEC.md`](labs/ihtt/poffenberger/DESIGN_SPEC.md) | IHTT Poffenberger RA launch and participant UX specifications |
 | [`docs/labs/ihtt/poffenberger/POFFENBERGER.md`](labs/ihtt/poffenberger/POFFENBERGER.md) | IHTT Poffenberger task protocol and data collection requirements |
 | [`docs/labs/ihtt/poffenberger/SCORING.md`](labs/ihtt/poffenberger/SCORING.md) | IHTT Poffenberger server-side scoring and derived summaries |
@@ -85,8 +88,9 @@ stub docs that only redirect to lab-specific paths.
 
 | Path | Purpose |
 |---|---|
-| [`docs/progress/PROGRESS_LOG.md`](progress/PROGRESS_LOG.md) | Archive-only historical progress log; active queue is `docs/workboard.json` |
-| [`docs/ROUTING_CLEANUP.md`](ROUTING_CLEANUP.md) | Completed backend reliability playbook archive; canonical behavior lives in `docs/ARCHITECTURE.md` and `docs/labs/weather-wellness/weather/ANALYTICS.md` |
+| `docs/progress/PROGRESS_LOG.md` | Removed archive path; active queue is `docs/workboard.json` |
+| `docs/ROUTING_CLEANUP.md` | Removed backend reliability playbook archive; canonical behavior lives in `docs/ARCHITECTURE.md` and `docs/labs/weather-wellness/weather/ANALYTICS.md` |
+| [`docs/decisions/ARCHIVE.md`](decisions/ARCHIVE.md) | Full historical resolved decision bodies |
 | [`docs/UI_REDESIGN_2026.md`](UI_REDESIGN_2026.md) | Historical editorial dashboard notes; active UI guidance lives in `docs/styleguide.md` |
 | `docs/labs/weather-wellness/tasks/working-misokinesia-add.md` | Completed planning archive (file removed); current task spec is `docs/labs/weather-wellness/misokinesia/MISOKINESIA.md` |
 

@@ -45,6 +45,7 @@ docs cover cross-component concerns only.
 | Document | Purpose |
 |---|---|
 | [`weather/API.md`](weather/API.md) | FastAPI contracts — WW dashboard, sessions, surveys, admin, auth |
+| [`weather/SCHEMA.md`](weather/SCHEMA.md) | Database tables for weather ingest, imports, surveys, cognitive tasks, and analytics |
 | [`weather/DESIGN_SPEC.md`](weather/DESIGN_SPEC.md) | WW participant and RA UX flows |
 | [`weather/SCORING.md`](weather/SCORING.md) | Server-side scoring rules for all instruments |
 | [`weather/ANALYTICS.md`](weather/ANALYTICS.md) | Analytics architecture — MLM model, KPIs, snapshot system |
@@ -63,6 +64,7 @@ docs cover cross-component concerns only.
 | Document | Purpose |
 |---|---|
 | [`misokinesia/API.md`](misokinesia/API.md) | FastAPI contracts — Misokinesia endpoints |
+| [`misokinesia/SCHEMA.md`](misokinesia/SCHEMA.md) | Database tables for Misokinesia task state, responses, demographics, and post-video surveys |
 | [`misokinesia/DESIGN_SPEC.md`](misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`misokinesia/MISOKINESIA.md`](misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 | [`misokinesia/SCORING.md`](misokinesia/SCORING.md) | Server-side scoring rules for MkAQ, MAQ, GAD-7, and per-clip reactivity |
@@ -76,7 +78,7 @@ Research instruments and analysis scripts are in `reference/labs/weather-wellnes
 The current authoritative legacy import workbook is
 `reference/data_complete.xlsx`.
 
-- It supersedes `reference/data_full_1-230.xlsx`, which remains a historical
+- It supersedes `reference/labs/weather-wellness/data_full_1-230.xlsx`, which remains a historical
   pre-extension workbook snapshot.
 - `data_complete.xlsx` is the workbook used for the 2026-04-07 authoritative
   import refresh and extends imported participant-session coverage through

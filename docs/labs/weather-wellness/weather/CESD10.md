@@ -78,7 +78,7 @@ hard-code clinical decisions in the app.
 
 ## Data Storage
 
-See docs/SCHEMA.md for full column definitions.
+See `docs/labs/weather-wellness/weather/SCHEMA.md` for full column definitions.
 
 **Table:** `survey_cesd10`
 

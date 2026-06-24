@@ -44,6 +44,7 @@ cover cross-component concerns only.
 | Document | Purpose |
 |---|---|
 | [`poffenberger/API.md`](poffenberger/API.md) | Planned FastAPI contracts for IHTT Poffenberger launch, trial manifests, and run submission |
+| [`poffenberger/SCHEMA.md`](poffenberger/SCHEMA.md) | Database tables for Poffenberger run and trial persistence |
 | [`poffenberger/DESIGN_SPEC.md`](poffenberger/DESIGN_SPEC.md) | RA launch page and participant task UX |
 | [`poffenberger/POFFENBERGER.md`](poffenberger/POFFENBERGER.md) | Task protocol and data collection requirements |
 | [`poffenberger/SCORING.md`](poffenberger/SCORING.md) | Server-side scoring and derived summary fields |

@@ -74,7 +74,7 @@ scoring direction).
 
 The authoritative legacy workbook `reference/data_complete.xlsx` stores the
 imported CogFunc / PROMIS aggregate in column `self_report`. The older
-`reference/data_full_1-230.xlsx` file remains a historical pre-extension
+`reference/labs/weather-wellness/data_full_1-230.xlsx` file remains a historical pre-extension
 snapshot.
 
 - `self_report` is a derived participant-level mean after the legacy scoring conversions have
@@ -101,7 +101,7 @@ snapshot.
 
 ## Data Storage
 
-See docs/SCHEMA.md for full column definitions.
+See `docs/labs/weather-wellness/weather/SCHEMA.md` for full column definitions.
 
 **Table:** `survey_cogfunc8a`
 

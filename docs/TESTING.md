@@ -227,8 +227,8 @@ before changing the Python implementation. Document intentional divergences in
 | Analytics pipeline design | `docs/labs/weather-wellness/weather/ANALYTICS.md` |
 | API endpoint contracts (WW) | `docs/labs/weather-wellness/weather/API.md` |
 | API endpoint contracts (Misokinesia) | `docs/labs/weather-wellness/misokinesia/API.md` |
-| Scoring formulas | `docs/SCORING.md` |
-| Database schema | `docs/SCHEMA.md` |
+| Scoring formulas | Component scoring docs under `docs/labs/<lab>/<component>/SCORING.md` |
+| Database schema | Shared schema in `docs/SCHEMA.md`; component schemas under `docs/labs/<lab>/<component>/SCHEMA.md` |
 | Code style and patterns | `docs/CONVENTIONS.md` |
 | Reference R analysis | `reference/labs/weather-wellness/Weather_MLM.R` |
 | Current task queue | `docs/workboard.json` |

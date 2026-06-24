@@ -154,7 +154,7 @@ Computed by `backend/app/scoring/digitspan.py` — not on the client.
 
 The authoritative legacy workbook `reference/data_complete.xlsx` does **not**
 use this same fixed 14-trial protocol for its stored `digit_span_score`. The
-older `reference/data_full_1-230.xlsx` file remains a historical pre-extension
+older `reference/labs/weather-wellness/data_full_1-230.xlsx` file remains a historical pre-extension
 snapshot.
 
 - Legacy scoring tallies correct responses until the participant records two incorrect trials at
@@ -170,7 +170,7 @@ snapshot.
 
 ## Data Storage
 
-See docs/SCHEMA.md for full column definitions.
+See `docs/labs/weather-wellness/weather/SCHEMA.md` for full column definitions.
 
 **Per run** (`digitspan_runs`): `run_id`, `session_id`, `participant_uuid`, `total_correct`, `max_span`
 

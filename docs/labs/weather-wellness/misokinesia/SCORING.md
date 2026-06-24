@@ -4,7 +4,7 @@
 > canonical, extraction-friendly source for the methodology-explainer retrieval corpus
 > (`docs/AI_CHAT.md`). For full item wording, response scales, UI layout, and the
 > participant flow, see [MISOKINESIA.md](./MISOKINESIA.md). For endpoint contracts see
-> [API.md](./API.md). For DB columns see `docs/SCHEMA.md`.
+> [API.md](./API.md). For DB columns see `docs/labs/weather-wellness/misokinesia/SCHEMA.md`.
 >
 > All Misokinesia survey scores are computed server-side in
 > `backend/app/routers/misokinesia.py` (GAD-7 reuses `backend/app/scoring/gad7.py`).
