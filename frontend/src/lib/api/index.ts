@@ -1302,7 +1302,7 @@ export async function exportPoffenbergerXlsx(options?: {
   const blob = await res.blob();
   const filename = filenameFromContentDisposition(
     res.headers.get("Content-Disposition"),
-    "IHTT Poffenberger - export.xlsx"
+    "Poffenberger test - export.xlsx"
   );
   return { blob, filename };
 }

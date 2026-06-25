@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -13,6 +14,7 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import STUDY_TIMEZONE
 from app.models.participants import Participant
 from app.models.poffenberger import PoffenbergerRun
 from app.models.sessions import Session as SessionModel
@@ -145,6 +147,7 @@ _RUN_SUMMARY_COLUMNS = [
 ]
 
 _SAMPLE_EXPORTED_AT = datetime(2026, 6, 24, 17, 30, tzinfo=timezone.utc)
+_EXPORT_TIMEZONE = ZoneInfo(STUDY_TIMEZONE)
 
 
 def _to_xlsx(value: Any) -> Any:
@@ -161,9 +164,25 @@ def _to_xlsx(value: Any) -> Any:
     return value
 
 
+def _format_local_datetime(value: Any) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, datetime):
+        return str(value)
+    local_value = (
+        value.replace(tzinfo=_EXPORT_TIMEZONE)
+        if value.tzinfo is None
+        else value.astimezone(_EXPORT_TIMEZONE)
+    )
+    hour = local_value.hour % 12 or 12
+    minute = local_value.minute
+    suffix = "am" if local_value.hour < 12 else "pm"
+    return f"{local_value:%Y-%m-%d} {hour}:{minute:02d}{suffix}"
+
+
 def _format_trial_time(started_at: Any, completed_at: Any) -> str | None:
-    started = _to_xlsx(started_at)
-    completed = _to_xlsx(completed_at)
+    started = _format_local_datetime(started_at)
+    completed = _format_local_datetime(completed_at)
     if started is None and completed is None:
         return None
     return f"Started: {started or ''}\nCompleted: {completed or ''}"

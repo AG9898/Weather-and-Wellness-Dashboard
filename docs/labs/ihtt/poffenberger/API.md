@@ -97,14 +97,14 @@ Notes:
 - **Response:** XLSX workbook download.
 - **Headers:**
   - `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
-  - `Content-Disposition: attachment; filename="IHTT Poffenberger - YYYY-MM-DD.xlsx"`
+  - `Content-Disposition: attachment; filename="Poffenberger test - YYYY-MM-DD.xlsx"`
 
 Notes:
 
 - Backs the shared `/import-export` page for IHTT users.
 - The frontend exposes `sample_data=true` through a checkbox labeled "Preview
-  with sample rows"; the downloaded filename is
-  `IHTT Poffenberger sample - YYYY-MM-DD.xlsx`.
+  with sample rows"; the downloaded filename uses the same
+  `Poffenberger test - YYYY-MM-DD.xlsx` pattern.
 - v1 export is XLSX-only. No import action and no CSV/ZIP export are exposed for
   Poffenberger.
 - Workbook sheets:
@@ -116,6 +116,9 @@ Notes:
 - Column headers are RA-facing labels such as `Participant number`, `Age group`,
   `Trial Time`, `Crossed mean RT (ms)`, and
   `Left hand + right-side stimulus accuracy`.
+- `Trial Time` renders started/completed timestamps in the study timezone
+  (`America/Vancouver` by default) with no timezone suffix, for example
+  `Started: 2026-06-24 5:30pm`.
 - Raw record identifiers, manifest JSON, and browser timing audit fields are not
   exported in this workbook because the workbook is intended for review and
   analysis, not as a full database backup.

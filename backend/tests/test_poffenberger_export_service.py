@@ -94,8 +94,8 @@ class PoffenbergerExportServiceTests(IsolatedAsyncioTestCase):
         assert values["Participant number"] == 17
         assert values["Handedness"] == "Right-handed"
         assert values["Trial Time"] == (
-            "Started: 2026-06-24T18:30:00+00:00\n"
-            "Completed: 2026-06-24T18:30:00+00:00"
+            "Started: 2026-06-24 11:30am\n"
+            "Completed: 2026-06-24 11:30am"
         )
         assert values["IHTT difference (ms)"] == 5
         assert values["Left hand + right-side stimulus mean RT (ms)"] == 305.25
@@ -136,6 +136,10 @@ class PoffenbergerExportServiceTests(IsolatedAsyncioTestCase):
         assert row_values[3]["Gender"] == "Prefer not to say"
         assert all("Started:" in row["Trial Time"] for row in row_values)
         assert all("\nCompleted:" in row["Trial Time"] for row in row_values)
+        assert row_values[0]["Trial Time"] == (
+            "Started: 2026-06-24 10:30am\n"
+            "Completed: 2026-06-24 10:48am"
+        )
         assert row_values[0]["IHTT difference (ms)"] == 10
         assert row_values[3]["IHTT difference (ms)"] == 8.8
         assert data.freeze_panes == "A5"

@@ -259,10 +259,9 @@ async def export_poffenberger_xlsx(
     today = _today_local()
     if sample_data:
         xlsx_bytes = build_sample_poffenberger_xlsx(export_date=today)
-        filename = f"IHTT Poffenberger sample - {today}.xlsx"
     else:
         xlsx_bytes = await build_poffenberger_xlsx(db, export_date=today)
-        filename = f"IHTT Poffenberger - {today}.xlsx"
+    filename = f"Poffenberger test - {today}.xlsx"
     return Response(
         content=xlsx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

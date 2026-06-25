@@ -129,7 +129,9 @@ Workbook sheets:
 `Poffenberger Data` includes RA-facing columns for:
 
 - participant number, age group, gender, handedness
-- `Trial Time`, with started and completed timestamps separated by a line break
+- `Trial Time`, with started and completed timestamps converted to the study
+  timezone (`America/Vancouver` by default), rendered without a timezone suffix,
+  and separated by a line break
 - crossed mean RT, uncrossed mean RT, IHTT difference, crossed accuracy, and
   uncrossed accuracy
 - the four main hand/stimulus condition summaries, each limited to accuracy and

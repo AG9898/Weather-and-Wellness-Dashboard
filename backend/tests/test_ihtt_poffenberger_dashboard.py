@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -12,7 +13,11 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from jose import jwt
 
-from app.routers.ihtt_poffenberger import get_poffenberger_dashboard, router
+from app.routers.ihtt_poffenberger import (
+    export_poffenberger_xlsx,
+    get_poffenberger_dashboard,
+    router,
+)
 from app.schemas.poffenberger import PoffenbergerDashboardResponse
 
 _MEMBER_ID = uuid.UUID("44444444-4444-4444-4444-444444444444")
@@ -131,6 +136,18 @@ def test_export_route_requires_auth_and_rejects_non_ihtt_non_admin() -> None:
         )
 
     assert wrong_lab.status_code == 403
+
+
+def test_sample_export_uses_poffenberger_test_filename() -> None:
+    with patch("app.routers.ihtt_poffenberger._today_local", return_value="2026-06-24"):
+        response = asyncio.run(
+            export_poffenberger_xlsx(sample_data=True, db=None)  # type: ignore[arg-type]
+        )
+
+    assert (
+        response.headers["content-disposition"]
+        == 'attachment; filename="Poffenberger test - 2026-06-24.xlsx"'
+    )
 
 
 class PoffenbergerDashboardHandlerTests(IsolatedAsyncioTestCase):
