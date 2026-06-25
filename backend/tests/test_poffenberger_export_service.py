@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import io
-import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 
 import openpyxl
@@ -31,25 +29,9 @@ class _MappingResult:
         return _MappingRows(self._rows)
 
 
-class _ScalarRows:
-    def __init__(self, rows: list[object]) -> None:
-        self._rows = rows
-
-    def all(self) -> list[object]:
-        return self._rows
-
-
-class _ScalarResult:
-    def __init__(self, rows: list[object]) -> None:
-        self._rows = rows
-
-    def scalars(self) -> _ScalarRows:
-        return _ScalarRows(self._rows)
-
-
 class _ExportDB:
-    def __init__(self, run_rows: list[dict[str, object]], trial_rows: list[object]) -> None:
-        self._results = [_MappingResult(run_rows), _ScalarResult(trial_rows)]
+    def __init__(self, run_rows: list[dict[str, object]]) -> None:
+        self._results = [_MappingResult(run_rows)]
 
     async def execute(self, stmt: object) -> object:  # noqa: ARG002
         if not self._results:
@@ -58,130 +40,71 @@ class _ExportDB:
 
 
 class PoffenbergerExportServiceTests(IsolatedAsyncioTestCase):
-    async def test_build_poffenberger_xlsx_includes_joined_runs_and_trials(self) -> None:
-        run_id = uuid.uuid4()
-        session_id = uuid.uuid4()
-        participant_uuid = uuid.uuid4()
+    async def test_build_poffenberger_xlsx_includes_ra_readable_run_summary(self) -> None:
         created_at = datetime(2026, 6, 24, 18, 30, tzinfo=timezone.utc)
 
         run_row = {
-            "run_id": run_id,
-            "session_id": session_id,
-            "participant_uuid": participant_uuid,
             "participant_number": 17,
             "age_band": "18-24",
             "gender": "Woman",
             "handedness": "Right-handed",
-            "session_status": "complete",
-            "session_created_at": created_at,
-            "session_completed_at": created_at,
-            "manifest_json": {"blocks": []},
             "started_at": created_at,
             "completed_at": created_at,
-            "is_complete": True,
-            "total_practice_trials": 10,
-            "total_experimental_trials": 600,
-            "lh_lvf_total_trials": 150,
-            "lh_lvf_valid_rt_trials": 149,
-            "lh_lvf_timeout_trials": 1,
-            "lh_lvf_invalid_trials": 0,
-            "lh_lvf_accurate_trials": 148,
             "lh_lvf_accuracy": Decimal("0.9867"),
             "lh_lvf_mean_rt_ms": Decimal("301.25"),
-            "lh_lvf_median_rt_ms": Decimal("299.50"),
-            "lh_lvf_sd_rt_ms": Decimal("22.10"),
-            "lh_rvf_total_trials": 150,
-            "lh_rvf_valid_rt_trials": 150,
-            "lh_rvf_timeout_trials": 0,
-            "lh_rvf_invalid_trials": 0,
-            "lh_rvf_accurate_trials": 147,
             "lh_rvf_accuracy": Decimal("0.9800"),
             "lh_rvf_mean_rt_ms": Decimal("305.25"),
-            "lh_rvf_median_rt_ms": Decimal("303.50"),
-            "lh_rvf_sd_rt_ms": Decimal("24.10"),
-            "rh_lvf_total_trials": 150,
-            "rh_lvf_valid_rt_trials": 150,
-            "rh_lvf_timeout_trials": 0,
-            "rh_lvf_invalid_trials": 0,
-            "rh_lvf_accurate_trials": 146,
             "rh_lvf_accuracy": Decimal("0.9733"),
             "rh_lvf_mean_rt_ms": Decimal("306.25"),
-            "rh_lvf_median_rt_ms": Decimal("304.50"),
-            "rh_lvf_sd_rt_ms": Decimal("25.10"),
-            "rh_rvf_total_trials": 150,
-            "rh_rvf_valid_rt_trials": 150,
-            "rh_rvf_timeout_trials": 0,
-            "rh_rvf_invalid_trials": 0,
-            "rh_rvf_accurate_trials": 149,
             "rh_rvf_accuracy": Decimal("0.9933"),
             "rh_rvf_mean_rt_ms": Decimal("300.25"),
-            "rh_rvf_median_rt_ms": Decimal("298.50"),
-            "rh_rvf_sd_rt_ms": Decimal("21.10"),
             "mean_rt_crossed_ms": Decimal("305.75"),
             "mean_rt_uncrossed_ms": Decimal("300.75"),
             "ihtt_difference_ms": Decimal("5.00"),
             "accuracy_crossed": Decimal("0.9767"),
             "accuracy_uncrossed": Decimal("0.9900"),
         }
-        trial = SimpleNamespace(
-            trial_id=uuid.uuid4(),
-            run_id=run_id,
-            session_id=session_id,
-            participant_uuid=participant_uuid,
-            block_number=1,
-            trial_number=1,
-            global_trial_number=11,
-            response_hand="left",
-            visual_field="rvf",
-            condition_key="lh_rvf",
-            is_practice=False,
-            is_scored=True,
-            expected_key="f",
-            pressed_key="f",
-            reaction_time_ms=312,
-            is_valid_response=True,
-            is_timeout=False,
-            is_accurate=True,
-            jitter_ms=1300,
-            client_trial_started_at_ms=Decimal("1000.123"),
-            client_stimulus_onset_ms=Decimal("2300.123"),
-            client_response_at_ms=Decimal("2612.123"),
-            client_trial_ended_at_ms=Decimal("2700.123"),
-            created_at=created_at,
-        )
 
         workbook_bytes = await build_poffenberger_xlsx(
-            _ExportDB([run_row], [trial]),
+            _ExportDB([run_row]),
             export_date="2026-06-24",
         )
 
         workbook = openpyxl.load_workbook(io.BytesIO(workbook_bytes))
-        assert workbook.sheetnames == ["README", "poffenberger_runs", "poffenberger_trials"]
+        assert workbook.sheetnames == ["README", "Poffenberger Data"]
 
-        runs = workbook["poffenberger_runs"]
-        run_headers = [cell.value for cell in runs[1]]
-        run_values = {
-            header: runs.cell(row=2, column=index + 1).value
-            for index, header in enumerate(run_headers)
+        data = workbook["Poffenberger Data"]
+        headers = [cell.value for cell in data[4] if cell.value]
+        assert "Participant number" in headers
+        assert "Trial Time" in headers
+        assert "IHTT difference (ms)" in headers
+        assert "Left hand + right-side stimulus accuracy" in headers
+        assert "Session status" not in headers
+        assert "Task complete?" not in headers
+        assert "Practice trials recorded" not in headers
+        assert "Experimental trials recorded" not in headers
+        assert not any("valid trials" in str(header) for header in headers)
+        assert not any("uuid" in str(header).lower() for header in headers)
+        assert not any(str(header).lower().endswith("_id") for header in headers)
+
+        values = {
+            header: data.cell(row=5, column=index + 1).value
+            for index, header in enumerate(headers)
         }
-        assert run_values["participant_number"] == 17
-        assert run_values["handedness"] == "Right-handed"
-        assert run_values["session_status"] == "complete"
-        assert run_values["manifest_json"] == '{"blocks": []}'
-        assert run_values["ihtt_difference_ms"] == 5
+        assert values["Participant number"] == 17
+        assert values["Handedness"] == "Right-handed"
+        assert values["Trial Time"] == (
+            "Started: 2026-06-24T18:30:00+00:00\n"
+            "Completed: 2026-06-24T18:30:00+00:00"
+        )
+        assert values["IHTT difference (ms)"] == 5
+        assert values["Left hand + right-side stimulus mean RT (ms)"] == 305.25
+        assert (
+            data.cell(row=5, column=headers.index("Crossed accuracy") + 1).number_format
+            == "0.0%"
+        )
 
-        trials = workbook["poffenberger_trials"]
-        trial_headers = [cell.value for cell in trials[1]]
-        trial_values = {
-            header: trials.cell(row=2, column=index + 1).value
-            for index, header in enumerate(trial_headers)
-        }
-        assert trial_values["run_id"] == str(run_id)
-        assert trial_values["global_trial_number"] == 11
-        assert trial_values["condition_key"] == "lh_rvf"
-        assert trial_values["reaction_time_ms"] == 312
-
-    async def test_build_sample_poffenberger_xlsx_uses_hardcoded_rows(self) -> None:
+    async def test_build_sample_poffenberger_xlsx_uses_fictional_rows(self) -> None:
         workbook_bytes = build_sample_poffenberger_xlsx(export_date="2026-06-24")
 
         workbook = openpyxl.load_workbook(io.BytesIO(workbook_bytes))
@@ -189,19 +112,30 @@ class PoffenbergerExportServiceTests(IsolatedAsyncioTestCase):
             workbook["README"].cell(row=row_num, column=1).value
             for row_num in range(1, 20)
         ]
+        readme_values.extend(
+            workbook["README"].cell(row=row_num, column=2).value
+            for row_num in range(1, 20)
+        )
         assert any(
-            value and "hardcoded sample data" in str(value)
+            value and "Sample workbook with fictional rows" in str(value)
             for value in readme_values
         )
 
-        runs = workbook["poffenberger_runs"]
-        run_headers = [cell.value for cell in runs[1]]
-        run_values = {
-            header: runs.cell(row=2, column=index + 1).value
-            for index, header in enumerate(run_headers)
-        }
-        assert run_values["participant_number"] == 9001
-        assert run_values["ihtt_difference_ms"] == 10
-
-        trials = workbook["poffenberger_trials"]
-        assert trials.max_row == 6
+        data = workbook["Poffenberger Data"]
+        headers = [cell.value for cell in data[4] if cell.value]
+        row_values = [
+            {
+                header: data.cell(row=row_num, column=index + 1).value
+                for index, header in enumerate(headers)
+            }
+            for row_num in range(5, 9)
+        ]
+        assert [row["Participant number"] for row in row_values] == [9001, 9002, 9003, 9004]
+        assert row_values[1]["Age group"] == "25-31"
+        assert row_values[2]["Handedness"] == "Ambidextrous"
+        assert row_values[3]["Gender"] == "Prefer not to say"
+        assert all("Started:" in row["Trial Time"] for row in row_values)
+        assert all("\nCompleted:" in row["Trial Time"] for row in row_values)
+        assert row_values[0]["IHTT difference (ms)"] == 10
+        assert row_values[3]["IHTT difference (ms)"] == 8.8
+        assert data.freeze_panes == "A5"

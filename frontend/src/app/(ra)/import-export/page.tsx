@@ -105,7 +105,7 @@ export default function ImportExportPage() {
             className="mt-1 h-4 w-4 rounded border-border"
           />
           <label htmlFor="sample-data" className="text-sm text-foreground">
-            Use hardcoded sample data
+            Preview with sample rows
           </label>
         </div>
 
@@ -119,8 +119,8 @@ export default function ImportExportPage() {
           {isDownloading ? "Downloading..." : "Export Poffenberger XLSX"}
         </Button>
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-          Includes a README sheet, one run-level sheet with participant and session
-          context, and one trial-level sheet linked by run, session, and participant IDs.
+          Includes a README sheet and one Poffenberger Data sheet with participant
+          demographics, trial time, and the main reaction-time and accuracy summaries.
         </p>
       </section>
     </PageContainer>

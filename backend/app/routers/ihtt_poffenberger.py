@@ -252,7 +252,7 @@ async def get_poffenberger_dashboard(
 async def export_poffenberger_xlsx(
     sample_data: bool = Query(
         default=False,
-        description="Return hardcoded sample rows instead of reading database rows.",
+        description="Return fictional sample rows for reviewing the workbook layout.",
     ),
     db: AsyncSession = Depends(get_session),
 ) -> Response:

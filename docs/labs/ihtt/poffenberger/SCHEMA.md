@@ -113,37 +113,35 @@ Indexes/constraints:
 
 `GET /ihtt/poffenberger/export.xlsx` produces an analysis-oriented workbook for
 IHTT users. It is not a full database backup; it exports the Poffenberger data
-needed to analyze recorded runs while preserving explicit join keys.
+needed to review recorded runs with RA-readable labels.
 
 For layout debugging, `GET /ihtt/poffenberger/export.xlsx?sample_data=true`
-returns the same workbook shape populated from hardcoded sample rows. This path
+returns the same workbook shape populated from fictional sample rows. This path
 does not read, create, or update database rows.
 
 Workbook sheets:
 
 | Sheet | Row grain | Notes |
 | --- | --- | --- |
-| `README` | workbook metadata | Export date, sheet descriptions, join keys, and value conventions |
-| `poffenberger_runs` | one row per recorded run | Joins `ihtt_poffenberger_runs` to `participants` and `sessions` |
-| `poffenberger_trials` | one row per persisted trial | Raw/audit trial rows linked to run/session/participant keys |
+| `README` | workbook metadata | Export date, workbook type, and plain-language score notes |
+| `Poffenberger Data` | one row per recorded run | Combines participant demographics, trial timing, and run-level task summaries |
 
-`poffenberger_runs` includes:
+`Poffenberger Data` includes RA-facing columns for:
 
-- `run_id`, `session_id`, `participant_uuid`
-- `participant_number`, `age_band`, `gender`, `handedness`
-- `session_status`, `session_created_at`, `session_completed_at`
-- run timing/completion fields
-- `total_practice_trials`, `total_experimental_trials`
-- all condition-level count, accuracy, mean, median, and SD summary columns
-- crossed/uncrossed mean RT, accuracy, and IHTT difference columns
+- participant number, age group, gender, handedness
+- `Trial Time`, with started and completed timestamps separated by a line break
+- crossed mean RT, uncrossed mean RT, IHTT difference, crossed accuracy, and
+  uncrossed accuracy
+- the four main hand/stimulus condition summaries, each limited to accuracy and
+  mean RT
 
-`poffenberger_trials` includes all columns from `ihtt_poffenberger_trials` in
-schema order. It intentionally does not duplicate run summary or participant
-demographic columns; analysts should join by `run_id`, `session_id`, or
-`participant_uuid`.
+The workbook intentionally omits raw record identifiers, `manifest_json`,
+per-trial browser timing fields, session status, task completion flag, recorded
+practice/experimental trial counts, per-condition valid-trial counts, and other
+lower-level audit columns. Those values remain in the database for technical
+investigation, but are not useful for the default RA review workflow.
 
 Recorded Poffenberger start currently creates a fresh participant, session, and
 run for each recorded participant visit. The intended workflow is one recorded
-Poffenberger run per participant, while each run has many persisted trial rows.
-The workbook preserves both grains explicitly instead of flattening all run
-summary columns onto every trial row.
+Poffenberger run per participant, so participant demographics and run-level
+trial summaries are exported together on one data sheet.

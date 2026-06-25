@@ -91,9 +91,9 @@ The page exposes a single action:
 - **Export Poffenberger XLSX** - downloads the workbook from
   `GET /ihtt/poffenberger/export.xlsx`.
 
-The action includes a **Use hardcoded sample data** checkbox. When selected, the
+The action includes a **Preview with sample rows** checkbox. When selected, the
 download calls `GET /ihtt/poffenberger/export.xlsx?sample_data=true` and returns
-the same workbook shape with hardcoded sample rows. This is for export-layout
+the same workbook shape with fictional sample rows. This is for export-layout
 debugging only; it must not create database rows or read live Poffenberger rows.
 
 The page must not show an import drop zone, Weather-Wellness legacy import
@@ -101,10 +101,12 @@ controls, Weather-Wellness XLSX export, or CSV/ZIP export to IHTT users. If the
 caller is not authorized for the IHTT export action, redirect to `/unauthorized`.
 
 The workbook is designed for RA analysis rather than schema backup: one
-run-level sheet joins participant demographics and session context to each
-Poffenberger run, while a separate trial-level sheet retains one row per
-persisted practice/experimental trial. Both sheets include `participant_uuid`,
-`session_id`, and `run_id` where applicable so rows can be joined offline.
+`Poffenberger Data` sheet combines participant demographics, session context,
+one `Trial Time` column, overall crossed/uncrossed scores, IHTT difference, and
+the four hand/stimulus condition summaries. Raw record identifiers, manifest
+JSON, browser timing audit fields, status flags, trial-count totals, and
+per-condition valid-trial counts are intentionally omitted from this RA-facing
+workbook.
 
 ## Participant Task Route
 
