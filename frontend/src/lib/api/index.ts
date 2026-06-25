@@ -1263,6 +1263,17 @@ function filenameFromContentDisposition(
   return match?.[1] ?? fallback;
 }
 
+function getVancouverDateString(date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Vancouver",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
+}
+
 /** Download the admin XLSX export. Returns the blob and the server-provided filename. */
 export async function exportXlsx(): Promise<{ blob: Blob; filename: string }> {
   const res = await fetch(`${API_BASE}/admin/export.xlsx`, {
@@ -1302,7 +1313,7 @@ export async function exportPoffenbergerXlsx(options?: {
   const blob = await res.blob();
   const filename = filenameFromContentDisposition(
     res.headers.get("Content-Disposition"),
-    "Poffenberger test - export.xlsx"
+    `Poffenberger test - ${getVancouverDateString()}.xlsx`
   );
   return { blob, filename };
 }

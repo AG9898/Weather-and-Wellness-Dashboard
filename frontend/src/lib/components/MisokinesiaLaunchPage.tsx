@@ -29,32 +29,6 @@ interface MisokinesiaLaunchPageProps {
   onUndoLastSession?: () => void;
 }
 
-const KIND_LABEL: Record<SessionKind, string> = {
-  production: "Production",
-  short_trial: "Short trial",
-  full_trial: "Full trial",
-};
-
-function StatusBadge({ kind, status }: { kind: SessionKind; status: SessionStatus }) {
-  const isComplete = status === "complete";
-  const isRehearsal = status === "rehearsal";
-  return (
-    <span
-      className={[
-        "inline-flex items-center rounded-full border px-2 py-0.5",
-        "text-[10px] font-semibold uppercase tracking-widest",
-        isComplete
-          ? "border-primary/30 bg-primary/10 text-primary"
-          : isRehearsal
-            ? "border-border bg-muted text-muted-foreground"
-            : "border-border bg-muted text-muted-foreground",
-      ].join(" ")}
-    >
-      {KIND_LABEL[kind]}
-    </span>
-  );
-}
-
 function formatParticipantNumber(value: number): string {
   return `MKP-${String(value).padStart(4, "0")}`;
 }
