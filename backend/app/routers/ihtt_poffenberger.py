@@ -3,12 +3,15 @@ from __future__ import annotations
 import random
 from datetime import datetime, timezone
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import LabMember, get_current_ra_for_lab
+from app.config import STUDY_TIMEZONE
 from app.db import get_session
 from app.models.participants import Participant
 from app.models.poffenberger import PoffenbergerRun, PoffenbergerTrial
@@ -30,6 +33,10 @@ from app.scoring.poffenberger import (
     TrialInput,
     score as score_poffenberger,
 )
+from app.services.poffenberger_export_service import (
+    build_poffenberger_xlsx,
+    build_sample_poffenberger_xlsx,
+)
 
 router = APIRouter(prefix="/ihtt/poffenberger", tags=["ihtt-poffenberger"])
 
@@ -41,6 +48,10 @@ _LEFT_HAND_KEY = "f"
 _RIGHT_HAND_KEY = "j"
 _JITTER_MIN_MS = 1000
 _JITTER_MAX_MS = 2000
+
+
+def _today_local() -> str:
+    return datetime.now(ZoneInfo(STUDY_TIMEZONE)).date().isoformat()
 
 
 def _expected_key(response_hand: str) -> str:
@@ -230,6 +241,32 @@ async def get_poffenberger_dashboard(
             )
             for row in recent_rows
         ],
+    )
+
+
+@router.get(
+    "/export.xlsx",
+    dependencies=[Depends(get_current_ra_for_lab("ihtt"))],
+    response_class=Response,
+)
+async def export_poffenberger_xlsx(
+    sample_data: bool = Query(
+        default=False,
+        description="Return hardcoded sample rows instead of reading database rows.",
+    ),
+    db: AsyncSession = Depends(get_session),
+) -> Response:
+    today = _today_local()
+    if sample_data:
+        xlsx_bytes = build_sample_poffenberger_xlsx(export_date=today)
+        filename = f"IHTT Poffenberger sample - {today}.xlsx"
+    else:
+        xlsx_bytes = await build_poffenberger_xlsx(db, export_date=today)
+        filename = f"IHTT Poffenberger - {today}.xlsx"
+    return Response(
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -108,3 +108,42 @@ Indexes/constraints:
 - CHECK practice rows are not marked scored
 
 ---
+
+## Poffenberger XLSX Export Shape
+
+`GET /ihtt/poffenberger/export.xlsx` produces an analysis-oriented workbook for
+IHTT users. It is not a full database backup; it exports the Poffenberger data
+needed to analyze recorded runs while preserving explicit join keys.
+
+For layout debugging, `GET /ihtt/poffenberger/export.xlsx?sample_data=true`
+returns the same workbook shape populated from hardcoded sample rows. This path
+does not read, create, or update database rows.
+
+Workbook sheets:
+
+| Sheet | Row grain | Notes |
+| --- | --- | --- |
+| `README` | workbook metadata | Export date, sheet descriptions, join keys, and value conventions |
+| `poffenberger_runs` | one row per recorded run | Joins `ihtt_poffenberger_runs` to `participants` and `sessions` |
+| `poffenberger_trials` | one row per persisted trial | Raw/audit trial rows linked to run/session/participant keys |
+
+`poffenberger_runs` includes:
+
+- `run_id`, `session_id`, `participant_uuid`
+- `participant_number`, `age_band`, `gender`, `handedness`
+- `session_status`, `session_created_at`, `session_completed_at`
+- run timing/completion fields
+- `total_practice_trials`, `total_experimental_trials`
+- all condition-level count, accuracy, mean, median, and SD summary columns
+- crossed/uncrossed mean RT, accuracy, and IHTT difference columns
+
+`poffenberger_trials` includes all columns from `ihtt_poffenberger_trials` in
+schema order. It intentionally does not duplicate run summary or participant
+demographic columns; analysts should join by `run_id`, `session_id`, or
+`participant_uuid`.
+
+Recorded Poffenberger start currently creates a fresh participant, session, and
+run for each recorded participant visit. The intended workflow is one recorded
+Poffenberger run per participant, while each run has many persisted trial rows.
+The workbook preserves both grains explicitly instead of flattening all run
+summary columns onto every trial row.

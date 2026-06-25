@@ -100,6 +100,39 @@ def test_dashboard_route_requires_auth_and_rejects_non_ihtt_non_admin() -> None:
     assert wrong_lab.status_code == 403
 
 
+def test_export_route_is_registered_with_ihtt_ra_dependency() -> None:
+    route = next(
+        route
+        for route in router.routes
+        if isinstance(route, APIRoute)
+        and route.path == "/ihtt/poffenberger/export.xlsx"
+        and "GET" in (route.methods or set())
+    )
+
+    dependency_calls = {dependency.call for dependency in route.dependant.dependencies}
+
+    assert route.response_class.__name__ == "Response"
+    assert any(
+        getattr(call, "__qualname__", "") == "get_current_ra_for_lab.<locals>._dependency"
+        for call in dependency_calls
+    )
+
+
+def test_export_route_requires_auth_and_rejects_non_ihtt_non_admin() -> None:
+    client = _route_client()
+
+    missing = client.get("/ihtt/poffenberger/export.xlsx")
+    assert missing.status_code == 401
+
+    with patch.dict("os.environ", {"SUPABASE_JWT_SECRET": "test-secret"}):
+        wrong_lab = client.get(
+            "/ihtt/poffenberger/export.xlsx",
+            headers={"Authorization": f"Bearer {_auth_token(lab_name='ww')}"},
+        )
+
+    assert wrong_lab.status_code == 403
+
+
 class PoffenbergerDashboardHandlerTests(IsolatedAsyncioTestCase):
     async def test_returns_counts_average_and_recent_runs(self) -> None:
         agg_row = {

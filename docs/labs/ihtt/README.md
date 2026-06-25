@@ -21,8 +21,11 @@ gender, and handedness; Weather-Wellness exposure fields do not apply.
 ## Data Access
 
 Lab data is accessed through Supabase Studio by default. Participants do not
-download data. Any future admin import/export or chatbot access must follow the
-same lab isolation rules as the rest of the platform.
+download data. IHTT RAs can download the Poffenberger XLSX export from the
+shared `/import-export` route; the export is scoped to the Poffenberger
+component and includes linked participant/session/run/trial data. Any future
+import path, CSV/ZIP export, or chatbot access must follow the same lab
+isolation rules as the rest of the platform.
 
 ## Lab Slug
 

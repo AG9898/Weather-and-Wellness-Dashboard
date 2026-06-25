@@ -47,13 +47,15 @@ export const LAB_REGISTRY: Record<LabSlug, LabConfig> = {
   ihtt: {
     slug: "ihtt",
     label: "IHTT",
-    items: [{ href: "/ihtt/poffenberger", label: "Dashboard", icon: Home }],
+    items: [
+      { href: "/ihtt/poffenberger", label: "Dashboard", icon: Home },
+      { href: "/import-export", label: "Export", icon: ArrowUpDown },
+    ],
   },
 };
 
 /** Admin-only items appended to every lab's dock. */
 export const ADMIN_DOCK_ITEMS: LabDockItem[] = [
-  { href: "/import-export", label: "Export", icon: ArrowUpDown },
   { href: "/users", label: "Users", icon: Users },
 ];
 

@@ -41,6 +41,7 @@ uses fake IDs in the shared trial-run format.
 | Method | Path | Auth | Status | Purpose |
 |---|---|---|---|---|
 | `GET` | `/ihtt/poffenberger/dashboard` | RA | implemented | RA operations summary: run counts, average IHTT difference, recent recorded runs |
+| `GET` | `/ihtt/poffenberger/export.xlsx` | RA | implemented | Download Poffenberger XLSX export with joined participant/session/run data and trial rows |
 | `POST` | `/ihtt/poffenberger/start` | RA | implemented | Create anonymous participant/session/run and return production manifest |
 | `GET` | `/ihtt/poffenberger/trial-manifest` | RA | not used in v1 | Return short or full no-write manifest, if manifest generation is server-owned |
 | `POST` | `/ihtt/poffenberger/runs/{run_id}/submit` | None | implemented | Submit raw production trial data and receive server-computed summaries |
@@ -84,6 +85,44 @@ Notes:
   the IHTT demographics stored on `participants`.
 - Read-only endpoint. The `handedness` demographic it returns is stored on the
   shared `participants` table by migration `20260624_000001`.
+
+## GET /ihtt/poffenberger/export.xlsx
+
+- **Auth:** RA required, scoped to `ihtt`.
+- **Status:** implemented.
+- **Query params:**
+  - `sample_data` (boolean, optional, default `false`) - when `true`, returns a
+    workbook populated from hardcoded sample rows for export-layout debugging.
+    No database rows are read, created, or updated by this sample path.
+- **Response:** XLSX workbook download.
+- **Headers:**
+  - `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+  - `Content-Disposition: attachment; filename="IHTT Poffenberger - YYYY-MM-DD.xlsx"`
+
+Notes:
+
+- Backs the shared `/import-export` page for IHTT users.
+- The frontend exposes `sample_data=true` through a checkbox labeled "Use
+  hardcoded sample data"; the downloaded filename is
+  `IHTT Poffenberger sample - YYYY-MM-DD.xlsx`.
+- v1 export is XLSX-only. No import action and no CSV/ZIP export are exposed for
+  Poffenberger.
+- Workbook sheets:
+  - `README` - export timestamp, sheet descriptions, join keys, and value notes.
+  - `poffenberger_runs` - one row per recorded Poffenberger run, joined to the
+    shared participant and session context needed for analysis.
+  - `poffenberger_trials` - one row per persisted practice or experimental
+    trial, linked by `run_id`, `session_id`, and `participant_uuid`.
+- The run sheet includes participant demographics collected at start
+  (`participant_number`, `age_band`, `gender`, `handedness`) plus session status
+  and timestamps.
+- The trial sheet keeps raw trial/audit fields separate from run summaries so
+  analysts can join many trial rows to one run row without duplicated summary
+  columns.
+- Recorded Poffenberger start creates a new participant, session, and run for
+  each participant visit. The intended workflow is one recorded Poffenberger run
+  per participant; the export preserves explicit join keys rather than relying
+  on participant number alone.
 
 ## POST /ihtt/poffenberger/start
 

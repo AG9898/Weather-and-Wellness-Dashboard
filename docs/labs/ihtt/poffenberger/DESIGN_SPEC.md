@@ -15,8 +15,10 @@ v1 is intentionally narrow:
 - short and full no-write trial runs
 - participant task screens
 - completion screen
+- export-only access through the shared `/import-export` route
 
-No leaderboard, export UI, or weather-style analytics view is included in v1.
+No leaderboard, import UI, CSV/ZIP export, or weather-style analytics view is
+included in v1.
 
 ## RA Launch Page (operations dashboard)
 
@@ -73,6 +75,36 @@ Recorded session launch must collect age band, gender, and handedness before
 calling the recorded start endpoint. The RA-provided IHTT brief does not define
 a broader demographic instrument, and Weather-Wellness exposure questions
 (`origin`, `commute_method`, `time_outside`) do not apply to Poffenberger.
+
+## RA Import/Export Page
+
+Route: `/import-export`.
+
+The shared Import/Export route is reused for IHTT instead of creating a
+Poffenberger-specific export page. For the current rollout it is visible only to
+IHTT users: regular RAs with `app_metadata.lab_name == "ihtt"` and admins whose
+active lab context is IHTT. Weather-Wellness users should not see the dock item
+or page content for this route as part of this IHTT export rollout.
+
+The page exposes a single action:
+
+- **Export Poffenberger XLSX** - downloads the workbook from
+  `GET /ihtt/poffenberger/export.xlsx`.
+
+The action includes a **Use hardcoded sample data** checkbox. When selected, the
+download calls `GET /ihtt/poffenberger/export.xlsx?sample_data=true` and returns
+the same workbook shape with hardcoded sample rows. This is for export-layout
+debugging only; it must not create database rows or read live Poffenberger rows.
+
+The page must not show an import drop zone, Weather-Wellness legacy import
+controls, Weather-Wellness XLSX export, or CSV/ZIP export to IHTT users. If the
+caller is not authorized for the IHTT export action, redirect to `/unauthorized`.
+
+The workbook is designed for RA analysis rather than schema backup: one
+run-level sheet joins participant demographics and session context to each
+Poffenberger run, while a separate trial-level sheet retains one row per
+persisted practice/experimental trial. Both sheets include `participant_uuid`,
+`session_id`, and `run_id` where applicable so rows can be joined offline.
 
 ## Participant Task Route
 

@@ -89,8 +89,8 @@ describe("buildDockItems", () => {
     expect(wwHrefs).toEqual(["/dashboard", "/chat", "/misokinesia"]);
 
     const ihttHrefs = buildDockItems("ihtt", "ra").map((item) => item.href);
-    // IHTT lands on Poffenberger as its dashboard; no chat or misokinesia.
-    expect(ihttHrefs).toEqual(["/ihtt/poffenberger"]);
+    // IHTT lands on Poffenberger as its dashboard and exposes export only.
+    expect(ihttHrefs).toEqual(["/ihtt/poffenberger", "/import-export"]);
   });
 
   it("uses Dashboard as the IHTT landing label", () => {
@@ -109,5 +109,20 @@ describe("buildDockItems", () => {
     ADMIN_DOCK_ITEMS.forEach((item) => {
       expect(raHrefs).not.toContain(item.href);
     });
+  });
+
+  it("keeps the shared import/export route scoped to IHTT dock items", () => {
+    expect(buildDockItems("ihtt", "ra").map((item) => item.href)).toContain(
+      "/import-export"
+    );
+    expect(buildDockItems("ihtt", "admin").map((item) => item.href)).toContain(
+      "/import-export"
+    );
+    expect(buildDockItems("ww", "ra").map((item) => item.href)).not.toContain(
+      "/import-export"
+    );
+    expect(buildDockItems("ww", "admin").map((item) => item.href)).not.toContain(
+      "/import-export"
+    );
   });
 });

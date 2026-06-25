@@ -1281,6 +1281,32 @@ export async function exportXlsx(): Promise<{ blob: Blob; filename: string }> {
   return { blob, filename };
 }
 
+/** Download the IHTT Poffenberger XLSX export. */
+export async function exportPoffenbergerXlsx(options?: {
+  sampleData?: boolean;
+}): Promise<{ blob: Blob; filename: string }> {
+  const searchParams = new URLSearchParams();
+  if (options?.sampleData) searchParams.set("sample_data", "true");
+  const query = searchParams.toString();
+  const res = await fetch(
+    `${API_BASE}/ihtt/poffenberger/export.xlsx${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      headers: await buildAuthHeaders(),
+    }
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  const blob = await res.blob();
+  const filename = filenameFromContentDisposition(
+    res.headers.get("Content-Disposition"),
+    "IHTT Poffenberger - export.xlsx"
+  );
+  return { blob, filename };
+}
+
 /** Mark a session as complete. Reused by all participant task flows. */
 export async function patchSessionStatus(
   sessionId: string,
