@@ -94,6 +94,10 @@
 | POST   | /admin/users/invitations/{invitation_id}/revoke | Admin | implemented | T153 |
 | PATCH  | /admin/users/{user_id} | Admin | implemented | T153 |
 | POST   | /admin/users/{user_id}/revoke-access | Admin | implemented | T153 |
+| GET    | /admin/flagged-sessions | Admin (cross-lab) | planned | flagged-sessions |
+| POST   | /admin/sessions/{session_id}/void | Admin (cross-lab) | planned | flagged-sessions |
+| POST   | /admin/sessions/{session_id}/restore | Admin (cross-lab) | planned | flagged-sessions |
+| DELETE | /admin/sessions/{session_id} | Admin (cross-lab) | planned | flagged-sessions |
 | POST   | /auth/invitations/accept | None (invite token) | implemented | T153 |
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
@@ -102,6 +106,28 @@
 | POST   | /misokinesia/participants/{participant_id}/gad7 | None | implemented | T169 |
 | POST   | /misokinesia/participants/{participant_id}/maq | None | implemented | T169 |
 | PATCH  | /misokinesia/participants/{participant_id}/end-of-task | None | implemented | T107 |
+
+---
+
+## Session lifecycle & data quality
+
+Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) and
+`docs/SCHEMA.md` (Session lifecycle & validity). Summary of the contract for this API:
+
+- `POST /sessions/start` creates the session with `status='created'` (not `active`) and
+  returns it. The `created`→`active` transition happens on the **first study data write**.
+- The participant write endpoints above (`/surveys/*`, `/digitspan/runs`, `/stroop/runs`,
+  `/card-sorting/runs`, and the `/misokinesia/*` write endpoints) go through a shared
+  session-status guard: they accept a `created` session (transitioning it to `active` and
+  stamping `activated_at`), accept `active`, and return **HTTP 409** for `complete` or
+  voided sessions. The table's "None (active session)" auth notes now mean "no auth;
+  `created` or `active` session required."
+- `GET /admin/export.xlsx` / `export.zip` and the dashboard/analytics reads exclude
+  non-valid runs (`status='created'` shells and `voided_at IS NOT NULL`).
+- The `/admin/flagged-sessions`, `/admin/sessions/{id}/void`, `/restore`, and `DELETE`
+  endpoints are **cross-lab** (admin-role, not lab-scoped); see `docs/MULTI_LAB.md`
+  (Cross-Lab Admin Surfaces). Void is a reversible soft flag; DELETE hard-removes the
+  session and dependent rows.
 
 ---
 

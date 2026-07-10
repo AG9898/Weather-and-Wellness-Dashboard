@@ -184,6 +184,39 @@
 
 ---
 
+## Session validity & data quality
+
+Canonical rules for what counts as a "real" run across all studies (weather, misokinesia,
+IHTT Poffenberger). Schema columns live on the shared `sessions` table; see `docs/SCHEMA.md`.
+
+- **Deferred activation.** RA start endpoints create sessions with `status='created'`, never
+  `active`. A session transitions `created`→`active` on the **first study data write**
+  (first survey/task/trial submission), which also stamps `activated_at`. Do not create a
+  session as `active` at RA-start time.
+- **Shared activation guard.** Participant data-write endpoints must go through the shared
+  session-status guard rather than re-implementing `status != "active"` checks. The guard
+  accepts `created` (transitioning it to `active` + setting `activated_at`), passes `active`,
+  and rejects `complete` and voided sessions (HTTP 409).
+- **Valid run definition.** A session is a real run when
+  `status IN ('active','complete') AND voided_at IS NULL`. Every read surface that reports
+  participant/run data — dashboard, analytics snapshots, and Import/Export exports — must
+  filter to valid runs (exclude `created` shells and voided sessions).
+- **Classification** (used by the admin Flagged Sessions page):
+  `complete` (completed, not voided) · `partial` (active, not complete) ·
+  `empty_active` (created, within the fresh window) · `empty_stale` (created,
+  `created_at` older than the stale threshold) · `voided` (`voided_at` set).
+  Secondary flag: sourced demographics missing.
+- **Stale threshold.** Default **2 hours**, duration-based (timezone-independent), defined as
+  a single backend constant. Bump the constant, not scattered literals.
+- **Cross-study classification lives in one service.** Implement detection as a backend
+  data-quality service (not a per-study SQL view) so weather, misokinesia, and IHTT share one
+  classifier over their differing run tables. Expose it via an admin-gated endpoint.
+- **Void vs delete.** Void is a reversible soft flag (`voided_at`/`void_reason`); restore
+  clears it. Admin hard-delete removes the session and its dependent rows and is admin-only.
+  Prefer void; use hard-delete only for confirmed junk.
+
+---
+
 ## Adding a New Survey (Pattern)
 
 Follow this sequence when adding any new instrument in future phases:

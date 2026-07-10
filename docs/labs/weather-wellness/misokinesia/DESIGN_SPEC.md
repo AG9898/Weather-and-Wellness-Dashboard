@@ -20,6 +20,13 @@ Full specification: [docs/labs/weather-wellness/misokinesia/MISOKINESIA.md](MISO
 
 Progress UI must derive total clip count from the active manifest length at runtime. Do not hardcode `25` or historical seeded counts in participant-facing progress copy.
 
+**Refresh/leave guard:** while the participant task is in progress, `/misokinesia/[id]`
+installs a `beforeunload` guard so an accidental refresh or navigation away prompts a
+confirmation. Server-side, the session created by **Start Misokinesia Session** is `created`
+and only becomes a real run at the first per-clip response write; an RA who starts then
+leaves before any response leaves a `created` shell that appears on the admin Flagged
+Sessions page (see `docs/CONVENTIONS.md`, Session validity & data quality).
+
 **MkAQ card carousel:**
 - Production uses all 21 MkAQ items in four panes: `q1`-`q5`, `q6`-`q10`, `q11`-`q15`, `q16`-`q21`.
 - Trial Run uses the shortened fixed rehearsal set `q1`-`q10` in two panes: `q1`-`q5`, `q6`-`q10`.
@@ -592,6 +599,41 @@ Interaction and visual expectations:
   invite, duplicate pending invite, and email delivery failure.
 - No service-role keys, token hashes, raw invite tokens, or provider secrets are
   exposed in the browser.
+
+## Admin Flagged Sessions Page (cross-lab, planned)
+
+The Flagged Sessions page is **admin-only and cross-lab** (not scoped to a single lab). It
+gives admins one place to review and clean up abandoned/questionable sessions across all
+studies (Weather-Wellness weather + misokinesia, and IHTT Poffenberger). Non-admin RAs must
+not see the nav item and must receive a guarded access state if they reach the route
+directly, mirroring the User Management page.
+
+Route: `/flagged-sessions`.
+
+Backed by the admin data-quality endpoints (`GET /admin/flagged-sessions` plus
+void/restore/delete; see `docs/labs/weather-wellness/weather/API.md` and
+`docs/MULTI_LAB.md`). Classification and the "valid run" rule are canonical in
+`docs/CONVENTIONS.md` (Session validity & data quality).
+
+Required capabilities:
+
+1. **List flagged sessions** — table across all studies showing study, lab, participant
+   number, session/run identifiers, `created_at`, `activated_at`/`completed_at` where
+   present, classification (`empty_active` / `empty_stale` / `partial` / `voided`), and a
+   demographics-missing indicator. Complete valid runs are excluded by default (optionally
+   toggled on for reference). Default sort surfaces `empty_stale` first.
+2. **Void (with reason)** — soft-excludes a session; requires a short reason; confirmation
+   required.
+3. **Restore** — clears a prior void.
+4. **Hard-delete** — admin-only destructive removal of the session and its dependent rows;
+   requires explicit confirmation with a clear irreversible-action warning.
+
+Interaction and visual expectations:
+- Reuse the existing RA page layout, table, dialog, badge, and inline error patterns.
+- Use status badges to distinguish classifications (e.g. stale vs partial vs voided).
+- Void and hard-delete both require confirmation; hard-delete confirmation is stronger and
+  clearly worded as irreversible.
+- Empty state ("No flagged sessions") when everything is clean.
 
 ---
 

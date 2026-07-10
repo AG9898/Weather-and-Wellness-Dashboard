@@ -131,6 +131,13 @@ response in browser session storage before navigation. For trial runs it can use
 the local no-write Poffenberger trial state. No RA layout or floating RA chrome
 wraps the timed route.
 
+Refresh/leave guard: while a recorded task is in progress, the route installs a
+`beforeunload` guard so an accidental refresh or navigation away prompts a confirmation.
+Server-side, **Start Poffenberger Session** creates a `created` session that only becomes a
+real run at trial submission; an RA who starts then leaves before the participant submits
+leaves a `created` shell that appears on the admin Flagged Sessions page (see
+`docs/CONVENTIONS.md`, Session validity & data quality).
+
 ## Screen Flow
 
 1. Loading/error state.

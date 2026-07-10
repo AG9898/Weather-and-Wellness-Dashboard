@@ -129,6 +129,9 @@ Notes:
   each participant visit. The intended workflow is one recorded Poffenberger run
   per participant, so the export keeps participant demographics and trial
   summaries together on one data sheet.
+- The export excludes non-valid runs: sessions still in `status='created'`
+  (abandoned shells that were never engaged) and sessions with `voided_at` set are
+  filtered out, per `docs/CONVENTIONS.md` (Session validity & data quality).
 
 ## POST /ihtt/poffenberger/start
 
@@ -188,8 +191,12 @@ Preset options are validated server-side:
 
 Notes:
 
-- Atomically creates an anonymous participant, active session, Poffenberger run,
-  and production manifest.
+- Atomically creates an anonymous participant, a `created` (not `active`) session,
+  a Poffenberger run, and a production manifest. The session transitions
+  `created`→`active` (stamping `activated_at`) on the first trial submission via the
+  shared session-status guard; see `docs/CONVENTIONS.md` (Session validity & data
+  quality). A session left in `created` (RA started, participant never engaged) is an
+  abandoned shell surfaced on the admin Flagged Sessions page.
 - Persists the run shell in `ihtt_poffenberger_runs`, including
   `participant_uuid`, `session_id`, and the server-generated `manifest_json`.
 - Stores IHTT Poffenberger demographics (`age_band`, `gender`, `handedness`) on
@@ -237,7 +244,12 @@ Notes:
 
 ## POST /ihtt/poffenberger/runs/{run_id}/submit
 
-- **Auth:** none; validates `run_id`, active session, and server manifest.
+- **Auth:** none; validates `run_id` and the server manifest. This is the IHTT
+  engagement point: via the shared session-status guard it accepts a `created` session
+  (transitioning it to `active` and stamping `activated_at`), accepts `active`, and
+  returns HTTP 409 for a `complete` or voided session. See `docs/CONVENTIONS.md`
+  (Session validity & data quality). Because IHTT submits the whole run in one call, a
+  run the participant never submits stays `created` and is flagged as abandoned.
 - **Status:** implemented.
 - **Response:** HTTP 201.
 

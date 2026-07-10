@@ -87,6 +87,12 @@ session complete.
 
 > **Note:** Consent is obtained at `/new-session` (Step 1 of the RA flow) before the participant session is created. There is no consent page within the `/session/[id]/` route tree.
 
+> **Refresh/leave guard:** Participant task pages (`/session/[id]/*`) install a
+> `beforeunload` guard while a task is in progress so an accidental refresh or navigation
+> away prompts a confirmation. This reduces (but does not by itself define) abandoned runs;
+> the authoritative "real run" rule is server-side — the session only becomes `active` at
+> the first data write (see `docs/CONVENTIONS.md`, Session validity & data quality).
+
 ## Trial Run Mode (no-write rehearsal)
 
 Trial Run mode is an RA-invoked rehearsal path for both WW and Misokinesia. It demonstrates the participant interaction flow without writing research data.

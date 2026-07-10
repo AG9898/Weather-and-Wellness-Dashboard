@@ -76,7 +76,7 @@
   }
   ```
 - **Notes:**
-  - Atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row.
+  - Atomically creates an anonymous `participants` row, a `created` session, and a `misokinesia_participants` row. The session is **not** `active` at start: it transitions `created`→`active` (stamping `activated_at`) on the first per-clip response write, per the shared session-status guard. See `docs/CONVENTIONS.md` (Session validity & data quality). A session left in `created` (RA started, participant never engaged) is an abandoned shell surfaced on the admin Flagged Sessions page.
   - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
   - Assigns a random permutation of `["mkaq", "gad7", "maq"]` as `post_survey_order`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can present the three post-video surveys in the assigned order.
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
@@ -250,6 +250,10 @@
   ```
 - **Notes:**
   - No auth required.
+  - **First-write activation:** this is the misokinesia engagement point. Via the shared
+    session-status guard it accepts a `created` session (transitioning it to `active` and
+    stamping `activated_at`), accepts `active`, and returns 409 for a `complete` or voided
+    session. See `docs/CONVENTIONS.md` (Session validity & data quality).
   - Returns 404 if `participant_id` not found.
   - Returns 409 if a response for this `(participant_id, stimulus_id)` pair already exists (UNIQUE constraint violation).
   - Returns 409 if all stimuli are already answered (`completed_at` is set).

@@ -33,6 +33,23 @@ typed `permission_denied` tool results without querying data. This does not
 resolve OPEN-05; it is compatible with the current app-layer scoping and with a
 future row-level or study-level database isolation strategy.
 
+### Cross-Lab Admin Surfaces
+
+`role='admin'` callers are not scoped to a single lab. Admin-only endpoints resolve the
+caller via `get_current_admin` (see `backend/app/auth.py`) and may read/act across every
+lab's studies. Admin UI pages live under the `(ra)` route group but are gated to the admin
+role, mirroring the existing `/users` page.
+
+**Flagged Sessions (data quality).** A cross-lab admin page at
+`frontend/src/app/(ra)/flagged-sessions` lists abandoned/questionable sessions across all
+studies (Weather-Wellness weather + misokinesia, and IHTT Poffenberger). It is backed by an
+admin-gated data-quality service that classifies every session (`complete` / `partial` /
+`empty_active` / `empty_stale` / `voided`, plus a demographics-missing flag) using the
+canonical validity rules in `docs/CONVENTIONS.md` (Session validity & data quality) and the
+`sessions` soft-void columns in `docs/SCHEMA.md`. The page supports **void** (with reason),
+**restore**, and admin **hard-delete**. Void/restore/delete endpoints live in
+`backend/app/routers/admin.py` and require `get_current_admin`.
+
 ### Planned Data Model
 
 ```

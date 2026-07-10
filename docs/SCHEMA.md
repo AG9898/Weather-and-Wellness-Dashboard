@@ -199,9 +199,12 @@ replace day-level weather-derived sunlight duration in analytics queries.
 | ---------------- | ----------- | ------------- | -------------------------------------------------------------------------------- |
 | session_id       | UUID        | PK            |                                                                                  |
 | participant_uuid | UUID        | FK, NOT NULL  | → participants.participant_uuid                                                  |
-| status           | VARCHAR     | NOT NULL      | "created" / "active" / "complete"                                                |
-| created_at       | TIMESTAMPTZ | DEFAULT NOW() |                                                                                  |
+| status           | VARCHAR     | NOT NULL      | "created" / "active" / "complete" — see lifecycle note below                     |
+| created_at       | TIMESTAMPTZ | DEFAULT NOW() | Set when the RA starts the session                                                |
+| activated_at     | TIMESTAMPTZ | NULLABLE      | Added by flagged-sessions migration. Set when status first transitions `created`→`active` (first study data write). NULL ⇒ never engaged. |
 | completed_at     | TIMESTAMPTZ | NULLABLE      | Set when status transitions to "complete"                                        |
+| voided_at        | TIMESTAMPTZ | NULLABLE      | Added by flagged-sessions migration. Soft-void marker set by admin; NULL ⇒ not voided. |
+| void_reason      | TEXT        | NULLABLE      | Added by flagged-sessions migration. Operator-entered reason recorded with a void. |
 | study_day_id     | UUID        | FK, NULLABLE  | Added T29. Set when session becomes complete; links to `study_days.study_day_id` |
 
 
@@ -209,6 +212,27 @@ Indexes (applied):
 
 - Partial index (`completed_at`, `session_id`) WHERE `status = 'complete'`
 - Partial index (`study_day_id`, `completed_at`, `session_id`) WHERE `status = 'complete' AND study_day_id IS NOT NULL`
+
+---
+
+**Session lifecycle & validity (flagged-sessions data quality).** A session is created
+by the RA start flow with `status='created'` (not `active`). It transitions
+`created`→`active` on the **first study data write** (first survey/task/trial submission),
+which also stamps `activated_at`. This is a deliberate change from the previous behavior
+where start endpoints created sessions directly as `active`: it prevents an "empty shell"
+(RA clicks start, then refreshes or leaves before any participant engages) from ever
+counting as a real run.
+
+- **Valid run** ("real" data): `status IN ('active','complete') AND voided_at IS NULL`.
+- **Abandoned shell**: `status='created'` — never engaged. Classified `empty_active` when
+  within the fresh window and `empty_stale` once `created_at` is older than the stale
+  threshold (default **2 hours**, duration-based, timezone-independent).
+- **Voided**: `voided_at IS NOT NULL` — soft-excluded by an admin regardless of status.
+
+Dashboard, analytics, and Import/Export **must** filter to valid runs (exclude `created`
+and voided sessions). The cross-lab admin **Flagged Sessions** page surfaces non-valid
+sessions and supports void/restore and hard-delete; see `docs/MULTI_LAB.md` and
+`docs/CONVENTIONS.md` (Session validity & data quality).
 
 ---
 
