@@ -77,12 +77,13 @@ Notes:
 
 - Backs the RA-facing Poffenberger operations dashboard (the front surface of the
   `/ihtt/poffenberger` page), mirroring the misokinesia launch board.
-- `total_runs` / `completed_runs` count all recorded `ihtt_poffenberger_runs`; only
-  IHTT creates Poffenberger runs, so the set is already study-scoped without a
-  separate lab filter.
+- `total_runs` / `completed_runs` count only runs whose shared session is valid
+  (`status IN ('active','complete') AND voided_at IS NULL`). Created shells and voided
+  sessions are excluded; only IHTT creates Poffenberger runs, so no separate lab filter
+  is needed.
 - `avg_ihtt_difference_ms` averages `ihtt_difference_ms` (crossed minus uncrossed
   mean reaction time) over completed runs only; `null` when none are complete.
-- `recent_runs` returns up to 10 runs ordered by `started_at` descending, joining
+- `recent_runs` returns up to 10 valid runs ordered by `started_at` descending, joining
   the IHTT demographics stored on `participants`.
 - Read-only endpoint. The `handedness` demographic it returns is stored on the
   shared `participants` table by migration `20260624_000001`.

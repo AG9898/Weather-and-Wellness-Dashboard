@@ -383,7 +383,7 @@ orientation, methodology, and research-context tools:
   bounded date filters, including demographics, survey scores, and digit span
   summaries; normal outputs use `participant_number` and omit raw UUIDs
 - **implemented data orientation/availability tool** (`get_data_coverage`):
-  cheap, summary-only orientation tool that returns the total participant count,
+  cheap, summary-only orientation tool that returns the valid-run participant count,
   the count of participants with study-day-linked sessions, the linked session
   count, and the real `earliest_data_date` / `latest_data_date` (min/max
   study-day date over linked sessions) for the authenticated scope. Unlike the
@@ -391,9 +391,10 @@ orientation, methodology, and research-context tools:
   to expose where data actually exists so the model anchors subsequent windows
   to real data instead of a blind default. Its params model exposes only an
   optional `study_slug` (no date window, no lab identity). It returns
-  `insufficient_data` when no participants or linked sessions exist, and a
-  `ready` result with null date bounds when participants exist but no sessions
-  are linked to study days yet. No row dumps.
+  `insufficient_data` when no valid participants or linked sessions exist, and a
+  `ready` result with null date bounds when valid participants exist but no valid sessions
+  are linked to study days yet. Created shells and voided sessions are excluded from all
+  participant/session counts and score summaries. No row dumps.
 - **implemented methodology explainer tool** (`explain_methodology`):
   doc-grounded retrieval over the canonical scoring/design docs to answer
   "how is X scored / how does the Y section work" questions. See

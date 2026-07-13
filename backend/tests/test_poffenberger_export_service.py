@@ -6,6 +6,7 @@ from decimal import Decimal
 from unittest import IsolatedAsyncioTestCase
 
 import openpyxl
+from sqlalchemy.dialects import postgresql
 
 from app.services.poffenberger_export_service import (
     build_poffenberger_xlsx,
@@ -32,8 +33,10 @@ class _MappingResult:
 class _ExportDB:
     def __init__(self, run_rows: list[dict[str, object]]) -> None:
         self._results = [_MappingResult(run_rows)]
+        self.statements: list[object] = []
 
-    async def execute(self, stmt: object) -> object:  # noqa: ARG002
+    async def execute(self, stmt: object) -> object:
+        self.statements.append(stmt)
         if not self._results:
             raise AssertionError("Unexpected execute() call with no remaining fake results.")
         return self._results.pop(0)
@@ -65,10 +68,22 @@ class PoffenbergerExportServiceTests(IsolatedAsyncioTestCase):
             "accuracy_uncrossed": Decimal("0.9900"),
         }
 
+        db = _ExportDB([run_row])
         workbook_bytes = await build_poffenberger_xlsx(
-            _ExportDB([run_row]),
+            db,
             export_date="2026-06-24",
         )
+
+        compiled = str(
+            db.statements[0].compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True},
+            )
+        )
+        assert "sessions.status IN (" in compiled
+        assert "'active'" in compiled
+        assert "'complete'" in compiled
+        assert "sessions.voided_at IS NULL" in compiled
 
         workbook = openpyxl.load_workbook(io.BytesIO(workbook_bytes))
         assert workbook.sheetnames == ["README", "Poffenberger Data"]

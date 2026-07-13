@@ -113,7 +113,10 @@ class AnalyticsDatasetServiceTests(IsolatedAsyncioTestCase):
         self.assertIn("candidate_session_ids AS", compiled)
         self.assertIn("UNION", compiled)
         self.assertNotIn(" OR ", compiled)
-        self.assertIn("sessions.status = 'complete'", compiled)
+        self.assertIn("sessions.status IN (", compiled)
+        self.assertIn("'active'", compiled)
+        self.assertIn("'complete'", compiled)
+        self.assertEqual(compiled.count("sessions.voided_at IS NULL"), 2)
         self.assertIn("study_days.date_local >=", compiled)
         self.assertIn("sessions.completed_at IS NOT NULL", compiled)
 

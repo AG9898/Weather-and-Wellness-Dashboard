@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 
 import openpyxl
+from sqlalchemy.dialects import postgresql
 
 from app.services import export_service
 
@@ -45,6 +46,33 @@ def _session_for_cogfunc_row(cogfunc_row: object) -> _FakeAsyncSession:
 
 
 class ExportServiceCogFuncTests(IsolatedAsyncioTestCase):
+    def test_export_queries_exclude_created_and_voided_session_data(self) -> None:
+        session_scoped_tables = {
+            "participants",
+            "sessions",
+            "survey_uls8",
+            "survey_cesd10",
+            "survey_gad7",
+            "survey_cogfunc8a",
+            "digitspan_runs",
+            "digitspan_trials",
+            "imported_session_measures",
+        }
+
+        for spec in export_service._TABLE_SPECS:
+            if spec.name not in session_scoped_tables:
+                continue
+            compiled = str(
+                export_service._build_table_query(spec).compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            )
+            self.assertIn("sessions.status IN (", compiled)
+            self.assertIn("'active'", compiled)
+            self.assertIn("'complete'", compiled)
+            self.assertIn("sessions.voided_at IS NULL", compiled)
+
     async def test_build_xlsx_includes_imported_cogfunc_columns_and_values(self) -> None:
         created_at = datetime(2026, 3, 10, 18, 45, tzinfo=timezone.utc)
         row = SimpleNamespace(

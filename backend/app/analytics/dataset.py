@@ -25,6 +25,7 @@ from app.models.surveys import (
     SurveyULS8,
 )
 from app.models.weather import StudyDay, WeatherDaily
+from app.services.data_quality import valid_run_criteria
 
 AnalyticsFieldName = Literal[
     "temperature",
@@ -210,13 +211,13 @@ def _build_dataset_source_query(
         .select_from(StudyDay)
         .join(Session, Session.study_day_id == StudyDay.study_day_id)
         .where(
-            Session.status == "complete",
+            *valid_run_criteria(Session),
             StudyDay.date_local >= date_from,
             StudyDay.date_local <= date_to,
         ),
         select(Session.session_id)
         .where(
-            Session.status == "complete",
+            *valid_run_criteria(Session),
             Session.completed_at.is_not(None),
             Session.completed_at >= range_start_utc,
             Session.completed_at < range_end_utc,

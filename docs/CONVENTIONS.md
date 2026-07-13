@@ -203,6 +203,9 @@ IHTT Poffenberger). Schema columns live on the shared `sessions` table; see `doc
   `status IN ('active','complete') AND voided_at IS NULL`. Every read surface that reports
   participant/run data — dashboard, analytics snapshots, and Import/Export exports — must
   filter to valid runs (exclude `created` shells and voided sessions).
+  Backend SQL reads use `valid_run_criteria()` from
+  `backend/app/services/data_quality.py` so the database predicate stays aligned with this
+  contract.
 - **Classification** (used by the admin Flagged Sessions page):
   `complete` (completed, not voided) · `partial` (active, not complete) ·
   `empty_active` (created, within the fresh window) · `empty_stale` (created,

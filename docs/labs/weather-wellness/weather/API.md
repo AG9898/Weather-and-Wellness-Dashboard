@@ -122,7 +122,9 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
   stamping `activated_at`), accept `active`, and return **HTTP 409** for `complete` or
   voided sessions.
 - `GET /admin/export.xlsx` / `export.zip` and the dashboard/analytics reads exclude
-  non-valid runs (`status='created'` shells and `voided_at IS NOT NULL`).
+  non-valid runs (`status='created'` shells and `voided_at IS NOT NULL`). The exports apply
+  the filter to participant, session, survey, digit-span, and imported-measure rows; the
+  analytics dataset applies it before computing participant/session counts and summaries.
 - The `/admin/flagged-sessions`, `/admin/sessions/{id}/void`, `/restore`, and `DELETE`
   endpoints are **cross-lab** (admin-role, not lab-scoped); see `docs/MULTI_LAB.md`
   (Cross-Lab Admin Surfaces). Void is a reversible soft flag; DELETE hard-removes the
@@ -426,8 +428,8 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
   - Live recompute calls are tagged with the authenticated LabMember UUID in `analytics_runs.triggered_by_lab_member_id`.
   - The dashboard anchor date comes from `latest_study_day = MAX(study_days.date_local)`. After historical weather backfill this can extend beyond the latest completed participant session date; in that case the selected analytics window may end later than the effective MLM sample, and the models still fit only the participant rows that actually exist in the requested range.
   - Existing scoring logic and stored score semantics remain unchanged.
-  - RC08 added partial `sessions` indexes for the canonical analytics dataset source query and rewrote that source query to select candidate complete sessions via unioned `study_days.date_local` and `sessions.completed_at` range paths instead of a single cross-table `OR`.
-  - Query-plan verification on 2026-03-13 confirmed the `completed_at` range branch uses `ix_sessions_complete_completed_at`; the `study_day` branch continues to use `uq_study_days_date_local` and is currently a justified sequential scan on `sessions` because the live table is still very small.
+  - RC08 added partial `sessions` indexes for the canonical analytics dataset source query and rewrote that source query to select candidate sessions via unioned `study_days.date_local` and `sessions.completed_at` range paths instead of a single cross-table `OR`. Candidate reads now also enforce the canonical valid-run predicate (`status IN ('active','complete') AND voided_at IS NULL`) before participant/session counts and summaries are built.
+  - Query-plan verification on 2026-03-13 confirmed the former complete-only `completed_at` range branch used `ix_sessions_complete_completed_at`; the valid-run predicate now also admits active sessions, so future production-scale tuning must verify plans against the broader predicate.
   - **T92 (implemented):** `visualizations` is now populated on `ready` responses. `visualizations.effect_plots[]` contains partial-residual plots for all non-interaction main effect terms (temperature, precipitation, daylight, depression, loneliness, anxiety) for each fitted outcome. `visualizations.weather_annotations` is always date-range metadata only and must not be used to draw predictor-vs-residual lines on the weather chart.
   - `visualizations.default_selected_term` is the first main effect term present in the fitted models (typically `temperature_z`).
   - Effect plot `points[]` carry `x` (predictor z-score), `y` (partial residual = model residual + term contribution), and `date_local` for optional annotation linkage. `fitted_line[]` carries `x`/`y` points spanning the predictor range at `coef * x`.

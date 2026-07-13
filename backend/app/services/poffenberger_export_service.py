@@ -18,6 +18,7 @@ from app.config import STUDY_TIMEZONE
 from app.models.participants import Participant
 from app.models.poffenberger import PoffenbergerRun
 from app.models.sessions import Session as SessionModel
+from app.services.data_quality import valid_run_criteria
 
 
 _DATA_COLUMNS = [
@@ -213,6 +214,7 @@ async def _fetch_run_rows(db: AsyncSession) -> list[dict[str, Any]]:
             Participant.participant_uuid == PoffenbergerRun.participant_uuid,
         )
         .join(SessionModel, SessionModel.session_id == PoffenbergerRun.session_id)
+        .where(*valid_run_criteria(SessionModel))
         .order_by(PoffenbergerRun.started_at, PoffenbergerRun.run_id)
     )
     return list((await db.execute(stmt)).mappings().all())

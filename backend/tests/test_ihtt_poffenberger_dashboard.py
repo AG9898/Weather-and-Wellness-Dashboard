@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from jose import jwt
+from sqlalchemy.dialects import postgresql
 
 from app.routers.ihtt_poffenberger import (
     export_poffenberger_xlsx,
@@ -46,8 +47,10 @@ class _DashboardDB:
     def __init__(self, results: list[list[dict[str, Any]]]) -> None:
         self._results = list(results)
         self.execute_calls = 0
+        self.statements: list[object] = []
 
-    async def execute(self, stmt: object) -> _MappingResult:  # noqa: ARG002
+    async def execute(self, stmt: object) -> _MappingResult:
+        self.statements.append(stmt)
         rows = self._results[self.execute_calls] if self.execute_calls < len(self._results) else []
         self.execute_calls += 1
         return _MappingResult(rows)
@@ -192,6 +195,17 @@ class PoffenbergerDashboardHandlerTests(IsolatedAsyncioTestCase):
         assert result.recent_runs[0].ihtt_difference_ms is None
         assert result.recent_runs[1].is_complete is True
         assert result.recent_runs[1].ihtt_difference_ms == Decimal("2.80")
+        for statement in db.statements:
+            compiled = str(
+                statement.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            )
+            assert "sessions.status IN (" in compiled
+            assert "'active'" in compiled
+            assert "'complete'" in compiled
+            assert "sessions.voided_at IS NULL" in compiled
 
     async def test_returns_zeros_when_no_runs(self) -> None:
         agg_row = {

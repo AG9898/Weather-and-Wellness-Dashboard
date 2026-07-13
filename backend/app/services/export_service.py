@@ -31,6 +31,7 @@ import openpyxl
 from openpyxl.styles import Font
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Select
 
 from app.models.digitspan import DigitSpanRun, DigitSpanTrial
 from app.models.imported_session_measures import ImportedSessionMeasures
@@ -38,6 +39,7 @@ from app.models.participants import Participant
 from app.models.sessions import Session as SessionModel
 from app.models.surveys import SurveyCESD10, SurveyCogFunc8a, SurveyGAD7, SurveyULS8
 from app.models.weather import StudyDay, WeatherDaily, WeatherIngestRun
+from app.services.data_quality import valid_run_criteria
 
 
 # ── Table specifications ────────────────────────────────────────────────────────
@@ -251,7 +253,7 @@ async def _fetch_rows(
 
     Returns a list of rows; each row is a list of values in column order.
     """
-    stmt = select(spec.model)
+    stmt = _build_table_query(spec)
     for col_name in spec.order_by:
         col = getattr(spec.model, col_name)
         stmt = stmt.order_by(col)
@@ -263,6 +265,31 @@ async def _fetch_rows(
         [getattr(row, col) for col in spec.columns]
         for row in orm_rows
     ]
+
+
+def _build_table_query(spec: _TableSpec) -> Select[Any]:
+    """Build one export query, filtering participant data to valid runs."""
+    stmt = select(spec.model)
+    valid_session_ids = select(SessionModel.session_id).where(
+        *valid_run_criteria(SessionModel)
+    )
+
+    if spec.model is Participant:
+        valid_participant_ids = select(SessionModel.participant_uuid).where(
+            *valid_run_criteria(SessionModel)
+        )
+        stmt = stmt.where(Participant.participant_uuid.in_(valid_participant_ids))
+    elif spec.model is SessionModel:
+        stmt = stmt.where(*valid_run_criteria(SessionModel))
+    elif spec.model is DigitSpanTrial:
+        valid_run_ids = select(DigitSpanRun.run_id).where(
+            DigitSpanRun.session_id.in_(valid_session_ids)
+        )
+        stmt = stmt.where(DigitSpanTrial.run_id.in_(valid_run_ids))
+    elif hasattr(spec.model, "session_id"):
+        stmt = stmt.where(spec.model.session_id.in_(valid_session_ids))
+
+    return stmt
 
 
 # ── XLSX builder ───────────────────────────────────────────────────────────────

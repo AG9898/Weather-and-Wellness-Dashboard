@@ -33,6 +33,7 @@ from app.scoring.poffenberger import (
     TrialInput,
     score as score_poffenberger,
 )
+from app.services.data_quality import valid_run_criteria
 from app.services.poffenberger_export_service import (
     build_poffenberger_xlsx,
     build_sample_poffenberger_xlsx,
@@ -201,7 +202,8 @@ async def get_poffenberger_dashboard(
         func.avg(PoffenbergerRun.ihtt_difference_ms)
         .filter(PoffenbergerRun.is_complete.is_(True))
         .label("avg_ihtt_difference_ms"),
-    )
+    ).join(SessionModel, SessionModel.session_id == PoffenbergerRun.session_id)
+    agg_stmt = agg_stmt.where(*valid_run_criteria(SessionModel))
     agg = (await db.execute(agg_stmt)).mappings().all()
     agg_row = agg[0] if agg else {}
 
@@ -220,6 +222,8 @@ async def get_poffenberger_dashboard(
             Participant,
             Participant.participant_uuid == PoffenbergerRun.participant_uuid,
         )
+        .join(SessionModel, SessionModel.session_id == PoffenbergerRun.session_id)
+        .where(*valid_run_criteria(SessionModel))
         .order_by(PoffenbergerRun.started_at.desc())
         .limit(10)
     )

@@ -7,6 +7,7 @@ from typing import Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.models.misokinesia import MisokinesiaParticipant
 from app.models.participants import Participant
@@ -82,6 +83,16 @@ class SessionDataQualityRow:
 def is_valid_run(*, status: str, voided_at: datetime | None) -> bool:
     """Return the canonical reporting-validity decision for a session."""
     return status in VALID_RUN_STATUSES and voided_at is None
+
+
+def valid_run_criteria(
+    session_model: type[Session] = Session,
+) -> tuple[ColumnElement[bool], ColumnElement[bool]]:
+    """Return the canonical SQL predicates for reporting-valid sessions."""
+    return (
+        session_model.status.in_(VALID_RUN_STATUSES),
+        session_model.voided_at.is_(None),
+    )
 
 
 def classify_session(

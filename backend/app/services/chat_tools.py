@@ -18,6 +18,7 @@ from app.models.surveys import SurveyCESD10, SurveyCogFunc8a, SurveyGAD7, Survey
 from app.models.weather import StudyDay, WeatherDaily
 from app.schemas.chat import RAChatScope
 from app.services.analytics_service import read_dashboard_analytics_snapshot
+from app.services.data_quality import valid_run_criteria
 
 
 ChatToolStatus = Literal[
@@ -120,7 +121,13 @@ async def get_data_coverage(
     lab_name, study_slug, is_admin = scope_check
 
     participant_count = _int(
-        (await db.execute(select(func.count(Participant.participant_uuid)))).scalar_one()
+        (
+            await db.execute(
+                select(func.count(func.distinct(Session.participant_uuid))).where(
+                    *valid_run_criteria(Session)
+                )
+            )
+        ).scalar_one()
     )
 
     coverage_result = await db.execute(
@@ -134,6 +141,7 @@ async def get_data_coverage(
         )
         .select_from(Session)
         .join(StudyDay, Session.study_day_id == StudyDay.study_day_id)
+        .where(*valid_run_criteria(Session))
     )
     coverage = coverage_result.mappings().one()
     linked_session_count = _int(coverage["linked_session_count"])
@@ -420,6 +428,7 @@ async def _study_window_session_counts(
         .select_from(Session)
         .join(StudyDay, Session.study_day_id == StudyDay.study_day_id)
         .where(
+            *valid_run_criteria(Session),
             StudyDay.date_local >= scope.date_from,
             StudyDay.date_local <= scope.date_to,
         )
@@ -577,6 +586,7 @@ async def _participant_session_summaries(
 
     row_limit = min(max(int(limit), 1), MAX_CHAT_TOOL_SESSION_ROWS)
     filters = [
+        *valid_run_criteria(Session),
         StudyDay.date_local >= scope.date_from,
         StudyDay.date_local <= scope.date_to,
     ]
@@ -718,6 +728,7 @@ async def _numeric_score_summary(
         .join(Session, model.session_id == Session.session_id)
         .join(StudyDay, Session.study_day_id == StudyDay.study_day_id)
         .where(
+            *valid_run_criteria(Session),
             StudyDay.date_local >= scope.date_from,
             StudyDay.date_local <= scope.date_to,
             column.is_not(None),

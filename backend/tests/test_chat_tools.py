@@ -7,6 +7,8 @@ from decimal import Decimal
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
+from sqlalchemy.dialects import postgresql
+
 from app.auth import LabMember
 from app.schemas.chat import RAChatScope
 from app.services.chat_tools import (
@@ -223,6 +225,17 @@ class DataCoverageToolTests(IsolatedAsyncioTestCase):
         assert payload["data"]["latest_data_date"] == "2026-04-18"
         # Bounded summary only: no participant rows leaked.
         assert "sessions" not in payload["data"]
+        for statement in db.statements:
+            compiled = str(
+                statement.compile(
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            )
+            assert "sessions.status IN (" in compiled
+            assert "'active'" in compiled
+            assert "'complete'" in compiled
+            assert "sessions.voided_at IS NULL" in compiled
         json.dumps(payload)
 
     async def test_coverage_reports_insufficient_data_for_empty_scope(self) -> None:

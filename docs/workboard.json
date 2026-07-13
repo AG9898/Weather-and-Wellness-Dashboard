@@ -4811,7 +4811,7 @@
       "id": "T1844",
       "title": "Flagged sessions - exclude non-valid runs from exports, dashboards, analytics",
       "description": "Make every reporting read filter to valid runs only (status IN ('active','complete') AND voided_at IS NULL), excluding status='created' shells and voided sessions. Update: WW admin export (XLSX + ZIP) in the admin/export paths; IHTT Poffenberger export.xlsx and its dashboard counts (backend/app/routers/ihtt_poffenberger.py); and the WW dashboard/analytics reads that count participants/sessions. Add/adjust tests asserting a created shell and a voided session are excluded from exports and dashboard counts.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "FLAGGED_SESSIONS",
       "depends_on": [
