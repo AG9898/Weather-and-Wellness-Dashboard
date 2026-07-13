@@ -50,6 +50,13 @@ canonical validity rules in `docs/CONVENTIONS.md` (Session validity & data quali
 **restore**, and admin **hard-delete**. Void/restore/delete endpoints live in
 `backend/app/routers/admin.py` and require `get_current_admin`.
 
+Until persistent `lab_id` / `study_id` columns are available, the shared backend data-quality
+service attributes a session from its study-owned run row: `misokinesia_participants` maps to
+study `misokinesia` and lab `ww`, `ihtt_poffenberger_runs` maps to study `poffenberger` and lab
+`ihtt`, and sessions without either component run row map to study `weather` and lab `ww`.
+Misokinesia's participant id and Poffenberger's run id are returned as the component run id;
+weather sessions have no separate run id.
+
 ### Planned Data Model
 
 ```

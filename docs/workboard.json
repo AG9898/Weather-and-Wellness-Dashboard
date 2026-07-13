@@ -4748,7 +4748,7 @@
       "id": "T1842",
       "title": "Flagged sessions - cross-study data-quality classification service",
       "description": "Add a backend data-quality service that classifies every session across all studies (weather, misokinesia, IHTT Poffenberger) using the canonical rules in docs/CONVENTIONS.md. Classifications: complete (completed_at set, not voided), partial (status='active', not complete), empty_active (status='created', created_at within the fresh window), empty_stale (status='created', created_at older than the stale threshold), voided (voided_at set). Also compute a demographics-missing flag per study. Define the stale threshold as a single constant defaulting to 2 hours (duration-based, timezone-independent). The service determines study/lab per session and returns structured rows (study, lab, participant number, session id, run id where applicable, created_at, activated_at, completed_at, classification, demographics_missing). Implement as a Python service (not a per-study SQL view). Add unit tests for each classification branch and the stale boundary.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "FLAGGED_SESSIONS",
       "depends_on": [

@@ -212,7 +212,12 @@ IHTT Poffenberger). Schema columns live on the shared `sessions` table; see `doc
   a single backend constant. Bump the constant, not scattered literals.
 - **Cross-study classification lives in one service.** Implement detection as a backend
   data-quality service (not a per-study SQL view) so weather, misokinesia, and IHTT share one
-  classifier over their differing run tables. Expose it via an admin-gated endpoint.
+  classifier over their differing run tables. `backend/app/services/data_quality.py` owns the
+  two-hour threshold, canonical valid-run predicate, classification, study attribution, and
+  study-specific demographics completeness checks. Weather requires age band, gender, origin,
+  commute method, and time outside; Poffenberger requires age band, gender, and handedness;
+  misokinesia requires every visible sourced-demographics field, including conditional details.
+  Expose the service through an admin-gated endpoint.
 - **Void vs delete.** Void is a reversible soft flag (`voided_at`/`void_reason`); restore
   clears it. Admin hard-delete removes the session and its dependent rows and is admin-only.
   Prefer void; use hard-delete only for confirmed junk.
