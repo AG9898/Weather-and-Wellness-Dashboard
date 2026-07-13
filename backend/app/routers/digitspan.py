@@ -8,6 +8,7 @@ from app.db import get_session
 from app.models import DigitSpanRun, DigitSpanTrial, Session as SessionModel
 from app.schemas.digitspan import DigitSpanRunCreate, DigitSpanRunResponse
 from app.scoring.digitspan import TrialInput, score
+from app.services.session_status import guard_session_write
 
 router = APIRouter(prefix="/digitspan", tags=["digitspan"])
 
@@ -27,11 +28,7 @@ async def create_digitspan_run(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found",
         )
-    if session_obj.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Session is not active",
-        )
+    guard_session_write(session_obj)
 
     # Score the trials
     trial_inputs = [

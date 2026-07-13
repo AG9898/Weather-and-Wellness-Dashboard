@@ -16,21 +16,20 @@ from app.scoring import uls8 as uls8_scoring
 from app.scoring import cesd10 as cesd10_scoring
 from app.scoring import gad7 as gad7_scoring
 from app.scoring import cogfunc8a as cogfunc8a_scoring
+from app.services.session_status import guard_session_write
 
 router = APIRouter(prefix="/surveys", tags=["surveys"])
 
 
-async def _get_active_session(session_id, db: AsyncSession) -> SessionModel:
-    """Validate session exists and is active, or raise."""
+async def _get_writable_session(session_id, db: AsyncSession) -> SessionModel:
+    """Load a session and apply the shared first-write guard."""
     result = await db.execute(
         select(SessionModel).where(SessionModel.session_id == session_id)
     )
     session_obj = result.scalar_one_or_none()
     if session_obj is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
-    if session_obj.status != "active":
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session is not active")
-    return session_obj
+    return guard_session_write(session_obj)
 
 
 @router.post("/uls8", response_model=ULS8Response, status_code=status.HTTP_201_CREATED)
@@ -38,7 +37,7 @@ async def submit_uls8(
     payload: ULS8Create,
     db: AsyncSession = Depends(get_session),
 ) -> ULS8Response:
-    session_obj = await _get_active_session(payload.session_id, db)
+    session_obj = await _get_writable_session(payload.session_id, db)
     raw = [payload.r1, payload.r2, payload.r3, payload.r4,
            payload.r5, payload.r6, payload.r7, payload.r8]
     scored = uls8_scoring.score(raw)
@@ -62,7 +61,7 @@ async def submit_cesd10(
     payload: CESD10Create,
     db: AsyncSession = Depends(get_session),
 ) -> CESD10Response:
-    session_obj = await _get_active_session(payload.session_id, db)
+    session_obj = await _get_writable_session(payload.session_id, db)
     raw = [payload.r1, payload.r2, payload.r3, payload.r4, payload.r5,
            payload.r6, payload.r7, payload.r8, payload.r9, payload.r10]
     scored = cesd10_scoring.score(raw)
@@ -85,7 +84,7 @@ async def submit_gad7(
     payload: GAD7Create,
     db: AsyncSession = Depends(get_session),
 ) -> GAD7Response:
-    session_obj = await _get_active_session(payload.session_id, db)
+    session_obj = await _get_writable_session(payload.session_id, db)
     raw = [payload.r1, payload.r2, payload.r3, payload.r4,
            payload.r5, payload.r6, payload.r7]
     scored = gad7_scoring.score(raw)
@@ -109,7 +108,7 @@ async def submit_cogfunc8a(
     payload: CogFunc8aCreate,
     db: AsyncSession = Depends(get_session),
 ) -> CogFunc8aResponse:
-    session_obj = await _get_active_session(payload.session_id, db)
+    session_obj = await _get_writable_session(payload.session_id, db)
     raw = [payload.r1, payload.r2, payload.r3, payload.r4,
            payload.r5, payload.r6, payload.r7, payload.r8]
     scored = cogfunc8a_scoring.score(raw)

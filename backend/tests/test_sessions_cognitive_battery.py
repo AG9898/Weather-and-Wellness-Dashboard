@@ -114,9 +114,11 @@ class SessionCognitiveBatteryTests(IsolatedAsyncioTestCase):
             response = await start_session(payload=_start_payload(), db=db)
 
         session = db.added[1]
+        assert session.status == "created"
         assert session.cognitive_task_order == _TASK_ORDER
         assert session.card_sorting_rule_order == list(_RULE_ORDER)
         assert response.session_id == _SESSION_ID
+        assert response.status == "created"
         assert response.start_path == f"/session/{_SESSION_ID}/uls8"
         assert db.committed
 

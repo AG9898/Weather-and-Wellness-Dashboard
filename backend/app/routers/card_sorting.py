@@ -8,6 +8,7 @@ from app.db import get_session
 from app.models import CardSortingRun, CardSortingTrial, Session as SessionModel
 from app.schemas.cognitive import CardSortingRunCreate, CardSortingRunResponse
 from app.scoring.card_sorting import CardSortingScoringError, TrialInput, score
+from app.services.session_status import guard_session_write
 
 router = APIRouter(prefix="/card-sorting", tags=["card-sorting"])
 
@@ -31,11 +32,7 @@ async def create_card_sorting_run(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found",
         )
-    if session_obj.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Session is not active",
-        )
+    guard_session_write(session_obj)
 
     rule_order = session_obj.card_sorting_rule_order
     if not rule_order:

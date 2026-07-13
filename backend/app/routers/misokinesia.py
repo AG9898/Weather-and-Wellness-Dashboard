@@ -45,6 +45,7 @@ from app.schemas.misokinesia import (
     MisokinesiaTrialResponseResponse,
 )
 from app.scoring import gad7 as gad7_scoring
+from app.services.session_status import guard_session_write
 
 router = APIRouter(prefix="/misokinesia", tags=["misokinesia"])
 _TRIAL_MANIFEST_CLIP_COUNT = 5
@@ -198,10 +199,10 @@ async def start_misokinesia_session(
     db.add(participant)
     await db.flush()  # assigns participant_uuid
 
-    # 3. Create session (status='active')
+    # 3. Create a deferred-activation session.
     session_obj = SessionModel(
         participant_uuid=participant.participant_uuid,
-        status="active",
+        status="created",
     )
     db.add(session_obj)
     await db.flush()  # assigns session_id
@@ -517,6 +518,19 @@ async def submit_trial_response(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Misokinesia participant not found.",
         )
+
+    session_result = await db.execute(
+        select(SessionModel).where(
+            SessionModel.session_id == miso_participant.session_id
+        )
+    )
+    session_obj = session_result.scalar_one_or_none()
+    if session_obj is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found.",
+        )
+    guard_session_write(session_obj)
 
     # 2. Guard: all clips already complete → 409
     if miso_participant.completed_at is not None:

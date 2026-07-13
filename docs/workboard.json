@@ -4710,7 +4710,7 @@
       "id": "T1841",
       "title": "Flagged sessions - deferred activation + shared session-status guard",
       "description": "Move the created->active transition off RA-start and onto the first study data write. (1) Change the three start endpoints - POST /sessions/start (backend/app/routers/sessions.py), POST /misokinesia/start (backend/app/routers/misokinesia.py), POST /ihtt/poffenberger/start (backend/app/routers/ihtt_poffenberger.py) - to create the session with status='created' instead of 'active'. (2) Introduce a shared session-status guard helper that participant data-write endpoints call: if status=='created' set status='active' and stamp activated_at=now(); if 'active' pass; if 'complete' or voided_at set, raise HTTP 409. (3) Replace the seven scattered status!='active' checks (surveys.py, digitspan.py, stroop.py, card_sorting.py, misokinesia responses endpoint, ihtt submit endpoint, sessions completion) with the shared guard so the first write of each study activates the session. Add/adjust backend tests covering: start yields 'created'; first write flips to 'active' and stamps activated_at; write to a voided/complete session returns 409.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "FLAGGED_SESSIONS",
       "depends_on": [

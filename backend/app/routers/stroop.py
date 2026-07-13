@@ -8,6 +8,7 @@ from app.db import get_session
 from app.models import Session as SessionModel, StroopRun, StroopTrial
 from app.schemas.cognitive import StroopRunCreate, StroopRunResponse
 from app.scoring.stroop import TrialInput, score
+from app.services.session_status import guard_session_write
 
 router = APIRouter(prefix="/stroop", tags=["stroop"])
 
@@ -31,11 +32,7 @@ async def create_stroop_run(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found",
         )
-    if session_obj.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Session is not active",
-        )
+    guard_session_write(session_obj)
 
     # Reject duplicate run for this session (one run per session)
     existing = await db.execute(

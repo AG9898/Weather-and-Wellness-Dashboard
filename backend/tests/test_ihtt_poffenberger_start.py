@@ -243,7 +243,7 @@ class PoffenbergerStartTests(IsolatedAsyncioTestCase):
 
         assert isinstance(session, Session)
         assert session.participant_uuid == _PARTICIPANT_UUID
-        assert session.status == "active"
+        assert session.status == "created"
 
         assert isinstance(run, PoffenbergerRun)
         assert run.session_id == _SESSION_ID

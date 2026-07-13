@@ -135,10 +135,11 @@ class _FakeDB:
 
 
 class _FakeSession:
-    def __init__(self, status: str = "active") -> None:
+    def __init__(self, status: str = "active", *, voided: bool = False) -> None:
         self.session_id = _SESSION_ID
         self.participant_uuid = _PARTICIPANT_UUID
         self.status = status
+        self.voided_at = object() if voided else None
 
 
 def _payload(trials: list[dict[str, Any]]) -> StroopRunCreate:
@@ -196,6 +197,15 @@ class StroopRouterTests(IsolatedAsyncioTestCase):
         assert response.total_trials == 3
         assert response.correct_trials == 2
 
+    async def test_created_session_activates_on_first_run(self) -> None:
+        session = _FakeSession(status="created")
+        db = _FakeDB(execute_returns=[session, None])
+
+        await create_stroop_run(payload=_payload(_valid_trials()), db=db)
+
+        assert session.status == "active"
+        assert session.activated_at is not None
+
     async def test_missing_session_404(self) -> None:
         db = _FakeDB(execute_returns=[None])
         with self.assertRaises(HTTPException) as ctx:
@@ -204,6 +214,13 @@ class StroopRouterTests(IsolatedAsyncioTestCase):
 
     async def test_inactive_session_409(self) -> None:
         db = _FakeDB(execute_returns=[_FakeSession(status="complete")])
+        with self.assertRaises(HTTPException) as ctx:
+            await create_stroop_run(payload=_payload(_valid_trials()), db=db)
+        assert ctx.exception.status_code == 409
+        assert not db.committed
+
+    async def test_voided_session_409(self) -> None:
+        db = _FakeDB(execute_returns=[_FakeSession(voided=True)])
         with self.assertRaises(HTTPException) as ctx:
             await create_stroop_run(payload=_payload(_valid_trials()), db=db)
         assert ctx.exception.status_code == 409

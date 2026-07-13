@@ -73,13 +73,13 @@
 | GET    | /sessions/{session_id} | None | implemented | T08 |
 | GET    | /sessions/{session_id}/cognitive-battery | None (active session) | implemented | T207 |
 | PATCH  | /sessions/{session_id}/status | RA (created/active), None (complete) | implemented | T08 |
-| POST   | /digitspan/runs | None (active session) | implemented | T09 |
-| POST   | /stroop/runs | None (active session) | implemented | T208 |
-| POST   | /card-sorting/runs | None (active session) | implemented | T209 |
-| POST   | /surveys/uls8 | None (active session) | implemented | T10 |
-| POST   | /surveys/cesd10 | None (active session) | implemented | T10 |
-| POST   | /surveys/gad7 | None (active session) | implemented | T10 |
-| POST   | /surveys/cogfunc8a | None (active session) | implemented | T10 |
+| POST   | /digitspan/runs | None (created or active session) | implemented | T09 |
+| POST   | /stroop/runs | None (created or active session) | implemented | T208 |
+| POST   | /card-sorting/runs | None (created or active session) | implemented | T209 |
+| POST   | /surveys/uls8 | None (created or active session) | implemented | T10 |
+| POST   | /surveys/cesd10 | None (created or active session) | implemented | T10 |
+| POST   | /surveys/gad7 | None (created or active session) | implemented | T10 |
+| POST   | /surveys/cogfunc8a | None (created or active session) | implemented | T10 |
 | POST   | /weather/ingest/ubc-eos | RA or shared secret | implemented | T30 |
 | GET    | /weather/daily | RA | implemented | T31 |
 | POST   | /weather/backfill/historical | RA | implemented | T66 |
@@ -120,8 +120,7 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
   `/card-sorting/runs`, and the `/misokinesia/*` write endpoints) go through a shared
   session-status guard: they accept a `created` session (transitioning it to `active` and
   stamping `activated_at`), accept `active`, and return **HTTP 409** for `complete` or
-  voided sessions. The table's "None (active session)" auth notes now mean "no auth;
-  `created` or `active` session required."
+  voided sessions.
 - `GET /admin/export.xlsx` / `export.zip` and the dashboard/analytics reads exclude
   non-valid runs (`status='created'` shells and `voided_at IS NOT NULL`).
 - The `/admin/flagged-sessions`, `/admin/sessions/{id}/void`, `/restore`, and `DELETE`
@@ -620,7 +619,8 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
 ### PATCH /sessions/{session_id}/status
 - **Auth:** 
   - RA required for `"created"` and `"active"` updates
-  - No auth required for participant-driven `"complete"` update from an active session
+  - No auth required for participant-driven `"complete"` update from a `created` or
+    `active` session; the shared guard activates `created` before completion
 - **Status:** implemented (T08)
 - **Request body:**
   ```json
@@ -657,13 +657,16 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
     "participant_uuid": "uuid",
     "participant_number": "integer",
     "session_id": "uuid",
-    "status": "active",
+    "status": "created",
     "created_at": "datetime",
     "completed_at": null,
     "start_path": "/session/<session_id>/uls8"
   }
   ```
-- **Notes:** Supervised one-click start. Creates an anonymous participant (with demographics) and an active session atomically (single transaction via `flush` + `commit`), then returns the first survey path. Session is immediately `active` so participant submissions are accepted on arrival.
+- **Notes:** Supervised one-click start. Creates an anonymous participant (with demographics)
+  and a `created` session atomically (single transaction via `flush` + `commit`), then
+  returns the first survey path. The first participant write transitions the session to
+  `active` and stamps `activated_at` through the shared session-status guard.
   - All demographic fields are required. If `origin` or `commute_method` is `"Other"`, the corresponding `*_other_text` field is required; otherwise it is optional/ignored.
   - `participants.daylight_exposure_minutes` is computed at request time as minutes since `DAYLIGHT_START_LOCAL_TIME` (default `06:00` local, timezone `America/Vancouver`) using `compute_daylight_exposure_minutes()` from `backend/app/config.py`.
   - `start_path` is always `/session/<session_id>/uls8`. Consent is collected at `(ra)/new-session` before session creation; there is no `/consent` page within the session flow.
@@ -678,7 +681,7 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
 ## Digit Span
 
 ### POST /digitspan/runs
-- **Auth:** None (active session validated)
+- **Auth:** None (`created` or `active` session validated)
 - **Status:** implemented (T09)
 - **Request body:**
   ```json
@@ -712,7 +715,7 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
 ## Cognitive Battery Manifest
 
 ### GET /sessions/{session_id}/cognitive-battery
-- **Auth:** None (active session validated)
+- **Auth:** None (active session validated; read-only endpoint)
 - **Status:** implemented (T207)
 - **Purpose:** Return the stored cognitive task order and task manifest data needed for the post-survey battery.
 - **Response:**
@@ -734,7 +737,7 @@ Canonical rules live in `docs/CONVENTIONS.md` (Session validity & data quality) 
 Canonical task spec: [STROOP.md](STROOP.md)
 
 ### POST /stroop/runs
-- **Auth:** None (active session validated)
+- **Auth:** None (`created` or `active` session validated)
 - **Status:** implemented (T208)
 - **Request body:**
   ```json
@@ -780,7 +783,7 @@ Canonical task spec: [STROOP.md](STROOP.md)
 Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
 
 ### POST /card-sorting/runs
-- **Auth:** None (active session validated)
+- **Auth:** None (`created` or `active` session validated)
 - **Status:** implemented (T209)
 - **Request body:**
   ```json
@@ -826,7 +829,7 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
 ## Surveys
 
 ### POST /surveys/uls8
-- **Auth:** None (active session validated)
+- **Auth:** None (`created` or `active` session validated)
 - **Status:** implemented (T10)
 - **Request body:**
   ```json
@@ -840,7 +843,7 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
 ---
 
 ### POST /surveys/cesd10
-- **Auth:** None (active session validated)
+- **Auth:** None (`created` or `active` session validated)
 - **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r10": 1–4 each }`
 - **Response:** `{ "response_id": "uuid", "total_score": integer }`
@@ -848,7 +851,7 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
 ---
 
 ### POST /surveys/gad7
-- **Auth:** None (active session validated)
+- **Auth:** None (`created` or `active` session validated)
 - **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r7": 1–4 each }`
 - **Response:** `{ "response_id": "uuid", "total_score": integer, "severity_band": "string" }`
@@ -856,7 +859,7 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
 ---
 
 ### POST /surveys/cogfunc8a
-- **Auth:** None (active session validated)
+- **Auth:** None (`created` or `active` session validated)
 - **Status:** implemented (T10)
 - **Request body:** `{ "session_id": "uuid", "r1"–"r8": 1–5 each }`
 - **Response:** `{ "response_id": "uuid", "total_sum": integer, "mean_score": "decimal" }`

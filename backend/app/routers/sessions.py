@@ -32,6 +32,7 @@ from app.schemas.sessions import (
     UndoLastSessionRequest,
     UndoLastSessionResponse,
 )
+from app.services.session_status import guard_session_write
 from app.services.undo_service import delete_last_native_session, get_last_native_session
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -224,8 +225,7 @@ async def start_session(
     payload: StartSessionCreate,
     db: AsyncSession = Depends(get_session),
 ) -> StartSessionResponse:
-    """One-click supervised flow: atomically create an anonymous participant (with
-    demographics) and an active session, returning the consent-gated start path."""
+    """Create an anonymous participant and deferred-activation session."""
     # Capture session start time for daylight exposure computation
     session_start_utc = datetime.now(timezone.utc)
     daylight_minutes = compute_daylight_exposure_minutes(session_start_utc)
@@ -251,7 +251,7 @@ async def start_session(
 
     session_obj = SessionModel(
         participant_uuid=participant.participant_uuid,
-        status="active",
+        status="created",
         cognitive_task_order=_generate_cognitive_task_order(),
         card_sorting_rule_order=_generate_card_sorting_rule_order(),
     )
@@ -415,14 +415,10 @@ async def update_session_status(
             detail="Session not found",
         )
 
-    # Participant pages may mark active sessions complete without auth.
+    # Participant pages may mark writable sessions complete without auth.
     # Any other status transition is RA-only and requires a valid JWT.
     if payload.status == "complete":
-        if credentials is None and session_obj.status != "active":
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Session must be active before completion",
-            )
+        guard_session_write(session_obj)
         if credentials is not None:
             get_current_lab_member(credentials)
     else:

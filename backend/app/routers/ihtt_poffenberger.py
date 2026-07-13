@@ -37,6 +37,7 @@ from app.services.poffenberger_export_service import (
     build_poffenberger_xlsx,
     build_sample_poffenberger_xlsx,
 )
+from app.services.session_status import guard_session_write
 
 router = APIRouter(prefix="/ihtt/poffenberger", tags=["ihtt-poffenberger"])
 
@@ -150,7 +151,7 @@ async def start_poffenberger_session(
 
     session_obj = SessionModel(
         participant_uuid=participant.participant_uuid,
-        status="active",
+        status="created",
     )
     db.add(session_obj)
     await db.flush()
@@ -333,11 +334,7 @@ async def submit_poffenberger_run(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found",
         )
-    if session_obj.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Session is not active",
-        )
+    guard_session_write(session_obj)
 
     try:
         manifest = PoffenbergerManifest.model_validate(run.manifest_json)

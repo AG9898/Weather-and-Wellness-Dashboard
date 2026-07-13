@@ -19,7 +19,8 @@
 - **Lab scope:** non-admin callers must have `app_metadata.lab == "ihtt"` for
   IHTT endpoints. Admin bypass follows the platform auth adapter.
 - **Participant endpoints:** no JWT. Recorded participant submissions are
-  validated by server-created run/session identifiers and active session state.
+  validated by server-created run/session identifiers and the shared session-status
+  guard, which activates a `created` session on its first write.
 - **Trial endpoints:** no-write rehearsal behavior. Trial endpoints, if backed
   by FastAPI, are RA-protected and must not create or update database rows.
 
@@ -316,7 +317,8 @@ Notes:
   and raw client timing timestamps.
 - Persists server-computed four-condition and crossed/uncrossed summaries on
   `ihtt_poffenberger_runs`.
-- Marks the Poffenberger run complete and marks the active session complete.
+- Activates the session on submission, then marks the Poffenberger run and session
+  complete in the same transaction.
 - Backend recomputes condition keys, accuracy, timeout status, and all summary
   fields.
 - Reaction-time means exclude practice trials, timeouts, invalid responses, and

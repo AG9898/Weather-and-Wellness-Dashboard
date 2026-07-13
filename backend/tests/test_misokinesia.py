@@ -177,9 +177,19 @@ class _FakeParticipant:
 
 
 class _FakeSession:
-    session_id = _SESSION_ID
-    participant_uuid = _PARTICIPANT_UUID
-    status = "active"
+    def __init__(
+        self,
+        *,
+        session_id: uuid.UUID = _SESSION_ID,
+        participant_uuid: uuid.UUID = _PARTICIPANT_UUID,
+        status: str = "active",
+        voided_at: datetime | None = None,
+    ) -> None:
+        self.session_id = session_id
+        self.participant_uuid = participant_uuid
+        self.status = status
+        self.activated_at: datetime | None = None
+        self.voided_at = voided_at
 
 
 class _FakeResponseRow:
@@ -395,11 +405,10 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
         from unittest.mock import patch, MagicMock
 
         fake_participant = _FakeParticipant()
-        fake_session = _FakeSession()
         fake_miso = _FakeMisoParticipant(miso_participant_number=1, post_survey_order="mkaq,gad7,maq")
 
         with patch("app.routers.misokinesia.Participant", return_value=fake_participant), \
-             patch("app.routers.misokinesia.SessionModel", return_value=fake_session), \
+             patch("app.routers.misokinesia.SessionModel", side_effect=_FakeSession), \
              patch("app.routers.misokinesia.MisokinesiaParticipant", return_value=fake_miso), \
              patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
             result = await start_misokinesia_session(db=db)
@@ -407,6 +416,10 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.misokinesia_participant_id, _MISO_PARTICIPANT_ID)
         self.assertEqual(result.misokinesia_participant_number, 1)
         self.assertEqual(result.session_id, _SESSION_ID)
+        created_session = next(
+            row for row in db._added if isinstance(row, _FakeSession)
+        )
+        self.assertEqual(created_session.status, "created")
         self.assertTrue(_is_valid_survey_order(result.post_survey_order))
         self.assertEqual(len(result.clips), 2)
         self.assertEqual(result.clips[0].sort_order, 1)
@@ -1128,9 +1141,10 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
 
         execute() call order:
           0. select(MisokinesiaParticipant)              → miso_participant or None
-          1. select(MisokinesiaStimulus)                  → stimulus or None
-          2. select(func.count(MisokinesiaStimulus))      → total_stimuli
-          3. select(func.count(MisokinesiaTrialResponse)) → submitted_count
+          1. select(Session)                              → session
+          2. select(MisokinesiaStimulus)                  → stimulus or None
+          3. select(func.count(MisokinesiaStimulus))      → total_stimuli
+          4. select(func.count(MisokinesiaTrialResponse)) → submitted_count
         """
         if miso_participant is None:
             miso_participant = _FakeMisoParticipant()
@@ -1138,7 +1152,13 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
             stimulus = _FakeStimulus()
 
         return _SequencedDB(
-            execute_returns=[miso_participant, stimulus, total_stimuli, submitted_count],
+            execute_returns=[
+                miso_participant,
+                _FakeSession(),
+                stimulus,
+                total_stimuli,
+                submitted_count,
+            ],
             raise_integrity_on_flush=raise_integrity_on_flush,
         )
 
@@ -1162,6 +1182,33 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.session_id, _SESSION_ID)
         self.assertFalse(result.is_complete)
         self.assertTrue(db.committed)
+
+    async def test_first_response_activates_created_session(self) -> None:
+        session = _FakeSession(status="created")
+        db = _SequencedDB(
+            execute_returns=[
+                _FakeMisoParticipant(),
+                session,
+                _FakeStimulus(),
+                2,
+                1,
+            ]
+        )
+
+        from unittest.mock import patch
+
+        with patch(
+            "app.routers.misokinesia.MisokinesiaTrialResponse",
+            return_value=_FakeResponseRow(),
+        ):
+            await submit_trial_response(
+                participant_id=_MISO_PARTICIPANT_ID,
+                payload=self._valid_payload(),
+                db=db,
+            )
+
+        self.assertEqual(session.status, "active")
+        self.assertIsNotNone(session.activated_at)
 
     async def test_no_auth_dependency_on_responses_route(self) -> None:
         """POST /participants/{id}/responses must not declare get_current_lab_member."""
@@ -1197,7 +1244,7 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
 
     async def test_raises_409_when_participant_already_complete(self) -> None:
         miso = _FakeMisoParticipant(completed_at=_NOW)
-        db = _SequencedDB(execute_returns=[miso])
+        db = _SequencedDB(execute_returns=[miso, _FakeSession()])
         with self.assertRaises(HTTPException) as ctx:
             await submit_trial_response(
                 participant_id=_MISO_PARTICIPANT_ID,
@@ -1208,8 +1255,8 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
 
     async def test_raises_422_when_stimulus_not_in_test_set(self) -> None:
         miso = _FakeMisoParticipant()
-        # [0]=participant, [1]=None → stimulus not in test set
-        db = _SequencedDB(execute_returns=[miso, None])
+        # [0]=participant, [1]=session, [2]=None → stimulus not in test set
+        db = _SequencedDB(execute_returns=[miso, _FakeSession(), None])
         with self.assertRaises(HTTPException) as ctx:
             await submit_trial_response(
                 participant_id=_MISO_PARTICIPANT_ID,
@@ -1284,7 +1331,9 @@ class SubmitTrialResponseTests(IsolatedAsyncioTestCase):
         miso = _FakeMisoParticipant()
         stimulus = _FakeStimulus()
         fake_response = _FakeResponseRow()
-        db = _SequencedDB(execute_returns=[miso, stimulus, 2, 1])
+        db = _SequencedDB(
+            execute_returns=[miso, _FakeSession(), stimulus, 2, 1]
+        )
 
         from unittest.mock import patch
 

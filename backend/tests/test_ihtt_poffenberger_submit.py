@@ -255,7 +255,7 @@ class PoffenbergerSubmitRouteTests(IsolatedAsyncioTestCase):
     async def test_submit_persists_scored_trials_and_marks_run_complete(self) -> None:
         manifest = _manifest()
         run = _run(manifest)
-        session = _session()
+        session = _session(status="created")
         db = _FakeDB(run, session)
 
         response = await submit_poffenberger_run(
@@ -271,6 +271,7 @@ class PoffenbergerSubmitRouteTests(IsolatedAsyncioTestCase):
         assert run.is_complete is True
         assert run.completed_at is not None
         assert session.status == "complete"
+        assert session.activated_at is not None
         assert session.completed_at == run.completed_at
         assert len(db.added) == 610
         assert all(isinstance(trial, PoffenbergerTrial) for trial in db.added)
