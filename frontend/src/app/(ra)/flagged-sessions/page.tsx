@@ -51,6 +51,28 @@ const STUDY_LABEL: Record<string, string> = {
   poffenberger: "Poffenberger",
 };
 
+/** Human-readable lab names, keyed by the `lab` slug the backend emits. */
+const LAB_LABEL: Record<string, string> = {
+  ww: "Weather-Wellness",
+  ihtt: "IHTT",
+};
+
+function labLabel(lab: string): string {
+  return LAB_LABEL[lab] ?? lab;
+}
+
+function studyLabel(study: string): string {
+  return STUDY_LABEL[study] ?? study;
+}
+
+/** A single lab + component slice of flagged sessions, rendered as its own window. */
+interface ComponentGroup {
+  key: string;
+  lab: string;
+  study: string;
+  rows: AdminFlaggedSessionResponse[];
+}
+
 const DELETE_CONFIRM_PHRASE = "DELETE";
 
 function flaggedErrorMessage(err: unknown): string {
@@ -123,6 +145,27 @@ export default function AdminFlaggedSessionsPage() {
       }),
     [rows]
   );
+
+  // Split the flat list into one pre-filtered window per lab + component, so an
+  // admin can tell at a glance which slice each table belongs to. Rows keep the
+  // stale-first ordering from `sortedRows` within each group.
+  const groups = useMemo(() => {
+    const byKey = new Map<string, ComponentGroup>();
+    for (const row of sortedRows) {
+      const key = `${row.lab}::${row.study}`;
+      const group = byKey.get(key);
+      if (group) {
+        group.rows.push(row);
+      } else {
+        byKey.set(key, { key, lab: row.lab, study: row.study, rows: [row] });
+      }
+    }
+    return [...byKey.values()].sort((a, b) => {
+      const labCmp = labLabel(a.lab).localeCompare(labLabel(b.lab));
+      if (labCmp !== 0) return labCmp;
+      return studyLabel(a.study).localeCompare(studyLabel(b.study));
+    });
+  }, [sortedRows]);
 
   const loadRows = useCallback(async () => {
     setLoading(true);
@@ -270,137 +313,32 @@ export default function AdminFlaggedSessionsPage() {
         </div>
       ) : null}
 
-      <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Sessions
+      {loading ? (
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Loading flagged sessions…
           </p>
-          <Badge variant="outline" className="bg-background">
-            {sortedRows.length} shown
-          </Badge>
+        </section>
+      ) : groups.length === 0 ? (
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No flagged sessions.
+          </p>
+        </section>
+      ) : (
+        <div className="space-y-6">
+          {groups.map((group) => (
+            <ComponentWindow
+              key={group.key}
+              group={group}
+              saving={saving}
+              onVoid={openVoidDialog}
+              onDelete={openDeleteDialog}
+              onRestore={handleRestore}
+            />
+          ))}
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="py-3 pr-4 font-semibold">Study</th>
-                <th className="px-4 py-3 font-semibold">Lab</th>
-                <th className="px-4 py-3 font-semibold">Participant</th>
-                <th className="px-4 py-3 font-semibold">Session</th>
-                <th className="px-4 py-3 font-semibold">Created</th>
-                <th className="px-4 py-3 font-semibold">Activated</th>
-                <th className="px-4 py-3 font-semibold">Completed</th>
-                <th className="px-4 py-3 font-semibold">Classification</th>
-                <th className="py-3 pl-4 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
-                <tr>
-                  <td colSpan={9} className="py-6 text-center text-muted-foreground">
-                    Loading flagged sessions…
-                  </td>
-                </tr>
-              ) : sortedRows.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-6 text-center text-muted-foreground">
-                    No flagged sessions.
-                  </td>
-                </tr>
-              ) : (
-                sortedRows.map((row) => {
-                  const voided = row.classification === "voided";
-                  return (
-                    <tr key={row.session_id} className="align-middle">
-                      <td className="py-3 pr-4 font-medium text-foreground">
-                        {STUDY_LABEL[row.study] ?? row.study}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">{row.lab}</td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-                          {row.participant_number}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground" title={row.session_id}>
-                        {shortId(row.session_id)}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {formatDateTime(row.created_at)}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {formatDateTime(row.activated_at)}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {formatDateTime(row.completed_at)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col items-start gap-1">
-                          <Badge
-                            variant="outline"
-                            className={cn(classificationBadgeClass(row.classification))}
-                          >
-                            {CLASSIFICATION_LABEL[row.classification]}
-                          </Badge>
-                          {row.demographics_missing ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300">
-                              <ShieldAlert className="size-3" />
-                              Demographics missing
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="py-3 pl-4">
-                        <div className="flex justify-end gap-1">
-                          {voided ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRestore(row)}
-                              disabled={saving}
-                              aria-label="Restore session"
-                              title="Restore session"
-                              className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
-                            >
-                              <RotateCcw className="size-4" />
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openVoidDialog(row)}
-                              disabled={saving}
-                              aria-label="Void session"
-                              title="Void session"
-                              className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
-                            >
-                              <Slash className="size-4" />
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(row)}
-                            disabled={saving}
-                            aria-label="Hard-delete session"
-                            title="Hard-delete session"
-                            className="size-8 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      )}
 
       <Dialog open={pending?.kind === "void"} onOpenChange={(open) => (open ? null : closeDialog())}>
         <DialogContent>
@@ -479,5 +417,134 @@ export default function AdminFlaggedSessionsPage() {
         </DialogContent>
       </Dialog>
     </PageContainer>
+  );
+}
+
+interface ComponentWindowProps {
+  group: ComponentGroup;
+  saving: boolean;
+  onVoid: (row: AdminFlaggedSessionResponse) => void;
+  onDelete: (row: AdminFlaggedSessionResponse) => void;
+  onRestore: (row: AdminFlaggedSessionResponse) => void;
+}
+
+/** One lab + component slice of flagged sessions, rendered as a self-contained window. */
+function ComponentWindow({ group, saving, onVoid, onDelete, onRestore }: ComponentWindowProps) {
+  const { lab, study, rows } = group;
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4 sm:p-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            {labLabel(lab)}
+          </p>
+          <h2 className="text-lg font-semibold text-foreground">{studyLabel(study)}</h2>
+        </div>
+        <Badge variant="outline" className="bg-background">
+          {rows.length} {rows.length === 1 ? "session" : "sessions"}
+        </Badge>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] text-left text-sm">
+          <thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="py-3 pr-4 font-semibold">Participant</th>
+              <th className="px-4 py-3 font-semibold">Session</th>
+              <th className="px-4 py-3 font-semibold">Created</th>
+              <th className="px-4 py-3 font-semibold">Activated</th>
+              <th className="px-4 py-3 font-semibold">Completed</th>
+              <th className="px-4 py-3 font-semibold">Classification</th>
+              <th className="py-3 pl-4 text-right font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row) => {
+              const voided = row.classification === "voided";
+              return (
+                <tr key={row.session_id} className="align-middle">
+                  <td className="py-3 pr-4">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+                      {row.participant_number}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground" title={row.session_id}>
+                    {shortId(row.session_id)}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {formatDateTime(row.created_at)}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {formatDateTime(row.activated_at)}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {formatDateTime(row.completed_at)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge
+                        variant="outline"
+                        className={cn(classificationBadgeClass(row.classification))}
+                      >
+                        {CLASSIFICATION_LABEL[row.classification]}
+                      </Badge>
+                      {row.demographics_missing ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300">
+                          <ShieldAlert className="size-3" />
+                          Demographics missing
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="py-3 pl-4">
+                    <div className="flex justify-end gap-1">
+                      {voided ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onRestore(row)}
+                          disabled={saving}
+                          aria-label="Restore session"
+                          title="Restore session"
+                          className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
+                        >
+                          <RotateCcw className="size-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onVoid(row)}
+                          disabled={saving}
+                          aria-label="Void session"
+                          title="Void session"
+                          className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
+                        >
+                          <Slash className="size-4" />
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(row)}
+                        disabled={saving}
+                        aria-label="Hard-delete session"
+                        title="Hard-delete session"
+                        className="size-8 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
