@@ -4845,7 +4845,7 @@
       "id": "T1845",
       "title": "Flagged sessions - admin cross-lab Flagged Sessions page",
       "description": "Build the admin-only, cross-lab Flagged Sessions page at frontend/src/app/(ra)/flagged-sessions, gated to role='admin' like /users (nav item hidden for non-admins; guarded state if reached directly). Add a typed API wrapper in src/lib/api/ for the admin data-quality endpoints (no bare fetch). Render a cross-study table (study, lab, participant number, ids, created_at, activated_at/completed_at, classification badge, demographics-missing indicator) sorted with empty_stale first; complete valid runs excluded by default. Provide void (with reason, confirmed), restore, and hard-delete (stronger irreversible confirmation) actions. Reuse existing RA table/dialog/badge/error patterns. Add the nav entry alongside the admin User Management link. Follow docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md (Admin Flagged Sessions Page).",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "FLAGGED_SESSIONS",
       "depends_on": [

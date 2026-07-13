@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, Home, MessageSquare, Users, Video } from "lucide-react";
+import { ArrowUpDown, Flag, Home, MessageSquare, Users, Video } from "lucide-react";
 import { useRAUser } from "@/lib/contexts/RAUserContext";
 
 /**
@@ -57,6 +57,7 @@ export const LAB_REGISTRY: Record<LabSlug, LabConfig> = {
 /** Admin-only items appended to every lab's dock. */
 export const ADMIN_DOCK_ITEMS: LabDockItem[] = [
   { href: "/users", label: "Users", icon: Users },
+  { href: "/flagged-sessions", label: "Flagged", icon: Flag },
 ];
 
 export const LAB_SLUGS = Object.keys(LAB_REGISTRY) as LabSlug[];

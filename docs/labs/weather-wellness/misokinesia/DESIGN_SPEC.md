@@ -600,7 +600,7 @@ Interaction and visual expectations:
 - No service-role keys, token hashes, raw invite tokens, or provider secrets are
   exposed in the browser.
 
-## Admin Flagged Sessions Page (cross-lab, planned)
+## Admin Flagged Sessions Page (cross-lab)
 
 The Flagged Sessions page is **admin-only and cross-lab** (not scoped to a single lab). It
 gives admins one place to review and clean up abandoned/questionable sessions across all
@@ -608,12 +608,36 @@ studies (Weather-Wellness weather + misokinesia, and IHTT Poffenberger). Non-adm
 not see the nav item and must receive a guarded access state if they reach the route
 directly, mirroring the User Management page.
 
-Route: `/flagged-sessions`.
+Route: `/flagged-sessions` (page at `frontend/src/app/(ra)/flagged-sessions/page.tsx`). The
+nav entry is appended to `ADMIN_DOCK_ITEMS` in `frontend/src/lib/labs.ts` (label "Flagged",
+`Flag` icon), so it renders on every lab's dock for admins only; the route is also registered
+in `shouldShowRAFloatingChrome`. Access control mirrors `/users`: the page reads `role` from
+`RAUserContext` and `router.replace("/unauthorized")` when the caller is not an admin, showing
+a "Checking access…" fallback while redirecting.
 
 Backed by the admin data-quality endpoints (`GET /admin/flagged-sessions` plus
 void/restore/delete; see `docs/labs/weather-wellness/weather/API.md` and
-`docs/MULTI_LAB.md`). Classification and the "valid run" rule are canonical in
-`docs/CONVENTIONS.md` (Session validity & data quality).
+`docs/MULTI_LAB.md`). All calls go through typed wrappers in `frontend/src/lib/api/index.ts`
+(`getAdminFlaggedSessions(includeValid)`, `voidAdminSession(sessionId, reason)`,
+`restoreAdminSession(sessionId)`, `deleteAdminSession(sessionId)`) — no bare `fetch` from the
+page. Classification and the "valid run" rule are canonical in `docs/CONVENTIONS.md`
+(Session validity & data quality).
+
+Implementation specifics:
+- Table columns: study, lab, participant number (badge), session id (truncated, full value on
+  hover), `created_at`, `activated_at`, `completed_at`, classification badge, and a
+  demographics-missing indicator shown beneath the badge.
+- Default sort is by classification weight (`empty_stale` → `empty_active` → `partial` →
+  `voided` → `complete`), then oldest `created_at` first, so stale abandoned sessions surface
+  at the top.
+- Complete non-voided runs are hidden by default; a "Show complete runs" toggle sets
+  `include_valid=true`.
+- Void opens a dialog requiring a non-empty reason before the confirm button enables. Restore
+  is offered only for `voided` rows and confirms via a browser prompt. Hard-delete opens a
+  stronger dialog with an irreversible-action warning that requires typing `DELETE` to enable
+  the destructive confirm button.
+- Errors render inline (destructive banner) and success actions render an emerald notice
+  banner; both reuse the existing RA table/dialog/badge patterns.
 
 Required capabilities:
 

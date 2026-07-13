@@ -1219,6 +1219,94 @@ export async function revokeAdminUserAccess(userId: string): Promise<void> {
   }
 }
 
+// ── Admin Flagged Sessions (cross-lab data quality) types + wrappers ──
+
+/** Study slug a flagged session belongs to. */
+export type AdminSessionStudy = "weather" | "misokinesia" | "poffenberger";
+
+/** Canonical session validity classification (see docs/CONVENTIONS.md). */
+export type AdminSessionClassification =
+  | "complete"
+  | "partial"
+  | "empty_active"
+  | "empty_stale"
+  | "voided";
+
+/** One cross-lab flagged session row for admin review. */
+export interface AdminFlaggedSessionResponse {
+  study: AdminSessionStudy;
+  lab: string;
+  participant_number: number;
+  session_id: string;
+  run_id: string | null;
+  created_at: string;
+  activated_at: string | null;
+  completed_at: string | null;
+  classification: AdminSessionClassification;
+  demographics_missing: boolean;
+}
+
+/** Result of a void/restore mutation on a session. */
+export interface AdminSessionVoidStateResponse {
+  session_id: string;
+  voided_at: string | null;
+  void_reason: string | null;
+}
+
+/** Result of a hard-delete on a session. */
+export interface AdminSessionDeleteResponse {
+  session_id: string;
+  deleted: true;
+}
+
+/**
+ * List cross-lab flagged sessions for admin review. Complete valid runs are
+ * excluded unless {@link includeValid} is set.
+ */
+export async function getAdminFlaggedSessions(
+  includeValid = false
+): Promise<AdminFlaggedSessionResponse[]> {
+  const query = includeValid ? "?include_valid=true" : "";
+  return apiGet<AdminFlaggedSessionResponse[]>(
+    `/admin/flagged-sessions${query}`,
+    { auth: true }
+  );
+}
+
+/** Soft-void a session with a required reason (preserves study data). */
+export async function voidAdminSession(
+  sessionId: string,
+  reason: string
+): Promise<AdminSessionVoidStateResponse> {
+  return apiPost<AdminSessionVoidStateResponse>(
+    `/admin/sessions/${encodeURIComponent(sessionId)}/void`,
+    { reason },
+    { auth: true }
+  );
+}
+
+/** Restore a previously soft-voided session. */
+export async function restoreAdminSession(
+  sessionId: string
+): Promise<AdminSessionVoidStateResponse> {
+  return apiPost<AdminSessionVoidStateResponse>(
+    `/admin/sessions/${encodeURIComponent(sessionId)}/restore`,
+    {},
+    { auth: true }
+  );
+}
+
+/** Hard-delete a session and every dependent study result row (irreversible). */
+export async function deleteAdminSession(
+  sessionId: string
+): Promise<AdminSessionDeleteResponse> {
+  return apiDelete<AdminSessionDeleteResponse>(
+    `/admin/sessions/${encodeURIComponent(sessionId)}`,
+    undefined,
+    { auth: true }
+  );
+}
+
 // ── Undo Last Session types + wrappers ──
 
 export interface LastNativeSessionResponse {
