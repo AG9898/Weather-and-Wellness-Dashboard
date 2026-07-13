@@ -4679,7 +4679,7 @@
       "id": "T1840",
       "title": "Flagged sessions - sessions schema migration (activated_at, voided_at, void_reason)",
       "description": "Add three nullable columns to the shared sessions table: activated_at TIMESTAMPTZ (first created->active transition timestamp), voided_at TIMESTAMPTZ (soft-void marker), void_reason TEXT. Update the SQLAlchemy Session model and create an Alembic migration via autogenerate; review it before applying. Apply the migration to the database with scripts/alembic-upgrade-head.sh and confirm the columns exist. Append a row to the Migration History table in docs/SCHEMA.md with the new revision id. No behavior change in this task - defaults leave existing rows untouched (all three columns NULL).",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "FLAGGED_SESSIONS",
       "depends_on": [],
@@ -4696,14 +4696,14 @@
         "docs/CONVENTIONS.md"
       ],
       "files": [
-        "backend/app/models/session.py",
+        "backend/app/models/sessions.py",
         "backend/alembic/versions/",
         "docs/SCHEMA.md"
       ],
       "commands": [
         "scripts/check-deps.sh",
         "scripts/alembic-upgrade-head.sh",
-        "cd backend && PYTHONPATH=. python -c \"import app.models.session\""
+        "cd backend && PYTHONPATH=. .venv/bin/python -c \"import app.models.sessions\""
       ]
     },
     {

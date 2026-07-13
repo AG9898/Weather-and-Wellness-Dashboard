@@ -17,7 +17,7 @@
 - **FKs:** Enforced at DB level, not just application level
 
 > Migration head check: `alembic current -v` should report
-> `Rev: 20260624_000001 (head)`.
+> `Rev: 20260712_000001 (head)`.
 > Keep this value in sync after every new migration.
 
 ---
@@ -334,8 +334,9 @@ audit-logged in `admin_session_undo_log` instead of introducing soft-delete colu
 | 2026-06-20 | T1829                 | Add `chat_tool_invocations` append-only audit table for the RA chatbot agentic loop                                                                                                                                |
 | 2026-06-21 | T1833                 | Add IHTT Poffenberger run/trial persistence tables, server manifest storage, raw timing fields, and condition/crossed summary columns                                                                               |
 | 2026-06-24 | n/a                   | Add nullable `participants.handedness` for IHTT Poffenberger demographics and split Poffenberger start demographics from Weather-Wellness exposure fields                                                           |
+| 2026-07-12 | T1840                 | Migration `20260712_000001`: add nullable `sessions.activated_at`, `sessions.voided_at`, and `sessions.void_reason` columns for deferred activation and soft voiding                                                  |
 
 
-As of 2026-06-24, migration `20260624_000001` is the current head revision.
+As of 2026-07-12, migration `20260712_000001` is the current head revision.
 
 ---
