@@ -8,6 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 AdminUserRole = Literal["admin", "ra"]
+SessionClassification = Literal[
+    "complete",
+    "partial",
+    "empty_active",
+    "empty_stale",
+    "voided",
+]
+StudySlug = Literal["weather", "misokinesia", "poffenberger"]
 
 
 class ImportRowIssue(BaseModel):
@@ -39,6 +47,38 @@ class LegacyWeatherBackfillResponse(BaseModel):
     days_inserted: int
     days_updated: int
     days_skipped: int
+
+
+class AdminFlaggedSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    study: StudySlug
+    lab: str
+    participant_number: int
+    session_id: UUID
+    run_id: UUID | None = None
+    created_at: datetime
+    activated_at: datetime | None = None
+    completed_at: datetime | None = None
+    classification: SessionClassification
+    demographics_missing: bool
+
+
+class AdminVoidSessionRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class AdminSessionVoidStateResponse(BaseModel):
+    session_id: UUID
+    voided_at: datetime | None = None
+    void_reason: str | None = None
+
+
+class AdminSessionDeleteResponse(BaseModel):
+    session_id: UUID
+    deleted: Literal[True] = True
 
 
 class AdminUserResponse(BaseModel):
@@ -107,6 +147,10 @@ __all__ = [
     "ImportPreviewResponse",
     "ImportCommitResponse",
     "LegacyWeatherBackfillResponse",
+    "AdminFlaggedSessionResponse",
+    "AdminVoidSessionRequest",
+    "AdminSessionVoidStateResponse",
+    "AdminSessionDeleteResponse",
     "AdminUserResponse",
     "AdminInvitationResponse",
     "AdminUsersResponse",

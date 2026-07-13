@@ -20,25 +20,51 @@ POST /admin/backfill/legacy-weather
     RA-only.  Backfills weather_daily for imported days that have no
     UBC-ingested weather (temp + precip means from imported sessions only).
     Idempotent: existing weather_daily rows are never overwritten.
+
+GET /admin/flagged-sessions and /admin/sessions/{session_id} mutations
+    Admin-only, cross-lab session review, soft-void/restore, and hard-delete.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import LabMember, get_current_admin
 from app.config import STUDY_TIMEZONE
 from app.db import get_session
+from app.models.cognitive import (
+    CardSortingRun,
+    CardSortingTrial,
+    StroopRun,
+    StroopTrial,
+)
+from app.models.digitspan import DigitSpanRun, DigitSpanTrial
+from app.models.imported_session_measures import ImportedSessionMeasures
+from app.models.misokinesia import (
+    MisokinesiaAqResponse,
+    MisokinesiaGAD7Response,
+    MisokinesiaMAQResponse,
+    MisokinesiaParticipant,
+    MisokinesiaTrialResponse,
+)
+from app.models.poffenberger import PoffenbergerRun, PoffenbergerTrial
+from app.models.sessions import Session
+from app.models.surveys import SurveyCESD10, SurveyCogFunc8a, SurveyGAD7, SurveyULS8
 from app.schemas.admin import (
+    AdminFlaggedSessionResponse,
     AdminInvitationResponse,
+    AdminSessionDeleteResponse,
+    AdminSessionVoidStateResponse,
     AdminUserResponse,
     AdminUsersResponse,
+    AdminVoidSessionRequest,
     CreateUserInvitationRequest,
     ImportCommitResponse,
     ImportPreviewResponse,
@@ -55,6 +81,7 @@ from app.services.admin_invite_service import (
     resend_invite,
     revoke_invite,
 )
+from app.services.data_quality import get_session_data_quality_rows
 from app.services.export_service import build_xlsx, build_zip_csv
 from app.services.import_service import commit_import, parse_file, preview_import
 from app.services.supabase_admin_users import (
@@ -270,6 +297,125 @@ async def revoke_admin_user_access(
     except Exception as exc:
         raise _map_admin_client_error(exc) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+async def _get_locked_session(db: AsyncSession, session_id: UUID) -> Session:
+    result = await db.execute(
+        select(Session).where(Session.session_id == session_id).with_for_update()
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found.",
+        )
+    return session
+
+
+@router.get(
+    "/flagged-sessions",
+    response_model=list[AdminFlaggedSessionResponse],
+)
+async def get_admin_flagged_sessions(
+    include_valid: bool = Query(
+        default=False,
+        description="Include complete, non-voided sessions.",
+    ),
+    _admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> list[AdminFlaggedSessionResponse]:
+    """Return cross-lab session classifications for admin review."""
+    rows = await get_session_data_quality_rows(db)
+    if not include_valid:
+        rows = [row for row in rows if row.classification != "complete"]
+    return [AdminFlaggedSessionResponse.model_validate(row) for row in rows]
+
+
+@router.post(
+    "/sessions/{session_id}/void",
+    response_model=AdminSessionVoidStateResponse,
+)
+async def void_admin_session(
+    session_id: UUID,
+    request: AdminVoidSessionRequest,
+    _admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> AdminSessionVoidStateResponse:
+    """Soft-void a session while preserving its study data."""
+    session = await _get_locked_session(db, session_id)
+    session.voided_at = datetime.now(timezone.utc)
+    session.void_reason = request.reason
+    await db.commit()
+    return AdminSessionVoidStateResponse(
+        session_id=session.session_id,
+        voided_at=session.voided_at,
+        void_reason=session.void_reason,
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/restore",
+    response_model=AdminSessionVoidStateResponse,
+)
+async def restore_admin_session(
+    session_id: UUID,
+    _admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> AdminSessionVoidStateResponse:
+    """Restore a soft-voided session."""
+    session = await _get_locked_session(db, session_id)
+    session.voided_at = None
+    session.void_reason = None
+    await db.commit()
+    return AdminSessionVoidStateResponse(session_id=session.session_id)
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    response_model=AdminSessionDeleteResponse,
+)
+async def delete_admin_session(
+    session_id: UUID,
+    _admin: LabMember = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_session),
+) -> AdminSessionDeleteResponse:
+    """Hard-delete one session and every study result row that depends on it."""
+    await _get_locked_session(db, session_id)
+
+    run_tables = (
+        (DigitSpanRun, DigitSpanTrial),
+        (StroopRun, StroopTrial),
+        (CardSortingRun, CardSortingTrial),
+    )
+    for run_model, trial_model in run_tables:
+        run_ids = (
+            select(run_model.run_id)
+            .where(run_model.session_id == session_id)
+            .scalar_subquery()
+        )
+        await db.execute(delete(trial_model).where(trial_model.run_id.in_(run_ids)))
+        await db.execute(delete(run_model).where(run_model.session_id == session_id))
+
+    direct_session_models = (
+        SurveyULS8,
+        SurveyCESD10,
+        SurveyGAD7,
+        SurveyCogFunc8a,
+        ImportedSessionMeasures,
+        MisokinesiaAqResponse,
+        MisokinesiaGAD7Response,
+        MisokinesiaMAQResponse,
+        MisokinesiaTrialResponse,
+        MisokinesiaParticipant,
+        PoffenbergerTrial,
+        PoffenbergerRun,
+    )
+    for model in direct_session_models:
+        await db.execute(delete(model).where(model.session_id == session_id))
+
+    await db.execute(delete(Session).where(Session.session_id == session_id))
+    await db.commit()
+    return AdminSessionDeleteResponse(session_id=session_id)
 
 
 @router.post(

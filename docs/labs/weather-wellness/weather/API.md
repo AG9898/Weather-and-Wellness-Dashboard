@@ -94,10 +94,10 @@
 | POST   | /admin/users/invitations/{invitation_id}/revoke | Admin | implemented | T153 |
 | PATCH  | /admin/users/{user_id} | Admin | implemented | T153 |
 | POST   | /admin/users/{user_id}/revoke-access | Admin | implemented | T153 |
-| GET    | /admin/flagged-sessions | Admin (cross-lab) | planned | flagged-sessions |
-| POST   | /admin/sessions/{session_id}/void | Admin (cross-lab) | planned | flagged-sessions |
-| POST   | /admin/sessions/{session_id}/restore | Admin (cross-lab) | planned | flagged-sessions |
-| DELETE | /admin/sessions/{session_id} | Admin (cross-lab) | planned | flagged-sessions |
+| GET    | /admin/flagged-sessions | Admin (cross-lab) | implemented | T1843 |
+| POST   | /admin/sessions/{session_id}/void | Admin (cross-lab) | implemented | T1843 |
+| POST   | /admin/sessions/{session_id}/restore | Admin (cross-lab) | implemented | T1843 |
+| DELETE | /admin/sessions/{session_id} | Admin (cross-lab) | implemented | T1843 |
 | POST   | /auth/invitations/accept | None (invite token) | implemented | T153 |
 | POST   | /misokinesia/start | RA | implemented | T106 |
 | GET    | /misokinesia/trial-manifest | RA | implemented | T143 |
@@ -1130,6 +1130,55 @@ Canonical task spec: [CARD_SORTING.md](CARD_SORTING.md)
   - Frontend `/set-password?invite=<token>` calls this endpoint through the typed `acceptInvitation` wrapper; it no longer depends on Supabase invite hash sessions for app-owned invites.
   - Frontend maps 404/422, 410, 409, and 502 responses to user-safe invalid, expired, already accepted/revoked, and activation-failure states.
 - **Verified:** T154 frontend wiring confirmed `/set-password?invite=<token>` submits the backend accept contract and then returns users to normal login.
+
+### GET /admin/flagged-sessions
+- **Auth:** Admin required; cross-lab, not scoped by the caller's `lab_name`
+- **Status:** implemented (T1843)
+- **Query:** `include_valid` boolean, default `false`. When false, complete non-voided
+  sessions are omitted; partial, empty, and voided classifications remain visible.
+- **Response:** Array of classified session rows:
+
+```json
+[
+  {
+    "study": "weather | misokinesia | poffenberger",
+    "lab": "ww | ihtt",
+    "participant_number": 42,
+    "session_id": "uuid",
+    "run_id": "uuid | null",
+    "created_at": "ISO-8601 timestamp",
+    "activated_at": "ISO-8601 timestamp | null",
+    "completed_at": "ISO-8601 timestamp | null",
+    "classification": "complete | partial | empty_active | empty_stale | voided",
+    "demographics_missing": false
+  }
+]
+```
+
+### POST /admin/sessions/{session_id}/void
+- **Auth:** Admin required; cross-lab
+- **Status:** implemented (T1843)
+- **Request:** `{ "reason": "short operator-entered reason" }`; trimmed, 1-500 characters
+- **Response:** `{ "session_id": "uuid", "voided_at": "ISO-8601 timestamp", "void_reason": "..." }`
+- **Behavior:** Locks the session row, stamps `voided_at` in UTC, stores the reason, and
+  preserves all study data. Unknown sessions return 404.
+
+### POST /admin/sessions/{session_id}/restore
+- **Auth:** Admin required; cross-lab
+- **Status:** implemented (T1843)
+- **Request:** No body
+- **Response:** `{ "session_id": "uuid", "voided_at": null, "void_reason": null }`
+- **Behavior:** Locks the session row and clears both soft-void fields. Unknown sessions
+  return 404.
+
+### DELETE /admin/sessions/{session_id}
+- **Auth:** Admin required; cross-lab
+- **Status:** implemented (T1843)
+- **Response:** `{ "session_id": "uuid", "deleted": true }`
+- **Behavior:** Transactionally deletes the session plus its Weather-Wellness survey,
+  cognitive, imported-measure, Misokinesia, and IHTT Poffenberger dependent rows in
+  foreign-key-safe order. The stable participant record is preserved. Unknown sessions
+  return 404.
 
 ### POST /admin/import/preview
 - **Auth:** RA required

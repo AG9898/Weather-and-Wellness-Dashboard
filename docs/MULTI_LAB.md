@@ -50,6 +50,11 @@ canonical validity rules in `docs/CONVENTIONS.md` (Session validity & data quali
 **restore**, and admin **hard-delete**. Void/restore/delete endpoints live in
 `backend/app/routers/admin.py` and require `get_current_admin`.
 
+`GET /admin/flagged-sessions` omits complete non-voided sessions by default and accepts
+`include_valid=true` to return them as well. Void and restore lock the target session and
+atomically update its soft-void fields. Hard-delete transactionally removes the session and
+all component-owned result rows while preserving the stable `participants` row.
+
 Until persistent `lab_id` / `study_id` columns are available, the shared backend data-quality
 service attributes a session from its study-owned run row: `misokinesia_participants` maps to
 study `misokinesia` and lab `ww`, `ihtt_poffenberger_runs` maps to study `poffenberger` and lab

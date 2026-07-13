@@ -4779,7 +4779,7 @@
       "id": "T1843",
       "title": "Flagged sessions - admin cross-lab void/restore/delete API",
       "description": "Add admin-only, cross-lab endpoints in backend/app/routers/admin.py, all gated by Depends(get_current_admin): GET /admin/flagged-sessions (returns the classified rows from the data-quality service; supports filtering to non-valid by default with an option to include valid runs); POST /admin/sessions/{session_id}/void (sets voided_at=now() and void_reason from body); POST /admin/sessions/{session_id}/restore (clears voided_at and void_reason); DELETE /admin/sessions/{session_id} (hard-deletes the session and its dependent study rows, admin-only). Add typed Pydantic schemas. Add route tests covering admin-only access (403 for ra role), list output shape, void then restore round-trip, and hard-delete removal.",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "group_id": "FLAGGED_SESSIONS",
       "depends_on": [
