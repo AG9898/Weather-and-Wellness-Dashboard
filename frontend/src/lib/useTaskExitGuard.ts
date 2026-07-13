@@ -19,9 +19,11 @@ export function useTaskExitGuard(active: boolean): void {
     if (!active) return;
 
     function handleBeforeUnload(event: BeforeUnloadEvent) {
+      // Modern browsers show the native prompt from preventDefault() alone.
       event.preventDefault();
-      // Legacy Chromium requires a truthy returnValue to show the prompt.
-      event.returnValue = "";
+      // Some older engines still require a non-empty returnValue. Assign it via
+      // a non-deprecated view of the property to keep that fallback.
+      (event as { returnValue: string }).returnValue = "";
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload);

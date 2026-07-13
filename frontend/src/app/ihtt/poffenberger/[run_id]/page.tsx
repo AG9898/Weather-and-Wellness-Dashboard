@@ -407,7 +407,7 @@ function shouldShowTransition(
   return !next.is_practice && current.block_number !== next.block_number;
 }
 
-function clearActiveTimer(ref: React.MutableRefObject<ReturnType<typeof setTimeout> | null>) {
+function clearActiveTimer(ref: React.RefObject<ReturnType<typeof setTimeout> | null>) {
   if (ref.current) {
     clearTimeout(ref.current);
     ref.current = null;

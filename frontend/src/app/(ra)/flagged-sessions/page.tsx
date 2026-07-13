@@ -127,6 +127,7 @@ export default function AdminFlaggedSessionsPage() {
   const loadRows = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setNotice(null);
     try {
       setRows(await getAdminFlaggedSessions(includeValid));
     } catch (err) {
