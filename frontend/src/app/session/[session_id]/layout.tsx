@@ -1,3 +1,4 @@
+import SessionExitGuard from "@/lib/components/SessionExitGuard";
 import TrialRunWatermark from "@/lib/components/TrialRunWatermark";
 import WeatherWellnessTrialSectionJumper from "@/lib/components/WeatherWellnessTrialSectionJumper";
 
@@ -13,6 +14,7 @@ export default function SessionLayout({
 }) {
   return (
     <div className="min-h-screen bg-background">
+      <SessionExitGuard />
       <TrialRunWatermark />
       <div className="mx-auto max-w-3xl px-4 py-8 pb-20 sm:px-6 sm:pb-24">
         {children}

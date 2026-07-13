@@ -51,6 +51,7 @@ import {
   MISOKINESIA_SECTION_JUMP_SECTIONS,
   type MisokinesiaSectionTarget,
 } from "@/lib/misokinesia-section-jump";
+import { useTaskExitGuard } from "@/lib/useTaskExitGuard";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 const PRE_CLIP_BUFFER_MS = 4000;
@@ -110,6 +111,12 @@ export default function MisokinesiaTaskPage() {
   const taskContainerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenStarted, setFullscreenStarted] = useState(false);
+
+  // ── Refresh/leave guard: active while a recorded task is in progress ──
+  // Inactive on loading/error/completion states and in trial-run mode.
+  useTaskExitGuard(
+    !trialMode && phase !== "loading" && phase !== "error" && phase !== "complete"
+  );
 
   // ── Load manifest from sessionStorage on mount ──
   useEffect(() => {

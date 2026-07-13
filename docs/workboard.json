@@ -4877,7 +4877,7 @@
       "id": "T1846",
       "title": "Flagged sessions - participant task-page refresh/leave guard (all three studies)",
       "description": "Add a beforeunload refresh/navigation guard to the participant task pages so an accidental refresh or leave during an in-progress task prompts a confirmation: WW /session/[id]/* task pages, misokinesia /misokinesia/[id], and IHTT /ihtt/poffenberger/[run_id]. Guard should be active only during in-progress task states (not on completion/idle) and must not fire in trial-run mode. Prefer a small shared hook. This is a UX safeguard; it does not replace the server-side validity rule. Follow the refresh-guard notes in the three DESIGN_SPEC docs.",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "group_id": "FLAGGED_SESSIONS",
       "depends_on": [],

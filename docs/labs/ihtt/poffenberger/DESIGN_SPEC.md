@@ -138,6 +138,11 @@ real run at trial submission; an RA who starts then leaves before the participan
 leaves a `created` shell that appears on the admin Flagged Sessions page (see
 `docs/CONVENTIONS.md`, Session validity & data quality).
 
+Implementation: the page calls the shared `useTaskExitGuard` hook
+(`frontend/src/lib/useTaskExitGuard.ts`) with the guard active for every phase except
+`loading`, `error`, and `complete`, and always inactive for trial-run runs
+(`runState.mode === "trial"`).
+
 ## Screen Flow
 
 1. Loading/error state.

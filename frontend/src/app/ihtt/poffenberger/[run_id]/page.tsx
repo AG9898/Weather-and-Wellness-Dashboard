@@ -22,6 +22,7 @@ import {
   type PoffenbergerTaskTrial,
   type PoffenbergerTrialTiming,
 } from "@/lib/poffenberger-task";
+import { useTaskExitGuard } from "@/lib/useTaskExitGuard";
 
 type Phase =
   | "loading"
@@ -61,6 +62,12 @@ export default function PoffenbergerTaskPage() {
   const currentTrial = trials[trialIndex] ?? null;
   const isTrialMode = runState?.mode === "trial";
   const completedTrials = rows.length;
+
+  // ── Refresh/leave guard: active while a recorded task is in progress ──
+  // Inactive on loading/error/completion states and in trial-run mode.
+  useTaskExitGuard(
+    !isTrialMode && phase !== "loading" && phase !== "error" && phase !== "complete"
+  );
 
   useEffect(() => {
     const productionState = readPoffenbergerRunState(runId);

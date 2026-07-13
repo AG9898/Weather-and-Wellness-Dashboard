@@ -92,6 +92,15 @@ session complete.
 > away prompts a confirmation. This reduces (but does not by itself define) abandoned runs;
 > the authoritative "real run" rule is server-side — the session only becomes `active` at
 > the first data write (see `docs/CONVENTIONS.md`, Session validity & data quality).
+>
+> Implementation: the guard is installed once at the session-shell level by
+> `SessionExitGuard` (`frontend/src/lib/components/SessionExitGuard.tsx`), rendered inside
+> `/session/[id]/layout.tsx`, which calls the shared `useTaskExitGuard` hook
+> (`frontend/src/lib/useTaskExitGuard.ts`). The pure predicate
+> `shouldGuardWeatherWellnessPath` keeps the guard active for every recorded task page
+> (surveys + cognitive tasks) and inactive for the idle session index, the `/complete`
+> page, and trial-run sessions (fake `trial-local-*` session ids). Client-side
+> task-to-task transitions use `router.push` and do not trigger `beforeunload`.
 
 ## Trial Run Mode (no-write rehearsal)
 

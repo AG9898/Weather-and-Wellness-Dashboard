@@ -27,6 +27,10 @@ and only becomes a real run at the first per-clip response write; an RA who star
 leaves before any response leaves a `created` shell that appears on the admin Flagged
 Sessions page (see `docs/CONVENTIONS.md`, Session validity & data quality).
 
+Implementation: the page calls the shared `useTaskExitGuard` hook
+(`frontend/src/lib/useTaskExitGuard.ts`) with the guard active for every phase except
+`loading`, `error`, and `complete`, and always inactive in trial-run mode.
+
 **MkAQ card carousel:**
 - Production uses all 21 MkAQ items in four panes: `q1`-`q5`, `q6`-`q10`, `q11`-`q15`, `q16`-`q21`.
 - Trial Run uses the shortened fixed rehearsal set `q1`-`q10` in two panes: `q1`-`q5`, `q6`-`q10`.
