@@ -77,44 +77,45 @@ One row per participant's task execution. Contains per-participant progress stat
 | completed_at                   | TIMESTAMPTZ | NULLABLE      | Set server-side when all stimuli have a response row                                                                                                                           |
 | created_at                     | TIMESTAMPTZ | DEFAULT NOW() |                                                                                                                                                                                |
 | post_survey_order              | VARCHAR(20) | NOT NULL      | Comma-separated ordered list of post-video survey keys assigned randomly at session start, e.g. `"mkaq,gad7,maq"`; null only for legacy rows created before the T168 migration |
+| language                       | VARCHAR     | NOT NULL, DEFAULT `'en'` | Session locale, fixed for the session lifetime: `"en"` or `"ko"`. Selects participant-facing labels only; stored choice values are locale-independent option keys. See [`LOCALIZATION.md`](LOCALIZATION.md) |
 | end_fidgeting_text             | TEXT        | NULLABLE      | End-of-task: "Please list any fidgeting stimuli you are bothered by that did not show up in the task"                                                                          |
 | end_emotions_text              | TEXT        | NULLABLE      | End-of-task: "Please list any emotional responses felt during the videos not asked in the questionnaire"                                                                       |
 | stronger_responses             | BOOLEAN     | NULLABLE      | End-of-task: "Did viewing the videos create stronger responses over time?" (No=false / Yes=true)                                                                               |
-| stronger_responses_timing      | VARCHAR     | NULLABLE      | One of: "Immediately", "After 5 seconds", "After 10 seconds", "At the end of the video"; only set when stronger_responses=true                                                 |
+| stronger_responses_timing      | VARCHAR     | NULLABLE      | Option key: `timing_immediately` / `timing_after_5s` / `timing_after_10s` / `timing_end_of_video`; only set when stronger_responses=true                                       |
 | age                            | INTEGER     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`100`                                                                                                                              |
-| sex                            | VARCHAR     | NULLABLE      | Sourced demographics v2: `"Male"` / `"Female"`                                                                                                                              |
+| sex                            | VARCHAR     | NULLABLE      | Option key: `sex_male` / `sex_female`                                                                                                                                        |
 | gender_identity                | TEXT        | NULLABLE      | Sourced demographics v2 free text                                                                                                                                            |
-| years_lived_canada             | INTEGER     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`100`                                                                                                                              |
-| residence_status               | VARCHAR     | NULLABLE      | Sourced demographics v2: `"Canadian Citizenship"` / `"Permanent Resident"` / `"Student Visa"` / `"Other"`                                                                    |
-| residence_status_other_text    | TEXT        | NULLABLE      | Required by API/UI when residence_status is `"Other"`                                                                                                                        |
-| student_type                   | VARCHAR     | NULLABLE      | Sourced demographics v2: `"Domestic"` / `"International"`                                                                                                                    |
+| years_lived_canada             | INTEGER     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`100`. Read as "years in the session reference country" (`en` Canada, `ko` Korea); the column name is an EN-first artifact           |
+| residence_status               | VARCHAR     | NULLABLE      | Option key: `residence_citizenship` / `residence_permanent_resident` / `residence_student_visa` / `residence_other`                                                          |
+| residence_status_other_text    | TEXT        | NULLABLE      | Free text, stored verbatim; required by API/UI when residence_status is `residence_other`                                                                                    |
+| student_type                   | VARCHAR     | NULLABLE      | Option key: `student_domestic` / `student_international`                                                                                                                     |
 | total_years_education          | INTEGER     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`100`                                                                                                                              |
-| cumulative_gpa                 | NUMERIC     | NULLABLE      | Sourced demographics v2 slider/input, `0`-`5`                                                                                                                                |
+| cumulative_gpa                 | NUMERIC     | NULLABLE      | Sourced demographics v2 slider/input; range is locale-dependent (`en` `0`-`5`, `ko` `0`-`4.5`)                                                                                |
 | majors_text                    | TEXT        | NULLABLE      | Sourced demographics v2 free text                                                                                                                                            |
-| highest_education_completed    | VARCHAR     | NULLABLE      | Source Q27 education-level option                                                                                                                                            |
-| ethnicity                      | TEXT[]      | NULLABLE      | Multi-select source Q11 options                                                                                                                                              |
-| ethnicity_other_text           | TEXT        | NULLABLE      | Required by API/UI when ethnicity includes `"Other"`                                                                                                                         |
+| highest_education_completed    | VARCHAR     | NULLABLE      | Source Q27 education-level option key (`education_*`)                                                                                                                        |
+| ethnicity                      | TEXT[]      | NULLABLE      | Multi-select source Q11 option keys (`ethnicity_*`)                                                                                                                          |
+| ethnicity_other_text           | TEXT        | NULLABLE      | Free text, stored verbatim; required by API/UI when ethnicity includes `ethnicity_other`                                                                                     |
 | native_language                | TEXT        | NULLABLE      | Sourced demographics v2 free text                                                                                                                                            |
-| english_fluency                | VARCHAR     | NULLABLE      | Source Q13 agreement scale                                                                                                                                                   |
-| fluent_languages               | TEXT[]      | NULLABLE      | Multi-select source Q14 options; `"None"` exclusive                                                                                                                          |
-| fluent_languages_other_text    | TEXT        | NULLABLE      | Required by API/UI when fluent_languages includes `"Other"`                                                                                                                  |
-| english_speaking_frequency     | VARCHAR     | NULLABLE      | `"Always"` / `"Often"` / `"Sometimes"` / `"Rarely"` / `"Never"`                                                                                                             |
+| english_fluency                | VARCHAR     | NULLABLE      | Source Q13 agreement-scale option key (`fluency_*`)                                                                                                                          |
+| fluent_languages               | TEXT[]      | NULLABLE      | Multi-select source Q14 option keys (`fluent_lang_*`); `fluent_lang_none` exclusive. Divergent option set: `fluent_lang_korean` is `en`-only, `fluent_lang_english` is `ko`-only |
+| fluent_languages_other_text    | TEXT        | NULLABLE      | Free text, stored verbatim; required by API/UI when fluent_languages includes `fluent_lang_other`                                                                             |
+| english_speaking_frequency     | VARCHAR     | NULLABLE      | Option key: `frequency_always` / `frequency_often` / `frequency_sometimes` / `frequency_rarely` / `frequency_never`                                                           |
 | non_english_schooling          | BOOLEAN     | NULLABLE      | Source Q16 yes/no                                                                                                                                                            |
-| instruction_languages          | TEXT[]      | NULLABLE      | Required by API/UI only when non_english_schooling is true                                                                                                                   |
-| instruction_languages_other_text | TEXT      | NULLABLE      | Required by API/UI when instruction_languages includes `"Other"`                                                                                                             |
-| diagnosed_disorders            | TEXT[]      | NULLABLE      | Multi-select source Q18 options; `"N/A"` exclusive                                                                                                                           |
-| diagnosed_disorders_other_text | TEXT        | NULLABLE      | Required by API/UI when diagnosed_disorders includes `"Other"`                                                                                                                |
+| instruction_languages          | TEXT[]      | NULLABLE      | Source Q17 option keys (`instruction_lang_*`); required by API/UI only when non_english_schooling is true. Divergent option set, same rule as fluent_languages                |
+| instruction_languages_other_text | TEXT      | NULLABLE      | Free text, stored verbatim; required by API/UI when instruction_languages includes `instruction_lang_other`                                                                  |
+| diagnosed_disorders            | TEXT[]      | NULLABLE      | Multi-select source Q18 option keys (`disorder_*`); `disorder_na` exclusive                                                                                                  |
+| diagnosed_disorders_other_text | TEXT        | NULLABLE      | Free text, stored verbatim; required by API/UI when diagnosed_disorders includes `disorder_other`                                                                            |
 | adhd_diagnosis                 | BOOLEAN     | NULLABLE      | Source Q19 yes/no                                                                                                                                                            |
-| adhd_medication                | VARCHAR     | NULLABLE      | `"Yes"` / `"Maybe"` / `"No"`                                                                                                                                                |
+| adhd_medication                | VARCHAR     | NULLABLE      | Option key: `adhd_med_yes` / `adhd_med_maybe` / `adhd_med_no`                                                                                                                 |
 | avid_videogamer                | BOOLEAN     | NULLABLE      | Source Q21 yes/no                                                                                                                                                            |
 | video_game_hours_per_week      | INTEGER     | NULLABLE      | Slider/input, `0`-`100`; required by API/UI only when avid_videogamer is true                                                                                                |
 | prescription_stimulants        | BOOLEAN     | NULLABLE      | Source Q22 yes/no                                                                                                                                                            |
-| regular_substances             | TEXT[]      | NULLABLE      | Multi-select source Q23 options; `"None of the Above"` exclusive                                                                                                             |
-| regular_substances_other_text  | TEXT        | NULLABLE      | Required by API/UI when regular_substances includes `"Other"`                                                                                                                |
-| relationship_status            | VARCHAR     | NULLABLE      | Source Q24 option                                                                                                                                                            |
-| relationship_status_other_text | TEXT        | NULLABLE      | Required by API/UI when relationship_status is `"Other"`                                                                                                                     |
-| occupational_status            | VARCHAR     | NULLABLE      | Source Q25 option                                                                                                                                                            |
-| occupational_status_other_text | TEXT        | NULLABLE      | Required by API/UI when occupational_status is `"Other"`                                                                                                                     |
+| regular_substances             | TEXT[]      | NULLABLE      | Multi-select source Q23 option keys (`substance_*`); `substance_none` exclusive                                                                                              |
+| regular_substances_other_text  | TEXT        | NULLABLE      | Free text, stored verbatim; required by API/UI when regular_substances includes `substance_other`                                                                             |
+| relationship_status            | VARCHAR     | NULLABLE      | Source Q24 option key (`relationship_*`)                                                                                                                                     |
+| relationship_status_other_text | TEXT        | NULLABLE      | Free text, stored verbatim; required by API/UI when relationship_status is `relationship_other`                                                                              |
+| occupational_status            | VARCHAR     | NULLABLE      | Source Q25 option key (`occupation_*`)                                                                                                                                       |
+| occupational_status_other_text | TEXT        | NULLABLE      | Free text, stored verbatim; required by API/UI when occupational_status is `occupation_other`                                                                                |
 
 
 Indexes: `misokinesia_participants(session_id)`, `misokinesia_participants(participant_uuid)`
@@ -123,6 +124,32 @@ The sourced demographics v2 columns were added by migration `20260603_000001`
 (T199), replacing T184's six superseded columns. Columns remain nullable for
 legacy/no-write rows, but the production participant UI requires all visible
 questions before submission.
+
+#### Choice columns store option keys, not display text
+
+Migration `20260903_000001` (T1849) added `language` and rewrote every choice
+column on this table from English display text to stable, locale-independent
+option keys. This covers the ten scalar choice columns (`sex`,
+`residence_status`, `student_type`, `highest_education_completed`,
+`english_fluency`, `english_speaking_frequency`, `adhd_medication`,
+`relationship_status`, `occupational_status`, `stronger_responses_timing`) and
+the five `TEXT[]` choice columns (`ethnicity`, `fluent_languages`,
+`instruction_languages`, `diagnosed_disorders`, `regular_substances`), which are
+mapped element-wise with element order preserved.
+
+- The key registry and the exact English-text-to-key mapping live in
+  [`LOCALIZATION.md`](LOCALIZATION.md) sections 2 and 4. That document is the
+  single source; the migration holds a frozen copy of the mapping so it never
+  depends on application code.
+- Numeric, boolean, free-text and every `*_other_text` column were **not**
+  rewritten. Free text is stored verbatim in whatever language the participant
+  typed.
+- `misokinesia_gad7_responses.difficulty_impact` is **not** key-migrated; it
+  remains English display text validated against a fixed whitelist.
+- Every pre-existing row was stamped `language = 'en'`, so an `en` row and a `ko`
+  row are directly comparable on these columns without translation.
+- The migration aborts on any stored value with no mapping entry rather than
+  nulling it, and `downgrade()` reverses the mapping and drops `language`.
 
 ### Table: `misokinesia_trial_responses`
 

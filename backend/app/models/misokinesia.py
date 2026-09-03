@@ -100,6 +100,12 @@ class MisokinesiaParticipant(Base):
     )
     # Randomized post-video survey order; comma-separated e.g. "mkaq,gad7,maq"
     post_survey_order: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # Session locale, fixed for the lifetime of the session; "en" or "ko".
+    # Selects participant-facing labels only; stored choice values are
+    # language-independent option keys. See LOCALIZATION.md.
+    language: Mapped[str] = mapped_column(
+        String, nullable=False, server_default=text("'en'")
+    )
     # End-of-task fields (collected once, after all clips and post-video surveys)
     end_fidgeting_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     end_emotions_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
