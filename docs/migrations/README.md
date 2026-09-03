@@ -4,13 +4,14 @@ This directory contains migration planning and historical archive documentation,
 
 Infrastructure migration docs in this directory are planned/reference material unless a project owner explicitly reactivates them.
 
-## Pending Production Applies
+## Applying Migrations
 
-Migrations that are authored and merged but not yet applied to the production
-database are tracked in
-[`docs/SCHEMA.md` → Pending Production Apply](../SCHEMA.md#pending-production-apply),
-alongside the apply command. That table is the single source of truth; do not
-duplicate it here.
+Production migrations are applied automatically by the Production Release
+workflow on a push to `main` touching `backend/**`. The head revision, the
+manual fallback command, and the caveat about the deploy-before-migrate window
+are documented in
+[`docs/SCHEMA.md` → Applying Migrations](../SCHEMA.md#applying-migrations).
+That section is the single source of truth; do not duplicate it here.
 
 ## Current Production Stack
 
