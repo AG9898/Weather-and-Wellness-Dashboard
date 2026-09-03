@@ -16,9 +16,11 @@
 - **Lab read access:** Supabase Studio (no participant-facing export)
 - **FKs:** Enforced at DB level, not just application level
 
-> Migration head check: `alembic current -v` should report
-> `Rev: 20260712_000001 (head)`.
-> Keep this value in sync after every new migration.
+> Migration head check: the repo head is `20260903_000001`. `alembic current -v`
+> against production currently reports `Rev: 20260712_000001`, because
+> `20260903_000001` is authored but **not yet applied to production** — see
+> [Pending Production Apply](#pending-production-apply).
+> Keep both values in sync after every new migration.
 
 ---
 
@@ -335,8 +337,40 @@ audit-logged in `admin_session_undo_log` instead of introducing soft-delete colu
 | 2026-06-21 | T1833                 | Add IHTT Poffenberger run/trial persistence tables, server manifest storage, raw timing fields, and condition/crossed summary columns                                                                               |
 | 2026-06-24 | n/a                   | Add nullable `participants.handedness` for IHTT Poffenberger demographics and split Poffenberger start demographics from Weather-Wellness exposure fields                                                           |
 | 2026-07-12 | T1840                 | Migration `20260712_000001`: add nullable `sessions.activated_at`, `sessions.voided_at`, and `sessions.void_reason` columns for deferred activation and soft voiding                                                  |
+| 2026-09-03 | T1849                 | Migration `20260903_000001`: add `misokinesia_participants.language`; rewrite miso demographics choice columns from English display text to option keys. **Not yet applied to production** — see [Pending Production Apply](#pending-production-apply) |
 
 
-As of 2026-07-12, migration `20260712_000001` is the current head revision.
+As of 2026-09-03, migration `20260903_000001` is the repo head revision. The
+production head is still `20260712_000001`.
+
+### Pending Production Apply
+
+Migrations authored and merged but not yet applied to the production database.
+Remove a row once `alembic current -v` against production reports that revision.
+An empty table here means production is at the repo head.
+
+| Revision          | Task  | Authored   | Why it is still pending                                                                                                                    |
+| ----------------- | ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `20260903_000001` | T1849 | 2026-09-03 | The development machine has no network egress on port `5432`, so neither the Supabase session pooler nor the direct host is reachable from it. The migration must be applied by an operator on a machine that can reach the database. |
+
+To apply, from a host with database access:
+
+```bash
+set -a && source .env && set +a
+DATABASE_MIGRATION_URL=<session pooler or direct DB URL> scripts/alembic-upgrade-head.sh
+cd backend && PYTHONPATH=. alembic current -v   # confirm the new head
+```
+
+Do not run Alembic through the transaction pooler on port `6543`.
+
+Notes on `20260903_000001` specifically: the rewrite is in-place with no
+dual-read window, so the backend demographics contract and the production data
+must move together. The migration is transactional and aborts on any stored
+value with no mapping entry rather than nulling it, so a bad value rolls back
+cleanly instead of corrupting rows. It was round-trip verified locally
+(`upgrade head` → `downgrade -1` → `upgrade head`) against a scratch Postgres
+with a byte-identical dump. See
+[`docs/labs/weather-wellness/misokinesia/SCHEMA.md`](labs/weather-wellness/misokinesia/SCHEMA.md)
+and [`docs/labs/weather-wellness/misokinesia/LOCALIZATION.md`](labs/weather-wellness/misokinesia/LOCALIZATION.md).
 
 ---

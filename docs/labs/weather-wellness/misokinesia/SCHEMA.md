@@ -127,6 +127,14 @@ questions before submission.
 
 #### Choice columns store option keys, not display text
 
+> **Not yet applied to production (as of 2026-09-03).** Migration
+> `20260903_000001` is authored, merged and locally verified, but the production
+> database is still at `20260712_000001` and therefore still stores English
+> display text in these columns with no `language` column. Everything in this
+> section describes the state after the migration is applied. Tracking entry and
+> the apply command are in
+> [`docs/SCHEMA.md`](../../../SCHEMA.md#pending-production-apply).
+
 Migration `20260903_000001` (T1849) added `language` and rewrote every choice
 column on this table from English display text to stable, locale-independent
 option keys. This covers the ten scalar choice columns (`sex`,
