@@ -67,6 +67,7 @@ stub docs that only redirect to lab-specific paths.
 | [`docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md`](labs/weather-wellness/misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`docs/labs/weather-wellness/misokinesia/MISOKINESIA.md`](labs/weather-wellness/misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 | [`docs/labs/weather-wellness/misokinesia/SCORING.md`](labs/weather-wellness/misokinesia/SCORING.md) | Per-instrument scoring corpus (MkAQ, MAQ, GAD-7, per-clip) |
+| [`docs/labs/weather-wellness/misokinesia/LOCALIZATION.md`](labs/weather-wellness/misokinesia/LOCALIZATION.md) | Misokinesia locale registry, demographics option keys, per-locale validation overrides |
 
 ### IHTT (`docs/labs/ihtt/`)
 

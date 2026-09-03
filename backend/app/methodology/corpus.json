@@ -401,6 +401,198 @@
       "source_path": "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
     },
     {
+      "content": "# Misokinesia Localization\n\nCanonical source of Misokinesia locale data: the locale registry, the demographics\noption-key registry, per-locale validation overrides, and the English-text-to-key\nmigration mapping.\n\nThis document covers **structure** — locales, option keys, and validation deltas.\nThe instrument and UI string catalogue (question stems, scale labels, participant\nflow chrome) is a separate deliverable and is not written here.\n\nRelated: [`SCHEMA.md`](SCHEMA.md) for column definitions, [`API.md`](API.md) for the\ndemographics contract, [`DESIGN_SPEC.md`](DESIGN_SPEC.md) for participant UX.\n\n---",
+      "heading": "Misokinesia Localization",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#misokinesia-localization",
+      "level": "1",
+      "sha256": "39101bb6a00da725f436939001d4c128004528348ff6f6610f81ce5405e5d49e",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "## 1. Locale Registry\n\n| Locale code | Language | Default | Reference country | Status |\n|---|---|---|---|---|\n| `en` | English | Yes | Canada | Active |\n| `ko` | Korean (한국어) | No | Korea | Active |\n\nRules:\n\n- **Component-scoped, not platform-wide.** This registry applies to the Misokinesia\n  component only. The Weather component and the RA dashboard remain English-only.\n  Do not treat `ko` as an available locale anywhere outside\n  `docs/labs/weather-wellness/misokinesia/`.\n- `en` is the default. A session with no recorded locale is `en`.\n- Locale is fixed for the lifetime of a Misokinesia session. It is selected by the RA\n  at session start, not by the participant mid-flow.\n- Locale selects **labels only**. Stored values are language-independent option keys\n  (section 2), so a KO session and an EN session produce directly comparable rows.",
+      "heading": "1. Locale Registry",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#1-locale-registry",
+      "level": "2",
+      "sha256": "641a2c0b14669ae5959264ee6aa6762b98a0888db8c16e75e2d2063db5ec34c7",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Provenance flags\n\nEvery KO label in this document carries a provenance flag:\n\n| Flag | Meaning |\n|---|---|\n| `workbook` | Sourced from `reference/labs/Misokinesia/VMA_Questionnaires_EN-KO.xlsx`, sheet `Demographics`. Lab-supplied translation. |\n| `drafted` | Rough Korean written in-repo. Correctable by the lab without a code change; only the label changes, never the key. |\n\nWorkbook demographics coverage was verified complete: all 27 questions and every\noption list match the live form in count and order.\n\n---",
+      "heading": "Provenance flags",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#provenance-flags",
+      "level": "3",
+      "sha256": "c92773c1a76aaa414547e58d42d4635dee189460b12cf4bccaf7a5901e91da30",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "## 2. Demographics Option-Key Registry\n\nKey naming convention: `<field-slug>_<option-slug>`, lowercase ASCII, underscore\nseparated (e.g. `residence_citizenship`, `ethnicity_european`).\n\nTwo distinct localization cases exist, and they must not be conflated:\n\n- **Case A — shared key, different label.** The option means the same thing in both\n  locales; only the display text is localized. One key serves both locales.\n- **Case B — divergent option set.** The KO instrument replaces an option with a\n  different one. Each locale gets its **own key**, and the divergent slot is *not*\n  modelled positionally. A KO participant selecting 영어 stores\n  `fluent_lang_english`, never `fluent_lang_korean`.\n\nThe `EN label` column is the exact string currently stored in the database, taken\nfrom the backend validators in `backend/app/schemas/misokinesia.py`. Two of these\ndiffer typographically from the workbook (`Bachelors degree` vs the workbook's\n`Bachelor's degree`; `Seperated` vs the workbook's `Separated`). The stored string\nis authoritative for migration matching; the key normalizes both away.",
+      "heading": "2. Demographics Option-Key Registry",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#2-demographics-option-key-registry",
+      "level": "2",
+      "sha256": "97730d56eb12c895fbc8cfe2fbc584320d31c989f8c856f72b5528e93782b6b4",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q3 — `sex`\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `sex_male` | Male | 남성 | en, ko | workbook |\n| `sex_female` | Female | 여성 | en, ko | workbook |",
+      "heading": "Q3 — `sex`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q3-sex",
+      "level": "3",
+      "sha256": "dc8c6aa477da1635aa452238cecb6bc2dde38ba1c001e43a93dde3efdb317107",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q6 — `residence_status` (Case A)\n\nThe KO instrument localizes option 1 from Canadian to Korean citizenship. This is a\n**label difference only** — the option still means \"citizen of the reference\ncountry\", so the key is shared.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `residence_citizenship` | Canadian Citizenship | 대한민국 국적 | en, ko | workbook |\n| `residence_permanent_resident` | Permanent Resident | 영주권자 | en, ko | workbook |\n| `residence_student_visa` | Student Visa | 학생 비자 | en, ko | workbook |\n| `residence_other` | Other | 기타 | en, ko | workbook |\n\n`residence_other` gates `residence_status_other_text`.",
+      "heading": "Q6 — `residence_status` (Case A)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q6-residence-status-case-a",
+      "level": "3",
+      "sha256": "99cf1d028859e97322d61e2ff802f4f93d00dbea16f272b105d07ee70413f6fa",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q7 — `student_type`\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `student_domestic` | Domestic | 내국인 학생 | en, ko | workbook |\n| `student_international` | International | 외국인 유학생 | en, ko | workbook |",
+      "heading": "Q7 — `student_type`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q7-student-type",
+      "level": "3",
+      "sha256": "730d1fa3d39414e9092e853123ffb6252fbd25a6ecc2a7194ebf16aeef44191d",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q27 — `highest_education_completed`\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `education_elementary_middle` | Elementary or middle school | 초등학교 또는 중학교 졸업 | en, ko | workbook |\n| `education_high_school` | High school or equivalent (e.g., GED) | 고등학교 졸업 또는 동등 학력 | en, ko | workbook |\n| `education_college_diploma` | College diploma | 전문대학 졸업 | en, ko | workbook |\n| `education_bachelors` | Bachelors degree | 학사 졸업 | en, ko | workbook |\n| `education_masters` | Masters degree | 석사 졸업 | en, ko | workbook |\n| `education_doctorate` | Doctorate degree | 박사 졸업 | en, ko | workbook |",
+      "heading": "Q27 — `highest_education_completed`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q27-highest-education-completed",
+      "level": "3",
+      "sha256": "d3e03df756bbb865c116504e747cdfe371b6b37b590cf04a4b412bd855cfc5b0",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q11 — `ethnicity` (Case A, multi-select)\n\n`European Canadian` is a Canada-specific category. The KO instrument drops the\nCanadian qualifier and generalizes to 유럽계 (European). This is a **label\ndifference only** — the key is shared.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `ethnicity_european` | European Canadian | 유럽계 | en, ko | workbook |\n| `ethnicity_chinese` | Chinese | 중국계 | en, ko | workbook |\n| `ethnicity_south_asian` | South Asian | 남아시아계 | en, ko | workbook |\n| `ethnicity_filipino` | Filipino | 필리핀계 | en, ko | workbook |\n| `ethnicity_southeast_asian` | Southeast Asian | 동남아시아계 | en, ko | workbook |\n| `ethnicity_japanese` | Japanese | 일본계 | en, ko | workbook |\n| `ethnicity_latin_american` | Latin American | 중남미계 | en, ko | workbook |\n| `ethnicity_korean` | Korean | 한국인 | en, ko | workbook |\n| `ethnicity_other` | Other | 기타 | en, ko | workbook |\n\n`ethnicity_other` gates `ethnicity_other_text`.",
+      "heading": "Q11 — `ethnicity` (Case A, multi-select)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q11-ethnicity-case-a-multi-select",
+      "level": "3",
+      "sha256": "ceee8c41264efc312a61fcdf02d021f597dee4a8c3be3c368fef8bff23f8dce8",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q13 — `english_fluency` (Case A, agreement scale)\n\nThe KO stem localizes the reference language (English → 한국어). The scale options\nthemselves are a plain agreement scale, so keys are shared.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `fluency_strongly_agree` | Strongly agree | 매우 동의함 | en, ko | workbook |\n| `fluency_agree` | Agree | 동의함 | en, ko | workbook |\n| `fluency_neutral` | Neither agree nor disagree | 동의하지도 동의하지 않지도 않음 | en, ko | workbook |\n| `fluency_disagree` | Disagree | 동의하지 않음 | en, ko | workbook |\n| `fluency_strongly_disagree` | Strongly disagree | 전혀 동의하지 않음 | en, ko | workbook |",
+      "heading": "Q13 — `english_fluency` (Case A, agreement scale)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q13-english-fluency-case-a-agreement-scale",
+      "level": "3",
+      "sha256": "48664a4ff16858b57608917eef78036f6111d4c0874d4fb25aadc699b47f6367",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q14 — `fluent_languages` (Case B, multi-select)\n\n**Divergent option set.** The question asks which languages the participant speaks\nfluently *in addition to the base language*. The EN base language is English, so the\nEN set offers Korean. The KO base language is Korean, so the workbook replaces the\nKorean option with English **in the same position**.\n\nDo not model this positionally. Each locale's option set contains its own key:\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `fluent_lang_french` | French | 프랑스어 | en, ko | workbook |\n| `fluent_lang_mandarin` | Mandarin | 중국어(보통화) | en, ko | workbook |\n| `fluent_lang_cantonese` | Cantonese | 중국어(광동어) | en, ko | workbook |\n| `fluent_lang_hindi` | Hindi | 힌디어 | en, ko | workbook |\n| `fluent_lang_punjabi` | Punjabi | 펀자브어 | en, ko | workbook |\n| `fluent_lang_korean` | Korean | — | **en only** | workbook |\n| `fluent_lang_english` | — | 영어 | **ko only** | workbook |\n| `fluent_lang_none` | None (exclusive) | 없음 | en, ko | workbook |\n| `fluent_lang_other` | Other | 기타 | en, ko | workbook |\n\n- A KO participant selecting 영어 stores `fluent_lang_english`.\n- A KO session must reject `fluent_lang_korean`; an EN session must reject\n  `fluent_lang_english`.\n- `fluent_lang_none` is exclusive with every other option.\n- `fluent_lang_other` gates `fluent_languages_other_text`.",
+      "heading": "Q14 — `fluent_languages` (Case B, multi-select)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q14-fluent-languages-case-b-multi-select",
+      "level": "3",
+      "sha256": "90f36af008ab1b4a3d08dcb0efedb3396fcd6f196f787383f44ff3d447ad201b",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q15 — `english_speaking_frequency` (Case A)\n\nThe KO stem localizes the reference language (English → 한국어); frequency options\nare shared.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `frequency_always` | Always | 항상 | en, ko | workbook |\n| `frequency_often` | Often | 자주 | en, ko | workbook |\n| `frequency_sometimes` | Sometimes | 가끔 | en, ko | workbook |\n| `frequency_rarely` | Rarely | 거의 사용하지 않음 | en, ko | workbook |\n| `frequency_never` | Never | 전혀 사용하지 않음 | en, ko | workbook |",
+      "heading": "Q15 — `english_speaking_frequency` (Case A)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q15-english-speaking-frequency-case-a",
+      "level": "3",
+      "sha256": "1a1763051e82c89a5af5d7245d10d7abd36fc8418a859d636e82a750d3d0ce58",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q17 — `instruction_languages` (Case B, multi-select)\n\n**Divergent option set**, same rule as Q14. The question is gated on\n`non_english_schooling` (Q16), whose KO stem asks about instruction in a language\nother than 한국어.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `instruction_lang_french` | French | 프랑스어 | en, ko | workbook |\n| `instruction_lang_mandarin` | Mandarin | 중국어(보통화) | en, ko | workbook |\n| `instruction_lang_cantonese` | Cantonese | 중국어(광동어) | en, ko | workbook |\n| `instruction_lang_hindi` | Hindi | 힌디어 | en, ko | workbook |\n| `instruction_lang_punjabi` | Punjabi | 펀자브어 | en, ko | workbook |\n| `instruction_lang_korean` | Korean | — | **en only** | workbook |\n| `instruction_lang_english` | — | 영어 | **ko only** | workbook |\n| `instruction_lang_other` | Other | 기타 | en, ko | workbook |\n\n- A KO participant selecting 영어 stores `instruction_lang_english`.\n- Q17 has no `None` option; Q14 does.\n- `instruction_lang_other` gates `instruction_languages_other_text`.",
+      "heading": "Q17 — `instruction_languages` (Case B, multi-select)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q17-instruction-languages-case-b-multi-select",
+      "level": "3",
+      "sha256": "a37847c353dbe80d2a16e2bf596c50161308146b19b30c2a41cadb54dd5a2dee",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q18 — `diagnosed_disorders` (multi-select)\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `disorder_neurological` | Neurological Disorder | 신경학적 장애 | en, ko | workbook |\n| `disorder_generalized_anxiety` | Generalized Anxiety Disorder | 범불안장애 | en, ko | workbook |\n| `disorder_depression` | Depression | 우울증 | en, ko | workbook |\n| `disorder_mood` | Mood Disorder | 기분장애 | en, ko | workbook |\n| `disorder_substance_use` | Substance Use Disorder | 물질사용장애 | en, ko | workbook |\n| `disorder_other` | Other | 기타 | en, ko | workbook |\n| `disorder_na` | N/A (exclusive) | 해당 없음 | en, ko | workbook |\n\n`disorder_na` is exclusive; `disorder_other` gates `diagnosed_disorders_other_text`.",
+      "heading": "Q18 — `diagnosed_disorders` (multi-select)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q18-diagnosed-disorders-multi-select",
+      "level": "3",
+      "sha256": "ca6846794f79b22688a97bdb0815c4bf7a104b15a28a7dcf772417059356b59f",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q20 — `adhd_medication`\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `adhd_med_yes` | Yes | 예 | en, ko | workbook |\n| `adhd_med_maybe` | Maybe | 잘 모르겠음 | en, ko | workbook |\n| `adhd_med_no` | No | 아니오 | en, ko | workbook |",
+      "heading": "Q20 — `adhd_medication`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q20-adhd-medication",
+      "level": "3",
+      "sha256": "92dea04e6db098e5571b21afb8748dfc3b3f95b3bd817dc652c5ebe626522aae",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q23 — `regular_substances` (multi-select)\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `substance_alcohol` | Alcohol | 음주 | en, ko | workbook |\n| `substance_cannabis` | Cannabis | 대마초 | en, ko | workbook |\n| `substance_tobacco` | Tobacco | 담배 | en, ko | workbook |\n| `substance_vaping` | Vaping | 전자담배 | en, ko | workbook |\n| `substance_caffeine` | Caffeinated Stimulants (coffee, energy drinks, etc.) | 카페인 음료(커피, 에너지 드링크 등) | en, ko | workbook |\n| `substance_other` | Other | 기타 | en, ko | workbook |\n| `substance_none` | None of the Above (exclusive) | 해당 없음 | en, ko | workbook |\n\n`substance_none` is exclusive; `substance_other` gates\n`regular_substances_other_text`.",
+      "heading": "Q23 — `regular_substances` (multi-select)",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q23-regular-substances-multi-select",
+      "level": "3",
+      "sha256": "4b78498ba85816d4364ce1ad24f9b3dd36c2ec67a32f662e42175f0a386e949e",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q24 — `relationship_status`\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `relationship_single` | Single | 미혼 | en, ko | workbook |\n| `relationship_in_relationship` | In a relationship | 연애 중 | en, ko | workbook |\n| `relationship_married` | Married (and not separated) | 기혼(별거 중 아님) | en, ko | workbook |\n| `relationship_common_law` | Common-law | 사실혼 | en, ko | workbook |\n| `relationship_separated` | Seperated | 별거 중 | en, ko | workbook |\n| `relationship_divorced` | Divorced | 이혼 | en, ko | workbook |\n| `relationship_widowed` | Widowed | 사별 | en, ko | workbook |\n| `relationship_other` | Other | 기타 | en, ko | workbook |\n| `relationship_none` | None of the Above | 해당 없음 | en, ko | workbook |\n\nThe stored EN label `Seperated` is a legacy misspelling. The key spells it\ncorrectly, so the EN display label can be corrected to `Separated` in the string\ncatalogue once the backfill lands. Match on the misspelled string when migrating.\n\n`relationship_other` gates `relationship_status_other_text`.",
+      "heading": "Q24 — `relationship_status`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q24-relationship-status",
+      "level": "3",
+      "sha256": "a87d6732ef5513258160cbdb859bb18762bff2e6eded54d09ff02ac5972b81db",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Q25 — `occupational_status`\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `occupation_employed_full_time` | Employed full-time | 정규직 | en, ko | workbook |\n| `occupation_employed_part_time` | Employed part-time | 비정규직/파트타임 | en, ko | workbook |\n| `occupation_out_of_work_looking` | Out of work but looking for work | 실직 중이나 구직 활동 중 | en, ko | workbook |\n| `occupation_out_of_work_not_looking` | Out of work and not looking for work | 실직 중이며 구직 활동 없음 | en, ko | workbook |\n| `occupation_homemaker` | Homemaker | 전업주부 | en, ko | workbook |\n| `occupation_student` | Student | 학생 | en, ko | workbook |\n| `occupation_military` | Military | 군 복무 중 | en, ko | workbook |\n| `occupation_retired` | Retired | 은퇴 | en, ko | workbook |\n| `occupation_unable_to_work` | Unable to work | 근무 불가 | en, ko | workbook |\n| `occupation_other` | Other | 기타 | en, ko | workbook |\n| `occupation_none` | None of the above | 해당 없음 | en, ko | workbook |\n\n`occupation_other` gates `occupational_status_other_text`.",
+      "heading": "Q25 — `occupational_status`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#q25-occupational-status",
+      "level": "3",
+      "sha256": "2bc046cdfbf72acdf6bd7640673eba9151af7e6c397c85b91e5dee19750a07d3",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### End-of-task — `stronger_responses_timing`\n\nAsked only when `stronger_responses` is true. This question is part of the\nend-of-task form, not the demographics workbook, so the Korean is **drafted**.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `timing_immediately` | Immediately | 즉시 | en, ko | drafted |\n| `timing_after_5s` | After 5 seconds | 5초 후 | en, ko | drafted |\n| `timing_after_10s` | After 10 seconds | 10초 후 | en, ko | drafted |\n| `timing_end_of_video` | At the end of the video | 영상이 끝날 무렵 | en, ko | drafted |\n\n---",
+      "heading": "End-of-task — `stronger_responses_timing`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#end-of-task-stronger-responses-timing",
+      "level": "3",
+      "sha256": "3600be570865518720883a526314d57019ad9a26eace5a3bf1b056c750512acc",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "## 3. Per-Locale Validation Overrides\n\nOnly the following validation rules differ by locale. Everything else — required\nfields, exclusivity rules, `*_other_text` gating, numeric ranges not listed here —\nis identical across locales.\n\n| Field | `en` rule | `ko` rule | Provenance |\n|---|---|---|---|\n| `cumulative_gpa` | `0.0` – `5.0` | `0.0` – `4.5` | workbook |\n| `fluent_languages` | option set includes `fluent_lang_korean`, excludes `fluent_lang_english` | option set includes `fluent_lang_english`, excludes `fluent_lang_korean` | workbook |\n| `instruction_languages` | option set includes `instruction_lang_korean`, excludes `instruction_lang_english` | option set includes `instruction_lang_english`, excludes `instruction_lang_korean` | workbook |",
+      "heading": "3. Per-Locale Validation Overrides",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#3-per-locale-validation-overrides",
+      "level": "2",
+      "sha256": "39ae7718701240d2df83e9c9e34b19a6d4ebd8e2bc0919607437dc7b9854e633",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### `cumulative_gpa`\n\nKorean universities use a 4.5 or 4.3 maximum, so a 4.5 cap covers both. The\nbackend must reject a KO submission above 4.5 and the KO slider must stop at 4.5.\nThe column type (`NUMERIC`) is unchanged; only the accepted range narrows.",
+      "heading": "`cumulative_gpa`",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#cumulative-gpa",
+      "level": "3",
+      "sha256": "5ab5c7338959ef3156bf8ede04d6b982594ead5bb0618d3bcbef88b2ec6d8172",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### `years_lived_canada` — column reused, not duplicated\n\nThe `years_lived_canada` column is **reused unchanged** for `ko`. There is no\nsecond column, and none will be added.\n\n- For `en`, Q5 reads \"For how many years have you lived in Canada?\" and the value\n  means years in Canada.\n- For `ko`, Q5 reads 한국에서 거주한 기간(연 단위) and the value means years in\n  **Korea**.\n- The column name is a historical artifact of the EN-first build. Read it as\n  \"years lived in the session's reference country\", disambiguated by the session\n  locale (`en` → Canada, `ko` → Korea).\n- Range is `0` – `100` in both locales.\n\nAnyone analysing this column across locales must join on session locale before\npooling. Do not assume a second Korea-specific column exists.\n\n---",
+      "heading": "`years_lived_canada` — column reused, not duplicated",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#years-lived-canada-column-reused-not-duplicated",
+      "level": "3",
+      "sha256": "995858d64a31d71edc63a6cfbae010838db453ee181e2bdb6dce2e0775fdf5c4",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "## 4. English-Text-to-Key Migration Mapping\n\nBackfill source for T1849. Every row maps an **exact currently-stored English\nstring** to its key. Match is exact and case-sensitive. Rows whose stored value is\nabsent from this table must fail the migration rather than be silently dropped.\n\nArray columns (`ethnicity`, `fluent_languages`, `instruction_languages`,\n`diagnosed_disorders`, `regular_substances`) are mapped element-wise, preserving\nelement order. Scalar columns are mapped in place.\n\nAll pre-existing rows are `en` sessions, so every divergent-slot value maps to the\nEN key (`fluent_lang_korean`, `instruction_lang_korean`). No existing row can\ncontain a `ko`-only key.\n\n| Column | Stored English text | Key |\n|---|---|---|\n| `sex` | `Male` | `sex_male` |\n| `sex` | `Female` | `sex_female` |\n| `residence_status` | `Canadian Citizenship` | `residence_citizenship` |\n| `residence_status` | `Permanent Resident` | `residence_permanent_resident` |\n| `residence_status` | `Student Visa` | `residence_student_visa` |\n| `residence_status` | `Other` | `residence_other` |\n| `student_type` | `Domestic` | `student_domestic` |\n| `student_type` | `International` | `student_international` |\n| `highest_education_completed` | `Elementary or middle school` | `education_elementary_middle` |\n| `highest_education_completed` | `High school or equivalent (e.g., GED)` | `education_high_school` |\n| `highest_education_completed` | `College diploma` | `education_college_diploma` |\n| `highest_education_completed` | `Bachelors degree` | `education_bachelors` |\n| `highest_education_completed` | `Masters degree` | `education_masters` |\n| `highest_education_completed` | `Doctorate degree` | `education_doctorate` |\n| `ethnicity` | `European Canadian` | `ethnicity_european` |\n| `ethnicity` | `Chinese` | `ethnicity_chinese` |\n| `ethnicity` | `South Asian` | `ethnicity_south_asian` |\n| `ethnicity` | `Filipino` | `ethnicity_filipino` |\n| `ethnicity` | `Southeast Asian` | `ethnicity_southeast_asian` |\n| `ethnicity` | `Japanese` | `ethnicity_japanese` |\n| `ethnicity` | `Latin American` | `ethnicity_latin_american` |\n| `ethnicity` | `Korean` | `ethnicity_korean` |\n| `ethnicity` | `Other` | `ethnicity_other` |\n| `english_fluency` | `Strongly agree` | `fluency_strongly_agree` |\n| `english_fluency` | `Agree` | `fluency_agree` |\n| `english_fluency` | `Neither agree nor disagree` | `fluency_neutral` |\n| `english_fluency` | `Disagree` | `fluency_disagree` |\n| `english_fluency` | `Strongly disagree` | `fluency_strongly_disagree` |\n| `fluent_languages` | `French` | `fluent_lang_french` |\n| `fluent_languages` | `Mandarin` | `fluent_lang_mandarin` |\n| `fluent_languages` | `Cantonese` | `fluent_lang_cantonese` |\n| `fluent_languages` | `Hindi` | `fluent_lang_hindi` |\n| `fluent_languages` | `Punjabi` | `fluent_lang_punjabi` |\n| `fluent_languages` | `Korean` | `fluent_lang_korean` |\n| `fluent_languages` | `None` | `fluent_lang_none` |\n| `fluent_languages` | `Other` | `fluent_lang_other` |\n| `english_speaking_frequency` | `Always` | `frequency_always` |\n| `english_speaking_frequency` | `Often` | `frequency_often` |\n| `english_speaking_frequency` | `Sometimes` | `frequency_sometimes` |\n| `english_speaking_frequency` | `Rarely` | `frequency_rarely` |\n| `english_speaking_frequency` | `Never` | `frequency_never` |\n| `instruction_languages` | `French` | `instruction_lang_french` |\n| `instruction_languages` | `Mandarin` | `instruction_lang_mandarin` |\n| `instruction_languages` | `Cantonese` | `instruction_lang_cantonese` |\n| `instruction_languages` | `Hindi` | `instruction_lang_hindi` |\n| `instruction_languages` | `Punjabi` | `instruction_lang_punjabi` |\n| `instruction_languages` | `Korean` | `instruction_lang_korean` |\n| `instruction_languages` | `Other` | `instruction_lang_other` |\n| `diagnosed_disorders` | `Neurological Disorder` | `disorder_neurological` |\n| `diagnosed_disorders` | `Generalized Anxiety Disorder` | `disorder_generalized_anxiety` |\n| `diagnosed_disorders` | `Depression` | `disorder_depression` |\n| `diagnosed_disorders` | `Mood Disorder` | `disorder_mood` |\n| `diagnosed_disorders` | `Substance Use Disorder` | `disorder_substance_use` |\n| `diagnosed_disorders` | `Other` | `disorder_other` |\n| `diagnosed_disorders` | `N/A` | `disorder_na` |\n| `adhd_medication` | `Yes` | `adhd_med_yes` |\n| `adhd_medication` | `Maybe` | `adhd_med_maybe` |\n| `adhd_medication` | `No` | `adhd_med_no` |\n| `regular_substances` | `Alcohol` | `substance_alcohol` |\n| `regular_substances` | `Cannabis` | `substance_cannabis` |\n| `regular_substances` | `Tobacco` | `substance_tobacco` |\n| `regular_substances` | `Vaping` | `substance_vaping` |\n| `regular_substances` | `Caffeinated Stimulants (coffee, energy drinks, etc.)` | `substance_caffeine` |\n| `regular_substances` | `Other` | `substance_other` |\n| `regular_substances` | `None of the Above` | `substance_none` |\n| `relationship_status` | `Single` | `relationship_single` |\n| `relationship_status` | `In a relationship` | `relationship_in_relationship` |\n| `relationship_status` | `Married (and not separated)` | `relationship_married` |\n| `relationship_status` | `Common-law` | `relationship_common_law` |\n| `relationship_status` | `Seperated` | `relationship_separated` |\n| `relationship_status` | `Divorced` | `relationship_divorced` |\n| `relationship_status` | `Widowed` | `relationship_widowed` |\n| `relationship_status` | `Other` | `relationship_other` |\n| `relationship_status` | `None of the Above` | `relationship_none` |\n| `occupational_status` | `Employed full-time` | `occupation_employed_full_time` |\n| `occupational_status` | `Employed part-time` | `occupation_employed_part_time` |\n| `occupational_status` | `Out of work but looking for work` | `occupation_out_of_work_looking` |\n| `occupational_status` | `Out of work and not looking for work` | `occupation_out_of_work_not_looking` |\n| `occupational_status` | `Homemaker` | `occupation_homemaker` |\n| `occupational_status` | `Student` | `occupation_student` |\n| `occupational_status` | `Military` | `occupation_military` |\n| `occupational_status` | `Retired` | `occupation_retired` |\n| `occupational_status` | `Unable to work` | `occupation_unable_to_work` |\n| `occupational_status` | `Other` | `occupation_other` |\n| `occupational_status` | `None of the above` | `occupation_none` |\n| `stronger_responses_timing` | `Immediately` | `timing_immediately` |\n| `stronger_responses_timing` | `After 5 seconds` | `timing_after_5s` |\n| `stronger_responses_timing` | `After 10 seconds` | `timing_after_10s` |\n| `stronger_responses_timing` | `At the end of the video` | `timing_end_of_video` |",
+      "heading": "4. English-Text-to-Key Migration Mapping",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#4-english-text-to-key-migration-mapping",
+      "level": "2",
+      "sha256": "39dc345326b0317b7a3dc5eca5ba6df6b9b03bd399de9b89fa7bbb933a19f2f4",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### Not covered by this mapping\n\nThe following columns hold free text, numerics, or booleans and are **not**\nkey-migrated: `age`, `gender_identity`, `years_lived_canada`,\n`total_years_education`, `cumulative_gpa`, `majors_text`, `native_language`,\n`non_english_schooling`, `adhd_diagnosis`, `avid_videogamer`,\n`video_game_hours_per_week`, `prescription_stimulants`, `stronger_responses`,\n`end_fidgeting_text`, `end_emotions_text`, and every `*_other_text` column.\n\nFree-text answers (`gender_identity`, `majors_text`, `native_language`, all\n`*_other_text`, and the end-of-task prose fields) are stored verbatim in whatever\nlanguage the participant typed. They are not localized and not key-mapped.",
+      "heading": "Not covered by this mapping",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#not-covered-by-this-mapping",
+      "level": "3",
+      "sha256": "75c80f57c6ce0d79ed71c1b6a447303aca781831b3c73ce14c10c972838b0e24",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
       "content": "# MISOKINESIA.md — Misokinesia Video Task\n\n> Canonical spec for the Misokinesia module. For endpoint contracts see `docs/labs/weather-wellness/misokinesia/API.md`. For the structured per-instrument scoring corpus (MkAQ, MAQ, GAD-7, per-clip reactivity) see [`docs/labs/weather-wellness/misokinesia/SCORING.md`](./SCORING.md). For schema see `docs/labs/weather-wellness/misokinesia/SCHEMA.md`. For auth/stimulus management decisions see `docs/DECISIONS.md` (OPEN-02).\n\n---",
       "heading": "MISOKINESIA.md — Misokinesia Video Task",
       "id": "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md#misokinesia-md-misokinesia-video-task",
@@ -2824,6 +3016,7 @@
   "source_docs": [
     "docs/labs/weather-wellness/misokinesia/API.md",
     "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+    "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md",
     "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md",
     "docs/labs/weather-wellness/misokinesia/SCHEMA.md",
     "docs/labs/weather-wellness/misokinesia/SCORING.md",

@@ -68,6 +68,7 @@ docs cover cross-component concerns only.
 | [`misokinesia/DESIGN_SPEC.md`](misokinesia/DESIGN_SPEC.md) | Misokinesia UX flows, design system, and component conventions |
 | [`misokinesia/MISOKINESIA.md`](misokinesia/MISOKINESIA.md) | Misokinesia task specification |
 | [`misokinesia/SCORING.md`](misokinesia/SCORING.md) | Server-side scoring rules for MkAQ, MAQ, GAD-7, and per-clip reactivity |
+| [`misokinesia/LOCALIZATION.md`](misokinesia/LOCALIZATION.md) | Misokinesia locale registry, demographics option keys, per-locale validation overrides |
 
 ## Reference Materials
 

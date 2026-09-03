@@ -4908,7 +4908,7 @@
       "id": "T1847",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - option-key registry and validation overrides doc",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "estimate": "M",
