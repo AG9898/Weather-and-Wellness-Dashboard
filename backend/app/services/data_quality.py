@@ -13,6 +13,7 @@ from app.models.misokinesia import MisokinesiaParticipant
 from app.models.participants import Participant
 from app.models.poffenberger import PoffenbergerRun
 from app.models.sessions import Session
+from app.schemas.misokinesia import OTHER_TEXT_OPTION_KEYS
 
 SessionClassification = Literal[
     "complete",
@@ -133,6 +134,9 @@ def _has_missing_fields(source: object, fields: tuple[str, ...]) -> bool:
 
 
 def _weather_demographics_missing(participant: Participant) -> bool:
+    # Weather is English-only and its demographics are not key-migrated, so
+    # "Other" here is the stored value itself, not a display label. Only
+    # Misokinesia stores option keys.
     if _has_missing_fields(participant, _WEATHER_REQUIRED_DEMOGRAPHICS):
         return True
     if participant.origin == "Other" and _is_missing(participant.origin_other_text):
@@ -142,53 +146,40 @@ def _weather_demographics_missing(participant: Participant) -> bool:
     )
 
 
+def _selection_includes(selected: object, option_key: str) -> bool:
+    """Return whether a stored demographics value selects ``option_key``."""
+    if isinstance(selected, (list, tuple, set, frozenset)):
+        return option_key in selected
+    return selected == option_key
+
+
 def _misokinesia_demographics_missing(
     participant: MisokinesiaParticipant,
 ) -> bool:
     if _has_missing_fields(participant, _MISOKINESIA_REQUIRED_DEMOGRAPHICS):
         return True
 
-    conditional_other_fields = (
-        (participant.residence_status, "Other", participant.residence_status_other_text),
-        (participant.ethnicity, "Other", participant.ethnicity_other_text),
-        (participant.fluent_languages, "Other", participant.fluent_languages_other_text),
-        (
-            participant.diagnosed_disorders,
-            "Other",
-            participant.diagnosed_disorders_other_text,
-        ),
-        (
-            participant.regular_substances,
-            "Other",
-            participant.regular_substances_other_text,
-        ),
-        (
-            participant.relationship_status,
-            "Other",
-            participant.relationship_status_other_text,
-        ),
-        (
-            participant.occupational_status,
-            "Other",
-            participant.occupational_status_other_text,
-        ),
-    )
-    for selected, trigger, detail in conditional_other_fields:
-        includes_trigger = (
-            trigger in selected
-            if isinstance(selected, (list, tuple, set, frozenset))
-            else selected == trigger
-        )
-        if includes_trigger and _is_missing(detail):
+    # Stored demographics values are language-independent option keys
+    # (LOCALIZATION.md sections 2 and 4), so the "other" sentinel is the
+    # registered key, never the English display string. The same key arrives
+    # from an en and a ko session, so one comparison covers both locales.
+    for field, other_key in OTHER_TEXT_OPTION_KEYS.items():
+        if field == "instruction_languages":
+            # Conditional on non_english_schooling; checked below.
+            continue
+        selected = getattr(participant, field, None)
+        if _selection_includes(selected, other_key) and _is_missing(
+            getattr(participant, f"{field}_other_text", None)
+        ):
             return True
 
     if participant.non_english_schooling is True:
         if _is_missing(participant.instruction_languages):
             return True
-        if (
-            "Other" in participant.instruction_languages
-            and _is_missing(participant.instruction_languages_other_text)
-        ):
+        if _selection_includes(
+            participant.instruction_languages,
+            OTHER_TEXT_OPTION_KEYS["instruction_languages"],
+        ) and _is_missing(participant.instruction_languages_other_text):
             return True
     return participant.avid_videogamer is True and _is_missing(
         participant.video_game_hours_per_week

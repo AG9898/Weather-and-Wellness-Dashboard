@@ -5101,7 +5101,7 @@
       "id": "T1852",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - data-quality Other sentinel on option keys",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "estimate": "S",

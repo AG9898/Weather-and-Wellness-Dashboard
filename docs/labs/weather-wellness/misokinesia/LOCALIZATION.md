@@ -319,6 +319,29 @@ end-of-task form, not the demographics workbook, so the Korean is **drafted**.
 | `timing_after_10s` | After 10 seconds | 10초 후 | en, ko | drafted |
 | `timing_end_of_video` | At the end of the video | 영상이 끝날 무렵 | en, ko | drafted |
 
+### `other` sentinels are keys, everywhere
+
+Eight fields gate a free-text follow-up on their `other` option. The trigger is
+always the registered key (`residence_other`, `ethnicity_other`,
+`fluent_lang_other`, `instruction_lang_other`, `disorder_other`,
+`substance_other`, `relationship_other`, `occupation_other`) — never the English
+display string `Other`, which no longer reaches the database.
+
+The mapping from field to `other` key lives once, in
+`OTHER_TEXT_OPTION_KEYS` (`backend/app/schemas/misokinesia.py`). Both consumers
+read it:
+
+- request validation, which rejects an `other` selection with no follow-up text;
+- flagged-sessions data quality (`backend/app/services/data_quality.py`), which
+  marks such a session `demographics_missing`.
+
+Because the key is locale-independent, one comparison covers both locales: a ko
+participant selecting 기타 and an en participant selecting Other store the same
+value and are flagged identically. Any new consumer must compare on this
+mapping; a literal-string comparison degrades silently rather than erroring.
+Weather demographics are English-only and not key-migrated, so `Other` there is
+the stored value itself.
+
 ---
 
 ## 3. Per-Locale Validation Overrides

@@ -295,6 +295,23 @@ _VALID_REGULAR_SUBSTANCES = {
 }
 
 
+# Option key that gates each field's free-text follow-up, keyed by the field it
+# belongs to. Single source of truth for the request validators below and for
+# downstream consumers that must detect an "other" selection without a
+# follow-up (app/services/data_quality.py). Never compare against the English
+# display string "Other": a ko participant selecting 기타 stores the same key.
+OTHER_TEXT_OPTION_KEYS: dict[str, str] = {
+    "residence_status": "residence_other",
+    "ethnicity": "ethnicity_other",
+    "fluent_languages": "fluent_lang_other",
+    "instruction_languages": "instruction_lang_other",
+    "diagnosed_disorders": "disorder_other",
+    "regular_substances": "substance_other",
+    "relationship_status": "relationship_other",
+    "occupational_status": "occupation_other",
+}
+
+
 def _validate_optional_choice(
     value: str | None,
     allowed: set[str],
@@ -461,56 +478,56 @@ class MisoDemographicsCreate(BaseModel):
             other_text=self.residence_status_other_text,
             field_name="residence_status",
             text_field_name="residence_status_other_text",
-            other_key="residence_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["residence_status"],
         )
         _validate_other_text(
             selected=self.ethnicity,
             other_text=self.ethnicity_other_text,
             field_name="ethnicity",
             text_field_name="ethnicity_other_text",
-            other_key="ethnicity_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["ethnicity"],
         )
         _validate_other_text(
             selected=self.fluent_languages,
             other_text=self.fluent_languages_other_text,
             field_name="fluent_languages",
             text_field_name="fluent_languages_other_text",
-            other_key="fluent_lang_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["fluent_languages"],
         )
         _validate_other_text(
             selected=self.instruction_languages,
             other_text=self.instruction_languages_other_text,
             field_name="instruction_languages",
             text_field_name="instruction_languages_other_text",
-            other_key="instruction_lang_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["instruction_languages"],
         )
         _validate_other_text(
             selected=self.diagnosed_disorders,
             other_text=self.diagnosed_disorders_other_text,
             field_name="diagnosed_disorders",
             text_field_name="diagnosed_disorders_other_text",
-            other_key="disorder_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["diagnosed_disorders"],
         )
         _validate_other_text(
             selected=self.regular_substances,
             other_text=self.regular_substances_other_text,
             field_name="regular_substances",
             text_field_name="regular_substances_other_text",
-            other_key="substance_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["regular_substances"],
         )
         _validate_other_text(
             selected=self.relationship_status,
             other_text=self.relationship_status_other_text,
             field_name="relationship_status",
             text_field_name="relationship_status_other_text",
-            other_key="relationship_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["relationship_status"],
         )
         _validate_other_text(
             selected=self.occupational_status,
             other_text=self.occupational_status_other_text,
             field_name="occupational_status",
             text_field_name="occupational_status_other_text",
-            other_key="occupation_other",
+            other_key=OTHER_TEXT_OPTION_KEYS["occupational_status"],
         )
 
         _validate_exclusive_choice(
