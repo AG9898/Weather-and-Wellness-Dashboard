@@ -7,8 +7,9 @@ Covers:
   post_survey_order included in both modes
 - misokinesia_participant_number increments across successive start calls
 - PATCH /misokinesia/participants/{id}/demographics: happy path 200, 404 for unknown
-  participant, 422 for invalid v2 values, conditional fields, Other text,
-  exclusive None/N/A choices, idempotent overwrite, no auth required (T200)
+  participant, 422 for invalid v2 option keys, conditional fields, other-text gating,
+  exclusive none/na choices, idempotent overwrite, no auth required (T200), and
+  per-locale validation resolved from the stored session language (T1850)
 - POST /misokinesia/participants/{id}/responses: happy path, no-auth requirement,
   duplicate 409, wrong test-set 422, out-of-range qN 422, completed_at auto-set,
   post-completion 409
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any
 from unittest import IsolatedAsyncioTestCase
 
@@ -120,6 +122,7 @@ class _FakeMisoParticipant:
         completed_at: datetime | None = None,
         miso_participant_number: int = 1,
         post_survey_order: str = "mkaq,gad7,maq",
+        language: str = "en",
     ) -> None:
         self.misokinesia_participant_id = _MISO_PARTICIPANT_ID
         self.session_id = _SESSION_ID
@@ -130,6 +133,7 @@ class _FakeMisoParticipant:
         self.completed_at = completed_at
         self.created_at = _NOW
         self.post_survey_order = post_survey_order
+        self.language = language
         self.end_fidgeting_text: str | None = None
         self.end_emotions_text: str | None = None
         self.stronger_responses: bool | None = None
@@ -908,37 +912,36 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
         return _SequencedDB(execute_returns=[miso_participant])
 
     def _valid_payload(self) -> MisoDemographicsCreate:
+        """An en-locale payload built entirely from option keys."""
         return MisoDemographicsCreate(
             age=24,
-            sex="Female",
+            sex="sex_female",
             gender_identity="Woman",
             years_lived_canada=6,
-            residence_status="Other",
+            residence_status="residence_other",
             residence_status_other_text="Work permit",
-            student_type="International",
+            student_type="student_international",
             total_years_education=16,
             cumulative_gpa=4.0,
             majors_text="Psychology",
-            highest_education_completed="Bachelors degree",
-            ethnicity=["Korean", "Other"],
+            highest_education_completed="education_bachelors",
+            ethnicity=["ethnicity_korean", "ethnicity_other"],
             ethnicity_other_text="Korean Canadian",
             native_language="Korean",
-            english_fluency="Agree",
-            fluent_languages=["Korean"],
-            english_speaking_frequency="Often",
+            english_fluency="fluency_agree",
+            fluent_languages=["fluent_lang_korean"],
+            english_speaking_frequency="frequency_often",
             non_english_schooling=True,
-            instruction_languages=["Korean"],
-            diagnosed_disorders=["N/A"],
+            instruction_languages=["instruction_lang_korean"],
+            diagnosed_disorders=["disorder_na"],
             adhd_diagnosis=False,
-            adhd_medication="No",
+            adhd_medication="adhd_med_no",
             avid_videogamer=True,
             video_game_hours_per_week=8,
             prescription_stimulants=False,
-            regular_substances=[
-                "Caffeinated Stimulants (coffee, energy drinks, etc.)"
-            ],
-            relationship_status="Single",
-            occupational_status="Student",
+            regular_substances=["substance_caffeine"],
+            relationship_status="relationship_single",
+            occupational_status="occupation_student",
         )
 
     async def test_valid_full_payload_returns_200(self) -> None:
@@ -954,15 +957,13 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
         self.assertTrue(db.committed)
         # Fields written onto ORM object
         self.assertEqual(miso.age, 24)
-        self.assertEqual(miso.sex, "Female")
-        self.assertEqual(miso.residence_status, "Other")
+        self.assertEqual(miso.sex, "sex_female")
+        self.assertEqual(miso.residence_status, "residence_other")
         self.assertEqual(miso.residence_status_other_text, "Work permit")
-        self.assertEqual(miso.ethnicity, ["Korean", "Other"])
-        self.assertEqual(miso.instruction_languages, ["Korean"])
+        self.assertEqual(miso.ethnicity, ["ethnicity_korean", "ethnicity_other"])
+        self.assertEqual(miso.instruction_languages, ["instruction_lang_korean"])
         self.assertEqual(miso.video_game_hours_per_week, 8)
-        self.assertEqual(miso.regular_substances, [
-            "Caffeinated Stimulants (coffee, energy drinks, etc.)"
-        ])
+        self.assertEqual(miso.regular_substances, ["substance_caffeine"])
 
     async def test_all_null_fields_accepted(self) -> None:
         miso = _FakeMisoParticipant()
@@ -998,36 +999,45 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
         with self.assertRaises(ValidationError):
             MisoDemographicsCreate(sex="Nonbinary")
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(residence_status="Visitor")
+            MisoDemographicsCreate(residence_status="residence_visitor")
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(english_fluency="Very fluent")
+            MisoDemographicsCreate(english_fluency="fluency_very")
+        # English display strings are no longer accepted anywhere.
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(sex="Female")
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(highest_education_completed="Bachelors degree")
 
     async def test_invalid_multi_select_raises_422(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(ethnicity=["Martian"])
+            MisoDemographicsCreate(ethnicity=["ethnicity_martian"])
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(regular_substances=["Sugar"])
+            MisoDemographicsCreate(regular_substances=["substance_sugar"])
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(ethnicity=["Korean"])
 
     async def test_other_selection_requires_matching_text(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(residence_status="Other")
-        with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(ethnicity=["Other"], ethnicity_other_text="")
+            MisoDemographicsCreate(residence_status="residence_other")
         with self.assertRaises(ValidationError):
             MisoDemographicsCreate(
-                diagnosed_disorders=["Other"],
+                ethnicity=["ethnicity_other"], ethnicity_other_text=""
+            )
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                diagnosed_disorders=["disorder_other"],
                 diagnosed_disorders_other_text=None,
             )
 
     async def test_other_text_without_visible_other_selection_raises_422(self) -> None:
         with self.assertRaises(ValidationError):
             MisoDemographicsCreate(
-                residence_status="Student Visa",
+                residence_status="residence_student_visa",
                 residence_status_other_text="Work permit",
             )
         with self.assertRaises(ValidationError):
             MisoDemographicsCreate(
-                regular_substances=["Alcohol"],
+                regular_substances=["substance_alcohol"],
                 regular_substances_other_text="Creatine",
             )
 
@@ -1035,7 +1045,7 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
         with self.assertRaises(ValidationError):
             MisoDemographicsCreate(
                 non_english_schooling=False,
-                instruction_languages=["Korean"],
+                instruction_languages=["instruction_lang_korean"],
             )
         with self.assertRaises(ValidationError):
             MisoDemographicsCreate(
@@ -1055,28 +1065,140 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
 
     async def test_none_and_na_multi_select_values_are_exclusive(self) -> None:
         with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(fluent_languages=["None", "Korean"])
-        with self.assertRaises(ValidationError):
-            MisoDemographicsCreate(diagnosed_disorders=["N/A", "Depression"])
+            MisoDemographicsCreate(
+                fluent_languages=["fluent_lang_none", "fluent_lang_korean"]
+            )
         with self.assertRaises(ValidationError):
             MisoDemographicsCreate(
-                regular_substances=["None of the Above", "Alcohol"]
+                diagnosed_disorders=["disorder_na", "disorder_depression"]
             )
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(
+                regular_substances=["substance_none", "substance_alcohol"]
+            )
+
+    # -- Per-locale validation (T1850) ------------------------------------
+
+    async def _submit(
+        self,
+        payload: MisoDemographicsCreate,
+        language: str,
+    ) -> _FakeMisoParticipant:
+        miso = _FakeMisoParticipant(language=language)
+        db = self._db_for_demographics(miso)
+        await submit_demographics(
+            participant_id=_MISO_PARTICIPANT_ID,
+            payload=payload,
+            db=db,
+        )
+        self.assertTrue(db.committed)
+        return miso
+
+    async def test_en_session_accepts_korean_language_option(self) -> None:
+        miso = await self._submit(
+            MisoDemographicsCreate(fluent_languages=["fluent_lang_korean"]),
+            language="en",
+        )
+        self.assertEqual(miso.fluent_languages, ["fluent_lang_korean"])
+
+    async def test_en_session_rejects_english_language_option(self) -> None:
+        with self.assertRaises(HTTPException) as ctx:
+            await self._submit(
+                MisoDemographicsCreate(fluent_languages=["fluent_lang_english"]),
+                language="en",
+            )
+        self.assertEqual(ctx.exception.status_code, 422)
+        self.assertIn("fluent_languages", str(ctx.exception.detail))
+
+    async def test_ko_session_accepts_english_language_option(self) -> None:
+        miso = await self._submit(
+            MisoDemographicsCreate(fluent_languages=["fluent_lang_english"]),
+            language="ko",
+        )
+        self.assertEqual(miso.fluent_languages, ["fluent_lang_english"])
+
+    async def test_ko_session_rejects_korean_language_option(self) -> None:
+        with self.assertRaises(HTTPException) as ctx:
+            await self._submit(
+                MisoDemographicsCreate(fluent_languages=["fluent_lang_korean"]),
+                language="ko",
+            )
+        self.assertEqual(ctx.exception.status_code, 422)
+
+    async def test_instruction_languages_follow_the_same_locale_split(self) -> None:
+        miso = await self._submit(
+            MisoDemographicsCreate(
+                non_english_schooling=True,
+                instruction_languages=["instruction_lang_english"],
+            ),
+            language="ko",
+        )
+        self.assertEqual(miso.instruction_languages, ["instruction_lang_english"])
+
+        with self.assertRaises(HTTPException) as ctx:
+            await self._submit(
+                MisoDemographicsCreate(
+                    non_english_schooling=True,
+                    instruction_languages=["instruction_lang_english"],
+                ),
+                language="en",
+            )
+        self.assertEqual(ctx.exception.status_code, 422)
+        self.assertIn("instruction_languages", str(ctx.exception.detail))
+
+    async def test_ko_session_rejects_gpa_above_4_5(self) -> None:
+        with self.assertRaises(HTTPException) as ctx:
+            await self._submit(
+                MisoDemographicsCreate(cumulative_gpa=Decimal("4.8")),
+                language="ko",
+            )
+        self.assertEqual(ctx.exception.status_code, 422)
+        self.assertIn("cumulative_gpa", str(ctx.exception.detail))
+
+    async def test_en_session_accepts_gpa_above_4_5(self) -> None:
+        miso = await self._submit(
+            MisoDemographicsCreate(cumulative_gpa=Decimal("4.8")),
+            language="en",
+        )
+        self.assertEqual(miso.cumulative_gpa, Decimal("4.8"))
+
+    async def test_ko_session_accepts_gpa_at_the_4_5_bound(self) -> None:
+        miso = await self._submit(
+            MisoDemographicsCreate(cumulative_gpa=Decimal("4.5")),
+            language="ko",
+        )
+        self.assertEqual(miso.cumulative_gpa, Decimal("4.5"))
+
+    async def test_locale_is_read_from_stored_language_not_request_body(self) -> None:
+        """A body-supplied ``language`` is ignored — it is not a schema field."""
+        payload = MisoDemographicsCreate.model_validate(
+            {"cumulative_gpa": "4.8", "language": "en"}
+        )
+        self.assertFalse(hasattr(payload, "language"))
+        with self.assertRaises(HTTPException) as ctx:
+            await self._submit(payload, language="ko")
+        self.assertEqual(ctx.exception.status_code, 422)
+
+    async def test_other_key_without_follow_up_text_raises_422(self) -> None:
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(fluent_languages=["fluent_lang_other"])
+        with self.assertRaises(ValidationError):
+            MisoDemographicsCreate(occupational_status="occupation_other")
 
     async def test_idempotent_overwrite(self) -> None:
         """Second call with different values overwrites earlier demographics."""
         miso = _FakeMisoParticipant()
         miso.age = 24
-        miso.sex = "Female"
+        miso.sex = "sex_female"
         db = self._db_for_demographics(miso)
-        payload = MisoDemographicsCreate(age=25, sex="Male")
+        payload = MisoDemographicsCreate(age=25, sex="sex_male")
         await submit_demographics(
             participant_id=_MISO_PARTICIPANT_ID,
             payload=payload,
             db=db,
         )
         self.assertEqual(miso.age, 25)
-        self.assertEqual(miso.sex, "Male")
+        self.assertEqual(miso.sex, "sex_male")
         self.assertTrue(db.committed)
 
     async def test_demographics_route_has_no_auth_dependency(self) -> None:
@@ -1102,13 +1224,13 @@ class SubmitDemographicsTests(IsolatedAsyncioTestCase):
 
     async def test_valid_none_and_na_single_choices_are_accepted(self) -> None:
         payload = MisoDemographicsCreate(
-            fluent_languages=["None"],
-            diagnosed_disorders=["N/A"],
-            regular_substances=["None of the Above"],
+            fluent_languages=["fluent_lang_none"],
+            diagnosed_disorders=["disorder_na"],
+            regular_substances=["substance_none"],
         )
-        self.assertEqual(payload.fluent_languages, ["None"])
-        self.assertEqual(payload.diagnosed_disorders, ["N/A"])
-        self.assertEqual(payload.regular_substances, ["None of the Above"])
+        self.assertEqual(payload.fluent_languages, ["fluent_lang_none"])
+        self.assertEqual(payload.diagnosed_disorders, ["disorder_na"])
+        self.assertEqual(payload.regular_substances, ["substance_none"])
 
 
 # ---------------------------------------------------------------------------

@@ -5019,7 +5019,7 @@
       "id": "T1850",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - demographics API option-key and per-locale validation",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "estimate": "M",

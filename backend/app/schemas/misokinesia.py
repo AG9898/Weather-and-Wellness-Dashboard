@@ -121,108 +121,150 @@ class MisokinesiaTrialResponseResponse(BaseModel):
 # Demographics (participant-facing, PATCH)
 # ---------------------------------------------------------------------------
 
-_VALID_SEXES = {"Male", "Female"}
+# Choice values are stored as language-independent option keys, registered in
+# docs/labs/weather-wellness/misokinesia/LOCALIZATION.md section 2. English
+# display strings never reach the API; the frontend maps keys to labels per
+# locale. Legacy rows were rewritten to keys by migration 20260903_000001.
+
+MISO_LOCALES = ("en", "ko")
+_DEFAULT_LOCALE = "en"
+
+_VALID_SEXES = {"sex_male", "sex_female"}
 _VALID_RESIDENCE_STATUSES = {
-    "Canadian Citizenship",
-    "Permanent Resident",
-    "Student Visa",
-    "Other",
+    "residence_citizenship",
+    "residence_permanent_resident",
+    "residence_student_visa",
+    "residence_other",
 }
-_VALID_STUDENT_TYPES = {"Domestic", "International"}
+_VALID_STUDENT_TYPES = {"student_domestic", "student_international"}
 _VALID_HIGHEST_EDUCATION = {
-    "Elementary or middle school",
-    "High school or equivalent (e.g., GED)",
-    "College diploma",
-    "Bachelors degree",
-    "Masters degree",
-    "Doctorate degree",
+    "education_elementary_middle",
+    "education_high_school",
+    "education_college_diploma",
+    "education_bachelors",
+    "education_masters",
+    "education_doctorate",
 }
 _VALID_AGREEMENT_SCALE = {
-    "Strongly agree",
-    "Agree",
-    "Neither agree nor disagree",
-    "Disagree",
-    "Strongly disagree",
+    "fluency_strongly_agree",
+    "fluency_agree",
+    "fluency_neutral",
+    "fluency_disagree",
+    "fluency_strongly_disagree",
 }
-_VALID_ENGLISH_FREQUENCY = {"Always", "Often", "Sometimes", "Rarely", "Never"}
+_VALID_ENGLISH_FREQUENCY = {
+    "frequency_always",
+    "frequency_often",
+    "frequency_sometimes",
+    "frequency_rarely",
+    "frequency_never",
+}
 _VALID_GAD7_DIFFICULTY_IMPACTS = {
     "Not difficult at all",
     "Somewhat difficult",
     "Very difficult",
     "Extremely difficult",
 }
-_VALID_ADHD_MEDICATION = {"Yes", "Maybe", "No"}
+_VALID_ADHD_MEDICATION = {"adhd_med_yes", "adhd_med_maybe", "adhd_med_no"}
 _VALID_RELATIONSHIP_STATUSES = {
-    "Single",
-    "In a relationship",
-    "Married (and not separated)",
-    "Common-law",
-    "Seperated",
-    "Divorced",
-    "Widowed",
-    "Other",
-    "None of the Above",
+    "relationship_single",
+    "relationship_in_relationship",
+    "relationship_married",
+    "relationship_common_law",
+    "relationship_separated",
+    "relationship_divorced",
+    "relationship_widowed",
+    "relationship_other",
+    "relationship_none",
 }
 _VALID_OCCUPATIONAL_STATUSES = {
-    "Employed full-time",
-    "Employed part-time",
-    "Out of work but looking for work",
-    "Out of work and not looking for work",
-    "Homemaker",
-    "Student",
-    "Military",
-    "Retired",
-    "Unable to work",
-    "Other",
-    "None of the above",
+    "occupation_employed_full_time",
+    "occupation_employed_part_time",
+    "occupation_out_of_work_looking",
+    "occupation_out_of_work_not_looking",
+    "occupation_homemaker",
+    "occupation_student",
+    "occupation_military",
+    "occupation_retired",
+    "occupation_unable_to_work",
+    "occupation_other",
+    "occupation_none",
 }
 _VALID_ETHNICITIES = {
-    "European Canadian",
-    "Chinese",
-    "South Asian",
-    "Filipino",
-    "Southeast Asian",
-    "Japanese",
-    "Latin American",
-    "Korean",
-    "Other",
+    "ethnicity_european",
+    "ethnicity_chinese",
+    "ethnicity_south_asian",
+    "ethnicity_filipino",
+    "ethnicity_southeast_asian",
+    "ethnicity_japanese",
+    "ethnicity_latin_american",
+    "ethnicity_korean",
+    "ethnicity_other",
 }
-_VALID_LANGUAGES = {
-    "French",
-    "Mandarin",
-    "Cantonese",
-    "Hindi",
-    "Punjabi",
-    "Korean",
-    "None",
-    "Other",
+
+# Case B — divergent option sets (LOCALIZATION.md section 2, Q14 and Q17).
+# The reference language of the instrument is offered as a "fluent in addition"
+# option only in the *other* locale: an en session may select Korean, a ko
+# session may select English, and neither may select its own base language.
+_SHARED_FLUENT_LANGUAGES = {
+    "fluent_lang_french",
+    "fluent_lang_mandarin",
+    "fluent_lang_cantonese",
+    "fluent_lang_hindi",
+    "fluent_lang_punjabi",
+    "fluent_lang_none",
+    "fluent_lang_other",
 }
-_VALID_INSTRUCTION_LANGUAGES = {
-    "French",
-    "Mandarin",
-    "Cantonese",
-    "Hindi",
-    "Punjabi",
-    "Korean",
-    "Other",
+FLUENT_LANGUAGES_BY_LOCALE: dict[str, set[str]] = {
+    "en": _SHARED_FLUENT_LANGUAGES | {"fluent_lang_korean"},
+    "ko": _SHARED_FLUENT_LANGUAGES | {"fluent_lang_english"},
 }
+# Union of every locale's set; the locale-agnostic schema validator uses this so
+# unknown keys fail at parse time, and the locale-aware pass then narrows it.
+_VALID_LANGUAGES = FLUENT_LANGUAGES_BY_LOCALE["en"] | FLUENT_LANGUAGES_BY_LOCALE["ko"]
+
+_SHARED_INSTRUCTION_LANGUAGES = {
+    "instruction_lang_french",
+    "instruction_lang_mandarin",
+    "instruction_lang_cantonese",
+    "instruction_lang_hindi",
+    "instruction_lang_punjabi",
+    "instruction_lang_other",
+}
+INSTRUCTION_LANGUAGES_BY_LOCALE: dict[str, set[str]] = {
+    "en": _SHARED_INSTRUCTION_LANGUAGES | {"instruction_lang_korean"},
+    "ko": _SHARED_INSTRUCTION_LANGUAGES | {"instruction_lang_english"},
+}
+_VALID_INSTRUCTION_LANGUAGES = (
+    INSTRUCTION_LANGUAGES_BY_LOCALE["en"] | INSTRUCTION_LANGUAGES_BY_LOCALE["ko"]
+)
+
+# Korean universities cap the GPA scale at 4.5 (or 4.3); Canadian programs go to
+# 5.0. LOCALIZATION.md section 3.
+GPA_MAX_BY_LOCALE: dict[str, Decimal] = {
+    "en": Decimal("5.0"),
+    "ko": Decimal("4.5"),
+}
+# Widest bound across locales; the per-locale pass narrows it.
+_GPA_ABSOLUTE_MAX = max(GPA_MAX_BY_LOCALE.values())
+
 _VALID_DIAGNOSED_DISORDERS = {
-    "Neurological Disorder",
-    "Generalized Anxiety Disorder",
-    "Depression",
-    "Mood Disorder",
-    "Substance Use Disorder",
-    "Other",
-    "N/A",
+    "disorder_neurological",
+    "disorder_generalized_anxiety",
+    "disorder_depression",
+    "disorder_mood",
+    "disorder_substance_use",
+    "disorder_other",
+    "disorder_na",
 }
 _VALID_REGULAR_SUBSTANCES = {
-    "Alcohol",
-    "Cannabis",
-    "Tobacco",
-    "Vaping",
-    "Caffeinated Stimulants (coffee, energy drinks, etc.)",
-    "Other",
-    "None of the Above",
+    "substance_alcohol",
+    "substance_cannabis",
+    "substance_tobacco",
+    "substance_vaping",
+    "substance_caffeine",
+    "substance_other",
+    "substance_none",
 }
 
 
@@ -253,17 +295,28 @@ def _validate_other_text(
     other_text: str | None,
     field_name: str,
     text_field_name: str,
+    other_key: str,
 ) -> None:
+    """Gate a free-text follow-up on the field's ``other`` option KEY.
+
+    The trigger is the registered option key (e.g. ``ethnicity_other``), never
+    the English display string ``"Other"`` — a ko participant selecting 기타
+    submits the same key as an en participant selecting Other.
+    """
     has_other = (
-        "Other" in selected
+        other_key in selected
         if isinstance(selected, list)
-        else selected == "Other"
+        else selected == other_key
     )
     has_text = other_text is not None and other_text.strip() != ""
     if has_other and not has_text:
-        raise ValueError(f"{text_field_name} is required when {field_name} includes Other")
+        raise ValueError(
+            f"{text_field_name} is required when {field_name} includes {other_key}"
+        )
     if has_text and not has_other:
-        raise ValueError(f"{text_field_name} may only be set when {field_name} includes Other")
+        raise ValueError(
+            f"{text_field_name} may only be set when {field_name} includes {other_key}"
+        )
 
 
 def _validate_exclusive_choice(
@@ -284,7 +337,11 @@ class MisoDemographicsCreate(BaseModel):
     residence_status_other_text: Optional[str] = None
     student_type: Optional[str] = None
     total_years_education: Optional[int] = Field(default=None, ge=0, le=100)
-    cumulative_gpa: Optional[Decimal] = Field(default=None, ge=0, le=5)
+    # Widest bound across locales; ``validate_demographics_for_locale`` narrows
+    # it to 4.5 for a ko session. See LOCALIZATION.md section 3.
+    cumulative_gpa: Optional[Decimal] = Field(
+        default=None, ge=0, le=_GPA_ABSOLUTE_MAX
+    )
     majors_text: Optional[str] = None
     highest_education_completed: Optional[str] = None
     ethnicity: Optional[list[str]] = None
@@ -377,55 +434,71 @@ class MisoDemographicsCreate(BaseModel):
             other_text=self.residence_status_other_text,
             field_name="residence_status",
             text_field_name="residence_status_other_text",
+            other_key="residence_other",
         )
         _validate_other_text(
             selected=self.ethnicity,
             other_text=self.ethnicity_other_text,
             field_name="ethnicity",
             text_field_name="ethnicity_other_text",
+            other_key="ethnicity_other",
         )
         _validate_other_text(
             selected=self.fluent_languages,
             other_text=self.fluent_languages_other_text,
             field_name="fluent_languages",
             text_field_name="fluent_languages_other_text",
+            other_key="fluent_lang_other",
         )
         _validate_other_text(
             selected=self.instruction_languages,
             other_text=self.instruction_languages_other_text,
             field_name="instruction_languages",
             text_field_name="instruction_languages_other_text",
+            other_key="instruction_lang_other",
         )
         _validate_other_text(
             selected=self.diagnosed_disorders,
             other_text=self.diagnosed_disorders_other_text,
             field_name="diagnosed_disorders",
             text_field_name="diagnosed_disorders_other_text",
+            other_key="disorder_other",
         )
         _validate_other_text(
             selected=self.regular_substances,
             other_text=self.regular_substances_other_text,
             field_name="regular_substances",
             text_field_name="regular_substances_other_text",
+            other_key="substance_other",
         )
         _validate_other_text(
             selected=self.relationship_status,
             other_text=self.relationship_status_other_text,
             field_name="relationship_status",
             text_field_name="relationship_status_other_text",
+            other_key="relationship_other",
         )
         _validate_other_text(
             selected=self.occupational_status,
             other_text=self.occupational_status_other_text,
             field_name="occupational_status",
             text_field_name="occupational_status_other_text",
+            other_key="occupation_other",
         )
 
-        _validate_exclusive_choice(self.fluent_languages, "None", "fluent_languages")
-        _validate_exclusive_choice(self.diagnosed_disorders, "N/A", "diagnosed_disorders")
+        _validate_exclusive_choice(
+            self.fluent_languages,
+            "fluent_lang_none",
+            "fluent_languages",
+        )
+        _validate_exclusive_choice(
+            self.diagnosed_disorders,
+            "disorder_na",
+            "diagnosed_disorders",
+        )
         _validate_exclusive_choice(
             self.regular_substances,
-            "None of the Above",
+            "substance_none",
             "regular_substances",
         )
 
@@ -460,6 +533,45 @@ class MisoDemographicsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     misokinesia_participant_id: UUID
+
+
+def validate_demographics_for_locale(
+    payload: MisoDemographicsCreate,
+    language: str,
+) -> None:
+    """Apply the validation rules that depend on the session locale.
+
+    ``MisoDemographicsCreate`` alone cannot enforce these: the locale lives on
+    ``misokinesia_participants.language`` and is deliberately not part of the
+    request body, so a client cannot widen its own validation by claiming a
+    different locale. The router resolves the stored language and calls this
+    after the locale-agnostic model validation has passed.
+
+    Raises ``ValueError`` (surfaced by the router as HTTP 422) when a value is
+    outside the locale's allowed set. Rules are registered in
+    ``docs/labs/weather-wellness/misokinesia/LOCALIZATION.md`` section 3.
+    """
+
+    if language not in MISO_LOCALES:
+        raise ValueError(f"unsupported session language: {language!r}")
+
+    _validate_optional_choices(
+        payload.fluent_languages,
+        FLUENT_LANGUAGES_BY_LOCALE[language],
+        "fluent_languages",
+    )
+    _validate_optional_choices(
+        payload.instruction_languages,
+        INSTRUCTION_LANGUAGES_BY_LOCALE[language],
+        "instruction_languages",
+    )
+
+    gpa_max = GPA_MAX_BY_LOCALE[language]
+    if payload.cumulative_gpa is not None and payload.cumulative_gpa > gpa_max:
+        raise ValueError(
+            f"cumulative_gpa must be less than or equal to {gpa_max} "
+            f"for locale {language!r}"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -149,43 +149,51 @@
 
 ### PATCH /misokinesia/participants/{participant_id}/demographics
 - **Auth:** None (participant-facing)
-- **Status:** implemented (T200), sourced from `reference/labs/Misokinesia/Demographics copy2.docx`
+- **Status:** implemented (T200), sourced from `reference/labs/Misokinesia/Demographics copy2.docx`; option keys and per-locale validation added T1850
 - **Request body:** `MisoDemographicsCreate`
+
+All choice values are **language-independent option keys**, not English display
+strings. The key registry is `docs/labs/weather-wellness/misokinesia/LOCALIZATION.md`
+section 2; the frontend maps each key to a label for the session locale. Legacy
+English values were rewritten to keys by migration `20260903_000001`.
+
+The request body carries **no locale field**. The session locale is read from
+`misokinesia_participants.language`, so a client cannot widen its own validation.
   ```json
   {
     "age": 24,
-    "sex": "Female",
+    "sex": "sex_female",
     "gender_identity": "string",
     "years_lived_canada": 6,
-    "residence_status": "Student Visa",
+    "residence_status": "residence_student_visa",
     "residence_status_other_text": null,
-    "student_type": "International",
+    "student_type": "student_international",
     "total_years_education": 16,
     "cumulative_gpa": 4.0,
     "majors_text": "Psychology",
-    "highest_education_completed": "Bachelors degree",
-    "ethnicity": ["Korean"],
+    "highest_education_completed": "education_bachelors",
+    "ethnicity": ["ethnicity_korean"],
     "ethnicity_other_text": null,
     "native_language": "Korean",
-    "english_fluency": "Agree",
-    "fluent_languages": ["Korean"],
+    "english_fluency": "fluency_agree",
+    "fluent_languages": ["fluent_lang_korean"],
     "fluent_languages_other_text": null,
-    "english_speaking_frequency": "Often",
+    "english_speaking_frequency": "frequency_often",
     "non_english_schooling": true,
-    "instruction_languages": ["Korean"],
+    "instruction_languages": ["instruction_lang_korean"],
     "instruction_languages_other_text": null,
-    "diagnosed_disorders": ["N/A"],
+    "diagnosed_disorders": ["disorder_na"],
     "diagnosed_disorders_other_text": null,
     "adhd_diagnosis": false,
-    "adhd_medication": "No",
+    "adhd_medication": "adhd_med_no",
     "avid_videogamer": true,
     "video_game_hours_per_week": 8,
     "prescription_stimulants": false,
-    "regular_substances": ["Caffeinated Stimulants (coffee, energy drinks, etc.)"],
+    "regular_substances": ["substance_caffeine"],
     "regular_substances_other_text": null,
-    "relationship_status": "Single",
+    "relationship_status": "relationship_single",
     "relationship_status_other_text": null,
-    "occupational_status": "Student",
+    "occupational_status": "occupation_student",
     "occupational_status_other_text": null
   }
   ```
@@ -199,27 +207,32 @@
   - The participant UI must require all visible demographics fields before submission. Database columns remain nullable for legacy rows and trial/no-write behavior.
   - Slider/input numeric ranges:
     - `age`, `years_lived_canada`, `total_years_education`, `video_game_hours_per_week`: integer `0`-`100`
-    - `cumulative_gpa`: numeric `0`-`5`
-  - Single-choice allowed values:
-    - `sex`: `"Male"`, `"Female"`
-    - `residence_status`: `"Canadian Citizenship"`, `"Permanent Resident"`, `"Student Visa"`, `"Other"`
-    - `student_type`: `"Domestic"`, `"International"`
-    - `highest_education_completed`: `"Elementary or middle school"`, `"High school or equivalent (e.g., GED)"`, `"College diploma"`, `"Bachelors degree"`, `"Masters degree"`, `"Doctorate degree"`
-    - `english_fluency`: `"Strongly agree"`, `"Agree"`, `"Neither agree nor disagree"`, `"Disagree"`, `"Strongly disagree"`
-    - `english_speaking_frequency`: `"Always"`, `"Often"`, `"Sometimes"`, `"Rarely"`, `"Never"`
-    - `adhd_medication`: `"Yes"`, `"Maybe"`, `"No"`
-    - `relationship_status`: `"Single"`, `"In a relationship"`, `"Married (and not separated)"`, `"Common-law"`, `"Seperated"`, `"Divorced"`, `"Widowed"`, `"Other"`, `"None of the Above"`
-    - `occupational_status`: `"Employed full-time"`, `"Employed part-time"`, `"Out of work but looking for work"`, `"Out of work and not looking for work"`, `"Homemaker"`, `"Student"`, `"Military"`, `"Retired"`, `"Unable to work"`, `"Other"`, `"None of the above"`
-  - Multi-select allowed values:
-    - `ethnicity`: `"European Canadian"`, `"Chinese"`, `"South Asian"`, `"Filipino"`, `"Southeast Asian"`, `"Japanese"`, `"Latin American"`, `"Korean"`, `"Other"`
-    - `fluent_languages`: `"French"`, `"Mandarin"`, `"Cantonese"`, `"Hindi"`, `"Punjabi"`, `"Korean"`, `"None"`, `"Other"`
-    - `instruction_languages`: `"French"`, `"Mandarin"`, `"Cantonese"`, `"Hindi"`, `"Punjabi"`, `"Korean"`, `"Other"`
-    - `diagnosed_disorders`: `"Neurological Disorder"`, `"Generalized Anxiety Disorder"`, `"Depression"`, `"Mood Disorder"`, `"Substance Use Disorder"`, `"Other"`, `"N/A"`
-    - `regular_substances`: `"Alcohol"`, `"Cannabis"`, `"Tobacco"`, `"Vaping"`, `"Caffeinated Stimulants (coffee, energy drinks, etc.)"`, `"Other"`, `"None of the Above"`
-  - Returns 422 when an `*_other_text` value is present without the matching `"Other"` selection, or when `"Other"` is selected without text.
+    - `cumulative_gpa`: numeric `0`-`5.0` for an `en` session, `0`-`4.5` for a `ko` session
+  - Single-choice allowed option keys (same set in both locales):
+    - `sex`: `sex_male`, `sex_female`
+    - `residence_status`: `residence_citizenship`, `residence_permanent_resident`, `residence_student_visa`, `residence_other`
+    - `student_type`: `student_domestic`, `student_international`
+    - `highest_education_completed`: `education_elementary_middle`, `education_high_school`, `education_college_diploma`, `education_bachelors`, `education_masters`, `education_doctorate`
+    - `english_fluency`: `fluency_strongly_agree`, `fluency_agree`, `fluency_neutral`, `fluency_disagree`, `fluency_strongly_disagree`
+    - `english_speaking_frequency`: `frequency_always`, `frequency_often`, `frequency_sometimes`, `frequency_rarely`, `frequency_never`
+    - `adhd_medication`: `adhd_med_yes`, `adhd_med_maybe`, `adhd_med_no`
+    - `relationship_status`: `relationship_single`, `relationship_in_relationship`, `relationship_married`, `relationship_common_law`, `relationship_separated`, `relationship_divorced`, `relationship_widowed`, `relationship_other`, `relationship_none`
+    - `occupational_status`: `occupation_employed_full_time`, `occupation_employed_part_time`, `occupation_out_of_work_looking`, `occupation_out_of_work_not_looking`, `occupation_homemaker`, `occupation_student`, `occupation_military`, `occupation_retired`, `occupation_unable_to_work`, `occupation_other`, `occupation_none`
+  - Multi-select allowed option keys (same set in both locales):
+    - `ethnicity`: `ethnicity_european`, `ethnicity_chinese`, `ethnicity_south_asian`, `ethnicity_filipino`, `ethnicity_southeast_asian`, `ethnicity_japanese`, `ethnicity_latin_american`, `ethnicity_korean`, `ethnicity_other`
+    - `diagnosed_disorders`: `disorder_neurological`, `disorder_generalized_anxiety`, `disorder_depression`, `disorder_mood`, `disorder_substance_use`, `disorder_other`, `disorder_na`
+    - `regular_substances`: `substance_alcohol`, `substance_cannabis`, `substance_tobacco`, `substance_vaping`, `substance_caffeine`, `substance_other`, `substance_none`
+  - Multi-select with **per-locale option sets** — the option set is resolved from `misokinesia_participants.language`, not from the request:
+    - `fluent_languages`: `fluent_lang_french`, `fluent_lang_mandarin`, `fluent_lang_cantonese`, `fluent_lang_hindi`, `fluent_lang_punjabi`, `fluent_lang_none`, `fluent_lang_other`, plus `fluent_lang_korean` (**`en` only**) or `fluent_lang_english` (**`ko` only**)
+    - `instruction_languages`: `instruction_lang_french`, `instruction_lang_mandarin`, `instruction_lang_cantonese`, `instruction_lang_hindi`, `instruction_lang_punjabi`, `instruction_lang_other`, plus `instruction_lang_korean` (**`en` only**) or `instruction_lang_english` (**`ko` only**)
+  - Per-locale validation (`docs/labs/weather-wellness/misokinesia/LOCALIZATION.md` section 3):
+    - Returns 422 when an `en` session submits `fluent_lang_english` / `instruction_lang_english`, or a `ko` session submits `fluent_lang_korean` / `instruction_lang_korean`.
+    - Returns 422 when `cumulative_gpa` exceeds `4.5` for a `ko` session; the same value is accepted up to `5.0` for an `en` session.
+    - Every other rule below is identical across locales.
+  - Returns 422 when an `*_other_text` value is present without the matching `*_other` option key, or when the `*_other` key is selected without text. The trigger is the option key (`ethnicity_other`, `occupation_other`, …), never the display string `"Other"`.
   - Returns 422 when `instruction_languages` is present while `non_english_schooling` is not `true`.
   - Returns 422 when `video_game_hours_per_week` is present while `avid_videogamer` is not `true`.
-  - `"None"`, `"N/A"`, and `"None of the Above"` are exclusive in their parent multi-select group.
+  - `fluent_lang_none`, `disorder_na`, and `substance_none` are exclusive in their parent multi-select group.
   - Idempotent — can be called multiple times; later calls overwrite earlier values.
   - Trial mode must not call this endpoint; consent and demographics screens advance locally.
 

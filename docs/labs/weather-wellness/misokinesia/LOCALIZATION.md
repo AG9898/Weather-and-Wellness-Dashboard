@@ -302,6 +302,12 @@ is identical across locales.
 | `fluent_languages` | option set includes `fluent_lang_korean`, excludes `fluent_lang_english` | option set includes `fluent_lang_english`, excludes `fluent_lang_korean` | workbook |
 | `instruction_languages` | option set includes `instruction_lang_korean`, excludes `instruction_lang_english` | option set includes `instruction_lang_english`, excludes `instruction_lang_korean` | workbook |
 
+Enforced server-side by `validate_demographics_for_locale` in
+`backend/app/schemas/misokinesia.py`, called from the demographics route with the
+locale read from `misokinesia_participants.language`. The locale is deliberately not
+a request-body field, so a client cannot widen its own validation. See
+[`API.md`](API.md) for the resulting 422 responses.
+
 ### `cumulative_gpa`
 
 Korean universities use a 4.5 or 4.3 maximum, so a 4.5 cap covers both. The

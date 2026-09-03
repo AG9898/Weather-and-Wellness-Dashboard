@@ -43,6 +43,7 @@ from app.schemas.misokinesia import (
     MisokinesiaTrialManifestResponse,
     MisokinesiaTrialResponseCreate,
     MisokinesiaTrialResponseResponse,
+    validate_demographics_for_locale,
 )
 from app.scoring import gad7 as gad7_scoring
 from app.services.session_status import guard_session_write
@@ -469,7 +470,8 @@ async def submit_demographics(
     """Participant-facing (no auth). Write miso-specific demographics to
     misokinesia_participants. Idempotent — later calls overwrite earlier values.
     Database columns are nullable, but schema validation enforces the sourced
-    v2 ranges, categorical values, conditional fields, and Other-text rules.
+    v2 ranges, categorical option keys, conditional fields, and other-text rules.
+    Locale-dependent rules are applied from the participant's stored ``language``.
     """
 
     mp_result = await db.execute(
@@ -483,6 +485,17 @@ async def submit_demographics(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Misokinesia participant not found.",
         )
+
+    # Locale-dependent rules (per-locale language option sets, GPA ceiling) are
+    # resolved from the STORED session language, never from the request body, so
+    # a client cannot widen its own validation. See LOCALIZATION.md section 3.
+    try:
+        validate_demographics_for_locale(payload, miso_participant.language or "en")
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
     for field_name in _DEMOGRAPHICS_FIELDS:
         setattr(miso_participant, field_name, getattr(payload, field_name))
