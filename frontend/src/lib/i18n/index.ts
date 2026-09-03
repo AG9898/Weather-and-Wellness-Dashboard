@@ -4,7 +4,9 @@
  * Deliberately repo-local and dependency-free: the catalogue is static, covers
  * one component, and is two locales deep, so a framework-wide i18n dependency
  * would cost more than it buys. There is no locale routing — locale is session
- * state resolved from the manifest, never a URL segment.
+ * state resolved from the manifest, never a URL segment. The one stored value
+ * is the RA's launch-page preference (`miso-ra-locale.ts`), which seeds the
+ * next session's locale but is not itself session state.
  *
  * Canonical string source: `docs/labs/weather-wellness/misokinesia/LOCALIZATION.md`.
  */
@@ -23,6 +25,13 @@ export {
   type MisoMessageKey,
   type MisoMessageParams,
 } from "./miso-messages";
+
+export {
+  MISO_RA_LOCALE_STORAGE_KEY,
+  misoLocaleTag,
+  readRaMisoLocale,
+  storeRaMisoLocale,
+} from "./miso-ra-locale";
 
 export {
   MISO_OPTION_LABELS,

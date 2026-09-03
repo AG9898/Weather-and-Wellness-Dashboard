@@ -1,6 +1,14 @@
 import { FlaskConical, Play, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PageContainer from "@/lib/components/PageContainer";
+import {
+  DEFAULT_MISO_LOCALE,
+  MISO_LOCALES,
+  misoLocaleTag,
+  misoMessage,
+  type MisoLocale,
+} from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import type {
   MisoDashboardResponse,
   MisoDashboardSessionItem,
@@ -13,6 +21,14 @@ export type SessionStatus = "complete" | "incomplete" | "rehearsal";
 export type MisokinesiaLaunchStatsState = "replica" | "empty" | "error";
 
 interface MisokinesiaLaunchPageProps {
+  /**
+   * Locale the RA has selected for the next session. It drives both the copy on
+   * this page and the `language` sent to `POST /misokinesia/start`, so the RA
+   * can see at a glance which version they are about to run. This page is the
+   * only translated RA surface.
+   */
+  locale?: MisoLocale;
+  onLocaleChange?: (locale: MisoLocale) => void;
   loading?: boolean;
   shortTrialLoading?: boolean;
   fullTrialLoading?: boolean;
@@ -33,39 +49,43 @@ function formatParticipantNumber(value: number): string {
   return `MKP-${String(value).padStart(4, "0")}`;
 }
 
-function formatRelativeTime(value: string): string {
+function formatRelativeTime(value: string, locale: MisoLocale): string {
   const started = new Date(value);
   if (Number.isNaN(started.getTime())) {
     return "—";
   }
 
+  const tag = misoLocaleTag(locale);
   const now = new Date();
   const elapsedMs = now.getTime() - started.getTime();
   const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
 
   if (elapsedMinutes < 1) {
-    return "Just now";
+    return misoMessage("ra.launch.time.just_now", locale);
   }
   if (elapsedMinutes < 60) {
-    return `${elapsedMinutes} min ago`;
+    return misoMessage("ra.launch.time.minutes", locale, { n: elapsedMinutes });
   }
 
   const elapsedHours = Math.floor(elapsedMinutes / 60);
   if (elapsedHours < 24 && now.toDateString() === started.toDateString()) {
-    return `${elapsedHours}h ${elapsedMinutes % 60}m ago`;
+    return misoMessage("ra.launch.time.hours", locale, {
+      h: elapsedHours,
+      m: elapsedMinutes % 60,
+    });
   }
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  const time = started.toLocaleTimeString([], {
+  const time = started.toLocaleTimeString(tag, {
     hour: "2-digit",
     minute: "2-digit",
   });
   if (started.toDateString() === yesterday.toDateString()) {
-    return `Yesterday · ${time}`;
+    return misoMessage("ra.launch.time.yesterday", locale, { time });
   }
 
-  return `${started.toLocaleDateString([], {
+  return `${started.toLocaleDateString(tag, {
     month: "short",
     day: "numeric",
   })} · ${time}`;
@@ -111,6 +131,8 @@ function ScoreRows({ items }: { items: MisoVideoScoreItem[] }) {
 }
 
 export default function MisokinesiaLaunchPage({
+  locale = DEFAULT_MISO_LOCALE,
+  onLocaleChange,
   loading = false,
   shortTrialLoading = false,
   fullTrialLoading = false,
@@ -130,26 +152,56 @@ export default function MisokinesiaLaunchPage({
   const topScores = videoScores?.top_5 ?? [];
   const bottomScores = videoScores?.bottom_5 ?? [];
   const hasVideoScores = topScores.length > 0 || bottomScores.length > 0;
+  const t = (key: Parameters<typeof misoMessage>[0]) => misoMessage(key, locale);
 
   return (
     <PageContainer>
       <div className="mb-9 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-[540px] space-y-2">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Misokinesia Study · Lab Operations
+            {t("ra.launch.kicker")}
           </p>
           <h1
             className="text-[30px] font-bold leading-[1.15] text-foreground"
             style={{ letterSpacing: "-0.02em" }}
           >
-            Misokinesia Task
+            {t("ra.launch.title")}
           </h1>
           <p className="text-[13px] leading-relaxed text-muted-foreground">
-            Launch a participant session, run a rehearsal trial, or review recent activity for this lab module.
+            {t("ra.launch.subtitle")}
           </p>
         </div>
 
         <div className="flex shrink-0 flex-col items-start gap-2.5 lg:items-end">
+          <div
+            className="inline-grid grid-flow-col auto-cols-fr gap-1 rounded-md border border-border bg-card/90 p-1 shadow-sm"
+            role="group"
+            aria-label={t("ra.launch.language.aria")}
+          >
+            {MISO_LOCALES.map((option) => {
+              const isActive = option === locale;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  disabled={anyLoading}
+                  aria-pressed={isActive}
+                  onClick={() => onLocaleChange?.(option)}
+                  className={cn(
+                    "min-w-[3rem] rounded px-3 py-1.5 text-center text-[11px] font-semibold uppercase leading-none tracking-[0.08em] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60",
+                    isActive &&
+                      "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+                  )}
+                >
+                  {misoMessage(
+                    option === "ko" ? "ra.launch.language.ko" : "ra.launch.language.en",
+                    locale
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           <Button
             size="lg"
             disabled={anyLoading}
@@ -157,7 +209,7 @@ export default function MisokinesiaLaunchPage({
             className="h-11 rounded-xl px-[22px] font-semibold text-primary-foreground"
           >
             <Play className="mr-2 size-4" />
-            {loading ? "Starting…" : "Start Misokinesia Session"}
+            {loading ? t("ra.launch.state.starting") : t("ra.launch.button.start")}
           </Button>
 
           <div className="flex gap-2">
@@ -169,7 +221,9 @@ export default function MisokinesiaLaunchPage({
               className="h-9 rounded-xl px-4 font-semibold"
             >
               <FlaskConical className="mr-2 size-4" />
-              {shortTrialLoading ? "Starting…" : "Short Trial"}
+              {shortTrialLoading
+                ? t("ra.launch.state.starting")
+                : t("ra.launch.button.short_trial")}
             </Button>
             <Button
               size="default"
@@ -179,12 +233,14 @@ export default function MisokinesiaLaunchPage({
               className="h-9 rounded-xl px-4 font-semibold"
             >
               <FlaskConical className="mr-2 size-4" />
-              {fullTrialLoading ? "Starting…" : "Full Trial"}
+              {fullTrialLoading
+                ? t("ra.launch.state.starting")
+                : t("ra.launch.button.full_trial")}
             </Button>
           </div>
 
           <p className="text-[11px] text-muted-foreground">
-            Trials use fake ids · no data is written
+            {t("ra.launch.trial_note")}
           </p>
 
           {error && (
@@ -208,16 +264,16 @@ export default function MisokinesiaLaunchPage({
           style={{ borderColor: "var(--primary)" }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Active stimuli
+            {t("ra.launch.stats.active_stimuli")}
           </p>
           <p
             className="mt-1.5 font-bold tabular-nums text-foreground"
             style={{ fontSize: 30, letterSpacing: "-0.02em" }}
           >
-            {dashboardLoading ? "Loading" : activeStimuliCount ?? "—"}
+            {dashboardLoading ? t("ra.launch.state.loading") : activeStimuliCount ?? "—"}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground" style={{ color: "var(--ink-45)" }}>
-            clips available in the active test set
+            {t("ra.launch.stats.active_stimuli_help")}
           </p>
         </div>
       </div>
@@ -229,7 +285,7 @@ export default function MisokinesiaLaunchPage({
         >
           <div className="mb-4 flex items-baseline justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Recent sessions
+              {t("ra.launch.recent.title")}
             </p>
             <Button
               variant="ghost"
@@ -238,18 +294,18 @@ export default function MisokinesiaLaunchPage({
               onClick={onUndoLastSession}
             >
               <Undo2 className="mr-1.5 size-3.5" />
-              Undo last session
+              {t("ra.launch.recent.undo")}
             </Button>
           </div>
 
           <div className="border-t border-border">
             {dashboardLoading ? (
               <p className="py-6 text-[12px] text-muted-foreground">
-                Loading recent sessions…
+                {t("ra.launch.recent.loading")}
               </p>
             ) : recentSessions.length === 0 ? (
               <p className="py-6 text-[12px] text-muted-foreground">
-                No sessions yet.
+                {t("ra.launch.recent.empty")}
               </p>
             ) : (
               recentSessions.map((row) => (
@@ -263,7 +319,7 @@ export default function MisokinesiaLaunchPage({
                   >
                     {formatParticipantNumber(row.misokinesia_participant_number)}
                   </span>
-                  <span className="text-muted-foreground">{formatRelativeTime(row.started_at)}</span>
+                  <span className="text-muted-foreground">{formatRelativeTime(row.started_at, locale)}</span>
                   <span className="min-w-0 truncate text-muted-foreground">
                     {formatDemographics(row)}
                   </span>
@@ -284,28 +340,28 @@ export default function MisokinesiaLaunchPage({
           style={{ background: "var(--card)" }}
         >
           <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Video Score Leaderboard
+            {t("ra.launch.scores.title")}
           </p>
 
           {dashboardLoading ? (
             <p className="border-t border-border py-6 text-[12px] text-muted-foreground">
-              Loading video scores…
+              {t("ra.launch.scores.loading")}
             </p>
           ) : !hasVideoScores ? (
             <p className="border-t border-border py-6 text-[12px] text-muted-foreground">
-              No video score data yet.
+              {t("ra.launch.scores.empty")}
             </p>
           ) : (
             <div className="space-y-5 border-t border-border pt-4">
               <section>
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Highest reactivity
+                  {t("ra.launch.scores.highest")}
                 </p>
                 <ScoreRows items={topScores} />
               </section>
               <section>
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Lowest reactivity
+                  {t("ra.launch.scores.lowest")}
                 </p>
                 <ScoreRows items={bottomScores} />
               </section>

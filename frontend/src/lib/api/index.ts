@@ -6,6 +6,7 @@
 import { supabase } from "@/lib/supabase";
 import type { PostSurveyKey } from "@/lib/misokinesia-phase";
 import type { MisokinesiaTrialMode } from "@/lib/trial-mode";
+import { DEFAULT_MISO_LOCALE, type MisoLocale } from "@/lib/i18n";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -1428,6 +1429,13 @@ export interface MisokinesiaManifest {
   misokinesia_participant_number: number;
   session_id: string;
   trial_mode?: MisokinesiaTrialMode;
+  /**
+   * RA-selected session locale, echoed back by the backend and fixed for the
+   * life of the session. Optional on the type because a manifest persisted by
+   * an older build can still be in `sessionStorage`; read it through
+   * `resolveMisoLocale` so a missing value falls back to `en`.
+   */
+  language?: MisoLocale;
   post_survey_order: string;
   clips: MisokinesiaClipMeta[];
 }
@@ -1469,9 +1477,15 @@ export interface MisokinesiaEndOfTaskResult {
   misokinesia_participant_id: string;
 }
 
-/** RA-triggered: creates anonymous participant + session + misokinesia_participants row. Returns manifest. */
-export async function startMisokinesiaSession(): Promise<MisokinesiaManifest> {
-  return apiPost<MisokinesiaManifest>("/misokinesia/start", {}, { auth: true });
+/**
+ * RA-triggered: creates anonymous participant + session + misokinesia_participants row.
+ * `language` is the locale the RA picked on the launch page; the backend persists it
+ * and echoes it on the returned manifest.
+ */
+export async function startMisokinesiaSession(
+  language: MisoLocale = DEFAULT_MISO_LOCALE
+): Promise<MisokinesiaManifest> {
+  return apiPost<MisokinesiaManifest>("/misokinesia/start", { language }, { auth: true });
 }
 
 /** RA-triggered: returns sampled or full active clips for read-only trial mode. */

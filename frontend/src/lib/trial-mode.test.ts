@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MISO_MESSAGES } from "@/lib/i18n";
 import { buildMkaqPanes, MKAQ_ITEMS } from "@/lib/components/MisokinesiaMkaqForm";
 import { buildMaqPanes, MAQ_ITEMS } from "@/lib/components/MisokinesiaMAQForm";
 
@@ -93,7 +94,10 @@ describe("trial-mode launch controls", () => {
     expect(pageSource).toContain('startTrial("short")');
     expect(pageSource).toContain("createTrialRunState(\"misokinesia\", mode)");
     expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
-    expect(componentSource).toContain("Short Trial");
+    // The visible label moved into the localized catalogue with T1858; the
+    // control itself must stay on the launch surface.
+    expect(componentSource).toContain("ra.launch.button.short_trial");
+    expect(MISO_MESSAGES.en["ra.launch.button.short_trial"]).toBe("Short Trial");
     expect(componentSource).toContain("onStartShortTrial");
   });
 
@@ -106,7 +110,8 @@ describe("trial-mode launch controls", () => {
     expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
     expect(pageSource).toContain("Full trial manifest returned only");
     expect(apiSource).toContain('"/misokinesia/trial-manifest?full=true"');
-    expect(componentSource).toContain("Full Trial");
+    expect(componentSource).toContain("ra.launch.button.full_trial");
+    expect(MISO_MESSAGES.en["ra.launch.button.full_trial"]).toBe("Full Trial");
     expect(componentSource).toContain("onStartFullTrial");
   });
 
@@ -552,6 +557,52 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
     expect(source).toContain("createTrialRunMisokinesiaManifest(");
     expect(source).toContain("trialManifest.clips");
     expect(source).toContain("mode");
+  });
+
+  it("launch page sends the RA-selected locale to start and to both trials", () => {
+    const source = readFrontendFile("src/app/(ra)/misokinesia/page.tsx");
+    // Production sessions carry the locale through the typed wrapper.
+    expect(source).toContain("startMisokinesiaSession(locale)");
+    // Trials never reach the start endpoint, so the locale rides the local manifest.
+    expect(source).toContain("readRaMisoLocale()");
+    expect(source).toContain("storeRaMisoLocale(next)");
+    expect(source).not.toMatch(/\bfetch\(/);
+  });
+
+  it("trial manifest carries the rehearsal locale as client state", () => {
+    const clips = [
+      {
+        stimulus_id: "11111111-1111-1111-1111-111111111111",
+        public_url:
+          "https://example.supabase.co/storage/v1/object/public/misokinesia-stimuli/a.mp4",
+        sort_order: 1,
+        duration_ms: 15000,
+      },
+    ];
+
+    const koManifest = createTrialRunMisokinesiaManifest(
+      createTrialRunState("misokinesia", "short"),
+      clips,
+      "short",
+      "ko"
+    );
+    expect(koManifest.language).toBe("ko");
+
+    const fullKoManifest = createTrialRunMisokinesiaManifest(
+      createTrialRunState("misokinesia", "full"),
+      clips,
+      "full",
+      "ko"
+    );
+    expect(fullKoManifest.language).toBe("ko");
+
+    // Omitting the locale keeps the documented English default.
+    const defaultManifest = createTrialRunMisokinesiaManifest(
+      createTrialRunState("misokinesia", "short"),
+      clips,
+      "short"
+    );
+    expect(defaultManifest.language).toBe("en");
   });
 
   it("trial manifest records whether it was created for short or full mode", () => {

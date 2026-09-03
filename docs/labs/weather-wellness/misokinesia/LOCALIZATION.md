@@ -16,7 +16,8 @@ demographics contract, [`DESIGN_SPEC.md`](DESIGN_SPEC.md) for participant UX.
 transcription. `miso-locale.ts` holds the locale type and default, `miso-messages.ts`
 the section 5–6 string catalogue plus the `misoMessage(key, locale)` accessor, and
 `miso-option-labels.ts` the section 2 option-key label maps plus
-`misoOptionKeys(field, locale)` / `misoOptionLabel(field, key, locale)`. The KO
+`misoOptionKeys(field, locale)` / `misoOptionLabel(field, key, locale)`, and
+`miso-ra-locale.ts` the RA launch-page preference (section 6.13). The KO
 catalogue is typed as a total record over the EN keys, so a key present in one
 locale and missing from the other fails `tsc`. Correct a label here and in the
 catalogue together; never rename a key to fix a label. The layer is repo-local and
@@ -34,15 +35,27 @@ dependency-free — no locale routing, no i18n package.
 Rules:
 
 - **Component-scoped, not platform-wide.** This registry applies to the Misokinesia
-  component only. The Weather component and the RA dashboard remain English-only.
-  Do not treat `ko` as an available locale anywhere outside
+  component only. The Weather component and the rest of the RA UI (`/dashboard`,
+  `/import-export`, and every other RA page) remain English-only. Do not treat `ko`
+  as an available locale anywhere outside
   `docs/labs/weather-wellness/misokinesia/`.
+- **One RA exception: the `/misokinesia` launch page.** It renders in the locale the
+  RA has selected so the RA can see at a glance which language version is about to
+  run. Its strings are section 6.13. No other RA surface is translated.
 - `en` is the default. A session with no recorded locale is `en`.
 - Locale is fixed for the lifetime of a Misokinesia session. It is selected by the RA
-  at session start, not by the participant mid-flow: `POST /misokinesia/start` accepts
-  an optional `language` body field (`en` / `ko`, default `en`), persists it to
-  `misokinesia_participants.language`, and echoes it in the manifest. See
+  at session start, not by the participant mid-flow: the EN/KO toggle on
+  `/misokinesia` sets the `language` body field on `POST /misokinesia/start`
+  (`en` / `ko`, default `en`), which persists it to
+  `misokinesia_participants.language` and echoes it in the manifest. See
   [`API.md`](API.md).
+- The RA's toggle selection is remembered per browser in `localStorage`
+  (`ww:miso-ra-locale`) so it is not silently reset between visits. That value is a
+  launch-page preference only — it seeds the next session's locale and is never
+  itself session state, and an unreadable or unsupported stored value falls back
+  to `en`.
+- Trial runs (Short Trial, Full Trial) never reach `POST /misokinesia/start`, so they
+  carry the selected locale as client state on the locally built trial manifest.
 - Locale selects **labels only**. Stored values are language-independent option keys
   (section 2), so a KO session and an EN session produce directly comparable rows.
 
@@ -1011,7 +1024,57 @@ these English in a KO trial run is acceptable and is not a defect.
 
 | Surface | Why excluded |
 |---|---|
-| `MisokinesiaLaunchPage.tsx` and everything under `frontend/src/app/(ra)/` | RA-facing. The RA dashboard is English-only per section 1. |
+| Everything under `frontend/src/app/(ra)/` except the `/misokinesia` launch page | RA-facing. The rest of the RA UI is English-only per section 1. The launch page itself is section 6.13. |
+| The "Full trial manifest returned only N clips" guard on the launch page | RA diagnostic for a misconfigured stimulus set, not operational copy. English-only. |
 | Server error messages surfaced through `getParticipantErrorMessage` | Produced by FastAPI, not the frontend. English-only today; localizing them is a backend change. |
 | The browser's native `beforeunload` confirmation (`useTaskExitGuard`) | Text is supplied by the browser and cannot be set by the page. |
 | Non-immersive `MisokinesiaVideoPlayer` chrome | Unreachable in the Misokinesia flow (see 6.7). |
+
+### 6.13 RA Misokinesia launch page (RA-only)
+
+`MisokinesiaLaunchPage.tsx`, driven from `frontend/src/app/(ra)/misokinesia/page.tsx`.
+The single translated RA surface (section 1). Keys use the `ra.launch.` prefix, not
+`chrome.`, so the participant chrome count in section 6 stays exact.
+
+KO here is `drafted` throughout and the lab may correct any row without a code change.
+The two locale codes on the toggle are identical in both locales by design.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `ra.launch.kicker` | Misokinesia Study · Lab Operations | 미소키네시아 연구 · 실험실 운영 | drafted |
+| `ra.launch.title` | Misokinesia Task | 미소키네시아 과제 | drafted |
+| `ra.launch.subtitle` | Launch a participant session, run a rehearsal trial, or review recent activity for this lab module. | 참가자 세션을 시작하거나 리허설을 실행하고, 이 모듈의 최근 활동을 확인하세요. | drafted |
+| `ra.launch.language.aria` | Session language | 세션 언어 | drafted (aria) |
+| `ra.launch.language.en` | EN | EN | locale code |
+| `ra.launch.language.ko` | KO | KO | locale code |
+| `ra.launch.button.start` | Start Misokinesia Session | 미소키네시아 세션 시작 | drafted |
+| `ra.launch.button.short_trial` | Short Trial | 짧은 리허설 | drafted |
+| `ra.launch.button.full_trial` | Full Trial | 전체 리허설 | drafted |
+| `ra.launch.state.starting` | Starting… | 시작하는 중… | drafted |
+| `ra.launch.state.loading` | Loading | 불러오는 중 | drafted |
+| `ra.launch.trial_note` | Trials use fake ids · no data is written | 리허설은 가짜 ID를 사용하며 데이터가 저장되지 않습니다 | drafted |
+| `ra.launch.stats.active_stimuli` | Active stimuli | 활성 자극 | drafted |
+| `ra.launch.stats.active_stimuli_help` | clips available in the active test set | 활성 테스트 세트에서 사용할 수 있는 영상 수 | drafted |
+| `ra.launch.recent.title` | Recent sessions | 최근 세션 | drafted |
+| `ra.launch.recent.undo` | Undo last session | 마지막 세션 취소 | drafted |
+| `ra.launch.recent.loading` | Loading recent sessions… | 최근 세션을 불러오는 중… | drafted |
+| `ra.launch.recent.empty` | No sessions yet. | 아직 세션이 없습니다. | drafted |
+| `ra.launch.scores.title` | Video Score Leaderboard | 영상 점수 순위 | drafted |
+| `ra.launch.scores.loading` | Loading video scores… | 영상 점수를 불러오는 중… | drafted |
+| `ra.launch.scores.empty` | No video score data yet. | 아직 영상 점수 데이터가 없습니다. | drafted |
+| `ra.launch.scores.highest` | Highest reactivity | 반응이 가장 높은 영상 | drafted |
+| `ra.launch.scores.lowest` | Lowest reactivity | 반응이 가장 낮은 영상 | drafted |
+| `ra.launch.time.just_now` | Just now | 방금 전 | drafted |
+| `ra.launch.time.minutes` | {n} min ago | {n}분 전 | drafted |
+| `ra.launch.time.hours` | {h}h {m}m ago | {h}시간 {m}분 전 | drafted |
+| `ra.launch.time.yesterday` | Yesterday · {time} | 어제 · {time} | drafted |
+| `ra.launch.error.dashboard` | Dashboard failed to load. Please refresh and try again. | 대시보드를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요. | drafted |
+| `ra.launch.error.dashboard_status` | Dashboard failed to load ({status}): {message} | 대시보드를 불러오지 못했습니다 ({status}): {message} | drafted |
+| `ra.launch.error.start` | Failed to start session. Please try again. | 세션을 시작하지 못했습니다. 다시 시도해 주세요. | drafted |
+| `ra.launch.error.start_status` | Server error ({status}): {message} | 서버 오류 ({status}): {message} | drafted |
+| `ra.launch.error.trial` | Failed to start trial mode. Please try again. | 리허설을 시작하지 못했습니다. 다시 시도해 주세요. | drafted |
+| `ra.launch.error.trial_status` | Trial launch failed ({status}): {message} | 리허설 시작 실패 ({status}): {message} | drafted |
+
+Dates and times outside these format strings are rendered by `Intl` with the locale's
+BCP 47 tag (`en-CA` / `ko-KR`), not from this table. `{status}` and `{message}` carry
+verbatim backend text, which is English-only (see 6.12).

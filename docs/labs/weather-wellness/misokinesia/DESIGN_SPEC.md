@@ -128,6 +128,7 @@ The RA-facing `/misokinesia` page is a lean operational dashboard. All stats are
 The frontend loads these values on mount through typed wrappers in `src/lib/api/misokinesia.ts`.
 
 **Layout:**
+- Language toggle (EN / KO), sitting above the primary action cluster: a two-button segmented control (`role="group"`, `aria-pressed` on the active option), matching the trial section jumper's segmented styling. Disabled while a session or trial is launching.
 - Primary action cluster: start production session, run short trial, run full trial, and no-write trial hint.
 - Active stimuli count card: live count from `GET /misokinesia/dashboard`.
 - Recent Sessions ledger (left card, wider): up to 10 rows from `GET /misokinesia/dashboard`, ordered most-recent first.
@@ -144,6 +145,12 @@ The frontend loads these values on mount through typed wrappers in `src/lib/api/
 - Each row: video label (derived from filename, title-cased) and avg composite score (4–20 range).
 - Empty state when no response data exists yet.
 - Use the same quiet editorial pattern as the participant screens: masthead, hairlines, white cards on paper, compact tabular values, restrained badges, and lucide icons.
+
+**Language toggle (EN / KO):**
+- Selects the locale for the next Misokinesia session. It is sent as `language` on `POST /misokinesia/start` through the typed wrapper `startMisokinesiaSession(locale)`, and both trial modes — which never reach that endpoint — carry it on the locally built trial manifest instead.
+- This page renders its own copy in the selected language so the RA can see at a glance which version they are about to run. Strings come from `ra.launch.*` in the Misokinesia catalogue (`docs/labs/weather-wellness/misokinesia/LOCALIZATION.md` section 6.13); relative times and dates use the locale's BCP 47 tag.
+- The selection is remembered per browser in `localStorage` (`ww:miso-ra-locale`) and adopted after mount, so the first render still matches the server render. An unreadable or unsupported stored value falls back to `en`.
+- **Scope:** `/misokinesia` is the only translated RA surface. `/dashboard`, `/import-export` and the rest of the RA UI stay English.
 
 ---
 

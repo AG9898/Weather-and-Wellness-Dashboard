@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import LabGuard from "@/lib/components/LabGuard";
 import MisokinesiaLaunchPage from "@/lib/components/MisokinesiaLaunchPage";
@@ -16,6 +16,13 @@ import {
   type MisoDashboardResponse,
   type MisoVideoScoresResponse,
 } from "@/lib/api/misokinesia";
+import {
+  DEFAULT_MISO_LOCALE,
+  misoMessage,
+  readRaMisoLocale,
+  storeRaMisoLocale,
+  type MisoLocale,
+} from "@/lib/i18n";
 import {
   buildTrialRunPath,
   createTrialRunMisokinesiaManifest,
@@ -46,6 +53,25 @@ function MisokinesiaPageContent() {
   const [videoScores, setVideoScores] = useState<MisoVideoScoresResponse | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
+  // Seeded from the default so the first client render matches the server
+  // render; the RA's remembered choice is adopted in the effect below.
+  const [locale, setLocale] = useState<MisoLocale>(DEFAULT_MISO_LOCALE);
+  // The dashboard load runs once on mount; the ref lets its error message pick
+  // up the current locale without making the fetch re-run on every toggle.
+  const localeRef = useRef(locale);
+
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
+
+  useEffect(() => {
+    setLocale(readRaMisoLocale());
+  }, []);
+
+  function handleLocaleChange(next: MisoLocale) {
+    setLocale(next);
+    storeRaMisoLocale(next);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -69,8 +95,11 @@ function MisokinesiaPageContent() {
         }
         setDashboardError(
           err instanceof ApiError
-            ? `Dashboard failed to load (${err.status}): ${err.message}`
-            : "Dashboard failed to load. Please refresh and try again."
+            ? misoMessage("ra.launch.error.dashboard_status", localeRef.current, {
+                status: err.status,
+                message: err.message,
+              })
+            : misoMessage("ra.launch.error.dashboard", localeRef.current)
         );
       } finally {
         if (!cancelled) {
@@ -90,14 +119,17 @@ function MisokinesiaPageContent() {
     setLoading(true);
     setError(null);
     try {
-      const manifest: MisokinesiaManifest = await startMisokinesiaSession();
+      const manifest: MisokinesiaManifest = await startMisokinesiaSession(locale);
       sessionStorage.setItem(MISOKINESIA_MANIFEST_KEY, JSON.stringify(manifest));
       router.push(`/misokinesia/${manifest.misokinesia_participant_id}`);
     } catch (err) {
       setError(
         err instanceof ApiError
-          ? `Server error (${err.status}): ${err.message}`
-          : "Failed to start session. Please try again."
+          ? misoMessage("ra.launch.error.start_status", locale, {
+              status: err.status,
+              message: err.message,
+            })
+          : misoMessage("ra.launch.error.start", locale)
       );
       setLoading(false);
     }
@@ -121,7 +153,8 @@ function MisokinesiaPageContent() {
       const manifest = createTrialRunMisokinesiaManifest(
         trialState,
         trialManifest.clips,
-        mode
+        mode,
+        locale
       );
       persistTrialRunState(trialState);
       sessionStorage.setItem(MISOKINESIA_MANIFEST_KEY, JSON.stringify(manifest));
@@ -131,10 +164,13 @@ function MisokinesiaPageContent() {
     } catch (err) {
       setError(
         err instanceof ApiError
-          ? `Trial launch failed (${err.status}): ${err.message}`
+          ? misoMessage("ra.launch.error.trial_status", locale, {
+              status: err.status,
+              message: err.message,
+            })
           : err instanceof Error
             ? err.message
-          : "Failed to start trial mode. Please try again."
+            : misoMessage("ra.launch.error.trial", locale)
       );
       if (mode === "full") {
         setFullTrialLoading(false);
@@ -154,6 +190,8 @@ function MisokinesiaPageContent() {
 
   return (
     <MisokinesiaLaunchPage
+      locale={locale}
+      onLocaleChange={handleLocaleChange}
       loading={loading}
       shortTrialLoading={shortTrialLoading}
       fullTrialLoading={fullTrialLoading}

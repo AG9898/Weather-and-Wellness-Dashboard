@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   DEFAULT_MISO_LOCALE,
@@ -6,11 +6,15 @@ import {
   MISO_MESSAGES,
   MISO_OPTION_FIELDS,
   MISO_OPTION_LABELS,
+  MISO_RA_LOCALE_STORAGE_KEY,
   isMisoLocale,
+  misoLocaleTag,
   misoMessage,
   misoOptionKeys,
   misoOptionLabel,
+  readRaMisoLocale,
   resolveMisoLocale,
+  storeRaMisoLocale,
   type MisoMessageKey,
   type MisoOptionLabelSet,
 } from "@/lib/i18n";
@@ -65,8 +69,24 @@ describe("miso message catalogue", () => {
   });
 
   it("carries the 120 UI chrome keys documented in LOCALIZATION.md section 6", () => {
+    // RA launch-page keys live under `ra.launch.` precisely so they do not
+    // inflate the participant chrome count this asserts.
     const chromeKeys = EN_KEYS.filter((key) => key.startsWith("chrome."));
     expect(chromeKeys).toHaveLength(120);
+  });
+
+  it("translates the RA launch page rather than leaving it English", () => {
+    const launchKeys = EN_KEYS.filter((key) => key.startsWith("ra.launch."));
+    expect(launchKeys.length).toBeGreaterThan(0);
+    // Locale codes on the toggle are the only rows that are legitimately
+    // identical in both locales.
+    const sameInBothLocales = launchKeys.filter(
+      (key) => MISO_MESSAGES.ko[key] === MISO_MESSAGES.en[key],
+    );
+    expect(sameInBothLocales).toEqual([
+      "ra.launch.language.en",
+      "ra.launch.language.ko",
+    ]);
   });
 
   it("keeps the KO GAD-7 distinct from the EN wording", () => {
@@ -192,5 +212,65 @@ describe("miso option labels", () => {
     expect(misoOptionLabel("fluent_languages", "legacy_unknown_key", "en")).toBe(
       "legacy_unknown_key",
     );
+  });
+});
+
+describe("RA launch locale preference", () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+
+  function stubStorage(initial?: string) {
+    const store = new Map<string, string>();
+    if (initial !== undefined) {
+      store.set(MISO_RA_LOCALE_STORAGE_KEY, initial);
+    }
+    (globalThis as { window?: unknown }).window = {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => void store.set(key, value),
+      },
+    };
+    return store;
+  }
+
+  afterEach(() => {
+    if (originalWindow === undefined) {
+      delete (globalThis as { window?: unknown }).window;
+    } else {
+      (globalThis as { window?: unknown }).window = originalWindow;
+    }
+  });
+
+  it("falls back to the default locale with no storage available", () => {
+    delete (globalThis as { window?: unknown }).window;
+    expect(readRaMisoLocale()).toBe(DEFAULT_MISO_LOCALE);
+    // Storing without storage must be a no-op, never a throw.
+    expect(() => storeRaMisoLocale("ko")).not.toThrow();
+  });
+
+  it("remembers the RA selection across visits", () => {
+    const store = stubStorage();
+    storeRaMisoLocale("ko");
+    expect(store.get(MISO_RA_LOCALE_STORAGE_KEY)).toBe("ko");
+    expect(readRaMisoLocale()).toBe("ko");
+  });
+
+  it("ignores an unsupported stored value instead of trusting it", () => {
+    stubStorage("fr");
+    expect(readRaMisoLocale()).toBe("en");
+  });
+
+  it("survives storage that throws", () => {
+    (globalThis as { window?: unknown }).window = {
+      get localStorage(): Storage {
+        throw new Error("blocked site data");
+      },
+    };
+    expect(readRaMisoLocale()).toBe(DEFAULT_MISO_LOCALE);
+    expect(() => storeRaMisoLocale("ko")).not.toThrow();
+  });
+
+  it("maps each locale to a real BCP 47 tag for Intl formatting", () => {
+    expect(misoLocaleTag("en")).toBe("en-CA");
+    expect(misoLocaleTag("ko")).toBe("ko-KR");
   });
 });

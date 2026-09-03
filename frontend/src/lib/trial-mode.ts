@@ -1,4 +1,5 @@
 import type { PostSurveyKey } from "@/lib/misokinesia-phase";
+import { DEFAULT_MISO_LOCALE, type MisoLocale } from "@/lib/i18n";
 import type {
   CognitiveTaskKey,
   PoffenbergerBlockManifest,
@@ -55,6 +56,12 @@ export interface TrialRunMisokinesiaManifest {
   misokinesia_participant_number: number;
   session_id: string;
   trial_mode?: MisokinesiaTrialMode;
+  /**
+   * Rehearsal locale. A trial run never reaches `POST /misokinesia/start`, so
+   * the locale the RA selected on the launch page is client state only and
+   * travels on this local manifest.
+   */
+  language: MisoLocale;
   post_survey_order: string;
   clips: TrialRunMisokinesiaClip[];
 }
@@ -153,7 +160,8 @@ export function clearTrialRunState(): void {
 export function createTrialRunMisokinesiaManifest(
   state: TrialRunState,
   clips: TrialRunMisokinesiaClip[],
-  mode: MisokinesiaTrialMode = state.misokinesia_trial_mode ?? "short"
+  mode: MisokinesiaTrialMode = state.misokinesia_trial_mode ?? "short",
+  language: MisoLocale = DEFAULT_MISO_LOCALE
 ): TrialRunMisokinesiaManifest {
   if (state.flow !== "misokinesia" || !state.session_id || !state.misokinesia_participant_id) {
     throw new Error("Misokinesia trial mode requires fake session and participant ids.");
@@ -165,6 +173,7 @@ export function createTrialRunMisokinesiaManifest(
     misokinesia_participant_number: 0,
     session_id: state.session_id,
     trial_mode: mode,
+    language,
     post_survey_order: postSurveyOrder.join(","),
     clips: clips.map((clip) => ({ ...clip })),
   };

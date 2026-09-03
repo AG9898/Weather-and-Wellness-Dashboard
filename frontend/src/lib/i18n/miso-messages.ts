@@ -5,6 +5,10 @@
  * sections 5 (instrument strings) and 6 (UI chrome strings). That document is
  * canonical: correct a label there and here together, and never change a key.
  *
+ * One RA-facing block lives here too: the `ra.launch.*` keys of section 6.13,
+ * which localize the `/misokinesia` launch page so the RA can see which
+ * language version they are about to run. No other RA surface is translated.
+ *
  * Keys here are dotted and **display-only** — they are never stored. Stored
  * values are the option keys in `miso-option-labels.ts` (LOCALIZATION.md
  * section 2), which are a separate namespace.
@@ -351,6 +355,47 @@ const MISO_MESSAGES_EN = {
   "chrome.jumper.maq": "MAQ",
   "chrome.jumper.end": "End",
   "chrome.jumper.done": "Done",
+
+  // --- 6.13 RA Misokinesia launch page (RA-only) -------------------------
+  // The single documented exception to "the RA dashboard is English-only":
+  // `/misokinesia` renders in the locale the RA has selected so it is visible
+  // at a glance which version is about to run. `ra.launch.*` keys are RA-facing
+  // and deliberately kept out of the `chrome.*` namespace, whose count is
+  // asserted against LOCALIZATION.md section 6.
+  "ra.launch.kicker": "Misokinesia Study · Lab Operations",
+  "ra.launch.title": "Misokinesia Task",
+  "ra.launch.subtitle":
+    "Launch a participant session, run a rehearsal trial, or review recent activity for this lab module.",
+  "ra.launch.language.aria": "Session language",
+  "ra.launch.language.en": "EN",
+  "ra.launch.language.ko": "KO",
+  "ra.launch.button.start": "Start Misokinesia Session",
+  "ra.launch.button.short_trial": "Short Trial",
+  "ra.launch.button.full_trial": "Full Trial",
+  "ra.launch.state.starting": "Starting…",
+  "ra.launch.state.loading": "Loading",
+  "ra.launch.trial_note": "Trials use fake ids · no data is written",
+  "ra.launch.stats.active_stimuli": "Active stimuli",
+  "ra.launch.stats.active_stimuli_help": "clips available in the active test set",
+  "ra.launch.recent.title": "Recent sessions",
+  "ra.launch.recent.undo": "Undo last session",
+  "ra.launch.recent.loading": "Loading recent sessions…",
+  "ra.launch.recent.empty": "No sessions yet.",
+  "ra.launch.scores.title": "Video Score Leaderboard",
+  "ra.launch.scores.loading": "Loading video scores…",
+  "ra.launch.scores.empty": "No video score data yet.",
+  "ra.launch.scores.highest": "Highest reactivity",
+  "ra.launch.scores.lowest": "Lowest reactivity",
+  "ra.launch.time.just_now": "Just now",
+  "ra.launch.time.minutes": "{n} min ago",
+  "ra.launch.time.hours": "{h}h {m}m ago",
+  "ra.launch.time.yesterday": "Yesterday · {time}",
+  "ra.launch.error.dashboard": "Dashboard failed to load. Please refresh and try again.",
+  "ra.launch.error.dashboard_status": "Dashboard failed to load ({status}): {message}",
+  "ra.launch.error.start": "Failed to start session. Please try again.",
+  "ra.launch.error.start_status": "Server error ({status}): {message}",
+  "ra.launch.error.trial": "Failed to start trial mode. Please try again.",
+  "ra.launch.error.trial_status": "Trial launch failed ({status}): {message}",
 } as const;
 
 /** Every display-only string key in the Misokinesia catalogue. */
@@ -652,6 +697,42 @@ const MISO_MESSAGES_KO: Record<MisoMessageKey, string> = {
   "chrome.jumper.maq": "MAQ",
   "chrome.jumper.end": "종료",
   "chrome.jumper.done": "완료",
+
+  // --- 6.13 RA Misokinesia launch page (RA-only) -------------------------
+  "ra.launch.kicker": "미소키네시아 연구 · 실험실 운영",
+  "ra.launch.title": "미소키네시아 과제",
+  "ra.launch.subtitle":
+    "참가자 세션을 시작하거나 리허설을 실행하고, 이 모듈의 최근 활동을 확인하세요.",
+  "ra.launch.language.aria": "세션 언어",
+  "ra.launch.language.en": "EN",
+  "ra.launch.language.ko": "KO",
+  "ra.launch.button.start": "미소키네시아 세션 시작",
+  "ra.launch.button.short_trial": "짧은 리허설",
+  "ra.launch.button.full_trial": "전체 리허설",
+  "ra.launch.state.starting": "시작하는 중…",
+  "ra.launch.state.loading": "불러오는 중",
+  "ra.launch.trial_note": "리허설은 가짜 ID를 사용하며 데이터가 저장되지 않습니다",
+  "ra.launch.stats.active_stimuli": "활성 자극",
+  "ra.launch.stats.active_stimuli_help": "활성 테스트 세트에서 사용할 수 있는 영상 수",
+  "ra.launch.recent.title": "최근 세션",
+  "ra.launch.recent.undo": "마지막 세션 취소",
+  "ra.launch.recent.loading": "최근 세션을 불러오는 중…",
+  "ra.launch.recent.empty": "아직 세션이 없습니다.",
+  "ra.launch.scores.title": "영상 점수 순위",
+  "ra.launch.scores.loading": "영상 점수를 불러오는 중…",
+  "ra.launch.scores.empty": "아직 영상 점수 데이터가 없습니다.",
+  "ra.launch.scores.highest": "반응이 가장 높은 영상",
+  "ra.launch.scores.lowest": "반응이 가장 낮은 영상",
+  "ra.launch.time.just_now": "방금 전",
+  "ra.launch.time.minutes": "{n}분 전",
+  "ra.launch.time.hours": "{h}시간 {m}분 전",
+  "ra.launch.time.yesterday": "어제 · {time}",
+  "ra.launch.error.dashboard": "대시보드를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.",
+  "ra.launch.error.dashboard_status": "대시보드를 불러오지 못했습니다 ({status}): {message}",
+  "ra.launch.error.start": "세션을 시작하지 못했습니다. 다시 시도해 주세요.",
+  "ra.launch.error.start_status": "서버 오류 ({status}): {message}",
+  "ra.launch.error.trial": "리허설을 시작하지 못했습니다. 다시 시도해 주세요.",
+  "ra.launch.error.trial_status": "리허설 시작 실패 ({status}): {message}",
 };
 
 export const MISO_MESSAGES: Readonly<

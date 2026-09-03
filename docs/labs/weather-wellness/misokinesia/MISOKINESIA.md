@@ -129,7 +129,9 @@ visual placement and theming spec.
 
 ## RA Flow
 
-Navigate to `/misokinesia` via the floating dock present on all RA pages. Click "Start Misokinesia Session". The backend creates the anonymous participant and session and returns the manifest. The app navigates to `/misokinesia/[id]` on the same device — no external URL or participant handoff.
+Navigate to `/misokinesia` via the floating dock present on all RA pages. Select the session language on the EN / KO toggle, then click "Start Misokinesia Session". The backend creates the anonymous participant and session, persists the selected `language`, and returns the manifest. The app navigates to `/misokinesia/[id]` on the same device — no external URL or participant handoff.
+
+The toggle also drives both trial modes, which never call `POST /misokinesia/start` and carry the locale on their local manifest instead. The launch page renders its own copy in the selected language so the RA can see which version is about to run, and remembers the selection per browser between visits; `/misokinesia` is the only translated RA surface. See [`LOCALIZATION.md`](LOCALIZATION.md) section 6.13 and [`DESIGN_SPEC.md`](DESIGN_SPEC.md).
 
 ---
 
@@ -157,7 +159,7 @@ Router prefix: `/misokinesia`. Implemented in `backend/app/routers/misokinesia.p
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; returns the full active stimulus manifest in a randomized playback order plus `post_survey_order` |
+| `POST` | `/misokinesia/start` | RA required | Creates anonymous participant + session + misokinesia_participants row; accepts the RA-selected `language` (`en` / `ko`, default `en`); returns the full active stimulus manifest in a randomized playback order plus `post_survey_order` and `language` |
 | `GET` | `/misokinesia/trial-manifest` | RA required | Read-only rehearsal endpoint; returns 5 randomly sampled active clip URLs and a locally generated `post_survey_order` without creating any rows |
 | `PATCH` | `/misokinesia/participants/{participant_id}/demographics` | None (participant-facing) | Writes the sourced miso-specific demographics form to `misokinesia_participants`; idempotent; production UI requires all visible questions |
 | `POST` | `/misokinesia/participants/{participant_id}/responses` | None (participant-facing) | Submits one per-clip questionnaire; sets `completed_at` server-side on final submission; returns `is_complete` flag |
