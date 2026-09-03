@@ -107,6 +107,14 @@
 - Never call `fetch` directly from a component or page file
 - Wrapper functions handle headers (including auth tokens) and type the response
 
+### Localization (Misokinesia only)
+- i18n is **Misokinesia-scoped**, not platform-wide. `ko` is an available locale inside the Misokinesia participant flow only; the Weather component and every RA surface stay English-only
+- The layer lives in `src/lib/i18n/` and is repo-local and dependency-free — do not add `next-intl` or any other i18n package for this
+- **No inline participant-facing literals in Misokinesia components.** Every participant-visible string resolves through `misoMessage(key, locale)`, and every choice option renders through `misoOptionLabel(field, key, locale)` — the same discipline as the no-bare-fetch rule above
+- Stored values are language-independent option keys (`sex_male`, `timing_immediately`, …). Dotted catalogue keys (`chrome.button.submit`) are display-only and must never be stored
+- Locale is session state resolved from the manifest (`language`), never a URL segment. Do not add a locale segment to the App Router or to `middleware.ts`
+- `docs/labs/weather-wellness/misokinesia/LOCALIZATION.md` is the canonical string source: change a label there and in the catalogue together, and never rename a key to fix a label
+
 ### Trial run mode
 - Trial mode is a no-write RA rehearsal path. Canonical behavior (fake ID format, watermark visibility, consent, and module boundaries) lives in `docs/TRIAL_MODE.md`.
 

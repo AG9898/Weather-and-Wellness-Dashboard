@@ -12,6 +12,16 @@ inline literal.
 Related: [`SCHEMA.md`](SCHEMA.md) for column definitions, [`API.md`](API.md) for the
 demographics contract, [`DESIGN_SPEC.md`](DESIGN_SPEC.md) for participant UX.
 
+**Implementation.** This document is canonical; `frontend/src/lib/i18n/` is its
+transcription. `miso-locale.ts` holds the locale type and default, `miso-messages.ts`
+the section 5–6 string catalogue plus the `misoMessage(key, locale)` accessor, and
+`miso-option-labels.ts` the section 2 option-key label maps plus
+`misoOptionKeys(field, locale)` / `misoOptionLabel(field, key, locale)`. The KO
+catalogue is typed as a total record over the EN keys, so a key present in one
+locale and missing from the other fails `tsc`. Correct a label here and in the
+catalogue together; never rename a key to fix a label. The layer is repo-local and
+dependency-free — no locale routing, no i18n package.
+
 ---
 
 ## 1. Locale Registry
@@ -256,8 +266,10 @@ other than 한국어.
 | `relationship_none` | None of the Above | 해당 없음 | en, ko | workbook |
 
 The stored EN label `Seperated` is a legacy misspelling. The key spells it
-correctly, so the EN display label can be corrected to `Separated` in the string
-catalogue once the backfill lands. Match on the misspelled string when migrating.
+correctly, and the backfill has landed (migration `20260903_000001`), so the EN
+display label is now `Separated` in `frontend/src/lib/i18n/miso-option-labels.ts` —
+the one row in this table where the EN display label deliberately differs from the
+legacy stored string. Match on the misspelled string when migrating.
 
 `relationship_other` gates `relationship_status_other_text`.
 

@@ -5134,7 +5134,7 @@
       "id": "T1853",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - frontend locale infrastructure and typed catalogue",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "estimate": "M",

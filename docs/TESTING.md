@@ -131,6 +131,7 @@ Config: `frontend/vitest.config.ts`
 | `src/lib/server/route-handler-cache.test.ts` | Route Handler infra | Cache-key composition and `x-ww-cache` response helper behavior |
 | `src/lib/server/route-handler-validation.test.ts` | Route Handler infra | Shared `date_from` / `date_to` validation branches |
 | `src/lib/trial-mode.test.ts` | Trial mode | Launch-control source guards, fake-id/read-only manifest helpers, trial-vs-production submit branching, and trial-badge helper state |
+| `src/lib/i18n/miso-messages.test.ts` | Misokinesia locale | EN/KO catalogue key-set parity, no empty KO value, matching placeholder sets, locale resolution fallback, `misoMessage` interpolation, and per-locale option-key splits for the Case B divergent option sets |
 
 ### Testable utility modules
 
@@ -142,6 +143,7 @@ Pure utility modules that hold logic extracted from components for testability:
 | `src/lib/server/route-handler-auth.ts` | `extractBearerToken`, `requireRaBearerToken`, `verifySupabaseJWT` |
 | `src/lib/server/route-handler-cache.ts` | `getRedisClient`, `buildCacheKey`, `readCacheValue`, `writeCacheValue`, `jsonWithCacheState` |
 | `src/lib/server/route-handler-validation.ts` | `isIsoDate`, `readRequiredDateRange` |
+| `src/lib/i18n/` | `MisoLocale`, `resolveMisoLocale`, `isMisoLocale`, `MISO_MESSAGES`, `misoMessage`, `MISO_OPTION_LABELS`, `misoOptionKeys`, `misoOptionLabel` |
 | `src/lib/trial-mode.ts` | `createTrialRunState`, Misokinesia trial manifest composition helpers, `getWeatherWellnessSubmitMode`, `getMisokinesiaSubmitMode`, `runTrialAwareSubmit`, `getTrialRunWatermarkLabel` |
 
 ### Conventions
