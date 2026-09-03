@@ -11,6 +11,12 @@ import {
   getMisokinesiaSubmitMode,
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
+import {
+  DEFAULT_MISO_LOCALE,
+  misoMessage,
+  type MisoLocale,
+  type MisoMessageKey,
+} from "@/lib/i18n";
 
 interface MisokinesiaQuestionnaireProps {
   misokinesiaParticipantId: string;
@@ -20,22 +26,29 @@ interface MisokinesiaQuestionnaireProps {
   totalClips: number;
   trialMode?: boolean;
   isFinalClip?: boolean;
+  /** Session locale. Fixed for the session; selects labels only. */
+  locale?: MisoLocale;
   onComplete: (result: MisokinesiaTrialResponseResult) => void;
 }
 
-const QUESTIONS = [
-  { key: "q1" as const, text: "I find this video unpleasant" },
-  { key: "q2" as const, text: "I felt physical discomfort during the video" },
-  { key: "q3" as const, text: "I felt upset during the video" },
-  { key: "q4" as const, text: "I wanted to stop the video early / or close my eyes" },
+type VmaItemKey = "q1" | "q2" | "q3" | "q4";
+
+// Item order and submitted field names are language-independent; only the
+// display text resolves per locale (LOCALIZATION.md section 5.1).
+const QUESTIONS: { key: VmaItemKey; textKey: MisoMessageKey }[] = [
+  { key: "q1", textKey: "vma.item.q1" },
+  { key: "q2", textKey: "vma.item.q2" },
+  { key: "q3", textKey: "vma.item.q3" },
+  { key: "q4", textKey: "vma.item.q4" },
 ];
 
-const SCALE = [
-  { value: 1, label: "Strongly Disagree" },
-  { value: 2, label: "Disagree" },
-  { value: 3, label: "Neutral" },
-  { value: 4, label: "Agree" },
-  { value: 5, label: "Strongly Agree" },
+// The submitted value is the numeric point, identical across locales.
+const SCALE: { value: number; labelKey: MisoMessageKey }[] = [
+  { value: 1, labelKey: "vma.scale.1" },
+  { value: 2, labelKey: "vma.scale.2" },
+  { value: 3, labelKey: "vma.scale.3" },
+  { value: 4, labelKey: "vma.scale.4" },
+  { value: 5, labelKey: "vma.scale.5" },
 ];
 
 export default function MisokinesiaQuestionnaire({
@@ -46,9 +59,10 @@ export default function MisokinesiaQuestionnaire({
   totalClips,
   trialMode = false,
   isFinalClip = false,
+  locale = DEFAULT_MISO_LOCALE,
   onComplete,
 }: MisokinesiaQuestionnaireProps) {
-  const [responses, setResponses] = useState<Partial<Record<"q1" | "q2" | "q3" | "q4", number>>>({});
+  const [responses, setResponses] = useState<Partial<Record<VmaItemKey, number>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,7 +77,7 @@ export default function MisokinesiaQuestionnaire({
   // Progress strip values
   const progressPct = totalClips > 0 ? Math.round((clipNumber / totalClips) * 100) : 0;
 
-  const handleSelect = (key: "q1" | "q2" | "q3" | "q4", value: number) => {
+  const handleSelect = (key: VmaItemKey, value: number) => {
     setResponses((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -94,7 +108,11 @@ export default function MisokinesiaQuestionnaire({
         },
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Submission failed. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : misoMessage("chrome.error.submit_failed", locale)
+      );
       setSubmitting(false);
     }
   };
@@ -104,7 +122,10 @@ export default function MisokinesiaQuestionnaire({
       {/* Progress strip */}
       <div className="mb-7 flex items-center gap-4">
         <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
-          Clip {clipNumber} of {totalClips}
+          {misoMessage("chrome.clip.progress", locale, {
+            n: clipNumber,
+            m: totalClips,
+          })}
         </span>
         <div className="relative h-0.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div
@@ -113,19 +134,19 @@ export default function MisokinesiaQuestionnaire({
           />
         </div>
         <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
-          {progressPct}%
+          {misoMessage("chrome.clip.progress_percent", locale, { pct: progressPct })}
         </span>
       </div>
 
       {/* Kicker + heading + body */}
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        Post-clip · 4 questions
+        {misoMessage("chrome.clip.kicker", locale)}
       </p>
       <h2 className="mt-2.5 text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
-        How did you feel about that clip?
+        {misoMessage("chrome.clip.heading", locale)}
       </h2>
       <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-        Rate each statement from 1 (Strongly Disagree) to 5 (Strongly Agree). There are no right answers.
+        {misoMessage("chrome.clip.help", locale)}
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -133,6 +154,7 @@ export default function MisokinesiaQuestionnaire({
         <div className="mt-8 flex flex-col gap-3.5">
           {QUESTIONS.map((q, idx) => {
             const selected = responses[q.key];
+            const text = misoMessage(q.textKey, locale);
             return (
               <fieldset
                 key={q.key}
@@ -140,15 +162,15 @@ export default function MisokinesiaQuestionnaire({
                 style={{ background: "var(--fieldset-bg)" }}
               >
                 <legend className="sr-only">
-                  Q{idx + 1}: {q.text}
+                  {misoMessage("chrome.clip.legend", locale, { n: idx + 1, text })}
                 </legend>
                 {/* Question label row */}
                 <div className="mb-3 flex items-baseline gap-3">
                   <span className="min-w-[24px] shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
-                    Q{idx + 1}
+                    {misoMessage("chrome.clip.item_number", locale, { n: idx + 1 })}
                   </span>
                   <span className="text-[14px] font-medium leading-[1.45] text-foreground">
-                    {q.text}
+                    {text}
                   </span>
                 </div>
                 {/* Scale chips row */}
@@ -179,7 +201,7 @@ export default function MisokinesiaQuestionnaire({
                           className="text-[10px] leading-none"
                           style={{ opacity: 0.8, letterSpacing: 0, textTransform: "none" }}
                         >
-                          {opt.label}
+                          {misoMessage(opt.labelKey, locale)}
                         </span>
                       </label>
                     );
@@ -198,14 +220,19 @@ export default function MisokinesiaQuestionnaire({
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">
-            {answeredCount}/{QUESTIONS.length} answered
+            {misoMessage("chrome.form.answered_count", locale, {
+              n: answeredCount,
+              m: QUESTIONS.length,
+            })}
           </span>
           <Button
             type="submit"
             disabled={!allAnswered || submitting}
             className="h-11 min-w-[160px] rounded-xl px-[22px] text-sm text-primary-foreground"
           >
-            {submitting ? "Submitting…" : "Continue →"}
+            {submitting
+              ? misoMessage("chrome.state.submitting", locale)
+              : misoMessage("chrome.button.continue_arrow", locale)}
           </Button>
         </div>
       </form>

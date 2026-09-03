@@ -1466,11 +1466,21 @@ export interface MisokinesiaTrialResponseResult {
   session_id: string;
 }
 
+// Language-independent option KEYS, mirroring `_VALID_TIMING_OPTIONS` in
+// `backend/app/schemas/misokinesia.py` and the registry in
+// `docs/labs/weather-wellness/misokinesia/LOCALIZATION.md` section 2. Display
+// labels live in `frontend/src/lib/i18n/miso-option-labels.ts`.
+export type MisoStrongerResponsesTiming =
+  | "timing_immediately"
+  | "timing_after_5s"
+  | "timing_after_10s"
+  | "timing_end_of_video";
+
 export interface MisokinesiaEndOfTaskPayload {
   end_fidgeting_text?: string;
   end_emotions_text?: string;
   stronger_responses?: boolean;
-  stronger_responses_timing?: string;
+  stronger_responses_timing?: MisoStrongerResponsesTiming;
 }
 
 export interface MisokinesiaEndOfTaskResult {

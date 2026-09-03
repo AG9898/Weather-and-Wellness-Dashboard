@@ -174,7 +174,9 @@ See `docs/labs/weather-wellness/misokinesia/API.md` for full request/response sc
 
 ## Per-clip Questionnaire
 
-4 questions shown after every clip. All items are integer 1–5 (1 = Strongly Disagree, 5 = Strongly Agree).
+4 questions shown after every clip. All items are integer 1–5 (1 = Strongly Disagree, 5 = Strongly Agree). Stored values are the integers and are identical in every locale.
+
+The English below is the `en` label, not canonical item text: `MisokinesiaQuestionnaire.tsx` resolves both the items and the five scale labels by key from the session locale. Per-locale strings live in [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.1 (`vma.item.*`, `vma.scale.*`).
 
 | Column | Question |
 |---|---|
@@ -308,6 +310,8 @@ Same card carousel pattern as MkAQ:
 ## End-of-task Questionnaire
 
 Three items shown once after all per-clip questionnaires for the returned manifest and all three post-video surveys are complete, before the completion screen. Stored as columns on `misokinesia_participants`.
+
+The English below is the `en` label. `MisokinesiaEndOfTaskForm.tsx` resolves every prompt, the Yes/No labels, and the four timing labels by key from the session locale; per-locale strings live in [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.5 (`end.item.*`, `end.timing.*`). The form has exactly these three items — workbook prompt O3 is deliberately not collected (LOCALIZATION.md section 5.7).
 
 | Column | Type | Question / Notes |
 |---|---|---|

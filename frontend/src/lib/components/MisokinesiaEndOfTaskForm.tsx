@@ -6,38 +6,57 @@ import { cn } from "@/lib/utils";
 import {
   submitMisokinesiaEndOfTask,
   type MisokinesiaEndOfTaskPayload,
+  type MisoStrongerResponsesTiming,
 } from "@/lib/api";
 import {
   getMisokinesiaSubmitMode,
   runTrialAwareSubmit,
 } from "@/lib/trial-mode";
+import {
+  DEFAULT_MISO_LOCALE,
+  misoMessage,
+  misoOptionKeys,
+  misoOptionLabel,
+  type MisoLocale,
+  type MisoMessageKey,
+} from "@/lib/i18n";
 
 interface MisokinesiaEndOfTaskFormProps {
   misokinesiaParticipantId: string;
   trialMode?: boolean;
+  /** Session locale. Fixed for the session; selects labels only. */
+  locale?: MisoLocale;
   onComplete: () => void;
 }
 
-const TIMING_OPTIONS = [
-  "Immediately",
-  "After 5 seconds",
-  "After 10 seconds",
-  "At the end of the video",
+const YES_NO_OPTIONS: { value: boolean; labelKey: MisoMessageKey }[] = [
+  { value: false, labelKey: "chrome.choice.no" },
+  { value: true, labelKey: "chrome.choice.yes" },
 ];
 
 export default function MisokinesiaEndOfTaskForm({
   misokinesiaParticipantId,
   trialMode = false,
+  locale = DEFAULT_MISO_LOCALE,
   onComplete,
 }: MisokinesiaEndOfTaskFormProps) {
   const [fidgetingText, setFidgetingText] = useState("");
   const [emotionsText, setEmotionsText] = useState("");
   const [strongerResponses, setStrongerResponses] = useState<boolean | undefined>(undefined);
-  const [strongerResponsesTiming, setStrongerResponsesTiming] = useState<string | undefined>(
-    undefined
-  );
+  const [strongerResponsesTiming, setStrongerResponsesTiming] = useState<
+    MisoStrongerResponsesTiming | undefined
+  >(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The stored value is the option key; the label is resolved per locale from
+  // the registry (LOCALIZATION.md section 2, `stronger_responses_timing`). The
+  // annotation is the compile-time check that the registry and the API union
+  // stay in step.
+  const timingOptionKeys: MisoStrongerResponsesTiming[] = misoOptionKeys(
+    "stronger_responses_timing",
+    locale
+  );
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
@@ -66,7 +85,11 @@ export default function MisokinesiaEndOfTaskForm({
         },
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Submission failed. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : misoMessage("chrome.error.submit_failed", locale)
+      );
       setSubmitting(false);
     }
   };
@@ -76,11 +99,11 @@ export default function MisokinesiaEndOfTaskForm({
       {/* Step indicator */}
       <div className="mb-9 flex items-center gap-3">
         <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
-          04 / 04
+          {misoMessage("chrome.step.end_position", locale)}
         </span>
         <div className="h-px flex-1 bg-border" />
         <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Demographics → Intro → Task → Surveys
+          {misoMessage("chrome.step.trail", locale)}
         </span>
       </div>
 
@@ -89,13 +112,13 @@ export default function MisokinesiaEndOfTaskForm({
         style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
       >
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          End of task
+          {misoMessage("chrome.end.kicker", locale)}
         </p>
         <h2 className="mt-3 text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
-          A few last questions
+          {misoMessage("chrome.end.heading", locale)}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          All fields are optional — answer as many as you like.
+          {misoMessage("chrome.end.help", locale)}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-7 space-y-3">
@@ -108,15 +131,14 @@ export default function MisokinesiaEndOfTaskForm({
               htmlFor="fidgeting-text"
               className="block text-[14px] font-medium leading-snug text-foreground"
             >
-              Please list any fidgeting stimuli that you are bothered by that did not show up in
-              the task.
+              {misoMessage("end.item.fidgeting", locale)}
             </label>
             <textarea
               id="fidgeting-text"
               value={fidgetingText}
               onChange={(e) => setFidgetingText(e.target.value)}
               rows={3}
-              placeholder="Optional — leave blank if none"
+              placeholder={misoMessage("chrome.end.optional_placeholder", locale)}
               className="w-full resize-none rounded-[10px] border border-border bg-background px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
             />
           </div>
@@ -130,15 +152,14 @@ export default function MisokinesiaEndOfTaskForm({
               htmlFor="emotions-text"
               className="block text-[14px] font-medium leading-snug text-foreground"
             >
-              Please list any emotional responses that you felt during the videos that were not
-              asked in the questionnaire.
+              {misoMessage("end.item.emotions", locale)}
             </label>
             <textarea
               id="emotions-text"
               value={emotionsText}
               onChange={(e) => setEmotionsText(e.target.value)}
               rows={3}
-              placeholder="Optional — leave blank if none"
+              placeholder={misoMessage("chrome.end.optional_placeholder", locale)}
               className="w-full resize-none rounded-[10px] border border-border bg-background px-3.5 py-2.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
             />
           </div>
@@ -149,17 +170,14 @@ export default function MisokinesiaEndOfTaskForm({
             style={{ background: "var(--fieldset-bg)" }}
           >
             <p className="text-[14px] font-medium leading-snug text-foreground">
-              Did viewing the videos create stronger responses over time?
+              {misoMessage("end.item.stronger_responses", locale)}
             </p>
             <div className="flex flex-wrap gap-2">
-              {[
-                { label: "No", value: false },
-                { label: "Yes", value: true },
-              ].map((opt) => {
+              {YES_NO_OPTIONS.map((opt) => {
                 const isSelected = strongerResponses === opt.value;
                 return (
                   <label
-                    key={opt.label}
+                    key={String(opt.value)}
                     className={cn(
                       "cursor-pointer rounded-[10px] border px-4 py-2 text-[12px] font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
                       isSelected
@@ -178,7 +196,7 @@ export default function MisokinesiaEndOfTaskForm({
                       }}
                       className="sr-only"
                     />
-                    {opt.label}
+                    {misoMessage(opt.labelKey, locale)}
                   </label>
                 );
               })}
@@ -188,14 +206,14 @@ export default function MisokinesiaEndOfTaskForm({
             {strongerResponses === true && (
               <div className="mt-2 space-y-2 border-t border-border pt-3">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  When did the responses feel stronger?
+                  {misoMessage("end.timing.stem", locale)}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {TIMING_OPTIONS.map((opt) => {
-                    const isSelected = strongerResponsesTiming === opt;
+                  {timingOptionKeys.map((optionKey) => {
+                    const isSelected = strongerResponsesTiming === optionKey;
                     return (
                       <label
-                        key={opt}
+                        key={optionKey}
                         className={cn(
                           "cursor-pointer rounded-[10px] border px-3.5 py-2 text-[12px] font-medium transition-colors focus-within:ring-2 focus-within:ring-ring/60",
                           isSelected
@@ -206,12 +224,12 @@ export default function MisokinesiaEndOfTaskForm({
                         <input
                           type="radio"
                           name="stronger-responses-timing"
-                          value={opt}
+                          value={optionKey}
                           checked={isSelected}
-                          onChange={() => setStrongerResponsesTiming(opt)}
+                          onChange={() => setStrongerResponsesTiming(optionKey)}
                           className="sr-only"
                         />
-                        {opt}
+                        {misoOptionLabel("stronger_responses_timing", optionKey, locale)}
                       </label>
                     );
                   })}
@@ -232,7 +250,9 @@ export default function MisokinesiaEndOfTaskForm({
               disabled={submitting}
               className="h-11 min-w-[160px] rounded-xl px-[22px] text-sm text-primary-foreground"
             >
-              {submitting ? "Submitting…" : "Finish →"}
+              {submitting
+                ? misoMessage("chrome.state.submitting", locale)
+                : misoMessage("chrome.button.finish", locale)}
             </Button>
           </div>
         </form>

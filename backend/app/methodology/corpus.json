@@ -545,11 +545,19 @@
       "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
     },
     {
-      "content": "### End-of-task — `stronger_responses_timing`\n\nAsked only when `stronger_responses` is true. This question is part of the\nend-of-task form, not the demographics workbook, so the Korean is **drafted**.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `timing_immediately` | Immediately | 즉시 | en, ko | drafted |\n| `timing_after_5s` | After 5 seconds | 5초 후 | en, ko | drafted |\n| `timing_after_10s` | After 10 seconds | 10초 후 | en, ko | drafted |\n| `timing_end_of_video` | At the end of the video | 영상이 끝날 무렵 | en, ko | drafted |\n\n---",
+      "content": "### End-of-task — `stronger_responses_timing`\n\nAsked only when `stronger_responses` is true. This question is part of the\nend-of-task form, not the demographics workbook, so the Korean is **drafted**.\n\n| Key | EN label | KO label | Locales | Provenance |\n|---|---|---|---|---|\n| `timing_immediately` | Immediately | 즉시 | en, ko | drafted |\n| `timing_after_5s` | After 5 seconds | 5초 후 | en, ko | drafted |\n| `timing_after_10s` | After 10 seconds | 10초 후 | en, ko | drafted |\n| `timing_end_of_video` | At the end of the video | 영상이 끝날 무렵 | en, ko | drafted |",
       "heading": "End-of-task — `stronger_responses_timing`",
       "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#end-of-task-stronger-responses-timing",
       "level": "3",
-      "sha256": "3600be570865518720883a526314d57019ad9a26eace5a3bf1b056c750512acc",
+      "sha256": "8c4b3e7501b01e3050e4e8db08eaec1daa74cf831f2f476054eeb0b0f9ad452c",
+      "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+    },
+    {
+      "content": "### `other` sentinels are keys, everywhere\n\nEight fields gate a free-text follow-up on their `other` option. The trigger is\nalways the registered key (`residence_other`, `ethnicity_other`,\n`fluent_lang_other`, `instruction_lang_other`, `disorder_other`,\n`substance_other`, `relationship_other`, `occupation_other`) — never the English\ndisplay string `Other`, which no longer reaches the database.\n\nThe mapping from field to `other` key lives once, in\n`OTHER_TEXT_OPTION_KEYS` (`backend/app/schemas/misokinesia.py`). Both consumers\nread it:\n\n- request validation, which rejects an `other` selection with no follow-up text;\n- flagged-sessions data quality (`backend/app/services/data_quality.py`), which\n  marks such a session `demographics_missing`.\n\nBecause the key is locale-independent, one comparison covers both locales: a ko\nparticipant selecting 기타 and an en participant selecting Other store the same\nvalue and are flagged identically. Any new consumer must compare on this\nmapping; a literal-string comparison degrades silently rather than erroring.\nWeather demographics are English-only and not key-migrated, so `Other` there is\nthe stored value itself.\n\n---",
+      "heading": "`other` sentinels are keys, everywhere",
+      "id": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md#other-sentinels-are-keys-everywhere",
+      "level": "3",
+      "sha256": "1aef6f5ca19cb1aea571a782b9df115453bb5fd85996cf496a80669c5720343f",
       "source_path": "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
     },
     {
@@ -873,11 +881,11 @@
       "source_path": "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
     },
     {
-      "content": "## Per-clip Questionnaire\n\n4 questions shown after every clip. All items are integer 1–5 (1 = Strongly Disagree, 5 = Strongly Agree).\n\n| Column | Question |\n|---|---|\n| `q1` | I find this video unpleasant |\n| `q2` | I felt physical discomfort during the video |\n| `q3` | I felt upset during the video |\n| `q4` | I wanted to stop the video early / or close my eyes |\n\n---",
+      "content": "## Per-clip Questionnaire\n\n4 questions shown after every clip. All items are integer 1–5 (1 = Strongly Disagree, 5 = Strongly Agree). Stored values are the integers and are identical in every locale.\n\nThe English below is the `en` label, not canonical item text: `MisokinesiaQuestionnaire.tsx` resolves both the items and the five scale labels by key from the session locale. Per-locale strings live in [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.1 (`vma.item.*`, `vma.scale.*`).\n\n| Column | Question |\n|---|---|\n| `q1` | I find this video unpleasant |\n| `q2` | I felt physical discomfort during the video |\n| `q3` | I felt upset during the video |\n| `q4` | I wanted to stop the video early / or close my eyes |\n\n---",
       "heading": "Per-clip Questionnaire",
       "id": "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md#per-clip-questionnaire",
       "level": "2",
-      "sha256": "1858759136a8a26c9e08ed811376d77909515e7cb20eca9225974dd9d2761643",
+      "sha256": "5b6f72d2fd0b8530cd188bce9176d42866b8cb5f191c1a7676b17dee5bbc8f52",
       "source_path": "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
     },
     {
@@ -929,11 +937,11 @@
       "source_path": "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
     },
     {
-      "content": "## End-of-task Questionnaire\n\nThree items shown once after all per-clip questionnaires for the returned manifest and all three post-video surveys are complete, before the completion screen. Stored as columns on `misokinesia_participants`.\n\n| Column | Type | Question / Notes |\n|---|---|---|\n| `end_fidgeting_text` | TEXT | \"Please list any fidgeting stimuli that you are bothered by that did not show up in the task\" (free text, optional) |\n| `end_emotions_text` | TEXT | \"Please list any emotional responses that you felt during the videos that were not asked in the questionnaire\" (free text, optional) |\n| `stronger_responses` | BOOLEAN | \"Did viewing the videos create stronger responses over time?\" — No (false) / Yes (true), optional |\n| `stronger_responses_timing` | VARCHAR | If `stronger_responses` is true: one of the option keys `timing_immediately`, `timing_after_5s`, `timing_after_10s`, `timing_end_of_video`; otherwise null. Setting this when `stronger_responses` is false returns 422. Labels per locale live in [`LOCALIZATION.md`](./LOCALIZATION.md). |\n\nAll fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `completed_at` is null (clips not yet finished) or if any of the three post-video surveys (MkAQ, GAD-7, MAQ) have not been submitted.\n\n---",
+      "content": "## End-of-task Questionnaire\n\nThree items shown once after all per-clip questionnaires for the returned manifest and all three post-video surveys are complete, before the completion screen. Stored as columns on `misokinesia_participants`.\n\nThe English below is the `en` label. `MisokinesiaEndOfTaskForm.tsx` resolves every prompt, the Yes/No labels, and the four timing labels by key from the session locale; per-locale strings live in [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.5 (`end.item.*`, `end.timing.*`). The form has exactly these three items — workbook prompt O3 is deliberately not collected (LOCALIZATION.md section 5.7).\n\n| Column | Type | Question / Notes |\n|---|---|---|\n| `end_fidgeting_text` | TEXT | \"Please list any fidgeting stimuli that you are bothered by that did not show up in the task\" (free text, optional) |\n| `end_emotions_text` | TEXT | \"Please list any emotional responses that you felt during the videos that were not asked in the questionnaire\" (free text, optional) |\n| `stronger_responses` | BOOLEAN | \"Did viewing the videos create stronger responses over time?\" — No (false) / Yes (true), optional |\n| `stronger_responses_timing` | VARCHAR | If `stronger_responses` is true: one of the option keys `timing_immediately`, `timing_after_5s`, `timing_after_10s`, `timing_end_of_video`; otherwise null. Setting this when `stronger_responses` is false returns 422. Labels per locale live in [`LOCALIZATION.md`](./LOCALIZATION.md). |\n\nAll fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `completed_at` is null (clips not yet finished) or if any of the three post-video surveys (MkAQ, GAD-7, MAQ) have not been submitted.\n\n---",
       "heading": "End-of-task Questionnaire",
       "id": "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md#end-of-task-questionnaire",
       "level": "2",
-      "sha256": "7c15891654e7a7a8f9762aad3942d8dfe9666fb576f045e3f3f62e720722615c",
+      "sha256": "89ba50dd520a1d97eb704c0b477599872418f3a595a782dfa4934e6038bdd1b4",
       "source_path": "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
     },
     {
