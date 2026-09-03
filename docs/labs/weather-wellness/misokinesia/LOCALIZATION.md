@@ -171,7 +171,7 @@ Do not model this positionally. Each locale's option set contains its own key:
 | `fluent_lang_punjabi` | Punjabi | 펀자브어 | en, ko | workbook |
 | `fluent_lang_korean` | Korean | — | **en only** | workbook |
 | `fluent_lang_english` | — | 영어 | **ko only** | workbook |
-| `fluent_lang_none` | None (exclusive) | 없음 | en, ko | workbook |
+| `fluent_lang_none` | None | 없음 | en, ko | workbook |
 | `fluent_lang_other` | Other | 기타 | en, ko | workbook |
 
 - A KO participant selecting 영어 stores `fluent_lang_english`.
@@ -224,7 +224,7 @@ other than 한국어.
 | `disorder_mood` | Mood Disorder | 기분장애 | en, ko | workbook |
 | `disorder_substance_use` | Substance Use Disorder | 물질사용장애 | en, ko | workbook |
 | `disorder_other` | Other | 기타 | en, ko | workbook |
-| `disorder_na` | N/A (exclusive) | 해당 없음 | en, ko | workbook |
+| `disorder_na` | N/A | 해당 없음 | en, ko | workbook |
 
 `disorder_na` is exclusive; `disorder_other` gates `diagnosed_disorders_other_text`.
 
@@ -246,7 +246,7 @@ other than 한국어.
 | `substance_vaping` | Vaping | 전자담배 | en, ko | workbook |
 | `substance_caffeine` | Caffeinated Stimulants (coffee, energy drinks, etc.) | 카페인 음료(커피, 에너지 드링크 등) | en, ko | workbook |
 | `substance_other` | Other | 기타 | en, ko | workbook |
-| `substance_none` | None of the Above (exclusive) | 해당 없음 | en, ko | workbook |
+| `substance_none` | None of the Above | 해당 없음 | en, ko | workbook |
 
 `substance_none` is exclusive; `substance_other` gates
 `regular_substances_other_text`.
@@ -329,6 +329,14 @@ Korean universities use a 4.5 or 4.3 maximum, so a 4.5 cap covers both. The
 backend must reject a KO submission above 4.5 and the KO slider must stop at 4.5.
 The column type (`NUMERIC`) is unchanged; only the accepted range narrows.
 
+Frontend side: the bound is declared as `maxByLocale` on the `cumulative_gpa`
+question in `frontend/src/lib/misokinesia-demographics.ts` and read through
+`getMisoDemographicsSliderMax(question, locale)`. Both the range input and the
+paired numeric input use it, and the numeric input **clamps** rather than only
+setting a `max` attribute — the attribute alone still lets a KO participant type
+4.8. This is a usability guard, not the enforcement point: the server remains
+authoritative.
+
 ### `years_lived_canada` — column reused, not duplicated
 
 The `years_lived_canada` column is **reused unchanged** for `ko`. There is no
@@ -337,7 +345,8 @@ second column, and none will be added.
 - For `en`, Q5 reads "For how many years have you lived in Canada?" and the value
   means years in Canada.
 - For `ko`, Q5 reads 한국에서 거주한 기간(연 단위) and the value means years in
-  **Korea**.
+  **Korea**. The stem is `demo.q5` (section 5.6); the payload field stays
+  `years_lived_canada`.
 - The column name is a historical artifact of the EN-first build. Read it as
   "years lived in the session's reference country", disambiguated by the session
   locale (`en` → Canada, `ko` → Korea).
@@ -627,7 +636,58 @@ The four `end.timing.*` labels are the display side of the option keys
 `timing_end_of_video` in section 2. Key and label must stay in sync: correcting the
 KO wording never changes the stored key.
 
-### 5.6 Workbook content deliberately not surfaced
+### 5.6 Demographics question stems
+
+Sheet `Demographics`. Rendered by `MisokinesiaDemographicsForm.tsx`. **Option**
+labels are not here — they are stored option keys, registered in section 2.
+`Q1` is the consent gate and lives in section 6.4.
+
+Four stems are *localized*, not translated. The stored column names are historical
+artifacts of the EN-first build and are **not** renamed; read them against the
+session locale (section 3).
+
+| Key | Source | EN | KO | Provenance |
+|---|---|---|---|---|
+| `demo.q2` | Q2 | Age | 나이 | workbook |
+| `demo.q3` | Q3 | Sex | 생물학적 성별 | workbook |
+| `demo.q4` | Q4 | Gender Identity | 성별 정체성 | workbook |
+| `demo.q5` | Q5 | For how many years have you lived in Canada? | 한국에서 거주한 기간(연 단위) | workbook |
+| `demo.q6` | Q6 | What is your Residence Status? | 체류 자격 | workbook |
+| `demo.q7` | Q7 | What type of student are you? | 학생 유형 | workbook |
+| `demo.q8` | Q8 | What is your total number of years of education (excluding Kindergarten)? | 총 교육 연수(유치원 제외) | workbook |
+| `demo.q9` | Q9 | What is your cumulative GPA? | 누적 학점(GPA) | workbook |
+| `demo.q10` | Q10 | What is/are your major(s)? | 전공(복수전공 포함) | workbook |
+| `demo.q27` | Q27 | What is the highest level of education you have completed? | 최종 학력 | workbook |
+| `demo.q11` | Q11 | What is your ethnicity? Please check all that apply. | 민족(해당하는 것 모두 선택) | workbook |
+| `demo.q12` | Q12 | What is your native language? | 모국어 | workbook |
+| `demo.q13` | Q13 | I am fluent in English | 나는 한국어에 유창하다 | workbook |
+| `demo.q14` | Q14 | In addition to English, which languages do you speak fluently? Please check all that apply. | 한국어 외에 유창하게 구사하는 언어(해당하는 것 모두 선택) | workbook |
+| `demo.q15` | Q15 | In your everyday life, how often do you speak English? | 일상생활에서 한국어를 사용하는 빈도 | workbook |
+| `demo.q16` | Q16 | Have you attended school where the language of instruction was different from English? | 한국어 이외의 언어로 수업을 받은 적이 있습니까? | workbook |
+| `demo.q17` | Q17 | Which language(s) of instruction were used? | 수업 언어는 무엇이었습니까?(해당하는 것 모두 선택) | workbook |
+| `demo.q18` | Q18 | Have you ever been diagnosed with any of the following disorders? Please check all that apply. | 다음 중 진단받은 적이 있는 장애가 있습니까?(해당하는 것 모두 선택) | workbook |
+| `demo.q19` | Q19 | Have you ever been diagnosed with ADHD by a physician? | 의사로부터 ADHD 진단을 받은 적이 있습니까? | workbook |
+| `demo.q20` | Q20 | Have you ever been prescribed medication by a physician for ADHD or to reduce ADHD symptoms? | 의사로부터 ADHD 또는 ADHD 증상을 줄이기 위한 약물을 처방받은 적이 있습니까? | workbook |
+| `demo.q21` | Q21 | Do you consider yourself an avid videogamer? | 본인이 게임을 즐기는 편이라고 생각하십니까? | workbook |
+| `demo.q28` | Q28 | How many hours per week do you estimate you play video games? | 일주일에 비디오 게임을 몇 시간 정도 하십니까? | workbook |
+| `demo.q22` | Q22 | Do you take any prescription stimulants? | 현재 처방받은 각성제를 복용하고 있습니까? | workbook |
+| `demo.q23` | Q23 | Do you regularly use any of the following? Please check all that apply. | 다음 중 정기적으로 사용하는 것이 있습니까?(해당하는 것 모두 선택) | workbook |
+| `demo.q24` | Q24 | What is your relationship status? | 교제 상태 | workbook |
+| `demo.q25` | Q25 | What is your occupational status? | 직업 상태 | workbook |
+
+Localized stems:
+
+| Key | What changes | Column (unchanged) |
+|---|---|---|
+| `demo.q5` | Reference country Canada → Korea | `years_lived_canada` |
+| `demo.q13`, `demo.q15` | Reference language English → Korean | `english_fluency`, `english_speaking_frequency` |
+| `demo.q14`, `demo.q16` | Base language English → Korean (and Q14's option set diverges, section 2) | `fluent_languages`, `non_english_schooling` |
+
+Boolean questions (Q16, Q19, Q21, Q22) render `chrome.choice.yes` /
+`chrome.choice.no`, not their own keys. The `sourceId` badge (`Q2`, `Q27`, …) is an
+identifier, never localized.
+
+### 5.7 Workbook content deliberately not surfaced
 
 Recorded so nobody assumes the data exists.
 
@@ -637,7 +697,7 @@ Recorded so nobody assumes the data exists.
 | Sheet `VMA questions`, rows 3–5 (`Instruction` block: "Participants watch a set of short (15 s) videos…") | Administration note, not a rendered string. The participant-facing equivalent is `chrome.intro.body` (section 6), which is platform copy, not workbook copy. |
 | Sheet `MpAQ`, row 4 (parent/caregiver proxy-response instruction) | Present in the original MpAQ, omitted from the Korean version because this is an adult-only study. Not rendered in either locale. |
 
-### 5.7 English wording drift (workbook vs live app)
+### 5.8 English wording drift (workbook vs live app)
 
 The live English is authoritative for what participants see and **is not changed by
 this task**. The workbook English differs cosmetically in the rows below; the Korean
@@ -649,6 +709,7 @@ is unaffected because it maps to the item, not to the exact English phrasing.
 | `vma.item.q2` | I felt physical discomfort during the video | I felt physical discomfort during the video. |
 | `vma.item.q3` | I felt upset during the video | I felt upset during the video. |
 | `vma.item.q4` | I wanted to stop the video early / or close my eyes | I wanted to stop the video or close my eyes. |
+| `demo.q17` | Which language(s) of instruction were used? | Which language(s) of instruction were used? (check all) |
 | `gad7.stem` | Over the last two weeks, … | Over the last 2 weeks, … |
 | `gad7.item.r5` | Being so restless that it is hard to sit still | Being so restless that it's hard to sit still |
 | `gad7.item.r7` | Feeling afraid, as if something awful might happen | Feeling afraid as if something awful might happen |
@@ -749,8 +810,8 @@ separate backend concern.
 
 ### 6.4 Consent gate and demographics chrome
 
-`MisokinesiaDemographicsForm.tsx`. Question labels and option labels are not
-repeated here — they live in section 2 and the demographics workbook sheet.
+`MisokinesiaDemographicsForm.tsx`. Question stems live in section 5.6 and option
+labels in section 2; only flow chrome is repeated here.
 
 | Key | EN | KO | Provenance |
 |---|---|---|---|

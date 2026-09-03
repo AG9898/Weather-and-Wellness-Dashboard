@@ -139,6 +139,45 @@ const MISO_MESSAGES_EN = {
   "end.timing.after_10s": "After 10 seconds",
   "end.timing.end_of_video": "At the end of the video",
 
+  // --- 5.6 Demographics question stems -----------------------------------
+  // Sheet `Demographics`. Rendered by `MisokinesiaDemographicsForm.tsx`. Option
+  // labels are NOT here — they are option keys in `miso-option-labels.ts`.
+  // Three KO stems are localized rather than translated: Q5 asks about Korea,
+  // and Q13/Q14/Q15/Q16 swap the reference language English -> Korean. The
+  // stored column names (`years_lived_canada`, `english_fluency`, …) are
+  // unchanged; read them as "the session's reference country/language".
+  "demo.q2": "Age",
+  "demo.q3": "Sex",
+  "demo.q4": "Gender Identity",
+  "demo.q5": "For how many years have you lived in Canada?",
+  "demo.q6": "What is your Residence Status?",
+  "demo.q7": "What type of student are you?",
+  "demo.q8":
+    "What is your total number of years of education (excluding Kindergarten)?",
+  "demo.q9": "What is your cumulative GPA?",
+  "demo.q10": "What is/are your major(s)?",
+  "demo.q27": "What is the highest level of education you have completed?",
+  "demo.q11": "What is your ethnicity? Please check all that apply.",
+  "demo.q12": "What is your native language?",
+  "demo.q13": "I am fluent in English",
+  "demo.q14":
+    "In addition to English, which languages do you speak fluently? Please check all that apply.",
+  "demo.q15": "In your everyday life, how often do you speak English?",
+  "demo.q16":
+    "Have you attended school where the language of instruction was different from English?",
+  "demo.q17": "Which language(s) of instruction were used?",
+  "demo.q18":
+    "Have you ever been diagnosed with any of the following disorders? Please check all that apply.",
+  "demo.q19": "Have you ever been diagnosed with ADHD by a physician?",
+  "demo.q20":
+    "Have you ever been prescribed medication by a physician for ADHD or to reduce ADHD symptoms?",
+  "demo.q21": "Do you consider yourself an avid videogamer?",
+  "demo.q28": "How many hours per week do you estimate you play video games?",
+  "demo.q22": "Do you take any prescription stimulants?",
+  "demo.q23": "Do you regularly use any of the following? Please check all that apply.",
+  "demo.q24": "What is your relationship status?",
+  "demo.q25": "What is your occupational status?",
+
   // --- 6.1 Shared chrome -------------------------------------------------
   "chrome.task.name": "Misokinesia Task",
   "chrome.step.trail": "Demographics → Intro → Task → Surveys",
@@ -422,6 +461,38 @@ const MISO_MESSAGES_KO: Record<MisoMessageKey, string> = {
   "end.timing.after_5s": "5초 후",
   "end.timing.after_10s": "10초 후",
   "end.timing.end_of_video": "영상이 끝날 무렵",
+
+  // --- 5.6 Demographics question stems -----------------------------------
+  "demo.q2": "나이",
+  "demo.q3": "생물학적 성별",
+  "demo.q4": "성별 정체성",
+  // Reference country localized: Canada -> Korea. Still stored as
+  // `years_lived_canada`.
+  "demo.q5": "한국에서 거주한 기간(연 단위)",
+  "demo.q6": "체류 자격",
+  "demo.q7": "학생 유형",
+  "demo.q8": "총 교육 연수(유치원 제외)",
+  "demo.q9": "누적 학점(GPA)",
+  "demo.q10": "전공(복수전공 포함)",
+  "demo.q27": "최종 학력",
+  "demo.q11": "민족(해당하는 것 모두 선택)",
+  "demo.q12": "모국어",
+  // Reference language localized: English -> Korean (Q13, Q14, Q15, Q16).
+  "demo.q13": "나는 한국어에 유창하다",
+  "demo.q14": "한국어 외에 유창하게 구사하는 언어(해당하는 것 모두 선택)",
+  "demo.q15": "일상생활에서 한국어를 사용하는 빈도",
+  "demo.q16": "한국어 이외의 언어로 수업을 받은 적이 있습니까?",
+  "demo.q17": "수업 언어는 무엇이었습니까?(해당하는 것 모두 선택)",
+  "demo.q18": "다음 중 진단받은 적이 있는 장애가 있습니까?(해당하는 것 모두 선택)",
+  "demo.q19": "의사로부터 ADHD 진단을 받은 적이 있습니까?",
+  "demo.q20":
+    "의사로부터 ADHD 또는 ADHD 증상을 줄이기 위한 약물을 처방받은 적이 있습니까?",
+  "demo.q21": "본인이 게임을 즐기는 편이라고 생각하십니까?",
+  "demo.q28": "일주일에 비디오 게임을 몇 시간 정도 하십니까?",
+  "demo.q22": "현재 처방받은 각성제를 복용하고 있습니까?",
+  "demo.q23": "다음 중 정기적으로 사용하는 것이 있습니까?(해당하는 것 모두 선택)",
+  "demo.q24": "교제 상태",
+  "demo.q25": "직업 상태",
 
   // --- 6.1 Shared chrome -------------------------------------------------
   "chrome.task.name": "미소키네시아 과제",

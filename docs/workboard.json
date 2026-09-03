@@ -5172,7 +5172,7 @@
       "id": "T1854",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - demographics form on option keys and per-locale option sets",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "estimate": "M",

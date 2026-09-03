@@ -1,4 +1,13 @@
 import type { MisokinesiaDemographicsRequest } from "@/lib/api";
+import {
+  MISO_OPTION_LABELS,
+  misoOptionLabel,
+  type MisoLocale,
+  type MisoMessageKey,
+  type MisoOptionField,
+  type MisoOptionKey,
+  type MisoOptionLabelSet,
+} from "@/lib/i18n";
 
 export const MISO_DEMOGRAPHICS_SPLIT_THRESHOLD = 6;
 
@@ -70,16 +79,26 @@ export interface MisoDemographicsOtherTextConfig {
   requiredWhen: MisoDemographicsCondition;
 }
 
+/**
+ * A choice option.
+ *
+ * `key` is the **stored value** — it is what the payload carries and what the
+ * backend validates, so it is identical in every locale. `labels` is the
+ * display side, one entry per locale, with `null` marking a locale that does
+ * not offer the option (LOCALIZATION.md section 2, Case B). Never render `key`
+ * and never store a label.
+ */
 export interface MisoDemographicsChoiceOption {
-  value: string;
-  label: string;
+  key: string;
+  labels: MisoOptionLabelSet;
   exclusive?: boolean;
 }
 
 interface MisoDemographicsQuestionBase {
   sourceId: string;
   field: MisoDemographicsField;
-  label: string;
+  /** Message-catalogue key for the question stem. Never an inline literal. */
+  labelKey: MisoMessageKey;
   required: true;
   visibleWhen?: MisoDemographicsCondition;
 }
@@ -88,7 +107,13 @@ export interface MisoDemographicsSliderQuestion
   extends MisoDemographicsQuestionBase {
   input: "slider";
   min: number;
+  /** Widest bound across locales. `maxByLocale` narrows it where it differs. */
   max: number;
+  /**
+   * Per-locale upper bound. Present only where the instrument diverges
+   * (`cumulative_gpa`: 5.0 en / 4.5 ko — LOCALIZATION.md section 3).
+   */
+  maxByLocale?: Readonly<Record<MisoLocale, number>>;
   step: number;
 }
 
@@ -101,6 +126,7 @@ export interface MisoDemographicsTextQuestion
 export interface MisoDemographicsSingleChoiceQuestion
   extends MisoDemographicsQuestionBase {
   input: "single_choice";
+  optionField: MisoOptionField;
   options: readonly MisoDemographicsChoiceOption[];
   otherText?: MisoDemographicsOtherTextConfig;
 }
@@ -108,6 +134,7 @@ export interface MisoDemographicsSingleChoiceQuestion
 export interface MisoDemographicsMultiSelectQuestion
   extends MisoDemographicsQuestionBase {
   input: "multi_select";
+  optionField: MisoOptionField;
   options: readonly MisoDemographicsChoiceOption[];
   otherText?: MisoDemographicsOtherTextConfig;
 }
@@ -115,9 +142,13 @@ export interface MisoDemographicsMultiSelectQuestion
 export interface MisoDemographicsBooleanQuestion
   extends MisoDemographicsQuestionBase {
   input: "boolean";
-  trueLabel: string;
-  falseLabel: string;
+  trueLabelKey: MisoMessageKey;
+  falseLabelKey: MisoMessageKey;
 }
+
+export type MisoDemographicsChoiceQuestion =
+  | MisoDemographicsSingleChoiceQuestion
+  | MisoDemographicsMultiSelectQuestion;
 
 export type MisoDemographicsQuestion =
   | MisoDemographicsSliderQuestion
@@ -132,33 +163,63 @@ export interface MisoDemographicsPane {
 
 export interface MisoDemographicsBlock {
   sourceBlock: 1 | 2 | 3 | 4 | 5;
-  title: string;
+  /** Message-catalogue key for the block title. */
+  titleKey: MisoMessageKey;
   panes: readonly MisoDemographicsPane[];
 }
 
+/**
+ * Consent gate (Q1). UI-only: it gates the flow and writes no consent row.
+ * Every string is a catalogue key.
+ */
 export const MISO_DEMOGRAPHICS_CONSENT_GATE = {
   sourceId: "Q1",
-  label: "Consent",
-  yesLabel: "Yes",
-  noLabel: "No",
+  kickerKey: "chrome.consent.kicker",
+  titleKey: "chrome.consent.title",
+  bodyKey: "chrome.consent.body",
+  yesKey: "chrome.choice.yes",
+  noKey: "chrome.choice.no",
 } as const;
 
 const YES_NO = {
-  trueLabel: "Yes",
-  falseLabel: "No",
+  trueLabelKey: "chrome.choice.yes",
+  falseLabelKey: "chrome.choice.no",
 } as const;
+
+/**
+ * Build a question's option list from the option-key registry, preserving
+ * registry order so the two locales stay positionally comparable.
+ *
+ * Options are never spelled out here: the registry in
+ * `frontend/src/lib/i18n/miso-option-labels.ts` is the single source of truth
+ * for both the key set and the per-locale labels.
+ */
+function choiceOptions<F extends MisoOptionField>(
+  field: F,
+  exclusiveKeys: readonly MisoOptionKey<F>[] = [],
+): readonly MisoDemographicsChoiceOption[] {
+  const registry = MISO_OPTION_LABELS[field] as Readonly<
+    Record<string, MisoOptionLabelSet>
+  >;
+  const exclusive = new Set<string>(exclusiveKeys);
+  return Object.keys(registry).map((key) => ({
+    key,
+    labels: registry[key],
+    ...(exclusive.has(key) ? { exclusive: true as const } : {}),
+  }));
+}
 
 export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
   {
     sourceBlock: 1,
-    title: "Participant basics",
+    titleKey: "chrome.demographics.block_title.1",
     panes: [
       {
         questions: [
           {
             sourceId: "Q2",
             field: "age",
-            label: "Age",
+            labelKey: "demo.q2",
             input: "slider",
             min: 0,
             max: 100,
@@ -168,18 +229,16 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q3",
             field: "sex",
-            label: "Sex",
+            labelKey: "demo.q3",
             input: "single_choice",
-            options: [
-              { value: "Male", label: "Male" },
-              { value: "Female", label: "Female" },
-            ],
+            optionField: "sex",
+            options: choiceOptions("sex"),
             required: true,
           },
           {
             sourceId: "Q4",
             field: "gender_identity",
-            label: "Gender Identity",
+            labelKey: "demo.q4",
             input: "text",
             required: true,
           },
@@ -189,14 +248,16 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
   },
   {
     sourceBlock: 2,
-    title: "Residence and education",
+    titleKey: "chrome.demographics.block_title.2",
     panes: [
       {
         questions: [
           {
+            // Column reused across locales: `en` reads Canada, `ko` reads
+            // Korea. See LOCALIZATION.md section 3.
             sourceId: "Q5",
             field: "years_lived_canada",
-            label: "For how many years have you lived in Canada?",
+            labelKey: "demo.q5",
             input: "slider",
             min: 0,
             max: 100,
@@ -206,20 +267,16 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q6",
             field: "residence_status",
-            label: "What is your Residence Status?",
+            labelKey: "demo.q6",
             input: "single_choice",
-            options: [
-              { value: "Canadian Citizenship", label: "Canadian Citizenship" },
-              { value: "Permanent Resident", label: "Permanent Resident" },
-              { value: "Student Visa", label: "Student Visa" },
-              { value: "Other", label: "Other" },
-            ],
+            optionField: "residence_status",
+            options: choiceOptions("residence_status"),
             otherText: {
               field: "residence_status_other_text",
               requiredWhen: {
                 field: "residence_status",
                 operator: "equals",
-                value: "Other",
+                value: "residence_other",
               },
             },
             required: true,
@@ -227,19 +284,16 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q7",
             field: "student_type",
-            label: "What type of student are you?",
+            labelKey: "demo.q7",
             input: "single_choice",
-            options: [
-              { value: "Domestic", label: "Domestic" },
-              { value: "International", label: "International" },
-            ],
+            optionField: "student_type",
+            options: choiceOptions("student_type"),
             required: true,
           },
           {
             sourceId: "Q8",
             field: "total_years_education",
-            label:
-              "What is your total number of years of education (excluding Kindergarten)?",
+            labelKey: "demo.q8",
             input: "slider",
             min: 0,
             max: 100,
@@ -249,10 +303,11 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q9",
             field: "cumulative_gpa",
-            label: "What is your cumulative GPA?",
+            labelKey: "demo.q9",
             input: "slider",
             min: 0,
             max: 5,
+            maxByLocale: { en: 5, ko: 4.5 },
             step: 0.1,
             required: true,
           },
@@ -263,29 +318,17 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q10",
             field: "majors_text",
-            label: "What is/are your major(s)?",
+            labelKey: "demo.q10",
             input: "text",
             required: true,
           },
           {
             sourceId: "Q27",
             field: "highest_education_completed",
-            label: "What is the highest level of education you have completed?",
+            labelKey: "demo.q27",
             input: "single_choice",
-            options: [
-              {
-                value: "Elementary or middle school",
-                label: "Elementary or middle school",
-              },
-              {
-                value: "High school or equivalent (e.g., GED)",
-                label: "High school or equivalent (e.g., GED)",
-              },
-              { value: "College diploma", label: "College diploma" },
-              { value: "Bachelors degree", label: "Bachelors degree" },
-              { value: "Masters degree", label: "Masters degree" },
-              { value: "Doctorate degree", label: "Doctorate degree" },
-            ],
+            optionField: "highest_education_completed",
+            options: choiceOptions("highest_education_completed"),
             required: true,
           },
         ],
@@ -294,32 +337,23 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
   },
   {
     sourceBlock: 3,
-    title: "Language and ethnicity",
+    titleKey: "chrome.demographics.block_title.3",
     panes: [
       {
         questions: [
           {
             sourceId: "Q11",
             field: "ethnicity",
-            label: "What is your ethnicity? Please check all that apply.",
+            labelKey: "demo.q11",
             input: "multi_select",
-            options: [
-              { value: "European Canadian", label: "European Canadian" },
-              { value: "Chinese", label: "Chinese" },
-              { value: "South Asian", label: "South Asian" },
-              { value: "Filipino", label: "Filipino" },
-              { value: "Southeast Asian", label: "Southeast Asian" },
-              { value: "Japanese", label: "Japanese" },
-              { value: "Latin American", label: "Latin American" },
-              { value: "Korean", label: "Korean" },
-              { value: "Other", label: "Other" },
-            ],
+            optionField: "ethnicity",
+            options: choiceOptions("ethnicity"),
             otherText: {
               field: "ethnicity_other_text",
               requiredWhen: {
                 field: "ethnicity",
                 operator: "includes",
-                value: "Other",
+                value: "ethnicity_other",
               },
             },
             required: true,
@@ -327,49 +361,33 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q12",
             field: "native_language",
-            label: "What is your native language?",
+            labelKey: "demo.q12",
             input: "text",
             required: true,
           },
           {
             sourceId: "Q13",
             field: "english_fluency",
-            label: "I am fluent in English",
+            labelKey: "demo.q13",
             input: "single_choice",
-            options: [
-              { value: "Strongly agree", label: "Strongly agree" },
-              { value: "Agree", label: "Agree" },
-              {
-                value: "Neither agree nor disagree",
-                label: "Neither agree nor disagree",
-              },
-              { value: "Disagree", label: "Disagree" },
-              { value: "Strongly disagree", label: "Strongly disagree" },
-            ],
+            optionField: "english_fluency",
+            options: choiceOptions("english_fluency"),
             required: true,
           },
           {
+            // Case B: the option set itself differs by locale.
             sourceId: "Q14",
             field: "fluent_languages",
-            label:
-              "In addition to English, which languages do you speak fluently? Please check all that apply.",
+            labelKey: "demo.q14",
             input: "multi_select",
-            options: [
-              { value: "French", label: "French" },
-              { value: "Mandarin", label: "Mandarin" },
-              { value: "Cantonese", label: "Cantonese" },
-              { value: "Hindi", label: "Hindi" },
-              { value: "Punjabi", label: "Punjabi" },
-              { value: "Korean", label: "Korean" },
-              { value: "None", label: "None", exclusive: true },
-              { value: "Other", label: "Other" },
-            ],
+            optionField: "fluent_languages",
+            options: choiceOptions("fluent_languages", ["fluent_lang_none"]),
             otherText: {
               field: "fluent_languages_other_text",
               requiredWhen: {
                 field: "fluent_languages",
                 operator: "includes",
-                value: "Other",
+                value: "fluent_lang_other",
               },
             },
             required: true,
@@ -377,15 +395,10 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q15",
             field: "english_speaking_frequency",
-            label: "In your everyday life, how often do you speak English?",
+            labelKey: "demo.q15",
             input: "single_choice",
-            options: [
-              { value: "Always", label: "Always" },
-              { value: "Often", label: "Often" },
-              { value: "Sometimes", label: "Sometimes" },
-              { value: "Rarely", label: "Rarely" },
-              { value: "Never", label: "Never" },
-            ],
+            optionField: "english_speaking_frequency",
+            options: choiceOptions("english_speaking_frequency"),
             required: true,
           },
         ],
@@ -395,37 +408,30 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q16",
             field: "non_english_schooling",
-            label:
-              "Have you attended school where the language of instruction was different from English?",
+            labelKey: "demo.q16",
             input: "boolean",
             ...YES_NO,
             required: true,
           },
           {
+            // Case B, same rule as Q14.
             sourceId: "Q17",
             field: "instruction_languages",
-            label: "Which language(s) of instruction were used?",
+            labelKey: "demo.q17",
             input: "multi_select",
+            optionField: "instruction_languages",
             visibleWhen: {
               field: "non_english_schooling",
               operator: "equals",
               value: true,
             },
-            options: [
-              { value: "French", label: "French" },
-              { value: "Mandarin", label: "Mandarin" },
-              { value: "Cantonese", label: "Cantonese" },
-              { value: "Hindi", label: "Hindi" },
-              { value: "Punjabi", label: "Punjabi" },
-              { value: "Korean", label: "Korean" },
-              { value: "Other", label: "Other" },
-            ],
+            options: choiceOptions("instruction_languages"),
             otherText: {
               field: "instruction_languages_other_text",
               requiredWhen: {
                 field: "instruction_languages",
                 operator: "includes",
-                value: "Other",
+                value: "instruction_lang_other",
               },
             },
             required: true,
@@ -436,40 +442,23 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
   },
   {
     sourceBlock: 4,
-    title: "Clinical history",
+    titleKey: "chrome.demographics.block_title.4",
     panes: [
       {
         questions: [
           {
             sourceId: "Q18",
             field: "diagnosed_disorders",
-            label:
-              "Have you ever been diagnosed with any of the following disorders? Please check all that apply.",
+            labelKey: "demo.q18",
             input: "multi_select",
-            options: [
-              {
-                value: "Neurological Disorder",
-                label: "Neurological Disorder",
-              },
-              {
-                value: "Generalized Anxiety Disorder",
-                label: "Generalized Anxiety Disorder",
-              },
-              { value: "Depression", label: "Depression" },
-              { value: "Mood Disorder", label: "Mood Disorder" },
-              {
-                value: "Substance Use Disorder",
-                label: "Substance Use Disorder",
-              },
-              { value: "Other", label: "Other" },
-              { value: "N/A", label: "N/A", exclusive: true },
-            ],
+            optionField: "diagnosed_disorders",
+            options: choiceOptions("diagnosed_disorders", ["disorder_na"]),
             otherText: {
               field: "diagnosed_disorders_other_text",
               requiredWhen: {
                 field: "diagnosed_disorders",
                 operator: "includes",
-                value: "Other",
+                value: "disorder_other",
               },
             },
             required: true,
@@ -477,7 +466,7 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q19",
             field: "adhd_diagnosis",
-            label: "Have you ever been diagnosed with ADHD by a physician?",
+            labelKey: "demo.q19",
             input: "boolean",
             ...YES_NO,
             required: true,
@@ -485,14 +474,10 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q20",
             field: "adhd_medication",
-            label:
-              "Have you ever been prescribed medication by a physician for ADHD or to reduce ADHD symptoms?",
+            labelKey: "demo.q20",
             input: "single_choice",
-            options: [
-              { value: "Yes", label: "Yes" },
-              { value: "Maybe", label: "Maybe" },
-              { value: "No", label: "No" },
-            ],
+            optionField: "adhd_medication",
+            options: choiceOptions("adhd_medication"),
             required: true,
           },
         ],
@@ -501,14 +486,14 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
   },
   {
     sourceBlock: 5,
-    title: "Lifestyle and status",
+    titleKey: "chrome.demographics.block_title.5",
     panes: [
       {
         questions: [
           {
             sourceId: "Q21",
             field: "avid_videogamer",
-            label: "Do you consider yourself an avid videogamer?",
+            labelKey: "demo.q21",
             input: "boolean",
             ...YES_NO,
             required: true,
@@ -516,8 +501,7 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q28",
             field: "video_game_hours_per_week",
-            label:
-              "How many hours per week do you estimate you play video games?",
+            labelKey: "demo.q28",
             input: "slider",
             visibleWhen: {
               field: "avid_videogamer",
@@ -532,7 +516,7 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q22",
             field: "prescription_stimulants",
-            label: "Do you take any prescription stimulants?",
+            labelKey: "demo.q22",
             input: "boolean",
             ...YES_NO,
             required: true,
@@ -540,31 +524,16 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q23",
             field: "regular_substances",
-            label:
-              "Do you regularly use any of the following? Please check all that apply.",
+            labelKey: "demo.q23",
             input: "multi_select",
-            options: [
-              { value: "Alcohol", label: "Alcohol" },
-              { value: "Cannabis", label: "Cannabis" },
-              { value: "Tobacco", label: "Tobacco" },
-              { value: "Vaping", label: "Vaping" },
-              {
-                value: "Caffeinated Stimulants (coffee, energy drinks, etc.)",
-                label: "Caffeinated Stimulants (coffee, energy drinks, etc.)",
-              },
-              { value: "Other", label: "Other" },
-              {
-                value: "None of the Above",
-                label: "None of the Above",
-                exclusive: true,
-              },
-            ],
+            optionField: "regular_substances",
+            options: choiceOptions("regular_substances", ["substance_none"]),
             otherText: {
               field: "regular_substances_other_text",
               requiredWhen: {
                 field: "regular_substances",
                 operator: "includes",
-                value: "Other",
+                value: "substance_other",
               },
             },
             required: true,
@@ -572,31 +541,16 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q24",
             field: "relationship_status",
-            label: "What is your relationship status?",
+            labelKey: "demo.q24",
             input: "single_choice",
-            options: [
-              { value: "Single", label: "Single" },
-              { value: "In a relationship", label: "In a relationship" },
-              {
-                value: "Married (and not separated)",
-                label: "Married (and not separated)",
-              },
-              { value: "Common-law", label: "Common-law" },
-              { value: "Seperated", label: "Seperated" },
-              { value: "Divorced", label: "Divorced" },
-              { value: "Widowed", label: "Widowed" },
-              { value: "Other", label: "Other" },
-              {
-                value: "None of the Above",
-                label: "None of the Above",
-              },
-            ],
+            optionField: "relationship_status",
+            options: choiceOptions("relationship_status"),
             otherText: {
               field: "relationship_status_other_text",
               requiredWhen: {
                 field: "relationship_status",
                 operator: "equals",
-                value: "Other",
+                value: "relationship_other",
               },
             },
             required: true,
@@ -608,33 +562,16 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
           {
             sourceId: "Q25",
             field: "occupational_status",
-            label: "What is your occupational status?",
+            labelKey: "demo.q25",
             input: "single_choice",
-            options: [
-              { value: "Employed full-time", label: "Employed full-time" },
-              { value: "Employed part-time", label: "Employed part-time" },
-              {
-                value: "Out of work but looking for work",
-                label: "Out of work but looking for work",
-              },
-              {
-                value: "Out of work and not looking for work",
-                label: "Out of work and not looking for work",
-              },
-              { value: "Homemaker", label: "Homemaker" },
-              { value: "Student", label: "Student" },
-              { value: "Military", label: "Military" },
-              { value: "Retired", label: "Retired" },
-              { value: "Unable to work", label: "Unable to work" },
-              { value: "Other", label: "Other" },
-              { value: "None of the above", label: "None of the above" },
-            ],
+            optionField: "occupational_status",
+            options: choiceOptions("occupational_status"),
             otherText: {
               field: "occupational_status_other_text",
               requiredWhen: {
                 field: "occupational_status",
                 operator: "equals",
-                value: "Other",
+                value: "occupation_other",
               },
             },
             required: true,
@@ -643,7 +580,37 @@ export const MISO_DEMOGRAPHICS_BLOCKS: readonly MisoDemographicsBlock[] = [
       },
     ],
   },
-] as const;
+];
+
+/** Options a locale actually offers, in registry order (Case B filtering). */
+export function getMisoDemographicsOptions(
+  question: MisoDemographicsChoiceQuestion,
+  locale: MisoLocale,
+): readonly MisoDemographicsChoiceOption[] {
+  return question.options.filter((option) => option.labels[locale] !== null);
+}
+
+/** Display label for one option key in one locale. */
+export function getMisoDemographicsOptionLabel(
+  question: MisoDemographicsChoiceQuestion,
+  option: MisoDemographicsChoiceOption,
+  locale: MisoLocale,
+): string {
+  return misoOptionLabel(question.optionField, option.key, locale);
+}
+
+/**
+ * Upper bound for a slider in one locale.
+ *
+ * Mirrors `validate_demographics_for_locale` server-side: a `ko` participant
+ * must not be able to enter a GPA above 4.5, by slider or by keyboard.
+ */
+export function getMisoDemographicsSliderMax(
+  question: MisoDemographicsSliderQuestion,
+  locale: MisoLocale,
+): number {
+  return question.maxByLocale ? question.maxByLocale[locale] : question.max;
+}
 
 export function misoDemographicsConditionMatches(
   condition: MisoDemographicsCondition,

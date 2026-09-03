@@ -1587,98 +1587,106 @@ export async function submitMisokinesiaEndOfTask(
   );
 }
 
-export type MisoSex = "Male" | "Female";
+// Demographics choice values are language-independent option KEYS, not display
+// labels. They mirror the validator sets in `backend/app/schemas/misokinesia.py`
+// and the registry in `docs/labs/weather-wellness/misokinesia/LOCALIZATION.md`
+// section 2. Display labels live in `frontend/src/lib/i18n/miso-option-labels.ts`.
+export type MisoSex = "sex_male" | "sex_female";
 export type MisoResidenceStatus =
-  | "Canadian Citizenship"
-  | "Permanent Resident"
-  | "Student Visa"
-  | "Other";
-export type MisoStudentType = "Domestic" | "International";
+  | "residence_citizenship"
+  | "residence_permanent_resident"
+  | "residence_student_visa"
+  | "residence_other";
+export type MisoStudentType = "student_domestic" | "student_international";
 export type MisoHighestEducationCompleted =
-  | "Elementary or middle school"
-  | "High school or equivalent (e.g., GED)"
-  | "College diploma"
-  | "Bachelors degree"
-  | "Masters degree"
-  | "Doctorate degree";
+  | "education_elementary_middle"
+  | "education_high_school"
+  | "education_college_diploma"
+  | "education_bachelors"
+  | "education_masters"
+  | "education_doctorate";
 export type MisoEnglishFluency =
-  | "Strongly agree"
-  | "Agree"
-  | "Neither agree nor disagree"
-  | "Disagree"
-  | "Strongly disagree";
+  | "fluency_strongly_agree"
+  | "fluency_agree"
+  | "fluency_neutral"
+  | "fluency_disagree"
+  | "fluency_strongly_disagree";
 export type MisoEnglishSpeakingFrequency =
-  | "Always"
-  | "Often"
-  | "Sometimes"
-  | "Rarely"
-  | "Never";
-export type MisoAdhdMedication = "Yes" | "Maybe" | "No";
+  | "frequency_always"
+  | "frequency_often"
+  | "frequency_sometimes"
+  | "frequency_rarely"
+  | "frequency_never";
+export type MisoAdhdMedication = "adhd_med_yes" | "adhd_med_maybe" | "adhd_med_no";
 export type MisoEthnicity =
-  | "European Canadian"
-  | "Chinese"
-  | "South Asian"
-  | "Filipino"
-  | "Southeast Asian"
-  | "Japanese"
-  | "Latin American"
-  | "Korean"
-  | "Other";
+  | "ethnicity_european"
+  | "ethnicity_chinese"
+  | "ethnicity_south_asian"
+  | "ethnicity_filipino"
+  | "ethnicity_southeast_asian"
+  | "ethnicity_japanese"
+  | "ethnicity_latin_american"
+  | "ethnicity_korean"
+  | "ethnicity_other";
+// `fluent_lang_korean` is en-only and `fluent_lang_english` ko-only; the server
+// rejects the wrong-locale key (LOCALIZATION.md section 3).
 export type MisoFluentLanguage =
-  | "French"
-  | "Mandarin"
-  | "Cantonese"
-  | "Hindi"
-  | "Punjabi"
-  | "Korean"
-  | "None"
-  | "Other";
+  | "fluent_lang_french"
+  | "fluent_lang_mandarin"
+  | "fluent_lang_cantonese"
+  | "fluent_lang_hindi"
+  | "fluent_lang_punjabi"
+  | "fluent_lang_korean"
+  | "fluent_lang_english"
+  | "fluent_lang_none"
+  | "fluent_lang_other";
 export type MisoInstructionLanguage =
-  | "French"
-  | "Mandarin"
-  | "Cantonese"
-  | "Hindi"
-  | "Punjabi"
-  | "Korean"
-  | "Other";
+  | "instruction_lang_french"
+  | "instruction_lang_mandarin"
+  | "instruction_lang_cantonese"
+  | "instruction_lang_hindi"
+  | "instruction_lang_punjabi"
+  | "instruction_lang_korean"
+  | "instruction_lang_english"
+  | "instruction_lang_other";
 export type MisoDiagnosedDisorder =
-  | "Neurological Disorder"
-  | "Generalized Anxiety Disorder"
-  | "Depression"
-  | "Mood Disorder"
-  | "Substance Use Disorder"
-  | "Other"
-  | "N/A";
+  | "disorder_neurological"
+  | "disorder_generalized_anxiety"
+  | "disorder_depression"
+  | "disorder_mood"
+  | "disorder_substance_use"
+  | "disorder_other"
+  | "disorder_na";
 export type MisoRegularSubstance =
-  | "Alcohol"
-  | "Cannabis"
-  | "Tobacco"
-  | "Vaping"
-  | "Caffeinated Stimulants (coffee, energy drinks, etc.)"
-  | "Other"
-  | "None of the Above";
+  | "substance_alcohol"
+  | "substance_cannabis"
+  | "substance_tobacco"
+  | "substance_vaping"
+  | "substance_caffeine"
+  | "substance_other"
+  | "substance_none";
 export type MisoRelationshipStatus =
-  | "Single"
-  | "In a relationship"
-  | "Married (and not separated)"
-  | "Common-law"
-  | "Seperated"
-  | "Divorced"
-  | "Widowed"
-  | "Other"
-  | "None of the Above";
+  | "relationship_single"
+  | "relationship_in_relationship"
+  | "relationship_married"
+  | "relationship_common_law"
+  | "relationship_separated"
+  | "relationship_divorced"
+  | "relationship_widowed"
+  | "relationship_other"
+  | "relationship_none";
 export type MisoOccupationalStatus =
-  | "Employed full-time"
-  | "Employed part-time"
-  | "Out of work but looking for work"
-  | "Out of work and not looking for work"
-  | "Homemaker"
-  | "Student"
-  | "Military"
-  | "Retired"
-  | "Unable to work"
-  | "Other"
-  | "None of the above";
+  | "occupation_employed_full_time"
+  | "occupation_employed_part_time"
+  | "occupation_out_of_work_looking"
+  | "occupation_out_of_work_not_looking"
+  | "occupation_homemaker"
+  | "occupation_student"
+  | "occupation_military"
+  | "occupation_retired"
+  | "occupation_unable_to_work"
+  | "occupation_other"
+  | "occupation_none";
 
 /** Miso demographics PATCH payload. Mirrors backend MisoDemographicsCreate. */
 export interface MisokinesiaDemographicsRequest {

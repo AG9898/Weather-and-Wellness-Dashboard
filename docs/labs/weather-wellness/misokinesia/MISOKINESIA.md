@@ -46,18 +46,20 @@ Demographics are displayed as a carousel/card flow grouped by source block. Each
 | Block | Questions |
 |---|---|
 | Block 1 | Age; Sex; Gender Identity |
-| Block 2 | Years lived in Canada; Residence Status; Student Type; Total Years of Education; Cumulative GPA; Major(s); Highest Level of Education Completed |
+| Block 2 | Years lived in the reference country (`en` Canada / `ko` Korea); Residence Status; Student Type; Total Years of Education; Cumulative GPA; Major(s); Highest Level of Education Completed |
 | Block 3 | Ethnicity; Native Language; English Fluency; Other Fluent Languages; Everyday English Frequency; Non-English Schooling; Instruction Languages |
 | Block 4 | Diagnosed Disorders; ADHD Diagnosis; ADHD Medication |
 | Block 5 | Avid Videogamer; Weekly Video Game Hours; Prescription Stimulants; Regular Substance Use; Relationship Status; Occupational Status |
 
-Slider questions are rendered as styled slider controls paired with numeric inputs. Both controls must stay synchronized. The UI shows visible range labels above the slider and softly snaps dragging near those labels, but participants can still choose in-between values and direct numeric input remains exact. Ranges are: age `0`-`100`, years in Canada `0`-`100`, total education years `0`-`100`, cumulative GPA `0`-`5`, and weekly video game hours `0`-`100`.
+Slider questions are rendered as styled slider controls paired with numeric inputs. Both controls must stay synchronized. The UI shows visible range labels above the slider and softly snaps dragging near those labels, but participants can still choose in-between values and direct numeric input remains exact. Ranges are: age `0`-`100`, years in the reference country `0`-`100`, total education years `0`-`100`, and weekly video game hours `0`-`100`. Cumulative GPA is the one locale-dependent range: `0`-`5.0` in `en` and `0`-`4.5` in `ko`. The numeric input clamps to the locale bound rather than only advertising it, so a `ko` participant cannot type `4.8`. See [`LOCALIZATION.md`](LOCALIZATION.md) section 3.
+
+Question stems and block titles are catalogue keys (`demo.q*`, `chrome.demographics.block_title.*` — [`LOCALIZATION.md`](LOCALIZATION.md) sections 5.6 and 6.4), never inline literals. Choice options are stable option keys with per-locale labels (section 2); Q14 and Q17 present divergent option sets — the Korean-language option in `en` only, the English-language option in `ko` only.
 
 Conditional fields:
-- "Other" answers require matching free text.
+- "Other" answers require matching free text, gated on the option key (`residence_other`, `ethnicity_other`, …), never on the display string `"Other"`.
 - `instruction_languages` is shown only when non-English schooling is "Yes".
 - `video_game_hours_per_week` is shown only when avid videogamer is "Yes".
-- "None", "N/A", and "None of the Above" options are exclusive in their multi-select groups.
+- `fluent_lang_none`, `disorder_na`, and `substance_none` are exclusive in their multi-select groups.
 
 ## Trial mode (Run Test Trial)
 
@@ -357,41 +359,41 @@ The sourced replacement was applied by migration `20260603_000001` (T199) and su
 | Field | Type | Allowed values / notes |
 |---|---|---|
 | `age` | INTEGER NULLABLE | Slider/input, `0`-`100` |
-| `sex` | VARCHAR NULLABLE | `"Male"` / `"Female"` |
+| `sex` | VARCHAR NULLABLE | Option keys `sex_male` / `sex_female` |
 | `gender_identity` | TEXT NULLABLE | Free text |
-| `years_lived_canada` | INTEGER NULLABLE | Slider/input, `0`-`100` |
-| `residence_status` | VARCHAR NULLABLE | `"Canadian Citizenship"` / `"Permanent Resident"` / `"Student Visa"` / `"Other"` |
-| `residence_status_other_text` | TEXT NULLABLE | Required when residence status is `"Other"` |
-| `student_type` | VARCHAR NULLABLE | `"Domestic"` / `"International"` |
+| `years_lived_canada` | INTEGER NULLABLE | Slider/input, `0`-`100`. Column reused across locales: years in Canada (`en`) or Korea (`ko`) |
+| `residence_status` | VARCHAR NULLABLE | Option keys `residence_citizenship` / `residence_permanent_resident` / `residence_student_visa` / `residence_other` |
+| `residence_status_other_text` | TEXT NULLABLE | Required when residence status is `residence_other` |
+| `student_type` | VARCHAR NULLABLE | Option keys `student_domestic` / `student_international` |
 | `total_years_education` | INTEGER NULLABLE | Slider/input, `0`-`100` |
-| `cumulative_gpa` | NUMERIC NULLABLE | Slider/input, `0`-`5` |
+| `cumulative_gpa` | NUMERIC NULLABLE | Slider/input; locale-dependent bound: `0`-`5.0` (`en`), `0`-`4.5` (`ko`) |
 | `majors_text` | TEXT NULLABLE | Free text |
-| `highest_education_completed` | VARCHAR NULLABLE | Source Q27 education-level options |
-| `ethnicity` | TEXT[] NULLABLE | Multi-select source Q11 options |
-| `ethnicity_other_text` | TEXT NULLABLE | Required when ethnicity includes `"Other"` |
+| `highest_education_completed` | VARCHAR NULLABLE | Source Q27 `education_*` option keys |
+| `ethnicity` | TEXT[] NULLABLE | Multi-select source Q11 `ethnicity_*` option keys |
+| `ethnicity_other_text` | TEXT NULLABLE | Required when ethnicity includes `ethnicity_other` |
 | `native_language` | TEXT NULLABLE | Free text |
-| `english_fluency` | VARCHAR NULLABLE | Source Q13 agreement scale |
-| `fluent_languages` | TEXT[] NULLABLE | Multi-select source Q14 options; `"None"` is exclusive |
-| `fluent_languages_other_text` | TEXT NULLABLE | Required when fluent languages includes `"Other"` |
-| `english_speaking_frequency` | VARCHAR NULLABLE | `"Always"` / `"Often"` / `"Sometimes"` / `"Rarely"` / `"Never"` |
+| `english_fluency` | VARCHAR NULLABLE | Source Q13 agreement scale, `fluency_*` option keys |
+| `fluent_languages` | TEXT[] NULLABLE | Multi-select source Q14 `fluent_lang_*` option keys; `fluent_lang_none` is exclusive. Divergent set: `fluent_lang_korean` is `en`-only, `fluent_lang_english` is `ko`-only |
+| `fluent_languages_other_text` | TEXT NULLABLE | Required when fluent languages includes `fluent_lang_other` |
+| `english_speaking_frequency` | VARCHAR NULLABLE | Option keys `frequency_always` / `frequency_often` / `frequency_sometimes` / `frequency_rarely` / `frequency_never` |
 | `non_english_schooling` | BOOLEAN NULLABLE | Source Q16 yes/no |
-| `instruction_languages` | TEXT[] NULLABLE | Required only when non-English schooling is true |
-| `instruction_languages_other_text` | TEXT NULLABLE | Required when instruction languages includes `"Other"` |
-| `diagnosed_disorders` | TEXT[] NULLABLE | Multi-select source Q18 options; `"N/A"` is exclusive |
-| `diagnosed_disorders_other_text` | TEXT NULLABLE | Required when diagnosed disorders includes `"Other"` |
+| `instruction_languages` | TEXT[] NULLABLE | Source Q17 `instruction_lang_*` option keys; required only when non-English schooling is true. Divergent set: `instruction_lang_korean` is `en`-only, `instruction_lang_english` is `ko`-only |
+| `instruction_languages_other_text` | TEXT NULLABLE | Required when instruction languages includes `instruction_lang_other` |
+| `diagnosed_disorders` | TEXT[] NULLABLE | Multi-select source Q18 `disorder_*` option keys; `disorder_na` is exclusive |
+| `diagnosed_disorders_other_text` | TEXT NULLABLE | Required when diagnosed disorders includes `disorder_other` |
 | `adhd_diagnosis` | BOOLEAN NULLABLE | Source Q19 yes/no |
-| `adhd_medication` | VARCHAR NULLABLE | `"Yes"` / `"Maybe"` / `"No"` |
+| `adhd_medication` | VARCHAR NULLABLE | Option keys `adhd_med_yes` / `adhd_med_maybe` / `adhd_med_no` |
 | `avid_videogamer` | BOOLEAN NULLABLE | Source Q21 yes/no |
 | `video_game_hours_per_week` | INTEGER NULLABLE | Slider/input, `0`-`100`; required only when avid videogamer is true |
 | `prescription_stimulants` | BOOLEAN NULLABLE | Source Q22 yes/no |
-| `regular_substances` | TEXT[] NULLABLE | Multi-select source Q23 options; `"None of the Above"` is exclusive |
-| `regular_substances_other_text` | TEXT NULLABLE | Required when regular substances includes `"Other"` |
-| `relationship_status` | VARCHAR NULLABLE | Source Q24 options |
-| `relationship_status_other_text` | TEXT NULLABLE | Required when relationship status is `"Other"` |
-| `occupational_status` | VARCHAR NULLABLE | Source Q25 options |
-| `occupational_status_other_text` | TEXT NULLABLE | Required when occupational status is `"Other"` |
+| `regular_substances` | TEXT[] NULLABLE | Multi-select source Q23 `substance_*` option keys; `substance_none` is exclusive |
+| `regular_substances_other_text` | TEXT NULLABLE | Required when regular substances includes `substance_other` |
+| `relationship_status` | VARCHAR NULLABLE | Source Q24 `relationship_*` option keys |
+| `relationship_status_other_text` | TEXT NULLABLE | Required when relationship status is `relationship_other` |
+| `occupational_status` | VARCHAR NULLABLE | Source Q25 `occupation_*` option keys |
+| `occupational_status_other_text` | TEXT NULLABLE | Required when occupational status is `occupation_other` |
 
-Source questions: `reference/labs/Misokinesia/Demographics copy2.docx`.
+Source questions: `reference/labs/Misokinesia/Demographics copy2.docx`. Stored choice values are language-independent option keys, not display labels; the full registry, per-locale labels, and per-locale validation overrides are in [`LOCALIZATION.md`](LOCALIZATION.md) sections 2-3.
 
 ---
 

@@ -102,7 +102,7 @@ export const MISO_OPTION_LABELS = {
     fluent_lang_punjabi: { en: "Punjabi", ko: "펀자브어" },
     fluent_lang_korean: { en: "Korean", ko: null },
     fluent_lang_english: { en: null, ko: "영어" },
-    fluent_lang_none: { en: "None (exclusive)", ko: "없음" },
+    fluent_lang_none: { en: "None", ko: "없음" },
     fluent_lang_other: { en: "Other", ko: "기타" },
   },
 
@@ -138,7 +138,7 @@ export const MISO_OPTION_LABELS = {
     disorder_mood: { en: "Mood Disorder", ko: "기분장애" },
     disorder_substance_use: { en: "Substance Use Disorder", ko: "물질사용장애" },
     disorder_other: { en: "Other", ko: "기타" },
-    disorder_na: { en: "N/A (exclusive)", ko: "해당 없음" },
+    disorder_na: { en: "N/A", ko: "해당 없음" },
   },
 
   // Q20
@@ -159,7 +159,7 @@ export const MISO_OPTION_LABELS = {
       ko: "카페인 음료(커피, 에너지 드링크 등)",
     },
     substance_other: { en: "Other", ko: "기타" },
-    substance_none: { en: "None of the Above (exclusive)", ko: "해당 없음" },
+    substance_none: { en: "None of the Above", ko: "해당 없음" },
   },
 
   // Q24 — the legacy stored string was the misspelled `Seperated`; the key
