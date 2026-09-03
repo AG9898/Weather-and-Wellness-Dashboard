@@ -1,4 +1,5 @@
 import type { PostSurveyKey } from "@/lib/misokinesia-phase";
+import { misoMessage, type MisoLocale, type MisoMessageKey } from "@/lib/i18n";
 
 export type MisokinesiaSectionTarget =
   | "intro"
@@ -27,16 +28,41 @@ export interface MisokinesiaSectionJumpState {
   surveyIndex?: number;
 }
 
-export const MISOKINESIA_SECTION_JUMP_SECTIONS: readonly MisokinesiaSectionJumpSection[] =
-  [
-    { target: "intro", label: "Intro" },
-    { target: "clips", label: "Clips" },
-    { target: "mkaq", label: "MkAQ" },
-    { target: "gad7", label: "GAD-7" },
-    { target: "maq", label: "MAQ" },
-    { target: "end", label: "End" },
-    { target: "done", label: "Done" },
-  ] as const;
+/**
+ * Jump targets in the order the jumper renders them. Labels are not baked in:
+ * they come from the catalogue via `misokinesiaSectionJumpSections`, so the
+ * jumper holds no inline string.
+ */
+export const MISOKINESIA_SECTION_JUMP_TARGETS: readonly MisokinesiaSectionTarget[] =
+  ["intro", "clips", "mkaq", "gad7", "maq", "end", "done"] as const;
+
+const SECTION_LABEL_KEYS: Readonly<
+  Record<MisokinesiaSectionTarget, MisoMessageKey>
+> = {
+  intro: "chrome.jumper.intro",
+  clips: "chrome.jumper.clips",
+  mkaq: "chrome.jumper.mkaq",
+  gad7: "chrome.jumper.gad7",
+  maq: "chrome.jumper.maq",
+  end: "chrome.jumper.end",
+  done: "chrome.jumper.done",
+};
+
+/**
+ * Ordered jumper sections with labels resolved for `locale`.
+ *
+ * The jumper is trial-only, so a KO run is a rehearsal an RA is driving; the
+ * labels follow session locale anyway rather than stranding one English strip
+ * inside an otherwise Korean flow.
+ */
+export function misokinesiaSectionJumpSections(
+  locale: MisoLocale
+): readonly MisokinesiaSectionJumpSection[] {
+  return MISOKINESIA_SECTION_JUMP_TARGETS.map((target) => ({
+    target,
+    label: misoMessage(SECTION_LABEL_KEYS[target], locale),
+  }));
+}
 
 export function getMisokinesiaSectionJumpState(
   target: MisokinesiaSectionTarget,

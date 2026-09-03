@@ -126,8 +126,20 @@ describe("trial-mode launch controls", () => {
     );
 
     expect(pageSource).toContain("const totalClips = manifest?.clips.length ?? 0");
-    expect(pageSource).toContain("You will watch {totalClips} short video clips.");
-    expect(pageSource).toContain("Clip {clipNumber} of {totalClips}");
+    // The tallies moved into the localized catalogue as `{n}` / `{m}`
+    // parameters. What must not regress is that the manifest length is what
+    // gets substituted — never a hardcoded clip count in either locale.
+    expect(pageSource).toContain(
+      'misoMessage("chrome.intro.body", locale, { n: totalClips })'
+    );
+    expect(MISO_MESSAGES.en["chrome.intro.body"]).toContain(
+      "You will watch {n} short video clips."
+    );
+    expect(pageSource).toContain('misoMessage("chrome.intro.meta.clips.value", locale, {');
+    expect(pageSource).toContain('misoMessage("chrome.clip.progress", locale, {');
+    expect(pageSource).toContain("n: clipNumber,");
+    expect(pageSource).toContain("m: totalClips,");
+    expect(MISO_MESSAGES.en["chrome.clip.progress"]).toBe("Clip {n} of {m}");
   });
 
   it("keeps Misokinesia playback on the shared video player path", () => {

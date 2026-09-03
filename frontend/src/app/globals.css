@@ -197,6 +197,36 @@
   }
 }
 
+/* ──────────────────────────────────────────────────────────────────
+   Hangul (KO) typography scope
+
+   The app-wide type stack is JetBrains Mono, which has no Hangul coverage —
+   a KO participant screen would otherwise fall back per-glyph to whatever the
+   OS picks, mixing metrics mid-line. Any surface rendered in Korean carries
+   `lang="ko-KR"` (see `misoLocaleTag`), and this scope hangs off that attribute
+   so the fallback follows session locale without a second class to keep in sync.
+
+   `[lang|="ko"]` matches both `ko` and `ko-KR`.
+
+   - Latin faces stay first so digits, `MKP-0001` ids and the `→` arrows keep the
+     monospace look; the Korean faces are appended as fallback only.
+   - Hangul syllable blocks are taller than Latin lowercase, so inherited
+     line-height is relaxed. Tailwind font-size utilities that ship their own
+     leading (headings) and explicit `leading-*` classes still win.
+   - `keep-all` is the Korean line-breaking rule: break between eojeol, never
+     inside one. `overflow-wrap: anywhere` is the escape hatch for a single
+     token wider than its column, so a long string cannot burst a card.
+   ────────────────────────────────────────────────────────────────── */
+[lang|="ko"] {
+  font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", "Apple SD Gothic Neo", Pretendard,
+    "Malgun Gothic", "Noto Sans KR", "Nanum Gothic", "Nanum Barun Gothic",
+    sans-serif;
+  line-height: 1.7;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 *::-webkit-scrollbar {
   width: 6px;
   height: 6px;

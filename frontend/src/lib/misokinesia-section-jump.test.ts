@@ -1,16 +1,30 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  MISOKINESIA_SECTION_JUMP_SECTIONS,
+  MISOKINESIA_SECTION_JUMP_TARGETS,
   getMisokinesiaSectionJumpState,
+  misokinesiaSectionJumpSections,
 } from "@/lib/misokinesia-section-jump";
 import type { PostSurveyKey } from "@/lib/misokinesia-phase";
+import { MISO_MESSAGES } from "@/lib/i18n";
 
 const DEFAULT_SURVEY_ORDER: PostSurveyKey[] = ["mkaq", "gad7", "maq"];
 
 describe("misokinesia section jump helper", () => {
-  it("exports the ordered trial section labels from the design spec", () => {
-    expect(MISOKINESIA_SECTION_JUMP_SECTIONS).toEqual([
+  it("keeps the jump targets in the order the design spec lists them", () => {
+    expect(MISOKINESIA_SECTION_JUMP_TARGETS).toEqual([
+      "intro",
+      "clips",
+      "mkaq",
+      "gad7",
+      "maq",
+      "end",
+      "done",
+    ]);
+  });
+
+  it("builds the English section labels from the catalogue", () => {
+    expect(misokinesiaSectionJumpSections("en")).toEqual([
       { target: "intro", label: "Intro" },
       { target: "clips", label: "Clips" },
       { target: "mkaq", label: "MkAQ" },
@@ -18,6 +32,18 @@ describe("misokinesia section jump helper", () => {
       { target: "maq", label: "MAQ" },
       { target: "end", label: "End" },
       { target: "done", label: "Done" },
+    ]);
+  });
+
+  it("follows session locale, keeping instrument acronyms untranslated", () => {
+    expect(misokinesiaSectionJumpSections("ko")).toEqual([
+      { target: "intro", label: MISO_MESSAGES.ko["chrome.jumper.intro"] },
+      { target: "clips", label: MISO_MESSAGES.ko["chrome.jumper.clips"] },
+      { target: "mkaq", label: "MkAQ" },
+      { target: "gad7", label: "GAD-7" },
+      { target: "maq", label: "MAQ" },
+      { target: "end", label: MISO_MESSAGES.ko["chrome.jumper.end"] },
+      { target: "done", label: MISO_MESSAGES.ko["chrome.jumper.done"] },
     ]);
   });
 

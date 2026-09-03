@@ -2,11 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_MISO_LOCALE, misoMessage, type MisoLocale } from "@/lib/i18n";
 
 interface MisokinesiaVideoPlayerProps {
   publicUrl: string;
   onEnded: () => void;
   immersive?: boolean;
+  /**
+   * Session locale for the two participant-visible strings this player owns:
+   * the autoplay-blocked play button and the clip load error. The non-immersive
+   * hint below is unreachable in the Misokinesia flow and is out of catalogue
+   * scope (LOCALIZATION.md section 6.12).
+   */
+  locale?: MisoLocale;
 }
 
 type WebkitFullscreenDocument = Document & {
@@ -59,6 +67,7 @@ export default function MisokinesiaVideoPlayer({
   publicUrl,
   onEnded,
   immersive = false,
+  locale = DEFAULT_MISO_LOCALE,
 }: MisokinesiaVideoPlayerProps) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -165,10 +174,10 @@ export default function MisokinesiaVideoPlayer({
           disablePictureInPicture
           controlsList="nodownload noplaybackrate noremoteplayback"
           onEnded={onEnded}
-          onError={() => setLoadError("This clip could not be loaded. Please ask the research assistant to restart the session.")}
+          onError={() => setLoadError(misoMessage("chrome.error.clip_load", locale))}
         >
           <source src={publicUrl} type="video/mp4" />
-          Your browser does not support embedded video playback.
+          {misoMessage("chrome.video.unsupported", locale)}
         </video>
 
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent px-4 pb-4 pt-10 text-center">
@@ -182,7 +191,7 @@ export default function MisokinesiaVideoPlayer({
               onClick={handlePlay}
               className="rounded-xl px-8 py-2.5 text-sm font-semibold"
             >
-              Play Clip
+              {misoMessage("chrome.video.play", locale)}
             </Button>
           ) : immersive ? null : (
             <p className="text-xs font-medium text-muted-foreground">

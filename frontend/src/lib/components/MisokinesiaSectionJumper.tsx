@@ -2,12 +2,19 @@ import type {
   MisokinesiaSectionJumpSection,
   MisokinesiaSectionTarget,
 } from "@/lib/misokinesia-section-jump";
+import { DEFAULT_MISO_LOCALE, misoMessage, type MisoLocale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 interface MisokinesiaSectionJumperProps {
   sections: readonly MisokinesiaSectionJumpSection[];
   activeSection: MisokinesiaSectionTarget;
   onJump: (section: MisokinesiaSectionTarget) => void;
+  /**
+   * Session locale, used for the group's accessible name only. Visible segment
+   * labels stay caller-supplied so the component remains presentational; build
+   * them with `misokinesiaSectionJumpSections(locale)`.
+   */
+  locale?: MisoLocale;
   className?: string;
 }
 
@@ -15,6 +22,7 @@ export default function MisokinesiaSectionJumper({
   sections,
   activeSection,
   onJump,
+  locale = DEFAULT_MISO_LOCALE,
   className,
 }: MisokinesiaSectionJumperProps) {
   return (
@@ -24,7 +32,7 @@ export default function MisokinesiaSectionJumper({
         className
       )}
       role="group"
-      aria-label="Trial section jumps"
+      aria-label={misoMessage("chrome.jumper.aria", locale)}
     >
       {sections.map((section) => {
         const isActive = section.target === activeSection;

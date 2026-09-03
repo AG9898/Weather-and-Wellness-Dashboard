@@ -64,7 +64,10 @@ Key differences from survey/digit-span flow: miso-specific demographics collecte
   is marked active; the others are tappable.
 - **Component boundary.** The shared `MisokinesiaSectionJumper` component is presentational:
   callers provide the ordered sections, active section, and jump callback. It does not inspect
-  trial mode, task phase, survey state, or backend data, and it does not make API calls.
+  trial mode, task phase, survey state, or backend data, and it does not make API calls. The
+  `locale` prop is the one exception and covers the group's `aria-label` only; visible segment
+  labels are built by the caller with `misokinesiaSectionJumpSections(locale)`, so they follow
+  session locale without the component reaching for session state.
 - **Theme.** Reuses existing semantic tokens — container `bg-card`/`bg-background` with
   `border-border`, active segment `bg-primary` with primary foreground text — matching the page
   and trial theme. Kept subtle/low-contrast so it does not dominate the rehearsal view.
@@ -121,6 +124,66 @@ Template mapping:
 - **Survey transition cards:** apply the A5 template to MkAQ, GAD-7, and MAQ with survey-specific text and metadata.
 
 The redesign should remove the current participant-flow ambient glow/card-stack recipe in favor of hairline dividers, flat selected chips, compact metadata, tabular progress text, and intentional whitespace.
+
+### Participant Flow Localization
+
+String content and its provenance live in
+[docs/labs/weather-wellness/misokinesia/LOCALIZATION.md](LOCALIZATION.md). This section
+covers only how the participant flow *renders* a locale.
+
+- **Locale is session state, resolved from the manifest.** `/misokinesia/[id]` reads the
+  manifest out of `sessionStorage`, narrows `language` through `resolveMisoLocale`, and holds
+  it in page state next to the post-survey order. There is no locale route segment, no
+  middleware rule, and no locale in the participant URL — a mid-task refresh recovers locale
+  from the same manifest that restores the clip list.
+- **Every phase renders from the catalogue.** Intro card, all three transition cards, the
+  pre-clip progress label, the saving / submitting / submission-error / retry screens, the
+  session-error screen, the completion screen, the step strips, the fullscreen toggle and its
+  `aria-label`, and the trial-only section jumper all resolve through `misoMessage`. The
+  participant page holds no inline display literal.
+- **Locale is passed down, never re-defaulted.** Each participant component takes a `locale`
+  prop that defaults to `en`; the page passes the session locale to all of them. The default
+  exists so a component renders standalone in a test, not as the live value — a participant
+  component rendering at its default in the real flow is a wiring bug, not a fallback.
+- **Interpolated values are catalogue parameters.** Clip counts (`chrome.intro.body`,
+  `chrome.intro.meta.clips.value`, `chrome.clip.progress`) and survey position
+  (`chrome.transition.kicker`, `chrome.transition.strip.survey_count`) are `{name}`
+  placeholders substituted by `misoMessage`, never string-concatenated around a number. Korean
+  word order is then free to differ from English rather than being forced to follow it.
+- **Two deliberate English remainders**, both documented in LOCALIZATION.md section 6.12:
+  server error text surfaced through `getParticipantErrorMessage` (only the card frame around
+  it is localized), and the manifest-missing error screen, which has no manifest and therefore
+  no recorded locale.
+
+### Hangul Typography
+
+- **Scope carrier.** The task container and each standalone status `Screen` set
+  `lang={misoLocaleTag(locale)}` (`en-CA` / `ko-KR`). All Korean typography hangs off the
+  `[lang|="ko"]` rule in `frontend/src/app/globals.css`; the document element stays `lang="en"`
+  for the RA shell. Setting `lang` also gives assistive tech the correct language for the
+  subtree.
+- **Font stack.** The app-wide JetBrains Mono stack has no Hangul coverage, so the KO scope
+  appends system Korean faces (`Apple SD Gothic Neo`, `Pretendard`, `Malgun Gothic`,
+  `Noto Sans KR`, `Nanum Gothic`, `Nanum Barun Gothic`, `sans-serif`). The Latin faces stay
+  first so digits, participant ids and the `→` arrows keep the monospace look; the Korean faces
+  are fallback only. No webfont is fetched — the platform loads no font files today and this
+  does not change that.
+- **Line height.** Hangul syllable blocks are taller than Latin lowercase, so the KO scope
+  relaxes inherited `line-height` to `1.7`. Tailwind font-size utilities that ship their own
+  leading, and explicit `leading-*` classes, still win — this only reaches the small
+  `text-[11px]` / `text-[13px]` chrome that would otherwise inherit a Latin-tuned value.
+- **Line breaking.** `word-break: keep-all` is the Korean rule: break between eojeol, never
+  inside one. `overflow-wrap: anywhere` stays as the escape hatch so a single token wider than
+  its column cannot burst a card.
+- **Meta ledger.** The intro and transition-card ledgers use
+  `grid-template-columns: minmax(140px, max-content) 1fr` instead of a hard `140px`. The floor
+  keeps the EN ledger on the template's 140px rhythm (every EN label measures under it, so EN
+  rendering is unchanged); `max-content` lets a longer Korean label widen the column rather
+  than wrap or clip. Verified against the KO catalogue: the widest label,
+  `chrome.intro.meta.after_clips.label` (`영상 시청 후`), sits well inside the floor.
+- **Transition card.** Korean titles are shorter than their English counterparts, so the
+  620px card and its `text-[34px]` heading have more headroom in KO than in EN, not less. The
+  card needs no locale-specific layout branch.
 
 ### `/misokinesia` RA Dashboard
 

@@ -5292,7 +5292,7 @@
       "id": "T1857",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - participant flow chrome and Hangul typography",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "estimate": "M",

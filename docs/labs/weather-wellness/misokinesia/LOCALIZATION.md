@@ -61,6 +61,21 @@ Rules:
   carry the selected locale as client state on the locally built trial manifest.
 - Locale selects **labels only**. Stored values are language-independent option keys
   (section 2), so a KO session and an EN session produce directly comparable rows.
+- **The participant page resolves locale from the manifest, not from the URL.**
+  `frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx` reads the
+  manifest the launch page wrote to `sessionStorage`, narrows `language` through
+  `resolveMisoLocale`, and holds the result in page state alongside the post-survey
+  order. Both manifests carry it: the production one echoes the backend, the trial
+  one carries the launch-page selection. There is no locale route segment, no
+  middleware rule, and no locale in any participant URL — a mid-task refresh
+  recovers locale from the same manifest it recovers the clip list from. The one
+  screen this cannot cover is the manifest-missing error, which by definition has no
+  recorded locale and always renders in `en`.
+- Every participant component takes `locale` as a prop defaulting to `en`. The page
+  passes the session locale to all of them — demographics, per-clip questionnaire,
+  MkAQ, GAD-7, MAQ, end-of-task, the video player, and the trial section jumper. The
+  default is a safety net for an isolated render, not the live value; a component
+  rendered without the prop in the participant flow is a wiring bug.
 
 ### Provenance flags
 
@@ -915,7 +930,10 @@ is corrected, this string must be corrected with it — they are a pair.
 
 ### 6.6 Survey transition cards
 
-`page.tsx`, `TRANSITION_CARD_COPY` and `TransitionCard`.
+`page.tsx`, `TRANSITION_CARD_KEYS` / `buildTransitionCardCopy` and `TransitionCard`.
+`chrome.transition.kicker` and `chrome.transition.strip.survey_count` take the survey
+position and total as parameters rather than being concatenated, so the KO forms order
+the numbers their own way (`다음 · 설문 {pos} / {total}`, `설문 {n} / {m}`).
 
 | Key | EN | KO | Provenance |
 |---|---|---|---|
@@ -1045,12 +1063,16 @@ exit state.
 
 ### 6.11 Trial-run section jumper (RA-only)
 
-`MisokinesiaSectionJumper.tsx`, labels from `MISOKINESIA_SECTION_JUMP_SECTIONS` in
+`MisokinesiaSectionJumper.tsx`, labels built by `misokinesiaSectionJumpSections(locale)`
+from `MISOKINESIA_SECTION_JUMP_TARGETS` in
 `frontend/src/lib/misokinesia-section-jump.ts`. Rendered **only in trial-run mode**,
 which no participant ever enters — it is a rehearsal control for the RA.
 
-Keys exist so the component has no inline literals, but KO is optional here: leaving
-these English in a KO trial run is acceptable and is not a defect.
+The component stays presentational: the caller supplies the ordered sections and their
+labels, and the `locale` prop covers the group's `aria-label` only. The labels do follow
+session locale, so a KO rehearsal is not one English strip inside an otherwise Korean
+flow. `MkAQ`, `GAD-7` and `MAQ` are instrument acronyms and are identical in both
+locales by design.
 
 | Key | EN | KO | Provenance |
 |---|---|---|---|

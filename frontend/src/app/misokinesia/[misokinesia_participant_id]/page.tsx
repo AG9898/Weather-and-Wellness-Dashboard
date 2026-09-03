@@ -48,14 +48,30 @@ import {
 } from "@/lib/misokinesia-phase";
 import {
   getMisokinesiaSectionJumpState,
-  MISOKINESIA_SECTION_JUMP_SECTIONS,
+  misokinesiaSectionJumpSections,
   type MisokinesiaSectionTarget,
 } from "@/lib/misokinesia-section-jump";
+import {
+  DEFAULT_MISO_LOCALE,
+  misoLocaleTag,
+  misoMessage,
+  resolveMisoLocale,
+  type MisoLocale,
+  type MisoMessageKey,
+} from "@/lib/i18n";
 import { useTaskExitGuard } from "@/lib/useTaskExitGuard";
 
 const MANIFEST_STORAGE_KEY = "misokinesia_manifest";
 const PRE_CLIP_BUFFER_MS = 4000;
 const PRE_CLIP_PROGRESS_MS = 2000;
+
+/**
+ * Meta-ledger label column. The floor keeps the EN ledger on the 140px rhythm
+ * the editorial template specifies; `max-content` lets a Korean label that runs
+ * wider push the column out instead of wrapping or clipping. EN labels all
+ * measure under the floor, so EN rendering is unchanged.
+ */
+const META_LEDGER_COLUMNS = "minmax(140px, max-content) 1fr";
 
 type Phase =
   | "loading"
@@ -80,6 +96,15 @@ export default function MisokinesiaTaskPage() {
   const participantId = params.misokinesia_participant_id as string;
 
   const [manifest, setManifest] = useState<MisokinesiaManifest | null>(null);
+  /**
+   * Session locale. Fixed for the life of the session and resolved from the
+   * manifest the RA's launch wrote to `sessionStorage` — the production
+   * manifest echoes `language` back from `POST /misokinesia/start`, and the
+   * locally built trial manifest carries the RA's launch-page selection. It is
+   * page state, never a route segment, so refreshing mid-task recovers it from
+   * the same manifest rather than from the URL.
+   */
+  const [locale, setLocale] = useState<MisoLocale>(DEFAULT_MISO_LOCALE);
   const [trialMode, setTrialMode] = useState(false);
   const [trialModeType, setTrialModeType] = useState<MisokinesiaTrialMode | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
@@ -134,6 +159,7 @@ export default function MisokinesiaTaskPage() {
         const m = JSON.parse(raw) as MisokinesiaManifest;
         if (m.misokinesia_participant_id === participantId) {
           setManifest(m);
+          setLocale(resolveMisoLocale(m.language));
           setSurveyOrder(parseSurveyOrder(m.post_survey_order));
           setTrialMode(Boolean(activeTrial));
           setTrialModeType(
@@ -147,9 +173,9 @@ export default function MisokinesiaTaskPage() {
       }
     }
 
-    setLoadError(
-      "Session data not found. Please ask the research assistant to restart the session."
-    );
+    // No manifest means no recorded locale, so this one screen is always the
+    // default locale. Every other screen runs on the manifest's language.
+    setLoadError(misoMessage("chrome.error.manifest_missing", DEFAULT_MISO_LOCALE));
     setPhase("error");
   }, [participantId]);
 
@@ -401,15 +427,17 @@ export default function MisokinesiaTaskPage() {
 
   if (phase === "loading") {
     return (
-      <Screen>
+      <Screen locale={locale}>
         <div
           className="rounded-2xl border border-border px-10 py-10 text-center"
           style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Misokinesia Task
+            {misoMessage("chrome.task.name", locale)}
           </p>
-          <p className="mt-4 text-sm text-muted-foreground">Loading session…</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {misoMessage("chrome.state.loading_session", locale)}
+          </p>
         </div>
       </Screen>
     );
@@ -417,13 +445,13 @@ export default function MisokinesiaTaskPage() {
 
   if (phase === "error") {
     return (
-      <Screen>
+      <Screen locale={locale}>
         <div
           className="rounded-2xl border border-border px-10 py-10 text-center"
           style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Session Error
+            {misoMessage("chrome.error.session_kicker", locale)}
           </p>
           <p className="mt-4 text-sm leading-relaxed text-destructive">{loadError}</p>
         </div>
@@ -440,6 +468,7 @@ export default function MisokinesiaTaskPage() {
       return (
         <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
           <MisokinesiaDemographicsForm
+            locale={locale}
             submitting={demographicsSubmitting}
             error={demographicsError}
             onSubmit={handleDemographicsSubmit}
@@ -456,11 +485,11 @@ export default function MisokinesiaTaskPage() {
             {/* Step indicator */}
             <div className="mb-9 flex items-center gap-3">
               <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
-                02 / 04
+                {misoMessage("chrome.step.intro_position", locale)}
               </span>
               <div className="h-px flex-1 bg-border" />
               <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Demographics → Intro → Task → Surveys
+                {misoMessage("chrome.step.trail", locale)}
               </span>
             </div>
 
@@ -470,24 +499,38 @@ export default function MisokinesiaTaskPage() {
               style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Misokinesia Task
+                {misoMessage("chrome.task.name", locale)}
               </p>
               <h1 className="mt-3 text-3xl font-bold tracking-[-0.02em] text-foreground">
-                Video Clip Questionnaire
+                {misoMessage("chrome.intro.title", locale)}
               </h1>
               <p className="mt-3.5 text-sm leading-relaxed text-muted-foreground">
-                You will watch {totalClips} short video clips. After each clip,
-                you will be asked a few questions about how you felt. There are
-                no right or wrong answers — just answer honestly.
+                {/* Clip count is a catalogue parameter, not a concatenation, so
+                    the Korean form is free to place it where the grammar wants. */}
+                {misoMessage("chrome.intro.body", locale, { n: totalClips })}
               </p>
 
               {/* Meta ledger */}
               <div className="mt-7 border-t border-border">
                 {[
-                  { k: "Clips", v: `${totalClips} short video clips` },
-                  { k: "Per clip", v: "4 questions · scale 1–5" },
-                  { k: "After clips", v: "3 short surveys" },
-                  { k: "Estimated", v: "≈ 18 minutes total" },
+                  {
+                    k: misoMessage("chrome.intro.meta.clips.label", locale),
+                    v: misoMessage("chrome.intro.meta.clips.value", locale, {
+                      n: totalClips,
+                    }),
+                  },
+                  {
+                    k: misoMessage("chrome.intro.meta.per_clip.label", locale),
+                    v: misoMessage("chrome.intro.meta.per_clip.value", locale),
+                  },
+                  {
+                    k: misoMessage("chrome.intro.meta.after_clips.label", locale),
+                    v: misoMessage("chrome.intro.meta.after_clips.value", locale),
+                  },
+                  {
+                    k: misoMessage("chrome.intro.meta.estimated.label", locale),
+                    v: misoMessage("chrome.intro.meta.estimated.value", locale),
+                  },
                 ].map((row, i, arr) => (
                   <div
                     key={row.k}
@@ -495,7 +538,7 @@ export default function MisokinesiaTaskPage() {
                       "grid items-center gap-6 py-3",
                       i < arr.length - 1 && "border-b border-border"
                     )}
-                    style={{ gridTemplateColumns: "140px 1fr" }}
+                    style={{ gridTemplateColumns: META_LEDGER_COLUMNS }}
                   >
                     <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       {row.k}
@@ -525,8 +568,7 @@ export default function MisokinesiaTaskPage() {
                   <rect x="14" y="4" width="4" height="16" rx="1" />
                 </svg>
                 <span className="text-xs leading-relaxed text-muted-foreground">
-                  The task will enter fullscreen when you click Begin. You can
-                  exit at any time using the button in the top corner.
+                  {misoMessage("chrome.intro.fullscreen_note", locale)}
                 </span>
               </div>
 
@@ -535,7 +577,7 @@ export default function MisokinesiaTaskPage() {
                   onClick={handleBegin}
                   className="h-11 min-w-[200px] rounded-xl px-[22px] text-sm text-primary-foreground"
                 >
-                  Begin →
+                  {misoMessage("chrome.intro.begin", locale)}
                 </Button>
               </div>
             </div>
@@ -555,6 +597,7 @@ export default function MisokinesiaTaskPage() {
             surveyKey={getSurveyPhaseFromTransition(phase as TransitionCardPhase)}
             surveyPosition={surveyIndex + 1}
             totalSurveys={surveyOrder.length || 3}
+            locale={locale}
             onContinue={() => handleTransitionContinue(phase as TransitionCardPhase)}
           />
         </div>
@@ -566,15 +609,17 @@ export default function MisokinesiaTaskPage() {
 
       if (surveySubmitting === activeSurvey) {
         return (
-          <Screen>
+          <Screen locale={locale}>
             <div
               className="rounded-2xl border border-border px-10 py-10 text-center"
               style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Saving
+                {misoMessage("chrome.state.saving_kicker", locale)}
               </p>
-              <p className="mt-4 text-sm text-muted-foreground">Submitting questionnaire…</p>
+              <p className="mt-4 text-sm text-muted-foreground">
+                {misoMessage("chrome.state.submitting_survey", locale)}
+              </p>
             </div>
           </Screen>
         );
@@ -582,14 +627,16 @@ export default function MisokinesiaTaskPage() {
 
       if (surveyError && pendingSurvey?.key === activeSurvey) {
         return (
-          <Screen>
+          <Screen locale={locale}>
             <div
               className="rounded-2xl border border-border px-10 py-10 text-center"
               style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Submission Error
+                {misoMessage("chrome.error.submission_kicker", locale)}
               </p>
+              {/* `surveyError` is FastAPI text, English-only by design
+                  (LOCALIZATION.md 6.12); only the frame around it follows locale. */}
               <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
                 {surveyError}
               </div>
@@ -597,7 +644,7 @@ export default function MisokinesiaTaskPage() {
                 onClick={handleSurveyRetry}
                 className="mt-6 h-11 rounded-xl px-[22px] text-sm text-primary-foreground"
               >
-                Retry
+                {misoMessage("chrome.button.retry", locale)}
               </Button>
             </div>
           </Screen>
@@ -608,6 +655,7 @@ export default function MisokinesiaTaskPage() {
         return (
           <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
             <MisokinesiaGAD7Form
+              locale={locale}
               submitting={surveySubmitting === "gad7"}
               error={surveyError}
               onSubmit={(answers) => handleSurveyComplete("gad7", answers)}
@@ -621,6 +669,7 @@ export default function MisokinesiaTaskPage() {
         return (
           <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
             <MisokinesiaMAQForm
+              locale={locale}
               submitting={surveySubmitting === "maq"}
               error={surveyError}
               itemCount={maqItemCount}
@@ -635,6 +684,7 @@ export default function MisokinesiaTaskPage() {
       return (
         <div className="flex min-h-screen flex-col items-center justify-start pt-4 px-4">
           <MisokinesiaMkaqForm
+            locale={locale}
             items={mkaqItems}
             onComplete={(answers) => handleSurveyComplete("mkaq", answers)}
           />
@@ -649,6 +699,7 @@ export default function MisokinesiaTaskPage() {
             <ProgressIndicator
               clipNumber={clipNumber}
               totalClips={totalClips}
+              locale={locale}
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/80"
             />
           )}
@@ -671,6 +722,7 @@ export default function MisokinesiaTaskPage() {
         <div className="flex min-h-screen bg-black">
           <MisokinesiaVideoPlayer
             publicUrl={currentClip.public_url}
+            locale={locale}
             onEnded={handleVideoEnded}
             immersive
           />
@@ -682,6 +734,7 @@ export default function MisokinesiaTaskPage() {
       return (
         <div className="flex min-h-screen flex-col items-center justify-start px-4">
           <MisokinesiaQuestionnaire
+            locale={locale}
             misokinesiaParticipantId={participantId}
             stimulusId={currentClip.stimulus_id}
             displayOrder={clipNumber}
@@ -699,6 +752,7 @@ export default function MisokinesiaTaskPage() {
       return (
         <div className="flex min-h-screen flex-col items-center justify-start px-4 pt-4">
           <MisokinesiaEndOfTaskForm
+            locale={locale}
             misokinesiaParticipantId={participantId}
             trialMode={trialMode}
             onComplete={handleEndOfTaskComplete}
@@ -710,15 +764,17 @@ export default function MisokinesiaTaskPage() {
     if (phase === "complete") {
       if (completing) {
         return (
-          <Screen>
+          <Screen locale={locale}>
             <div
               className="rounded-2xl border border-border px-10 py-10 text-center"
               style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Misokinesia Task
+                {misoMessage("chrome.task.name", locale)}
               </p>
-              <p className="mt-4 text-sm text-muted-foreground">Saving your results…</p>
+              <p className="mt-4 text-sm text-muted-foreground">
+                {misoMessage("chrome.state.saving_results", locale)}
+              </p>
             </div>
           </Screen>
         );
@@ -726,14 +782,15 @@ export default function MisokinesiaTaskPage() {
 
       if (completeError) {
         return (
-          <Screen>
+          <Screen locale={locale}>
             <div
               className="rounded-2xl border border-border px-10 py-10 text-center"
               style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
             >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Session Error
+                {misoMessage("chrome.error.session_kicker", locale)}
               </p>
+              {/* Server-produced text (LOCALIZATION.md 6.12); frame only is localized. */}
               <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
                 {completeError}
               </div>
@@ -741,7 +798,7 @@ export default function MisokinesiaTaskPage() {
                 onClick={handleRetry}
                 className="mt-6 h-11 rounded-xl px-[22px] text-sm text-primary-foreground"
               >
-                Retry
+                {misoMessage("chrome.button.retry", locale)}
               </Button>
             </div>
           </Screen>
@@ -749,7 +806,7 @@ export default function MisokinesiaTaskPage() {
       }
 
       return (
-        <Screen>
+        <Screen locale={locale}>
           <div
             className="rounded-2xl border border-border px-10 py-12 text-center"
             style={{ background: "var(--card)", boxShadow: "var(--shadow-card)" }}
@@ -773,20 +830,20 @@ export default function MisokinesiaTaskPage() {
             </div>
 
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Session complete
+              {misoMessage("chrome.complete.kicker", locale)}
             </p>
             <h1 className="mt-3 text-[28px] font-bold tracking-[-0.02em] text-foreground">
-              Thank you
+              {misoMessage("chrome.complete.title", locale)}
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              The session is complete. Please return this device to the research assistant.
+              {misoMessage("chrome.complete.body", locale)}
             </p>
 
             <Button
               onClick={() => router.push("/misokinesia")}
               className="mt-8 h-11 min-w-[200px] rounded-xl px-[22px] text-sm text-primary-foreground"
             >
-              Back to Misokinesia
+              {misoMessage("chrome.complete.back", locale)}
             </Button>
           </div>
         </Screen>
@@ -799,6 +856,11 @@ export default function MisokinesiaTaskPage() {
   return (
     <div
       ref={taskContainerRef}
+      // `lang` is the whole Hangul typography switch: the KO font fallback,
+      // relaxed line-height and `keep-all` line breaking hang off `[lang|="ko"]`
+      // in globals.css. It also gives assistive tech the right language for the
+      // subtree — the document element stays `en` for the RA shell.
+      lang={misoLocaleTag(locale)}
       className="relative w-full min-h-screen bg-background"
     >
       {renderPhaseContent()}
@@ -806,8 +868,9 @@ export default function MisokinesiaTaskPage() {
       {trialMode && activeJumpSection && (
         <div className="absolute left-1/2 top-14 z-40 w-[calc(100%-2rem)] max-w-[34rem] -translate-x-1/2 sm:top-3 sm:w-[calc(100%-13rem)]">
           <MisokinesiaSectionJumper
-            sections={MISOKINESIA_SECTION_JUMP_SECTIONS}
+            sections={misokinesiaSectionJumpSections(locale)}
             activeSection={activeJumpSection}
+            locale={locale}
             onJump={handleSectionJump}
           />
         </div>
@@ -817,6 +880,7 @@ export default function MisokinesiaTaskPage() {
       {fullscreenStarted && phase !== "complete" && (
         <FullscreenButton
           isFullscreen={isFullscreen}
+          locale={locale}
           onEnter={enterFullscreen}
           onExit={exitFullscreen}
         />
@@ -838,9 +902,23 @@ function getActiveJumpSection(phase: Phase): MisokinesiaSectionTarget | null {
 
 // ── Shared layout components ──
 
-function Screen({ children }: { children: React.ReactNode }) {
+/**
+ * Centred single-card frame for the loading, saving, error and completion
+ * states. `locale` is here only to carry the `lang` attribute: these states
+ * render outside the task container, so they need their own typography scope.
+ */
+function Screen({
+  locale = DEFAULT_MISO_LOCALE,
+  children,
+}: {
+  locale?: MisoLocale;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div
+      lang={misoLocaleTag(locale)}
+      className="flex min-h-screen items-center justify-center px-4"
+    >
       <div className="w-full max-w-md text-center">{children}</div>
     </div>
   );
@@ -848,10 +926,12 @@ function Screen({ children }: { children: React.ReactNode }) {
 
 function FullscreenButton({
   isFullscreen,
+  locale = DEFAULT_MISO_LOCALE,
   onEnter,
   onExit,
 }: {
   isFullscreen: boolean;
+  locale?: MisoLocale;
   onEnter: () => void;
   onExit: () => void;
 }) {
@@ -859,18 +939,22 @@ function FullscreenButton({
     <button
       type="button"
       onClick={isFullscreen ? onExit : onEnter}
-      aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      aria-label={
+        isFullscreen
+          ? misoMessage("chrome.fullscreen.exit", locale)
+          : misoMessage("chrome.fullscreen.enter_aria", locale)
+      }
       className="fixed top-3 right-3 z-50 flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {isFullscreen ? (
         <>
           <ExitFullscreenIcon />
-          Exit fullscreen
+          {misoMessage("chrome.fullscreen.exit", locale)}
         </>
       ) : (
         <>
           <EnterFullscreenIcon />
-          Fullscreen
+          {misoMessage("chrome.fullscreen.enter", locale)}
         </>
       )}
     </button>
@@ -935,15 +1019,21 @@ function resolveTrialModeType(
 function ProgressIndicator({
   clipNumber,
   totalClips,
+  locale = DEFAULT_MISO_LOCALE,
   className = "",
 }: {
   clipNumber: number;
   totalClips: number;
+  locale?: MisoLocale;
   className?: string;
 }) {
   return (
     <p className={`mb-2 text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground ${className}`}>
-      Clip {clipNumber} of {totalClips}
+      {/* Both numbers are catalogue parameters — the KO form orders them itself. */}
+      {misoMessage("chrome.clip.progress", locale, {
+        n: clipNumber,
+        m: totalClips,
+      })}
     </p>
   );
 }
@@ -956,74 +1046,123 @@ interface TransitionCardMeta {
 }
 
 interface TransitionCardCopy {
-  kicker: (position: number, total: number) => string;
+  kicker: string;
   title: string;
   description: string;
   meta: TransitionCardMeta[];
   buttonLabel: string;
 }
 
-const TRANSITION_CARD_COPY: Record<PostSurveyKey, TransitionCardCopy> = {
+/**
+ * Catalogue keys per survey. Only the survey-specific half is keyed here; the
+ * shared frame (kicker, meta labels, pause note) is the same three keys for all
+ * three cards, so it is resolved once in `buildTransitionCardCopy`.
+ */
+const TRANSITION_CARD_KEYS: Record<
+  PostSurveyKey,
+  {
+    title: MisoMessageKey;
+    description: MisoMessageKey;
+    metaItems: MisoMessageKey;
+    metaFormat: MisoMessageKey;
+    metaScale: MisoMessageKey;
+    metaEstimated: MisoMessageKey;
+    button: MisoMessageKey;
+  }
+> = {
   mkaq: {
-    kicker: (pos, total) => `Up next · Survey ${pos} of ${total}`,
-    title: "Misokinesia Assessment",
-    description:
-      "A short questionnaire about how certain visual stimuli affect you. Answer based on the past two weeks. There are no right or wrong answers.",
-    meta: [
-      { k: "Items", v: "21 statements" },
-      { k: "Format", v: "4 panes · Previous available" },
-      { k: "Scale", v: "0–3 · Not at all → Almost all" },
-      { k: "Estimated", v: "≈ 5 minutes" },
-    ],
-    buttonLabel: "Begin assessment →",
+    title: "chrome.transition.mkaq.title",
+    description: "chrome.transition.mkaq.description",
+    metaItems: "chrome.transition.mkaq.meta.items",
+    metaFormat: "chrome.transition.mkaq.meta.format",
+    metaScale: "chrome.transition.mkaq.meta.scale",
+    metaEstimated: "chrome.transition.mkaq.meta.estimated",
+    button: "chrome.transition.begin_assessment",
   },
   gad7: {
-    kicker: (pos, total) => `Up next · Survey ${pos} of ${total}`,
-    title: "Anxiety Questionnaire",
-    description:
-      "Seven short questions about feelings of anxiety. Answer based on the past two weeks. There are no right or wrong answers.",
-    meta: [
-      { k: "Items", v: "7 statements" },
-      { k: "Format", v: "Single screen" },
-      { k: "Scale", v: "0–3 · Not at all → Nearly every day" },
-      { k: "Estimated", v: "≈ 1 minute" },
-    ],
-    buttonLabel: "Begin questionnaire →",
+    title: "chrome.transition.gad7.title",
+    description: "chrome.transition.gad7.description",
+    metaItems: "chrome.transition.gad7.meta.items",
+    metaFormat: "chrome.transition.gad7.meta.format",
+    metaScale: "chrome.transition.gad7.meta.scale",
+    metaEstimated: "chrome.transition.gad7.meta.estimated",
+    button: "chrome.transition.begin_questionnaire",
   },
   maq: {
-    kicker: (pos, total) => `Up next · Survey ${pos} of ${total}`,
-    title: "Misophonia Assessment",
-    description:
-      "A short questionnaire about how certain sounds affect you. Answer based on the past two weeks. There are no right or wrong answers.",
-    meta: [
-      { k: "Items", v: "21 statements" },
-      { k: "Format", v: "3 panes · Previous available" },
-      { k: "Scale", v: "0–3 · Not at all → Almost all" },
-      { k: "Estimated", v: "≈ 5 minutes" },
-    ],
-    buttonLabel: "Begin assessment →",
+    title: "chrome.transition.maq.title",
+    description: "chrome.transition.maq.description",
+    metaItems: "chrome.transition.maq.meta.items",
+    metaFormat: "chrome.transition.maq.meta.format",
+    metaScale: "chrome.transition.maq.meta.scale",
+    metaEstimated: "chrome.transition.maq.meta.estimated",
+    button: "chrome.transition.begin_assessment",
   },
 };
+
+function buildTransitionCardCopy(
+  surveyKey: PostSurveyKey,
+  locale: MisoLocale,
+  surveyPosition: number,
+  totalSurveys: number
+): TransitionCardCopy {
+  const keys = TRANSITION_CARD_KEYS[surveyKey];
+  return {
+    // Position and total are catalogue parameters, so `다음 · 설문 1 / 3` can
+    // order them differently from `Up next · Survey 1 of 3`.
+    kicker: misoMessage("chrome.transition.kicker", locale, {
+      pos: surveyPosition,
+      total: totalSurveys,
+    }),
+    title: misoMessage(keys.title, locale),
+    description: misoMessage(keys.description, locale),
+    meta: [
+      {
+        k: misoMessage("chrome.transition.meta.items.label", locale),
+        v: misoMessage(keys.metaItems, locale),
+      },
+      {
+        k: misoMessage("chrome.transition.meta.format.label", locale),
+        v: misoMessage(keys.metaFormat, locale),
+      },
+      {
+        k: misoMessage("chrome.transition.meta.scale.label", locale),
+        v: misoMessage(keys.metaScale, locale),
+      },
+      {
+        k: misoMessage("chrome.transition.meta.estimated.label", locale),
+        v: misoMessage(keys.metaEstimated, locale),
+      },
+    ],
+    buttonLabel: misoMessage(keys.button, locale),
+  };
+}
 
 function TransitionCard({
   surveyKey,
   surveyPosition,
   totalSurveys,
+  locale = DEFAULT_MISO_LOCALE,
   onContinue,
 }: {
   surveyKey: PostSurveyKey;
   surveyPosition: number;
   totalSurveys: number;
+  locale?: MisoLocale;
   onContinue: () => void;
 }) {
-  const copy = TRANSITION_CARD_COPY[surveyKey];
+  const copy = buildTransitionCardCopy(
+    surveyKey,
+    locale,
+    surveyPosition,
+    totalSurveys
+  );
 
   return (
     <div className="w-full max-w-[620px]">
       {/* Stage strip: "Clips complete ✓" — hairline — survey dots — "N / M surveys" */}
       <div className="mb-9 flex items-center gap-2.5">
         <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Clips complete
+          {misoMessage("chrome.transition.strip.clips_complete", locale)}
         </span>
         {/* Check glyph */}
         <span
@@ -1062,7 +1201,10 @@ function TransitionCard({
           ))}
         </div>
         <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          {surveyPosition} / {totalSurveys} surveys
+          {misoMessage("chrome.transition.strip.survey_count", locale, {
+            n: surveyPosition,
+            m: totalSurveys,
+          })}
         </span>
       </div>
 
@@ -1073,7 +1215,7 @@ function TransitionCard({
       >
         {/* Kicker */}
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          {copy.kicker(surveyPosition, totalSurveys)}
+          {copy.kicker}
         </p>
 
         {/* Title */}
@@ -1095,7 +1237,7 @@ function TransitionCard({
                 "grid items-center gap-6 py-3",
                 i < copy.meta.length - 1 && "border-b border-border"
               )}
-              style={{ gridTemplateColumns: "140px 1fr" }}
+              style={{ gridTemplateColumns: META_LEDGER_COLUMNS }}
             >
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 {row.k}
@@ -1125,7 +1267,7 @@ function TransitionCard({
             <rect x="14" y="4" width="4" height="16" rx="1" />
           </svg>
           <span className="text-xs leading-relaxed text-muted-foreground">
-            Take a breath before continuing — you can pause between questions.
+            {misoMessage("chrome.transition.pause_note", locale)}
           </span>
         </div>
 
