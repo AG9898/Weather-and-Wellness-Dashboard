@@ -4903,7 +4903,474 @@
         "cd frontend && npx tsc --noEmit",
         "cd frontend && npm run build"
       ]
+    },
+    {
+      "id": "T1847",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - option-key registry and validation overrides doc",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Create docs/labs/weather-wellness/misokinesia/LOCALIZATION.md with the locale registry, the demographics option-key registry, per-locale validation overrides, and the English-text-to-key migration mapping.",
+      "description": "Create docs/labs/weather-wellness/misokinesia/LOCALIZATION.md as the canonical source of Misokinesia locale data, and populate the structural half of it. Sections required: (1) Locale registry - 'en' (default) and 'ko', explicitly scoped to the Misokinesia component and not platform-wide. (2) Option-key registry - every demographics choice field (sex, residence_status, student_type, highest_education_completed, ethnicity, english_fluency, fluent_languages, english_speaking_frequency, instruction_languages, diagnosed_disorders, adhd_medication, regular_substances, relationship_status, occupational_status) plus stronger_responses_timing, each option expressed as a language-independent key with its en and ko labels. Key naming convention is <field-slug>_<option-slug> (e.g. residence_citizenship, ethnicity_european). Two distinct cases must be documented separately: options where only the LABEL differs per locale and the key is shared (Q6 residence_citizenship = 'Canadian Citizenship' / '대한민국 국적'; Q11 ethnicity_european = 'European Canadian' / '유럽계'), versus options where the option SET itself differs per locale and each locale gets its own key (Q14 and Q17: the en set contains fluent_lang_korean / instruction_lang_korean while the ko set contains fluent_lang_english / instruction_lang_english in the same position). Do not model the divergent slots positionally - a KO participant selecting 영어 must store an 'english' key, not a 'korean' one. (3) Per-locale validation overrides - cumulative_gpa max 5.0 for en and 4.5 for ko; the years_lived_canada column is reused unchanged for ko with a reference country of Korea, and this reuse must be stated explicitly so nobody assumes a second column exists. (4) Migration mapping table - current English text value to key, for every column listed above, sufficient for T1849 to backfill from. Mark every entry with a provenance flag of 'workbook' (from reference/labs/Misokinesia/VMA_Questionnaires_EN-KO.xlsx) or 'drafted' (rough Korean written in-repo, correctable by the lab without a code change). Add routing entries in docs/INDEX.md and the Component Docs section of docs/labs/weather-wellness/README.md. Do not write the instrument or UI string catalogue here - that is T1848.",
+      "acceptance_criteria": [
+        "LOCALIZATION.md exists and covers all 14 demographics choice fields plus stronger_responses_timing with a key for every option",
+        "Shared-key label differences (Q6, Q11) and per-locale option-set differences (Q14, Q17) are documented as distinct cases, with KO storing an English-language key where the workbook replaces the Korean option",
+        "Per-locale GPA maximum (5.0 en / 4.5 ko) and the reuse of years_lived_canada for the Korea reference are stated",
+        "A complete English-text-to-key mapping table exists for every affected column, usable as the T1849 backfill source",
+        "Every entry carries a workbook or drafted provenance flag",
+        "docs/INDEX.md and docs/labs/weather-wellness/README.md route to the new doc with no broken relative links",
+        "python scripts/sync_methodology_corpus.py reports the bundled corpus in sync"
+      ],
+      "depends_on": [],
+      "blocked_by": [],
+      "files": [
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md",
+        "docs/INDEX.md",
+        "docs/labs/weather-wellness/README.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md",
+        "docs/INDEX.md",
+        "docs/labs/weather-wellness/README.md"
+      ],
+      "commands": [
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "Source of truth for the Korean text is reference/labs/Misokinesia/VMA_Questionnaires_EN-KO.xlsx (sheet Demographics). Read it with backend/.venv/bin/python and openpyxl. Workbook demographics coverage was verified complete: all 27 questions and every option list match the live form in count and order."
+    },
+    {
+      "id": "T1848",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - instrument and UI string catalogue",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Extend LOCALIZATION.md with the keyed EN/KO catalogue for every instrument string and every participant-facing UI chrome string, drafting Korean where the workbook has none.",
+      "description": "Extend docs/labs/weather-wellness/misokinesia/LOCALIZATION.md with the complete participant-visible string catalogue, keyed so code never holds an inline literal. Two sections. (1) Instrument catalogue, taken verbatim from reference/labs/Misokinesia/VMA_Questionnaires_EN-KO.xlsx: per-clip VMA 4 items plus the 1-5 Likert labels; MkAQ 21 items plus the 0-3 scale labels; GAD-7 7 items plus the 0-3 scale, the stem, and the 4 difficulty options (the workbook supplies the validated Korean GAD-7, not a new translation - record that); MAQ/MpAQ 21 items plus the 0-3 scale; end-of-task items. The workbook has NO Korean for live end-of-task Q3 ('Did viewing the videos create stronger responses over time?') or its four timing options (Immediately / After 5 seconds / After 10 seconds / At the end of the video) - draft rough Korean for these in-repo and flag them 'drafted'. Also record that workbook prompt O3 is translated but deliberately NOT collected by the platform (no column, no UI), so nobody assumes the data exists. (2) UI chrome catalogue for every participant-facing string with no workbook source - consent gate prose and buttons, intro card (kicker, title, body, the four meta ledger rows, fullscreen note, Begin button), the three transition cards (kicker, title, description, four meta rows, button label each), per-clip progress strip and headings, pre-clip progress label, saving/submitting/error/retry screens, completion screen, the end-of-task step strip, and the trial-only section jumper labels. Korean here is explicitly rough (machine-translation quality is acceptable per project owner) and must be flagged 'drafted' so the lab can correct wording later without a code change. Cross-check the catalogue against the live components so no rendered string is missed; the expected chrome count is roughly 70-90 keys. Minor English wording drift between the workbook and the live app (VMA q1 'I find this video unpleasant' vs 'I found the video unpleasant'; q4 'early'; GAD-7 'More than half the days' vs 'Over half the days') is cosmetic - keep the live English as-is and note the drift rather than changing displayed English text.",
+      "acceptance_criteria": [
+        "Every instrument string (VMA 4, MkAQ 21, GAD-7 7 + stem + scale + 4 difficulty options, MAQ 21, end-of-task) has a key with en and ko values",
+        "End-of-task Q3 and its four timing options have drafted Korean and are flagged as drafted",
+        "Workbook prompt O3 is recorded as translated but intentionally not collected",
+        "Every participant-facing chrome string in the live components has a catalogue key, verified against the components rather than estimated",
+        "Every entry carries a workbook or drafted provenance flag",
+        "English wording drift between workbook and live app is noted, and no displayed English text is changed",
+        "python scripts/sync_methodology_corpus.py reports the bundled corpus in sync"
+      ],
+      "depends_on": [
+        "T1847"
+      ],
+      "blocked_by": [],
+      "files": [
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "Live strings to enumerate live in frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx (intro, TRANSITION_CARD_COPY, complete/error screens), MisokinesiaQuestionnaire.tsx, MisokinesiaMkaqForm.tsx, MisokinesiaMAQForm.tsx, MisokinesiaGAD7Form.tsx, MisokinesiaEndOfTaskForm.tsx, MisokinesiaDemographicsForm.tsx (consent gate), MisokinesiaSectionJumper.tsx."
+    },
+    {
+      "id": "T1849",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - language column and option-key backfill migration",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Alembic migration adding misokinesia_participants.language and rewriting every existing choice-column value from English display text to stable option keys, with a reversible downgrade.",
+      "description": "REQUIRES A MIGRATION. Add a new Alembic revision under backend/alembic/versions/ (naming pattern YYYYMMDD_NNNNNN_miso_ko_locale_keys.py) that does two things. (1) Adds misokinesia_participants.language as VARCHAR NOT NULL DEFAULT 'en' so every existing row is stamped en. (2) Performs an in-place data backfill converting stored English display text to the option keys defined in LOCALIZATION.md, across every choice column on misokinesia_participants: sex, residence_status, student_type, highest_education_completed, english_fluency, english_speaking_frequency, adhd_medication, relationship_status, occupational_status, stronger_responses_timing (scalar columns) and ethnicity, fluent_languages, instruction_languages, diagnosed_disorders, regular_substances (TEXT[] columns, element-wise). The '*_other_text' free-text columns and all numeric/boolean/free-text columns are untouched. Note the existing data typo 'Seperated' in the relationship_status options - map it explicitly so those rows are not silently dropped. The downgrade must reverse the mapping (keys back to English text) and drop the language column, so the revision is not one-way. Any value that matches no mapping entry must fail loudly during migration rather than being silently nulled or left as raw text. Update backend/app/models/misokinesia.py with the language column. Update docs/labs/weather-wellness/misokinesia/SCHEMA.md to document the language column and to state that choice columns now store option keys rather than English display text. Because this rewrites historical rows, apply to production as a deliberate step after local verification, following the T206 precedent of a DATABASE_MIGRATION_URL run against the session pooler or direct URL (never port 6543).",
+      "acceptance_criteria": [
+        "misokinesia_participants.language exists as VARCHAR NOT NULL DEFAULT 'en' and existing rows are stamped 'en'",
+        "All 10 scalar choice columns and all 5 TEXT[] choice columns are backfilled from English text to option keys, including the 'Seperated' typo value",
+        "A value matching no mapping entry aborts the migration rather than nulling or silently passing through",
+        "downgrade() reverses the key mapping and drops the language column",
+        "alembic upgrade head then alembic downgrade -1 then upgrade head round-trips cleanly on a local database",
+        "SCHEMA.md documents the language column and that choice columns store keys",
+        "Migration applied to production via DATABASE_MIGRATION_URL against the session pooler or direct URL"
+      ],
+      "depends_on": [
+        "T1847"
+      ],
+      "blocked_by": [],
+      "files": [
+        "backend/alembic/versions/",
+        "backend/app/models/misokinesia.py",
+        "docs/labs/weather-wellness/misokinesia/SCHEMA.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/SCHEMA.md",
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "scripts/check-deps.sh",
+        "scripts/alembic-upgrade-head.sh",
+        "cd backend && PYTHONPATH=. alembic current -v",
+        "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -k 'start_misokinesia_session or demographics' -x",
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "The mapping table is authored in T1847 and must be the single source for this backfill - do not re-derive it from the components. Production apply is required because the rewrite is in-place with no dual-read window."
+    },
+    {
+      "id": "T1850",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - demographics API option-key and per-locale validation",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Move PATCH /demographics validation from English literals to option keys and make the GPA bound and option sets resolve from the participant's stored language.",
+      "description": "Update backend/app/schemas/misokinesia.py so the demographics payload validates against option keys instead of English display strings. The existing choice constants (_VALID_ETHNICITIES and the equivalent sets for residence_status, highest_education_completed, fluent_languages, english_fluency, english_speaking_frequency, instruction_languages, diagnosed_disorders, adhd_medication, regular_substances, relationship_status, occupational_status, sex, student_type) become key sets sourced from the LOCALIZATION.md registry. Validation must be locale-aware in two respects: the allowed option set for fluent_languages and instruction_languages differs between en and ko (the korean-language key is valid only for en, the english-language key only for ko), and cumulative_gpa is bounded at 5.0 for en and 4.5 for ko. The locale is resolved from the participant's stored misokinesia_participants.language, not from the request body, so a client cannot widen its own validation. The '*_other_text' conditional-requirement rules keep working but now trigger on the 'other' KEY rather than the literal string 'Other'. Add route tests in backend/tests/test_misokinesia.py covering: an en session accepting the korean-language option and rejecting the english-language one (and the inverse for ko), a ko session rejecting GPA 4.8 with 422 while en accepts it, and an 'other' key without its follow-up text returning 422. Update docs/labs/weather-wellness/misokinesia/API.md for the PATCH /misokinesia/participants/{participant_id}/demographics contract. No new migration is required by this task; it depends on T1849's migration being applied.",
+      "acceptance_criteria": [
+        "All demographics choice validation is against option keys, with no English display literals left in the schema constants",
+        "fluent_languages and instruction_languages accept only their own locale's option set, resolved from the stored participant language",
+        "cumulative_gpa is rejected above 4.5 for a ko participant and above 5.0 for an en participant",
+        "Locale is read from misokinesia_participants.language and cannot be overridden by the request body",
+        "'other' conditional free-text requirements fire on the option key, not the string 'Other'",
+        "Route tests cover per-locale option sets, the GPA bound in both locales, and the other-text 422",
+        "API.md documents the key-based contract and the per-locale validation"
+      ],
+      "depends_on": [
+        "T1849"
+      ],
+      "blocked_by": [],
+      "files": [
+        "backend/app/schemas/misokinesia.py",
+        "backend/app/routers/misokinesia.py",
+        "backend/tests/test_misokinesia.py",
+        "docs/labs/weather-wellness/misokinesia/API.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "scripts/check-deps.sh",
+        "scripts/alembic-upgrade-head.sh",
+        "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -k 'demographics' -x",
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "MisokinesiaDemographicsRequest currently carries the field list and _validate_optional_choices helpers around line 283-380 of backend/app/schemas/misokinesia.py."
+    },
+    {
+      "id": "T1851",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - language on session start and end-of-task timing keys",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "S",
+      "summary": "Accept and persist a language on POST /misokinesia/start, echo it in the manifest response, and switch stronger_responses_timing to option keys.",
+      "description": "Two contract changes in backend/app/routers/misokinesia.py and backend/app/schemas/misokinesia.py. (1) POST /misokinesia/start currently takes no request body; give it an optional body accepting language of 'en' or 'ko', defaulting to 'en', persist it to misokinesia_participants.language at session creation, and echo language in the MisokinesiaManifestResponse so the participant frontend can render without a second fetch. An unrecognised language value returns 422. (2) PATCH /misokinesia/participants/{participant_id}/end-of-task currently validates stronger_responses_timing against the English literals 'Immediately', 'After 5 seconds', 'After 10 seconds', 'At the end of the video'; switch it to the option keys defined in LOCALIZATION.md. The existing rule that stronger_responses_timing may only be set when stronger_responses is true, otherwise 422, is unchanged. Add route tests covering start with each language and with an invalid one, that the returned manifest echoes the language, and that end-of-task accepts a timing key and rejects the old English literal. Update docs/labs/weather-wellness/misokinesia/API.md for both endpoints and docs/labs/weather-wellness/misokinesia/MISOKINESIA.md for the Participant Flow step where the RA selects language before starting. No new migration is required by this task; it depends on T1849's migration being applied.",
+      "acceptance_criteria": [
+        "POST /misokinesia/start accepts language 'en' or 'ko', defaults to 'en', persists it, and returns it in the manifest response",
+        "An unrecognised language value returns 422",
+        "stronger_responses_timing validates against option keys and rejects the previous English literals",
+        "The stronger_responses_timing-only-when-true 422 rule still holds",
+        "Route tests cover both endpoints including the invalid-language and old-literal cases",
+        "API.md and MISOKINESIA.md reflect the language parameter and the RA language-selection flow step"
+      ],
+      "depends_on": [
+        "T1849"
+      ],
+      "blocked_by": [],
+      "files": [
+        "backend/app/routers/misokinesia.py",
+        "backend/app/schemas/misokinesia.py",
+        "backend/tests/test_misokinesia.py",
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/API.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "commands": [
+        "scripts/check-deps.sh",
+        "scripts/alembic-upgrade-head.sh",
+        "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -k 'start_misokinesia_session or end_of_task' -x",
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "Trial mode bypasses both endpoints and performs no writes, so it needs no backend change here - the trial frontend just carries the selected locale for presentation."
+    },
+    {
+      "id": "T1852",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - data-quality Other sentinel on option keys",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "estimate": "S",
+      "summary": "Update the flagged-sessions data-quality service so its missing-follow-up-text checks match option keys instead of the literal string 'Other'.",
+      "description": "backend/app/services/data_quality.py detects incomplete demographics by comparing stored values against the literal string 'Other' in four places (residence_status, ethnicity, fluent_languages, instruction_languages around lines 152-190). After T1849 those columns hold option keys, so these comparisons silently stop matching and the flagged-sessions page quietly under-reports incomplete demographics. Update the sentinel comparisons to the corresponding 'other' option keys from LOCALIZATION.md, and check the field list at the top of the module (around lines 46-55) for any other value-literal assumptions. Add or extend a test asserting that a participant with an 'other' key selected but no follow-up text is still flagged, in both en and ko locales. This is a small task but it must not be skipped - it is the one place where the key migration silently degrades behaviour rather than erroring. Update docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md only if the flagged-sessions behaviour description changes; no migration is required by this task.",
+      "acceptance_criteria": [
+        "All 'Other' string comparisons in data_quality.py are replaced with option-key comparisons",
+        "A participant with an 'other' key and no follow-up text is still flagged as incomplete in both en and ko",
+        "No remaining English display literals are used as sentinels in the module",
+        "Tests cover the flagging behaviour in both locales"
+      ],
+      "depends_on": [
+        "T1849"
+      ],
+      "blocked_by": [],
+      "files": [
+        "backend/app/services/data_quality.py",
+        "backend/tests/"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "scripts/check-deps.sh",
+        "cd backend && PYTHONPATH=. pytest tests/ -k 'data_quality or flagged' -x"
+      ],
+      "notes": "Discovered during planning: this is the only known downstream consumer that compares demographics values as literals. export_service.py does not touch misokinesia demographics (misokinesia export is deferred)."
+    },
+    {
+      "id": "T1853",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - frontend locale infrastructure and typed catalogue",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Add a repo-local, dependency-free i18n layer under frontend/src/lib/i18n/ holding the typed EN/KO message catalogue and a locale accessor for Misokinesia components.",
+      "description": "The frontend has no i18n infrastructure today - no next-intl, no locale routing, no message catalogue. Add a small repo-local one scoped to Misokinesia rather than adopting a framework-wide solution. Create frontend/src/lib/i18n/ containing: a MisoLocale type of 'en' | 'ko' with 'en' as the default; the typed message catalogue transcribed from LOCALIZATION.md (instrument strings, chrome strings, and the per-locale option label maps keyed by option key); and an accessor for components to resolve a key plus locale to a display string. Prefer a plain typed object over an external dependency - the catalogue is static, single-component, and two locales deep. Type the catalogue so a key missing from either locale is a compile error, which is what keeps the ko side from silently falling back to English. Include the option-key label maps here too, since every choice-rendering component needs key-to-label resolution. Add a unit test asserting en and ko have identical key sets and that no ko value is empty. Do not modify any component in this task - this is the layer the UI tasks build on. Do not add a locale segment to the app router or touch middleware.ts; locale travels as session state, not as a URL path.",
+      "acceptance_criteria": [
+        "frontend/src/lib/i18n/ exports a MisoLocale type, the EN/KO catalogue, and a key-plus-locale accessor",
+        "Option-key to display-label maps are included for every choice field",
+        "A key present in one locale but missing in the other is a TypeScript compile error",
+        "A unit test asserts identical key sets across locales and no empty ko values",
+        "No external i18n dependency is added to package.json",
+        "No component, route, or middleware is modified",
+        "tsc and build pass"
+      ],
+      "depends_on": [
+        "T1848"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/i18n/",
+        "frontend/src/lib/i18n/miso-messages.test.ts"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md",
+        "docs/CONVENTIONS.md"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build",
+        "cd frontend && npm test -- i18n"
+      ],
+      "notes": "Add a short note to docs/CONVENTIONS.md recording that i18n is Misokinesia-scoped for now and that participant-facing Misokinesia copy goes through the catalogue rather than inline literals - the same discipline as the existing no-bare-fetch rule."
+    },
+    {
+      "id": "T1854",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - demographics form on option keys and per-locale option sets",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Restructure the demographics question definitions so options carry stable keys with per-locale labels, KO gets its divergent option sets, and the GPA slider bound follows the locale.",
+      "description": "Restructure frontend/src/lib/misokinesia-demographics.ts so MisoDemographicsChoiceOption carries a stable key plus per-locale labels instead of today's value/label pair where both hold English text. Submitted payload values become keys. Question labels and block titles resolve from the i18n catalogue. Three locale-sensitive behaviours must be implemented: (1) the fluent_languages (Q14) and instruction_languages (Q17) option SETS differ - the korean-language option is present only in en and the english-language option only in ko, in the same position; (2) the cumulative_gpa slider max is 5.0 for en and 4.5 for ko, and the numeric input must respect the same bound so a KO participant cannot type 4.8; (3) the years_lived_canada question keeps its column but reads 'For how many years have you lived in Korea?' in ko. Exclusive-option handling ('none', 'n/a', 'none of the above' keys) and the conditional other-text requirements now key off option keys rather than the string 'Other'. Update MisokinesiaDemographicsForm.tsx to render labels through the catalogue, including the consent gate prose and buttons. Update frontend/src/lib/misokinesia-demographics.test.ts and add cases for the per-locale option sets and the KO GPA bound. The carousel pane-splitting rules (block splitting at 6+ visible questions, the Block 5 exception) are unchanged - do not alter pane logic. Update docs/labs/weather-wellness/misokinesia/MISOKINESIA.md where it states the demographics allowed values and the single GPA range. No migration is required by this task.",
+      "acceptance_criteria": [
+        "Demographics options carry stable keys with per-locale labels, and submitted values are keys",
+        "Q14 and Q17 present the korean-language option only in en and the english-language option only in ko",
+        "The GPA slider and its paired numeric input cap at 4.5 in ko and 5.0 in en",
+        "The years-lived question reads Korea in ko while still writing years_lived_canada",
+        "Exclusive options and other-text conditionals key off option keys, not the string 'Other'",
+        "Consent gate prose and buttons render from the catalogue",
+        "Pane-splitting behaviour is unchanged",
+        "misokinesia-demographics.test.ts covers per-locale option sets and the KO GPA bound; tsc and build pass",
+        "MISOKINESIA.md no longer states a single GPA range or English-literal allowed values"
+      ],
+      "depends_on": [
+        "T1850",
+        "T1853"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/misokinesia-demographics.ts",
+        "frontend/src/lib/misokinesia-demographics.test.ts",
+        "frontend/src/lib/components/MisokinesiaDemographicsForm.tsx",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md",
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm test -- misokinesia-demographics",
+        "cd frontend && npm run build",
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "This is the largest single UI surface (702 lines of question definitions plus a 656-line form). MISO_DEMOGRAPHICS_PAYLOAD_FIELDS and the block/pane structure stay as they are; only the option representation and label resolution change."
+    },
+    {
+      "id": "T1855",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - per-clip questionnaire and end-of-task form",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "estimate": "S",
+      "summary": "Render the 4-item per-clip VMA questionnaire and the end-of-task form from the catalogue, including drafted Korean for end-of-task Q3 and its timing option keys.",
+      "description": "Move MisokinesiaQuestionnaire.tsx and MisokinesiaEndOfTaskForm.tsx onto the i18n catalogue. For the per-clip questionnaire: the 4 VMA items, the five Likert labels, the heading, the instruction line, the progress strip and the answered-count and submit labels all resolve by key from the participant's session locale. For the end-of-task form: the two free-text prompts, the placeholder text, the stronger-responses question and its Yes/No labels, the conditional timing heading, and the four timing options all resolve by key - and the timing options must now submit option keys rather than the English literals the component currently sends, matching the T1851 contract. End-of-task Q3 and its timing options use the drafted Korean authored in T1848. Keep the end-of-task form at three items: workbook prompt O3 is intentionally not collected. Verify the submitted payload shape against the API contract in both locales. Update docs/labs/weather-wellness/misokinesia/MISOKINESIA.md where the End-of-task Questionnaire table lists the timing values as English literals. No migration is required by this task.",
+      "acceptance_criteria": [
+        "Per-clip questionnaire renders all items, scale labels, and chrome from the catalogue in both locales",
+        "End-of-task form renders all three items, the timing options, and its chrome from the catalogue in both locales",
+        "Timing options submit option keys and are accepted by PATCH /end-of-task",
+        "The end-of-task form still has exactly three items; O3 is not added",
+        "MISOKINESIA.md end-of-task table lists option keys rather than English literals",
+        "tsc and build pass"
+      ],
+      "depends_on": [
+        "T1851",
+        "T1853"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaQuestionnaire.tsx",
+        "frontend/src/lib/components/MisokinesiaEndOfTaskForm.tsx",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md",
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build",
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "End-of-task Q3 and the four timing options are the one place where the lab's workbook has no Korean at all - the drafted strings come from T1848 and are flagged for later lab review."
+    },
+    {
+      "id": "T1856",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - MkAQ, MAQ and GAD-7 forms from catalogue",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "estimate": "S",
+      "summary": "Render the three post-video survey forms and their scale labels from the catalogue, using the workbook Korean including the validated Korean GAD-7.",
+      "description": "Move MisokinesiaMkaqForm.tsx (21 items), MisokinesiaMAQForm.tsx (21 items) and MisokinesiaGAD7Form.tsx (7 items plus stem and 4 difficulty options) onto the i18n catalogue. Item text, scale labels, headings, pane navigation labels, answered-count text and submit labels all resolve by key from the session locale. The Korean here is workbook-sourced and authoritative - the GAD-7 in particular uses the lab's validated Korean version rather than a new translation, so do not reword it. Scoring is unchanged and stays server-side: only presentation moves, and the numeric values submitted for every item are identical across locales. MKAQ_ITEMS and MAQ_ITEMS are exported and consumed by the participant page for trial-mode item slicing (TRIAL_MKAQ_ITEM_COUNT / TRIAL_MAQ_ITEM_COUNT), so keep those exports working with slicing intact. Verify the MkAQ 4-pane and MAQ 3-pane carousel layouts still hold with longer or shorter Korean strings. Update docs/labs/weather-wellness/misokinesia/MISOKINESIA.md only if the instrument sections state English item text as canonical. No migration is required by this task.",
+      "acceptance_criteria": [
+        "All three surveys render items, scale labels and chrome from the catalogue in both locales",
+        "GAD-7 Korean matches the workbook's validated Korean version verbatim",
+        "Submitted numeric values are identical across locales and scoring is untouched",
+        "MKAQ_ITEMS and MAQ_ITEMS exports still support trial-mode slicing",
+        "MkAQ 4-pane and MAQ 3-pane layouts render correctly with Korean text",
+        "tsc and build pass"
+      ],
+      "depends_on": [
+        "T1853"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/lib/components/MisokinesiaMkaqForm.tsx",
+        "frontend/src/lib/components/MisokinesiaMAQForm.tsx",
+        "frontend/src/lib/components/MisokinesiaGAD7Form.tsx"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md",
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build"
+      ],
+      "notes": "Verified during planning: all 21 MkAQ and all 21 MAQ/MpAQ items and the full GAD-7 are covered by the workbook with no gaps."
+    },
+    {
+      "id": "T1857",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - participant flow chrome and Hangul typography",
+      "status": "todo",
+      "priority": "medium",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Thread session locale through the participant page and render the intro card, transition cards, progress strips, and status screens from the catalogue.",
+      "description": "Thread the session locale through frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx and render every remaining participant-facing string from the catalogue. The locale comes from the start-session manifest response (T1851) for production runs and from the trial-mode selection for trial runs; hold it in page state alongside the existing post-survey order rather than adding a route segment or middleware rule. Strings to convert: the intro card (kicker, title, body with its clip-count interpolation, the four meta ledger rows, the fullscreen note, the Begin button), TRANSITION_CARD_COPY for all three surveys (kicker with position interpolation, title, description, four meta rows, button label), the pre-clip progress label, the saving/submitting/submission-error/retry screens, the session-error screen, the completion screen, the step strips, and the trial-only MisokinesiaSectionJumper labels. Interpolated strings (clip counts, survey position) must be parameterised in the catalogue rather than concatenated, so Korean word order is not forced to follow English. Add Hangul typography handling: a font stack with a Korean fallback and line-height suitable for mixed-script rendering, and verify the fixed-width meta ledger column and the transition card layout do not overflow with Korean text. Update docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md for the localized participant rendering and the typography guidance. No migration is required by this task.",
+      "acceptance_criteria": [
+        "Session locale is threaded from the manifest response through every participant phase without a route segment or middleware change",
+        "Intro card, all three transition cards, progress strips, status/error screens, completion screen and section jumper render from the catalogue",
+        "Interpolated values are parameterised in the catalogue rather than string-concatenated",
+        "A full KO run shows no English text on any participant screen",
+        "Hangul font fallback and line-height are applied; meta ledger and transition card layouts do not overflow with Korean",
+        "DESIGN_SPEC.md documents localized participant rendering and typography",
+        "tsc and build pass"
+      ],
+      "depends_on": [
+        "T1853"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/app/misokinesia/[misokinesia_participant_id]/page.tsx",
+        "frontend/src/lib/components/MisokinesiaSectionJumper.tsx",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build",
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "TRANSITION_CARD_COPY sits around line 966 of page.tsx and the intro card around line 452. The page is 1144 lines - convert strings only, leave the phase state machine alone."
+    },
+    {
+      "id": "T1858",
+      "group_id": "MISO_KO_LOCALE",
+      "title": "Miso KO locale - RA launch page language toggle",
+      "status": "todo",
+      "priority": "high",
+      "type": "implementation",
+      "estimate": "M",
+      "summary": "Add an EN/KO toggle to the /misokinesia RA page that sets the session language and renders the launch page itself in the selected language.",
+      "description": "Add the language toggle to the RA Misokinesia launch page at frontend/src/app/(ra)/misokinesia/page.tsx and MisokinesiaLaunchPage.tsx. The toggle selects 'en' or 'ko', is passed as language to POST /misokinesia/start through the typed wrapper in frontend/src/lib/api/misokinesia.ts, and the participant flow then runs in that language. Per the project owner's direction the launch page itself must also render in the selected language, so the RA can see at a glance which version they are about to run - translate the launch page copy (start button, trial buttons, dashboard tile labels and their states) using the drafted Korean from the catalogue. The toggle must also drive both trial modes (Short Trial and Full Trial), which bypass the start endpoint entirely and carry the locale as client state only. The selection should persist across the RA's visits to the page so it is not silently reset between sessions. Scope stops at this page: /dashboard, /import-export and the rest of the RA UI stay English. Update docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md for the toggle in the /misokinesia RA Dashboard section and docs/labs/weather-wellness/misokinesia/MISOKINESIA.md for the RA Flow. No migration is required by this task.",
+      "acceptance_criteria": [
+        "The /misokinesia RA page has an EN/KO toggle whose selection is sent as language on POST /misokinesia/start",
+        "The launch page renders its own copy in the selected language",
+        "Both Short Trial and Full Trial launch in the selected language without hitting the start endpoint",
+        "The selection persists across visits to the page",
+        "No other RA page is translated",
+        "The API call goes through the typed wrapper in src/lib/api/, not a bare fetch",
+        "DESIGN_SPEC.md and MISOKINESIA.md document the toggle and the RA flow step",
+        "tsc and build pass"
+      ],
+      "depends_on": [
+        "T1851",
+        "T1853"
+      ],
+      "blocked_by": [],
+      "files": [
+        "frontend/src/app/(ra)/misokinesia/page.tsx",
+        "frontend/src/lib/components/MisokinesiaLaunchPage.tsx",
+        "frontend/src/lib/api/misokinesia.ts",
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md"
+      ],
+      "docs": [
+        "docs/labs/weather-wellness/misokinesia/DESIGN_SPEC.md",
+        "docs/labs/weather-wellness/misokinesia/MISOKINESIA.md",
+        "docs/labs/weather-wellness/misokinesia/LOCALIZATION.md"
+      ],
+      "commands": [
+        "cd frontend && npx tsc --noEmit",
+        "cd frontend && npm run build",
+        "python scripts/sync_methodology_corpus.py"
+      ],
+      "notes": "This is the entry point for the whole feature - it is the only place a KO session can be started, so it is priority high despite sitting last in the dependency chain."
     }
   ],
-  "last_updated": "2026-07-10"
+  "last_updated": "2026-09-03"
 }
