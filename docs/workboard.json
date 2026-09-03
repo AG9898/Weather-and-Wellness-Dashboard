@@ -5255,7 +5255,7 @@
       "id": "T1856",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - MkAQ, MAQ and GAD-7 forms from catalogue",
-      "status": "todo",
+      "status": "done",
       "priority": "medium",
       "type": "implementation",
       "estimate": "S",

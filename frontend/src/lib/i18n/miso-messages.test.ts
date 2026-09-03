@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -18,6 +21,10 @@ import {
   type MisoMessageKey,
   type MisoOptionLabelSet,
 } from "@/lib/i18n";
+
+function readFrontendFile(path: string): string {
+  return readFileSync(join(process.cwd(), path), "utf8");
+}
 
 const PLACEHOLDER_PATTERN = /\{(\w+)\}/g;
 
@@ -137,6 +144,94 @@ describe("miso message catalogue", () => {
     expect(MISO_MESSAGES.ko["gad7.item.r1"]).not.toBe(
       MISO_MESSAGES.en["gad7.item.r1"],
     );
+  });
+});
+
+describe("post-video survey forms", () => {
+  const INSTRUMENTS = [
+    { prefix: "mkaq", items: 21, scalePoints: 4 },
+    { prefix: "maq", items: 21, scalePoints: 4 },
+  ] as const;
+
+  it.each(INSTRUMENTS)(
+    "carries every $prefix item and scale anchor in both locales",
+    ({ prefix, items, scalePoints }) => {
+      for (let i = 1; i <= items; i += 1) {
+        const key = `${prefix}.item.q${i}` as MisoMessageKey;
+        expect(MISO_MESSAGES.en[key]).toBeTruthy();
+        expect(MISO_MESSAGES.ko[key]).toBeTruthy();
+        // A KO row identical to EN would mean an untranslated placeholder.
+        expect(MISO_MESSAGES.ko[key]).not.toBe(MISO_MESSAGES.en[key]);
+      }
+      for (let point = 0; point < scalePoints; point += 1) {
+        const key = `${prefix}.scale.${point}` as MisoMessageKey;
+        expect(MISO_MESSAGES.en[key]).toBeTruthy();
+        expect(MISO_MESSAGES.ko[key]).toBeTruthy();
+      }
+    },
+  );
+
+  it("carries all seven GAD-7 items, the stem and the four scale anchors", () => {
+    for (let i = 1; i <= 7; i += 1) {
+      const key = `gad7.item.r${i}` as MisoMessageKey;
+      expect(MISO_MESSAGES.ko[key]).not.toBe(MISO_MESSAGES.en[key]);
+    }
+    for (const key of [
+      "gad7.stem",
+      "gad7.scale.0",
+      "gad7.scale.1",
+      "gad7.scale.2",
+      "gad7.scale.3",
+      "gad7.difficulty.stem",
+    ] as MisoMessageKey[]) {
+      expect(MISO_MESSAGES.ko[key]).not.toBe(MISO_MESSAGES.en[key]);
+    }
+  });
+
+  it("keeps the EN GAD-7 difficulty labels byte-identical to the stored whitelist", () => {
+    // `difficulty_impact` is not key-migrated: a KO session displays the Korean
+    // label but submits the English one, which the backend validates against
+    // `_VALID_GAD7_DIFFICULTY_IMPACTS` and a DB CHECK. Editing these EN rows
+    // would start rejecting submissions with a 422.
+    expect([
+      MISO_MESSAGES.en["gad7.difficulty.not_at_all"],
+      MISO_MESSAGES.en["gad7.difficulty.somewhat"],
+      MISO_MESSAGES.en["gad7.difficulty.very"],
+      MISO_MESSAGES.en["gad7.difficulty.extremely"],
+    ]).toEqual([
+      "Not difficult at all",
+      "Somewhat difficult",
+      "Very difficult",
+      "Extremely difficult",
+    ]);
+    expect(MISO_MESSAGES.ko["gad7.difficulty.somewhat"]).toBe("다소 어려웠다");
+  });
+
+  it("submits the English difficulty label whatever the locale", () => {
+    const source = readFrontendFile(
+      "src/lib/components/MisokinesiaGAD7Form.tsx",
+    );
+    // The radio value and the stored answer come from the EN catalogue; only
+    // the visible label goes through `misoMessage(..., locale)`.
+    expect(source).toContain("return MISO_MESSAGES.en[key];");
+    expect(source).not.toContain('"Not difficult at all"');
+  });
+
+  it("holds no inline instrument or chrome literal in the three survey forms", () => {
+    for (const file of [
+      "src/lib/components/MisokinesiaMkaqForm.tsx",
+      "src/lib/components/MisokinesiaMAQForm.tsx",
+      "src/lib/components/MisokinesiaGAD7Form.tsx",
+    ]) {
+      const source = readFrontendFile(file);
+      expect(source).toContain("misoMessage(");
+      expect(source).not.toContain("Please rate each statement");
+      expect(source).not.toContain("Almost all the time");
+      expect(source).not.toMatch(/&larr;\s*Previous/);
+      expect(source).not.toMatch(/Next\s*&rarr;/);
+      expect(source).not.toMatch(/>\s*Submit\s*</);
+      expect(source).not.toMatch(/"Submitting/);
+    }
   });
 });
 

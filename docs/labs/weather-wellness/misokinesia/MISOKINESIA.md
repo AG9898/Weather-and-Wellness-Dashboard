@@ -216,6 +216,8 @@ Trial Run uses the same card carousel behavior but only includes source items `q
 
 The MkAQ items come from `reference/labs/Misokinesia/41598_2021_96430_MOESM1_ESM.pdf`, Supplementary Figure S1 only. Ignore the Supplementary Methods cover page and the three attention-check prompts in Supplementary Table S1.
 
+The English below is the `en` label, not canonical item text: `MisokinesiaMkaqForm.tsx` resolves every item and the four scale anchors by key from the session locale. Per-locale strings live in [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.2 (`mkaq.item.*`, `mkaq.scale.*`). `MKAQ_ITEMS` carries the submitted `key` plus a catalogue `textKey`; the stored value is the 0–3 integer and is identical in every locale.
+
 | Column | Question |
 |---|---|
 | `q1` | My visual issues currently make me unhappy. |
@@ -246,13 +248,15 @@ The MkAQ items come from `reference/labs/Misokinesia/41598_2021_96430_MOESM1_ESM
 
 Required 7-item questionnaire shown once per production participant as part of the randomised post-video survey block. Results are stored in the miso-isolated `misokinesia_gad7_responses` table.
 
-Header text: "Over the last two weeks, how often have you been bothered by the following problems?"
+Header text: "Over the last two weeks, how often have you been bothered by the following problems?" (catalogue key `gad7.stem`).
 
 Response scale: `0 = Not at all`, `1 = Several days`, `2 = More than half the days`, `3 = Nearly every day`. All 7 items are required. FastAPI computes `total_score` (0–21, direct sum of the 0–3 item values) and `severity_band`; the frontend must not compute scores.
 
 Rendered as a single-screen form — not a card carousel.
 
 Item wording and difficulty question from the revised misokinesia GAD-7 form (`reference/labs/Misokinesia/GAD7 revised (Miso).pdf`; Spitzer et al., 2006).
+
+The English below is the `en` label, not canonical item text: `MisokinesiaGAD7Form.tsx` resolves the stem, every item, the four scale anchors and the difficulty question by key from the session locale. Per-locale strings live in [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.3 (`gad7.*`). The Korean is the lab's validated Korean GAD-7, not a new translation — never reword it. Stored values are the 0–3 integers and are identical in every locale.
 
 | Column | Question |
 |---|---|
@@ -264,7 +268,7 @@ Item wording and difficulty question from the revised misokinesia GAD-7 form (`r
 | `r6` | Becoming easily annoyed or irritable |
 | `r7` | Feeling afraid, as if something awful might happen |
 
-Final difficulty question: "If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?" Stored as nullable `difficulty_impact`. It is required when any `r1`–`r7` value is greater than `0`; otherwise it is stored as `null`. Allowed values: `"Not difficult at all"`, `"Somewhat difficult"`, `"Very difficult"`, `"Extremely difficult"`.
+Final difficulty question: "If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?" Stored as nullable `difficulty_impact`. It is required when any `r1`–`r7` value is greater than `0`; otherwise it is stored as `null`. Allowed values: `"Not difficult at all"`, `"Somewhat difficult"`, `"Very difficult"`, `"Extremely difficult"`. Unlike the demographics and end-of-task choices, `difficulty_impact` is **not** key-migrated: a `ko` session displays the Korean label but still submits the English string above, so the column stays poolable across locales. See [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.3.
 
 ---
 
@@ -273,6 +277,8 @@ Final difficulty question: "If you checked any problems, how difficult have they
 Required 21-item questionnaire shown once per production participant as part of the randomised post-video survey block. Source: `reference/labs/Misokinesia/MAQ.pdf` page 1 (Marsha Johnson, revised by Tom Dozier, 2013). Original "sound issues" wording is preserved — this is a distinct instrument from the MkAQ.
 
 Response scale: `0 = Not at all`, `1 = A little of the time`, `2 = A good deal of the time`, `3 = Almost all the time`. All 21 items are required. FastAPI computes `total_score` as the sum of `q1`–`q21` (range 0–63); the frontend must not compute or persist the score.
+
+The English below is the `en` label, not canonical item text: `MisokinesiaMAQForm.tsx` resolves every item and the four scale anchors by key from the session locale. Per-locale strings live in [`LOCALIZATION.md`](./LOCALIZATION.md) section 5.4 (`maq.item.*`, `maq.scale.*`); the workbook calls this instrument MpAQ. `MAQ_ITEMS` carries the submitted `id` plus a catalogue `textKey`; the stored value is the 0–3 integer and is identical in every locale.
 
 ### MAQ UI Layout
 

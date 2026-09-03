@@ -549,7 +549,11 @@ clip.
 
 ### 5.2 MkAQ — Misokinesia Assessment Questionnaire
 
-Sheet `MkAQ`. Rendered by `MisokinesiaMkaqForm.tsx` (`MKAQ_ITEMS`).
+Sheet `MkAQ`. Rendered by `MisokinesiaMkaqForm.tsx` (`MKAQ_ITEMS`), which holds no
+inline item text: each `MKAQ_ITEMS` entry is `{ key, textKey }`, where `key` is the
+submitted field name and `textKey` is the row below. The trial-mode slice
+(`MKAQ_ITEMS.slice(0, TRIAL_MKAQ_ITEM_COUNT)`) and the 5/5/5/6 pane split are
+unaffected by locale — only the rendered statement changes.
 
 | Key | EN | KO | Provenance |
 |---|---|---|---|
@@ -584,7 +588,9 @@ straight quotes (`'crazy'`). Cosmetic only — do not change either displayed st
 
 ### 5.3 GAD-7
 
-Sheet `GAD-7`. Rendered by `MisokinesiaGAD7Form.tsx`.
+Sheet `GAD-7`. Rendered by `MisokinesiaGAD7Form.tsx`. The KO column is the lab's
+validated Korean GAD-7, not a translation produced for this platform: correct it
+only on the lab's instruction, and never reword it to match the EN register.
 
 **The Korean here is the validated Korean GAD-7, not a new translation.** The
 workbook records this explicitly (`Validated Korean version used (not a new
@@ -616,14 +622,25 @@ apply.
 The four `gad7.difficulty.*` options are stored as the **English label string**, not
 as an option key. `misokinesia_gad7.difficulty_impact` is a `String` column and
 `backend/app/schemas/misokinesia.py` validates it against a whitelist of those four
-exact English labels (`_VALID_GAD7_DIFFICULTY_IMPACTS`). Section 4 therefore has no
-mapping rows for it. A KO session must still submit the English label so the column
-stays poolable; only the displayed KO label comes from this table.
+exact English labels (`_VALID_GAD7_DIFFICULTY_IMPACTS`), mirrored by a DB CHECK.
+Section 4 therefore has no mapping rows for it. A KO session must still submit the
+English label so the column stays poolable; only the displayed KO label comes from
+this table.
+
+`MisokinesiaGAD7Form.tsx` implements this by taking the radio `value` and the stored
+answer from `MISO_MESSAGES.en[key]` while the visible label goes through
+`misoMessage(key, locale)`, so the submitted string and the whitelist cannot drift.
+Editing an EN row in this block would start returning 422 on every GAD-7 submission;
+`miso-messages.test.ts` pins the four EN labels against the whitelist for that
+reason.
 
 ### 5.4 MAQ / MpAQ — Misophonia Assessment Questionnaire
 
 Sheet `MpAQ`. Rendered by `MisokinesiaMAQForm.tsx` (`MAQ_ITEMS`). The platform calls
 this instrument **MAQ**; the workbook sheet calls it **MpAQ**. Same instrument.
+As with `MKAQ_ITEMS`, each `MAQ_ITEMS` entry is `{ id, textKey }` — `id` is the
+submitted field name, `textKey` is the row below — so the trial-mode slice and the
+7/7/7 (or trial 5/5) pane split stay locale-independent.
 
 | Key | EN | KO | Provenance |
 |---|---|---|---|
@@ -827,9 +844,9 @@ Used across `page.tsx`, `MisokinesiaDemographicsForm.tsx`, `MisokinesiaQuestionn
 | `chrome.state.submitting` | Submitting… | 제출 중… | drafted |
 | `chrome.state.submitting_survey` | Submitting questionnaire… | 설문을 제출하는 중… | drafted |
 
-`MisokinesiaMAQForm.tsx` renders `Submitting...` with an ASCII ellipsis while every
-other form uses `Submitting…`. Both resolve to `chrome.state.submitting`; normalize
-the EN glyph when the key lands.
+`MisokinesiaMAQForm.tsx` used to render `Submitting...` with an ASCII ellipsis while
+every other form used `Submitting…`. Both now resolve to `chrome.state.submitting`,
+so the EN glyph is normalized to `Submitting…` everywhere.
 
 ### 6.3 Errors
 

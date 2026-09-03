@@ -6,6 +6,13 @@ import { cn } from "@/lib/utils";
 import {
   EditorialKicker,
 } from "@/lib/components/EditorialPrimitives";
+import {
+  DEFAULT_MISO_LOCALE,
+  MISO_MESSAGES,
+  misoMessage,
+  type MisoLocale,
+  type MisoMessageKey,
+} from "@/lib/i18n";
 
 export type MisokinesiaGAD7Answers = Record<string, number | string | null>;
 
@@ -13,36 +20,55 @@ interface MisokinesiaGAD7FormProps {
   onSubmit: (answers: MisokinesiaGAD7Answers) => void;
   submitting: boolean;
   error: string | null;
+  /** Session locale. Fixed for the session; selects labels only. */
+  locale?: MisoLocale;
 }
 
-const GAD7_ITEMS = [
-  { key: "r1", text: "Feeling nervous, anxious, or on edge" },
-  { key: "r2", text: "Not being able to stop or control worrying" },
-  { key: "r3", text: "Worrying too much about different things" },
-  { key: "r4", text: "Trouble relaxing" },
-  { key: "r5", text: "Being so restless that it is hard to sit still" },
-  { key: "r6", text: "Becoming easily annoyed or irritable" },
-  { key: "r7", text: "Feeling afraid, as if something awful might happen" },
-] as const;
+// Item order and the submitted `key` are language-independent; only the item
+// text resolves per locale. The KO strings are the lab's validated Korean
+// GAD-7 (LOCALIZATION.md section 5.3) — never reworded.
+const GAD7_ITEMS: { key: string; textKey: MisoMessageKey }[] = [
+  { key: "r1", textKey: "gad7.item.r1" },
+  { key: "r2", textKey: "gad7.item.r2" },
+  { key: "r3", textKey: "gad7.item.r3" },
+  { key: "r4", textKey: "gad7.item.r4" },
+  { key: "r5", textKey: "gad7.item.r5" },
+  { key: "r6", textKey: "gad7.item.r6" },
+  { key: "r7", textKey: "gad7.item.r7" },
+];
 
-const GAD7_SCALE = [
-  { value: 0, label: "Not at all" },
-  { value: 1, label: "Several days" },
-  { value: 2, label: "More than half the days" },
-  { value: 3, label: "Nearly every day" },
-] as const;
+// The submitted value is the numeric point, identical across locales; only the
+// chip tooltip anchor is localized.
+const GAD7_SCALE: { value: number; labelKey: MisoMessageKey }[] = [
+  { value: 0, labelKey: "gad7.scale.0" },
+  { value: 1, labelKey: "gad7.scale.1" },
+  { value: 2, labelKey: "gad7.scale.2" },
+  { value: 3, labelKey: "gad7.scale.3" },
+];
 
-const GAD7_DIFFICULTY_OPTIONS = [
-  "Not difficult at all",
-  "Somewhat difficult",
-  "Very difficult",
-  "Extremely difficult",
-] as const;
+// `difficulty_impact` is deliberately **not** key-migrated: the column is
+// validated against the four exact English labels
+// (`_VALID_GAD7_DIFFICULTY_IMPACTS` in `backend/app/schemas/misokinesia.py`,
+// mirrored by a DB CHECK). So a KO session displays the Korean label but still
+// submits the English one, taken from the EN catalogue so the two can never
+// drift apart. See LOCALIZATION.md section 5.3.
+const GAD7_DIFFICULTY_KEYS: MisoMessageKey[] = [
+  "gad7.difficulty.not_at_all",
+  "gad7.difficulty.somewhat",
+  "gad7.difficulty.very",
+  "gad7.difficulty.extremely",
+];
+
+/** The stored English label for a difficulty option, whatever the locale. */
+function gad7DifficultyValue(key: MisoMessageKey): string {
+  return MISO_MESSAGES.en[key];
+}
 
 export default function MisokinesiaGAD7Form({
   onSubmit,
   submitting,
   error,
+  locale = DEFAULT_MISO_LOCALE,
 }: MisokinesiaGAD7FormProps) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [difficultyImpact, setDifficultyImpact] = useState<string | null>(null);
@@ -75,20 +101,24 @@ export default function MisokinesiaGAD7Form({
       {/* Header: instrument label — hairline */}
       <div className="mb-7 flex items-center gap-3">
         <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          GAD-7 · Anxiety Assessment
+          {misoMessage("chrome.gad7.instrument_label", locale)}
         </span>
         <div className="h-px flex-1 bg-border" aria-hidden />
       </div>
 
       {/* Kicker + heading + scale legend */}
       <EditorialKicker className="mb-2.5">
-        Items 1–7 of 7
+        {misoMessage("chrome.form.item_range", locale, {
+          a: 1,
+          b: GAD7_ITEMS.length,
+          n: GAD7_ITEMS.length,
+        })}
       </EditorialKicker>
       <h2 className="text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
-        Over the last two weeks, how often have you been bothered by the following problems?
+        {misoMessage("gad7.stem", locale)}
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        0&nbsp;&bull;&nbsp;Not at all&nbsp;&nbsp;&bull;&nbsp;&nbsp;1&nbsp;&bull;&nbsp;Several days&nbsp;&nbsp;&bull;&nbsp;&nbsp;2&nbsp;&bull;&nbsp;More than half the days&nbsp;&nbsp;&bull;&nbsp;&nbsp;3&nbsp;&bull;&nbsp;Nearly every day
+        {misoMessage("chrome.gad7.scale_legend", locale)}
       </p>
 
       {/* Error banner */}
@@ -103,6 +133,7 @@ export default function MisokinesiaGAD7Form({
         <div className="mt-7 flex flex-col gap-3">
           {GAD7_ITEMS.map((item, idx) => {
             const selected = answers[item.key];
+            const text = misoMessage(item.textKey, locale);
             return (
               <fieldset
                 key={item.key}
@@ -111,7 +142,10 @@ export default function MisokinesiaGAD7Form({
                 disabled={submitting}
               >
                 <legend className="sr-only">
-                  {idx + 1}. {item.text}
+                  {misoMessage("chrome.form.item_legend", locale, {
+                    n: idx + 1,
+                    text,
+                  })}
                 </legend>
                 <div className="grid items-center gap-4" style={{ gridTemplateColumns: "32px 1fr auto" }}>
                   {/* Item number */}
@@ -123,16 +157,16 @@ export default function MisokinesiaGAD7Form({
                   </span>
                   {/* Statement */}
                   <p className="text-[14px] font-medium leading-[1.45] text-foreground">
-                    {item.text}
+                    {text}
                   </p>
                   {/* Scale chips */}
-                  <div className="flex gap-1.5" role="radiogroup" aria-label={item.text}>
+                  <div className="flex gap-1.5" role="radiogroup" aria-label={text}>
                     {GAD7_SCALE.map((opt) => {
                       const isSelected = selected === opt.value;
                       return (
                         <label
                           key={opt.value}
-                          title={opt.label}
+                          title={misoMessage(opt.labelKey, locale)}
                           className={cn(
                             "flex min-w-[40px] cursor-pointer items-center justify-center rounded-[10px] border px-2.5 py-2 text-xs font-semibold transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring/60",
                             isSelected
@@ -167,17 +201,18 @@ export default function MisokinesiaGAD7Form({
             disabled={submitting}
           >
             <legend className="sr-only">
-              If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?
+              {misoMessage("gad7.difficulty.stem", locale)}
             </legend>
             <p className="text-[14px] font-medium leading-[1.45] text-foreground">
-              If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people?
+              {misoMessage("gad7.difficulty.stem", locale)}
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {GAD7_DIFFICULTY_OPTIONS.map((option) => {
+              {GAD7_DIFFICULTY_KEYS.map((optionKey) => {
+                const option = gad7DifficultyValue(optionKey);
                 const isSelected = difficultyImpact === option;
                 return (
                   <label
-                    key={option}
+                    key={optionKey}
                     className={cn(
                       "flex min-h-11 cursor-pointer items-center justify-center rounded-[10px] border px-3 py-2 text-center text-xs font-semibold transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring/60",
                       isSelected
@@ -194,7 +229,7 @@ export default function MisokinesiaGAD7Form({
                       onChange={() => setDifficultyImpact(option)}
                       className="sr-only"
                     />
-                    {option}
+                    {misoMessage(optionKey, locale)}
                   </label>
                 );
               })}
@@ -205,14 +240,19 @@ export default function MisokinesiaGAD7Form({
         {/* Footer */}
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
           <span className="font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            {answeredCount}/{GAD7_ITEMS.length} answered
+            {misoMessage("chrome.form.answered_count", locale, {
+              n: answeredCount,
+              m: GAD7_ITEMS.length,
+            })}
           </span>
           <Button
             type="submit"
             disabled={!allAnswered || submitting}
             className="min-w-[120px] rounded-xl px-6 text-primary-foreground"
           >
-            {submitting ? "Submitting…" : "Submit"}
+            {submitting
+              ? misoMessage("chrome.state.submitting", locale)
+              : misoMessage("chrome.button.submit", locale)}
           </Button>
         </div>
       </form>

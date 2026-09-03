@@ -7,47 +7,60 @@ import {
   EditorialKicker,
   EditorialPaneDots,
 } from "@/lib/components/EditorialPrimitives";
+import {
+  DEFAULT_MISO_LOCALE,
+  misoMessage,
+  type MisoLocale,
+  type MisoMessageKey,
+} from "@/lib/i18n";
 
 export interface MkAqItem {
   key: string;
-  text: string;
+  /** Catalogue key for the item statement; the text itself resolves per locale. */
+  textKey: MisoMessageKey;
 }
 
 interface MisokinesiaMkaqFormProps {
   items: MkAqItem[];
+  /** Session locale. Fixed for the session; selects labels only. */
+  locale?: MisoLocale;
   onComplete: (answers: Record<string, number>) => void;
 }
 
+// Item order and the submitted `key` are language-independent; only the
+// statement text resolves per locale (LOCALIZATION.md section 5.2).
 export const MKAQ_ITEMS: MkAqItem[] = [
-  { key: "q1",  text: "My visual issues currently make me unhappy." },
-  { key: "q2",  text: "My visual issues currently create problems for me." },
-  { key: "q3",  text: "My visual issues have recently made me feel angry." },
-  { key: "q4",  text: "I feel that no one understands my problems with certain visuals." },
-  { key: "q5",  text: "My visual issues do not seem to have a known cause." },
-  { key: "q6",  text: "My visual issues currently make me feel helpless." },
-  { key: "q7",  text: "My visual issues currently interfere with my social life." },
-  { key: "q8",  text: "My visual issues currently make me feel isolated." },
-  { key: "q9",  text: "My visual issues have recently created problems for me in groups." },
-  { key: "q10", text: "My visual issues negatively affect my work/school life (currently or recently)." },
-  { key: "q11", text: "My visual issues currently make me feel frustrated." },
-  { key: "q12", text: "My visual issues currently impact my entire life negatively." },
-  { key: "q13", text: "My visual issues have recently made me feel guilty." },
-  { key: "q14", text: "My visual issues are classified as ‘crazy’." },
-  { key: "q15", text: "I feel that no one can help me with my visual issues." },
-  { key: "q16", text: "My visual issues currently make me feel hopeless." },
-  { key: "q17", text: "I feel that my visual issues will only get worse with time." },
-  { key: "q18", text: "My visual issues currently impact my family relationships." },
-  { key: "q19", text: "My visual issues have recently affected my ability to be with other people." },
-  { key: "q20", text: "My visual issues have not been recognized as legitimate." },
-  { key: "q21", text: "I am worried that my whole life will be affected by visual issues." },
+  { key: "q1",  textKey: "mkaq.item.q1" },
+  { key: "q2",  textKey: "mkaq.item.q2" },
+  { key: "q3",  textKey: "mkaq.item.q3" },
+  { key: "q4",  textKey: "mkaq.item.q4" },
+  { key: "q5",  textKey: "mkaq.item.q5" },
+  { key: "q6",  textKey: "mkaq.item.q6" },
+  { key: "q7",  textKey: "mkaq.item.q7" },
+  { key: "q8",  textKey: "mkaq.item.q8" },
+  { key: "q9",  textKey: "mkaq.item.q9" },
+  { key: "q10", textKey: "mkaq.item.q10" },
+  { key: "q11", textKey: "mkaq.item.q11" },
+  { key: "q12", textKey: "mkaq.item.q12" },
+  { key: "q13", textKey: "mkaq.item.q13" },
+  { key: "q14", textKey: "mkaq.item.q14" },
+  { key: "q15", textKey: "mkaq.item.q15" },
+  { key: "q16", textKey: "mkaq.item.q16" },
+  { key: "q17", textKey: "mkaq.item.q17" },
+  { key: "q18", textKey: "mkaq.item.q18" },
+  { key: "q19", textKey: "mkaq.item.q19" },
+  { key: "q20", textKey: "mkaq.item.q20" },
+  { key: "q21", textKey: "mkaq.item.q21" },
 ];
 
-const MKAQ_SCALE = [
-  { value: 0, label: "Not at all" },
-  { value: 1, label: "A little of the time" },
-  { value: 2, label: "A good deal of the time" },
-  { value: 3, label: "Almost all the time" },
-] as const;
+// The submitted value is the numeric point, identical across locales; only the
+// chip tooltip anchor is localized.
+const MKAQ_SCALE: { value: number; labelKey: MisoMessageKey }[] = [
+  { value: 0, labelKey: "mkaq.scale.0" },
+  { value: 1, labelKey: "mkaq.scale.1" },
+  { value: 2, labelKey: "mkaq.scale.2" },
+  { value: 3, labelKey: "mkaq.scale.3" },
+];
 
 /**
  * Splits items into panes of baseSize, extending the last pane to absorb a
@@ -70,6 +83,7 @@ export function buildMkaqPanes<T>(items: T[], baseSize = 5): T[][] {
 
 export default function MisokinesiaMkaqForm({
   items,
+  locale = DEFAULT_MISO_LOCALE,
   onComplete,
 }: MisokinesiaMkaqFormProps) {
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -118,7 +132,7 @@ export default function MisokinesiaMkaqForm({
       {/* A4 carousel header: instrument label — hairline — pane dots — "Part X / Y" */}
       <div className="mb-7 flex items-center gap-3">
         <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          MkAQ · Misokinesia Assessment
+          {misoMessage("chrome.mkaq.instrument_label", locale)}
         </span>
         <div className="h-px flex-1 bg-border" aria-hidden />
         <EditorialPaneDots
@@ -126,19 +140,26 @@ export default function MisokinesiaMkaqForm({
           activeIndex={paneIndex}
         />
         <span className="shrink-0 font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Part {paneIndex + 1} / {panes.length}
+          {misoMessage("chrome.form.part_counter", locale, {
+            n: paneIndex + 1,
+            m: panes.length,
+          })}
         </span>
       </div>
 
       {/* Kicker + heading + scale legend */}
       <EditorialKicker className="mb-2.5">
-        Items {firstItemGlobalIdx}–{lastItemGlobalIdx} of {items.length}
+        {misoMessage("chrome.form.item_range", locale, {
+          a: firstItemGlobalIdx,
+          b: lastItemGlobalIdx,
+          n: items.length,
+        })}
       </EditorialKicker>
       <h2 className="text-[22px] font-bold leading-snug tracking-[-0.01em] text-foreground">
-        Please rate each statement
+        {misoMessage("chrome.form.rate_heading", locale)}
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        0&nbsp;&bull;&nbsp;Not at all&nbsp;&nbsp;&bull;&nbsp;&nbsp;1&nbsp;&bull;&nbsp;A little&nbsp;&nbsp;&bull;&nbsp;&nbsp;2&nbsp;&bull;&nbsp;A good deal&nbsp;&nbsp;&bull;&nbsp;&nbsp;3&nbsp;&bull;&nbsp;Almost all the time
+        {misoMessage("chrome.form.scale_legend_0_3", locale)}
       </p>
 
       {/* Item rows */}
@@ -147,6 +168,7 @@ export default function MisokinesiaMkaqForm({
           {currentPane.map((item) => {
             const globalIdx = items.indexOf(item);
             const selected = answers[item.key];
+            const text = misoMessage(item.textKey, locale);
             return (
               <fieldset
                 key={item.key}
@@ -154,7 +176,10 @@ export default function MisokinesiaMkaqForm({
                 style={{ background: "var(--fieldset-bg)" }}
               >
                 <legend className="sr-only">
-                  {globalIdx + 1}. {item.text}
+                  {misoMessage("chrome.form.item_legend", locale, {
+                    n: globalIdx + 1,
+                    text,
+                  })}
                 </legend>
                 <div className="grid items-center gap-4" style={{ gridTemplateColumns: "32px 1fr auto" }}>
                   {/* Item number */}
@@ -166,16 +191,16 @@ export default function MisokinesiaMkaqForm({
                   </span>
                   {/* Statement */}
                   <p className="text-[14px] font-medium leading-[1.45] text-foreground">
-                    {item.text}
+                    {text}
                   </p>
                   {/* Compact numeric chips */}
-                  <div className="flex gap-1.5" role="radiogroup" aria-label={item.text}>
+                  <div className="flex gap-1.5" role="radiogroup" aria-label={text}>
                     {MKAQ_SCALE.map((opt) => {
                       const isSelected = selected === opt.value;
                       return (
                         <label
                           key={opt.value}
-                          title={opt.label}
+                          title={misoMessage(opt.labelKey, locale)}
                           className={cn(
                             "flex min-w-[40px] cursor-pointer items-center justify-center rounded-[10px] border px-2.5 py-2 text-xs font-semibold transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring/60",
                             isSelected
@@ -205,7 +230,12 @@ export default function MisokinesiaMkaqForm({
         {/* Footer */}
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
           <span className="font-[variant-numeric:tabular-nums] text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            {currentPaneAnswered}/{currentPane.length} on this part&nbsp;&nbsp;&bull;&nbsp;&nbsp;{answeredCount}/{items.length} overall
+            {misoMessage("chrome.form.pane_progress", locale, {
+              a: currentPaneAnswered,
+              b: currentPane.length,
+              c: answeredCount,
+              d: items.length,
+            })}
           </span>
           <div className="flex gap-2">
             {!isFirstPane && (
@@ -215,7 +245,7 @@ export default function MisokinesiaMkaqForm({
                 onClick={handlePrevious}
                 className="min-w-[120px] rounded-xl"
               >
-                &larr; Previous
+                {misoMessage("chrome.button.previous", locale)}
               </Button>
             )}
             {!isLastPane ? (
@@ -225,7 +255,7 @@ export default function MisokinesiaMkaqForm({
                 disabled={!currentPaneComplete}
                 className="min-w-[120px] rounded-xl px-6 text-primary-foreground"
               >
-                Next &rarr;
+                {misoMessage("chrome.button.next_arrow", locale)}
               </Button>
             ) : (
               <Button
@@ -233,7 +263,7 @@ export default function MisokinesiaMkaqForm({
                 disabled={!allAnswered}
                 className="min-w-[120px] rounded-xl px-6 text-primary-foreground"
               >
-                Submit
+                {misoMessage("chrome.button.submit", locale)}
               </Button>
             )}
           </div>

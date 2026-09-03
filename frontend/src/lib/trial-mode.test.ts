@@ -445,10 +445,16 @@ describe("MkAQ typed wrapper and carousel pane logic", () => {
     expect(MKAQ_ITEMS).toHaveLength(21);
     expect(MKAQ_ITEMS[0].key).toBe("q1");
     expect(MKAQ_ITEMS[20].key).toBe("q21");
+    // Item text resolves from the catalogue, so the submitted key and the
+    // displayed statement stay independent (LOCALIZATION.md section 5.2).
+    expect(MKAQ_ITEMS.map((item) => item.textKey)).toEqual(
+      MKAQ_ITEMS.map((item) => `mkaq.item.${item.key}`)
+    );
     // Spec requires instrument wording; items must not use "misokinesia" or "fidgeting"
     for (const item of MKAQ_ITEMS) {
-      expect(item.text.toLowerCase()).not.toContain("misokinesia");
-      expect(item.text.toLowerCase()).not.toContain("fidgeting");
+      const text = MISO_MESSAGES.en[item.textKey].toLowerCase();
+      expect(text).not.toContain("misokinesia");
+      expect(text).not.toContain("fidgeting");
     }
   });
 
@@ -639,18 +645,29 @@ describe("MkAQ Trial Run shortened carousel (T149)", () => {
 describe("MAQ post-video survey carousel (T174)", () => {
   it("exports all 21 MAQ items with sound issues wording", () => {
     expect(MAQ_ITEMS).toHaveLength(21);
-    expect(MAQ_ITEMS[0]).toMatchObject({
-      id: "q1",
-      text: "My sound issues currently make me unhappy.",
-    });
-    expect(MAQ_ITEMS[3]).toMatchObject({
-      id: "q4",
-      text: "I feel that no one understands my problems with certain sounds.",
-    });
-    expect(MAQ_ITEMS[20]).toMatchObject({
-      id: "q21",
-      text: "I am worried that my whole life will be affected by sound issues.",
-    });
+    // Item text resolves from the catalogue; the submitted `id` is
+    // language-independent (LOCALIZATION.md section 5.4).
+    expect(MAQ_ITEMS.map((item) => item.textKey)).toEqual(
+      MAQ_ITEMS.map((item) => `maq.item.${item.id}`)
+    );
+    expect(MAQ_ITEMS[0].id).toBe("q1");
+    expect(MISO_MESSAGES.en[MAQ_ITEMS[0].textKey]).toBe(
+      "My sound issues currently make me unhappy."
+    );
+    expect(MAQ_ITEMS[3].id).toBe("q4");
+    expect(MISO_MESSAGES.en[MAQ_ITEMS[3].textKey]).toBe(
+      "I feel that no one understands my problems with certain sounds."
+    );
+    expect(MAQ_ITEMS[20].id).toBe("q21");
+    expect(MISO_MESSAGES.en[MAQ_ITEMS[20].textKey]).toBe(
+      "I am worried that my whole life will be affected by sound issues."
+    );
+    // Every item has a Korean statement too — no silent EN fallback.
+    for (const item of MAQ_ITEMS) {
+      expect(MISO_MESSAGES.ko[item.textKey]).not.toBe(
+        MISO_MESSAGES.en[item.textKey]
+      );
+    }
   });
 
   it("groups production MAQ items into q1-q7, q8-q14, and q15-q21 panes", () => {
