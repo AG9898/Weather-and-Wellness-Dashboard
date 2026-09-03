@@ -1,7 +1,8 @@
 """Tests for misokinesia router endpoints (T108, updated T168, T200).
 
 Covers:
-- POST /misokinesia/start: valid manifest response (post_survey_order), auth requirement, clip ordering
+- POST /misokinesia/start: valid manifest response (post_survey_order), auth requirement, clip ordering,
+  optional language body ('en'/'ko', default 'en', invalid → 422) persisted and echoed (T1851)
 - GET /misokinesia/trial-manifest: read-only trial clip sampling, auth requirement,
   insufficient-stimuli 409 (short trial only), full=True returns all stimuli,
   post_survey_order included in both modes
@@ -14,7 +15,8 @@ Covers:
   duplicate 409, wrong test-set 422, out-of-range qN 422, completed_at auto-set,
   post-completion 409
 - PATCH /misokinesia/participants/{id}/end-of-task: valid payload 200,
-  completed_at null 409, mkaq-not-submitted 409, stronger_responses_timing/stronger_responses mismatch 422
+  completed_at null 409, mkaq-not-submitted 409, stronger_responses_timing/stronger_responses mismatch 422,
+  stronger_responses_timing option keys accepted and legacy English literals rejected (T1851)
 - POST /misokinesia/participants/{id}/mkaq: happy path, 404, duplicate 409,
   clips-not-complete 409 (always post-video), server-side score computation
 - POST /misokinesia/participants/{id}/gad7 and /maq: happy path, clips-not-complete 409,
@@ -58,6 +60,7 @@ from app.schemas.misokinesia import (
     MisoVideoScoresResponse,
     MisokinesiaAqCreate,
     MisokinesiaEndOfTaskCreate,
+    MisokinesiaStartRequest,
     MisokinesiaTrialResponseCreate,
 )
 
@@ -537,6 +540,56 @@ class StartMisokinesiaSessionTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.clips[0].sort_order, 2)
         self.assertEqual(result.clips[1].stimulus_id, _STIMULUS_ID_1)
         self.assertEqual(result.clips[1].sort_order, 1)
+
+    async def _start_with(
+        self,
+        payload: MisokinesiaStartRequest | None,
+    ) -> tuple[Any, list]:
+        """Run start_misokinesia_session with a language-aware fake miso row.
+
+        Returns (manifest, constructor kwargs seen by MisokinesiaParticipant).
+        """
+        import os
+        from unittest.mock import patch
+
+        os.environ["SUPABASE_URL"] = "https://test.supabase.co"
+        db = self._db_for_start()
+        seen_kwargs: list = []
+
+        def _make_miso(**kwargs: Any) -> _FakeMisoParticipant:
+            seen_kwargs.append(kwargs)
+            return _FakeMisoParticipant(language=kwargs.get("language", "en"))
+
+        with patch("app.routers.misokinesia.Participant", return_value=_FakeParticipant()), \
+             patch("app.routers.misokinesia.SessionModel", side_effect=_FakeSession), \
+             patch("app.routers.misokinesia.MisokinesiaParticipant", side_effect=_make_miso), \
+             patch("app.routers.misokinesia._shuffle_stimuli", side_effect=lambda xs: xs):
+            result = await start_misokinesia_session(payload=payload, db=db)
+
+        return result, seen_kwargs
+
+    async def test_start_defaults_to_english_when_no_body_sent(self) -> None:
+        result, seen_kwargs = await self._start_with(None)
+        self.assertEqual(seen_kwargs[0]["language"], "en")
+        self.assertEqual(result.language, "en")
+
+    async def test_start_persists_and_echoes_english_language(self) -> None:
+        result, seen_kwargs = await self._start_with(MisokinesiaStartRequest(language="en"))
+        self.assertEqual(seen_kwargs[0]["language"], "en")
+        self.assertEqual(result.language, "en")
+
+    async def test_start_persists_and_echoes_korean_language(self) -> None:
+        result, seen_kwargs = await self._start_with(MisokinesiaStartRequest(language="ko"))
+        self.assertEqual(seen_kwargs[0]["language"], "ko")
+        self.assertEqual(result.language, "ko")
+
+    async def test_start_rejects_unrecognised_language(self) -> None:
+        """An unsupported locale is rejected by the request schema (422)."""
+        with self.assertRaises(ValidationError):
+            MisokinesiaStartRequest(language="fr")
+
+    async def test_start_request_language_defaults_to_en(self) -> None:
+        self.assertEqual(MisokinesiaStartRequest().language, "en")
 
     async def test_start_route_requires_lab_member_auth(self) -> None:
         """The /start route must declare Depends(get_current_lab_member)."""
@@ -1513,7 +1566,7 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
             end_fidgeting_text="tapping",
             end_emotions_text="anxious",
             stronger_responses=True,
-            stronger_responses_timing="After 5 seconds",
+            stronger_responses_timing="timing_after_5s",
         )
         result = await submit_end_of_task(
             participant_id=_MISO_PARTICIPANT_ID,
@@ -1524,7 +1577,7 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
         self.assertEqual(result.end_fidgeting_text, "tapping")
         self.assertEqual(result.end_emotions_text, "anxious")
         self.assertTrue(result.stronger_responses)
-        self.assertEqual(result.stronger_responses_timing, "After 5 seconds")
+        self.assertEqual(result.stronger_responses_timing, "timing_after_5s")
         self.assertTrue(db.committed)
 
     async def test_null_fields_accepted(self) -> None:
@@ -1566,7 +1619,7 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
         with self.assertRaises(ValidationError):
             MisokinesiaEndOfTaskCreate(
                 stronger_responses=False,
-                stronger_responses_timing="Immediately",
+                stronger_responses_timing="timing_immediately",
             )
 
     async def test_stronger_responses_timing_without_stronger_set_raises_422(
@@ -1576,7 +1629,58 @@ class SubmitEndOfTaskTests(IsolatedAsyncioTestCase):
         with self.assertRaises(ValidationError):
             MisokinesiaEndOfTaskCreate(
                 stronger_responses=None,
-                stronger_responses_timing="After 10 seconds",
+                stronger_responses_timing="timing_after_10s",
+            )
+
+    async def test_all_timing_option_keys_are_accepted(self) -> None:
+        """Every LOCALIZATION.md timing option key validates."""
+        for key in (
+            "timing_immediately",
+            "timing_after_5s",
+            "timing_after_10s",
+            "timing_end_of_video",
+        ):
+            with self.subTest(timing=key):
+                payload = MisokinesiaEndOfTaskCreate(
+                    stronger_responses=True,
+                    stronger_responses_timing=key,
+                )
+                self.assertEqual(payload.stronger_responses_timing, key)
+
+    async def test_legacy_english_timing_literals_are_rejected(self) -> None:
+        """The pre-T1851 English display strings are no longer valid API values."""
+        for literal_value in (
+            "Immediately",
+            "After 5 seconds",
+            "After 10 seconds",
+            "At the end of the video",
+        ):
+            with self.subTest(timing=literal_value):
+                with self.assertRaises(ValidationError):
+                    MisokinesiaEndOfTaskCreate(
+                        stronger_responses=True,
+                        stronger_responses_timing=literal_value,
+                    )
+
+    async def test_timing_option_key_persists_through_the_route(self) -> None:
+        db = self._db_for_eot(completed_at=_NOW)
+        result = await submit_end_of_task(
+            participant_id=_MISO_PARTICIPANT_ID,
+            payload=MisokinesiaEndOfTaskCreate(
+                stronger_responses=True,
+                stronger_responses_timing="timing_end_of_video",
+            ),
+            db=db,
+        )
+        self.assertEqual(result.stronger_responses_timing, "timing_end_of_video")
+        self.assertTrue(db.committed)
+
+    async def test_timing_option_key_still_requires_stronger_responses_true(self) -> None:
+        """The only-when-true rule is unchanged by the switch to option keys."""
+        with self.assertRaises(ValidationError):
+            MisokinesiaEndOfTaskCreate(
+                stronger_responses=False,
+                stronger_responses_timing="timing_end_of_video",
             )
 
     async def test_end_of_task_route_has_no_auth_dependency(self) -> None:

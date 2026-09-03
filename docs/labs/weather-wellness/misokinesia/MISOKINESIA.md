@@ -12,9 +12,9 @@ The Misokinesia module presents a participant with the active video manifest in 
 
 ## Participant Flow
 
-1. RA navigates to `/misokinesia` via the floating dock and clicks "Start Misokinesia Session".
-2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, randomly assigns a `post_survey_order` permutation of `["mkaq", "gad7", "maq"]`, then returns the full active clip manifest plus the survey order.
-3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required).
+1. RA navigates to `/misokinesia` via the floating dock, selects the session language (English or Korean; English is the default), and clicks "Start Misokinesia Session". The selected language is sent as the `language` field of the `POST /misokinesia/start` body.
+2. Backend atomically creates an anonymous `participants` row, an `active` session, and a `misokinesia_participants` row, persists the selected `language` on that row, randomly assigns a `post_survey_order` permutation of `["mkaq", "gad7", "maq"]`, then returns the full active clip manifest plus the survey order and the session `language`.
+3. App navigates to `/misokinesia/[misokinesia_participant_id]` on the same device (no login required). The whole participant flow renders in the session language returned in the manifest; the locale is fixed for the lifetime of the session and the participant cannot change it mid-flow. See [`LOCALIZATION.md`](./LOCALIZATION.md).
 4. Participant answers the UI-only consent gate. "Yes" opens the sourced demographics carousel; "No" returns to `/misokinesia` without a database write.
 5. Participant completes all visible demographics questions; frontend submits `PATCH /misokinesia/participants/{id}/demographics`.
 6. Participant sees intro screen and clicks to begin. Task container enters browser-native fullscreen (Fullscreen API) at this point and remains fullscreen through clip playback, per-clip questionnaires, transition cards, and post-video surveys.
@@ -310,7 +310,7 @@ Three items shown once after all per-clip questionnaires for the returned manife
 | `end_fidgeting_text` | TEXT | "Please list any fidgeting stimuli that you are bothered by that did not show up in the task" (free text, optional) |
 | `end_emotions_text` | TEXT | "Please list any emotional responses that you felt during the videos that were not asked in the questionnaire" (free text, optional) |
 | `stronger_responses` | BOOLEAN | "Did viewing the videos create stronger responses over time?" — No (false) / Yes (true), optional |
-| `stronger_responses_timing` | VARCHAR | If `stronger_responses` is true: one of `"Immediately"`, `"After 5 seconds"`, `"After 10 seconds"`, `"At the end of the video"`; otherwise null. Setting this when `stronger_responses` is false returns 422. |
+| `stronger_responses_timing` | VARCHAR | If `stronger_responses` is true: one of the option keys `timing_immediately`, `timing_after_5s`, `timing_after_10s`, `timing_end_of_video`; otherwise null. Setting this when `stronger_responses` is false returns 422. Labels per locale live in [`LOCALIZATION.md`](./LOCALIZATION.md). |
 
 All fields are optional (null accepted). `PATCH /end-of-task` returns 409 if `completed_at` is null (clips not yet finished) or if any of the three post-video surveys (MkAQ, GAD-7, MAQ) have not been submitted.
 

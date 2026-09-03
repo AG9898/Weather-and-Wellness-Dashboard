@@ -9,6 +9,17 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
+# Session locale
+# ---------------------------------------------------------------------------
+
+# Supported Misokinesia session locales. Component-scoped: `ko` is not an
+# available locale anywhere outside the Misokinesia component. See
+# docs/labs/weather-wellness/misokinesia/LOCALIZATION.md.
+MISO_LOCALES = ("en", "ko")
+_DEFAULT_LOCALE = "en"
+
+
+# ---------------------------------------------------------------------------
 # Manifest (start session response)
 # ---------------------------------------------------------------------------
 
@@ -21,6 +32,24 @@ class MisokinesiaClipMeta(BaseModel):
     duration_ms: int
 
 
+class MisokinesiaStartRequest(BaseModel):
+    """Optional body for POST /misokinesia/start.
+
+    ``language`` is the session locale selected by the RA before the participant
+    begins. It is fixed for the lifetime of the session and selects
+    participant-facing labels only; stored choice values remain
+    language-independent option keys. See LOCALIZATION.md.
+    """
+
+    language: str = _DEFAULT_LOCALE
+
+    @model_validator(mode="after")
+    def validate_language(self) -> "MisokinesiaStartRequest":
+        if self.language not in MISO_LOCALES:
+            raise ValueError(f"language must be one of: {sorted(MISO_LOCALES)}")
+        return self
+
+
 class MisokinesiaManifestResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -28,6 +57,7 @@ class MisokinesiaManifestResponse(BaseModel):
     misokinesia_participant_number: int
     session_id: UUID
     post_survey_order: str
+    language: str
     clips: list[MisokinesiaClipMeta]
 
 
@@ -125,9 +155,6 @@ class MisokinesiaTrialResponseResponse(BaseModel):
 # docs/labs/weather-wellness/misokinesia/LOCALIZATION.md section 2. English
 # display strings never reach the API; the frontend maps keys to labels per
 # locale. Legacy rows were rewritten to keys by migration 20260903_000001.
-
-MISO_LOCALES = ("en", "ko")
-_DEFAULT_LOCALE = "en"
 
 _VALID_SEXES = {"sex_male", "sex_female"}
 _VALID_RESIDENCE_STATUSES = {
@@ -578,11 +605,15 @@ def validate_demographics_for_locale(
 # End-of-task questionnaire
 # ---------------------------------------------------------------------------
 
+# Language-independent option keys (LOCALIZATION.md section 2, end-of-task
+# `stronger_responses_timing`). The English display strings this field used to
+# accept are no longer valid API values; the frontend maps keys to labels per
+# locale.
 _VALID_TIMING_OPTIONS = {
-    "Immediately",
-    "After 5 seconds",
-    "After 10 seconds",
-    "At the end of the video",
+    "timing_immediately",
+    "timing_after_5s",
+    "timing_after_10s",
+    "timing_end_of_video",
 }
 
 

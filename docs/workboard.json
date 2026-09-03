@@ -5060,7 +5060,7 @@
       "id": "T1851",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - language on session start and end-of-task timing keys",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "estimate": "S",

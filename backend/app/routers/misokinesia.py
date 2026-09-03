@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import random
 import re
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -40,6 +41,7 @@ from app.schemas.misokinesia import (
     MisokinesiaEndOfTaskCreate,
     MisokinesiaEndOfTaskResponse,
     MisokinesiaManifestResponse,
+    MisokinesiaStartRequest,
     MisokinesiaTrialManifestResponse,
     MisokinesiaTrialResponseCreate,
     MisokinesiaTrialResponseResponse,
@@ -175,10 +177,19 @@ async def _get_post_video_participant(
     dependencies=[Depends(get_current_lab_member)],
 )
 async def start_misokinesia_session(
+    payload: Optional[MisokinesiaStartRequest] = None,
     db: AsyncSession = Depends(get_session),
 ) -> MisokinesiaManifestResponse:
     """RA-triggered start: atomically create anonymous participant + session +
-    misokinesia_participants row, then return the clip manifest."""
+    misokinesia_participants row, then return the clip manifest.
+
+    The optional body carries the RA-selected session locale (``language``),
+    which defaults to ``en`` and is fixed for the lifetime of the session. An
+    unrecognised value is rejected with 422 by the request schema.
+    """
+
+    # 0. Resolve the session locale (defaults to "en" when no body is sent).
+    language = (payload or MisokinesiaStartRequest()).language
 
     # 1. Resolve the single active test set
     ts_result = await db.execute(
@@ -218,6 +229,7 @@ async def start_misokinesia_session(
         participant_uuid=participant.participant_uuid,
         test_set_id=test_set.test_set_id,
         post_survey_order=post_survey_order,
+        language=language,
     )
     db.add(miso_participant)
     await db.commit()
@@ -245,6 +257,7 @@ async def start_misokinesia_session(
         misokinesia_participant_number=miso_participant.misokinesia_participant_number,
         session_id=session_obj.session_id,
         post_survey_order=miso_participant.post_survey_order,
+        language=miso_participant.language,
         clips=clips,
     )
 

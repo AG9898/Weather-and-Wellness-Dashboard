@@ -29,7 +29,10 @@ Rules:
   `docs/labs/weather-wellness/misokinesia/`.
 - `en` is the default. A session with no recorded locale is `en`.
 - Locale is fixed for the lifetime of a Misokinesia session. It is selected by the RA
-  at session start, not by the participant mid-flow.
+  at session start, not by the participant mid-flow: `POST /misokinesia/start` accepts
+  an optional `language` body field (`en` / `ko`, default `en`), persists it to
+  `misokinesia_participants.language`, and echoes it in the manifest. See
+  [`API.md`](API.md).
 - Locale selects **labels only**. Stored values are language-independent option keys
   (section 2), so a KO session and an EN session produce directly comparable rows.
 

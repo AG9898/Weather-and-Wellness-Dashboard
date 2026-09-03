@@ -56,8 +56,15 @@
 
 ### POST /misokinesia/start
 - **Auth:** RA required
-- **Status:** implemented (T106)
-- **Request body:** none
+- **Status:** implemented (T106, language added T1851)
+- **Request body:** optional `MisokinesiaStartRequest`
+  ```json
+  {
+    "language": "en | ko"
+  }
+  ```
+  - `language` is the RA-selected session locale. It defaults to `"en"`, and the body may be omitted entirely (equivalent to `{"language": "en"}`).
+  - Any value other than `"en"` or `"ko"` returns 422.
 - **Response (HTTP 201):** `MisokinesiaManifestResponse`
   ```json
   {
@@ -65,6 +72,7 @@
     "misokinesia_participant_number": "integer",
     "session_id": "uuid",
     "post_survey_order": "mkaq,gad7,maq",
+    "language": "en | ko",
     "clips": [
       {
         "stimulus_id": "uuid",
@@ -79,6 +87,7 @@
   - Atomically creates an anonymous `participants` row, a `created` session, and a `misokinesia_participants` row. The session is **not** `active` at start: it transitions `created`→`active` (stamping `activated_at`) on the first per-clip response write, per the shared session-status guard. See `docs/CONVENTIONS.md` (Session validity & data quality). A session left in `created` (RA started, participant never engaged) is an abandoned shell surfaced on the admin Flagged Sessions page.
   - `misokinesia_participant_number` is assigned by a dedicated PostgreSQL SERIAL sequence (independent of `participants.participant_number`).
   - Assigns a random permutation of `["mkaq", "gad7", "maq"]` as `post_survey_order`, persists it on `misokinesia_participants`, and returns it in the response so the frontend can present the three post-video surveys in the assigned order.
+  - Persists `language` to `misokinesia_participants.language` and echoes it in the manifest, so the participant frontend can render its locale without a second fetch. The locale is fixed for the lifetime of the session; there is no endpoint to change it mid-flow. See [`LOCALIZATION.md`](./LOCALIZATION.md).
   - Resolves the single active `misokinesia_test_sets` row; returns 404 if none found.
   - `clips` contains all active stimuli for the test set (25 after 2026-05 decommission), in a randomized per-participant order.
   - Each clip's `sort_order` still reflects the canonical seeded stimulus order stored in `misokinesia_stimuli`.
@@ -333,7 +342,7 @@ The request body carries **no locale field**. The session locale is read from
 
 ### PATCH /misokinesia/participants/{participant_id}/end-of-task
 - **Auth:** None (participant-facing)
-- **Status:** implemented (T107)
+- **Status:** implemented (T107, option keys T1851)
 - **Request body:** `MisokinesiaEndOfTaskCreate`
   ```json
   {
@@ -343,7 +352,7 @@ The request body carries **no locale field**. The session locale is read from
     "stronger_responses_timing": "string | null"
   }
   ```
-  - `stronger_responses_timing` must be one of: `"Immediately"`, `"After 5 seconds"`, `"After 10 seconds"`, `"At the end of the video"`.
+  - `stronger_responses_timing` must be one of the option keys `"timing_immediately"`, `"timing_after_5s"`, `"timing_after_10s"`, `"timing_end_of_video"` (T1851). The English display strings this field previously accepted (`"Immediately"`, `"After 5 seconds"`, `"After 10 seconds"`, `"At the end of the video"`) now return 422; the frontend maps keys to per-locale labels. See [`LOCALIZATION.md`](./LOCALIZATION.md).
   - `stronger_responses_timing` may only be set when `stronger_responses` is `true`; otherwise returns 422.
   - All fields are optional (null accepted).
 - **Response (HTTP 200):** `MisokinesiaEndOfTaskResponse`
