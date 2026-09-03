@@ -4,9 +4,10 @@ Canonical source of Misokinesia locale data: the locale registry, the demographi
 option-key registry, per-locale validation overrides, and the English-text-to-key
 migration mapping.
 
-This document covers **structure** — locales, option keys, and validation deltas.
-The instrument and UI string catalogue (question stems, scale labels, participant
-flow chrome) is a separate deliverable and is not written here.
+Sections 1-4 cover **structure** — locales, option keys, and validation deltas.
+Sections 5-6 cover the **string catalogue** — every participant-visible instrument
+string and every participant-facing UI chrome string, keyed so code never holds an
+inline literal.
 
 Related: [`SCHEMA.md`](SCHEMA.md) for column definitions, [`API.md`](API.md) for the
 demographics contract, [`DESIGN_SPEC.md`](DESIGN_SPEC.md) for participant UX.
@@ -444,3 +445,491 @@ key-migrated: `age`, `gender_identity`, `years_lived_canada`,
 Free-text answers (`gender_identity`, `majors_text`, `native_language`, all
 `*_other_text`, and the end-of-task prose fields) are stored verbatim in whatever
 language the participant typed. They are not localized and not key-mapped.
+
+---
+
+## 5. Instrument String Catalogue
+
+Every participant-visible instrument string, keyed. Code must look strings up by
+key; no component may hold an inline literal for any row below.
+
+**Key namespaces are distinct from option keys.** Section 2 keys (`sex_male`,
+`timing_immediately`, …) are *stored values* — they go into the database. Section 5
+and 6 keys are dotted (`vma.item.q1`, `chrome.button.submit`) and are *display-only
+lookups*. Never store a dotted key.
+
+Source of every `workbook` row: `reference/labs/Misokinesia/VMA_Questionnaires_EN-KO.xlsx`.
+Sheet is named per subsection.
+
+### 5.1 VMA per-clip questionnaire
+
+Sheet `VMA questions`. Rendered by `MisokinesiaQuestionnaire.tsx`, once after each
+clip.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `vma.item.q1` | I find this video unpleasant | 영상이 불쾌하였다. | workbook |
+| `vma.item.q2` | I felt physical discomfort during the video | 영상 시청 중 신체적 불편감을 느꼈다. | workbook |
+| `vma.item.q3` | I felt upset during the video | 영상 시청 중 정서적 불편감을 느꼈다. | workbook |
+| `vma.item.q4` | I wanted to stop the video early / or close my eyes | 영상을 멈추거나 눈을 감고 싶었다. | workbook |
+| `vma.scale.1` | Strongly Disagree | 전혀 동의하지 않음 | workbook |
+| `vma.scale.2` | Disagree | 동의하지 않음 | workbook |
+| `vma.scale.3` | Neutral | 보통 | workbook |
+| `vma.scale.4` | Agree | 동의함 | workbook |
+| `vma.scale.5` | Strongly Agree | 매우 동의함 | workbook |
+
+### 5.2 MkAQ — Misokinesia Assessment Questionnaire
+
+Sheet `MkAQ`. Rendered by `MisokinesiaMkaqForm.tsx` (`MKAQ_ITEMS`).
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `mkaq.item.q1` | My visual issues currently make me unhappy. | 나는 시각 자극 문제로 인해 현재 불행하다. | workbook |
+| `mkaq.item.q2` | My visual issues currently create problems for me. | 나는 시각 자극 문제로 인해 현재 어려움을 겪고 있다. | workbook |
+| `mkaq.item.q3` | My visual issues have recently made me feel angry. | 나는 시각 자극 문제로 인해 최근 화가 났다. | workbook |
+| `mkaq.item.q4` | I feel that no one understands my problems with certain visuals. | 특정 시각 자극에 대한 나의 문제를 아무도 이해하지 못한다고 느낀다. | workbook |
+| `mkaq.item.q5` | My visual issues do not seem to have a known cause. | 나의 시각 자극 문제는 알려진 원인이 없는 것 같다. | workbook |
+| `mkaq.item.q6` | My visual issues currently make me feel helpless. | 나는 시각 자극 문제로 인해 현재 무력감을 느낀다. | workbook |
+| `mkaq.item.q7` | My visual issues currently interfere with my social life. | 나의 시각 자극 문제가 현재 사회생활을 방해하고 있다. | workbook |
+| `mkaq.item.q8` | My visual issues currently make me feel isolated. | 나는 시각 자극 문제로 인해 현재 고립감을 느낀다. | workbook |
+| `mkaq.item.q9` | My visual issues have recently created problems for me in groups. | 나는 시각 자극 문제로 인해 최근 집단 내에서 어려움을 겪었다. | workbook |
+| `mkaq.item.q10` | My visual issues negatively affect my work/school life (currently or recently). | 나의 시각 자극 문제가 직장/학교생활에 부정적 영향을 미치고 있다(현재 또는 최근). | workbook |
+| `mkaq.item.q11` | My visual issues currently make me feel frustrated. | 나는 시각 자극 문제로 인해 현재 좌절감을 느낀다. | workbook |
+| `mkaq.item.q12` | My visual issues currently impact my entire life negatively. | 나의 시각 자극 문제가 현재 삶 전체에 부정적 영향을 미치고 있다. | workbook |
+| `mkaq.item.q13` | My visual issues have recently made me feel guilty. | 나는 시각 자극 문제로 인해 최근 죄책감을 느꼈다. | workbook |
+| `mkaq.item.q14` | My visual issues are classified as ‘crazy’. | 나의 시각 자극 문제는 '미쳤다'고 간주된다. | workbook |
+| `mkaq.item.q15` | I feel that no one can help me with my visual issues. | 나의 시각 자극 문제를 도와줄 수 있는 사람이 아무도 없다고 느낀다. | workbook |
+| `mkaq.item.q16` | My visual issues currently make me feel hopeless. | 나는 시각 자극 문제로 인해 현재 절망감을 느낀다. | workbook |
+| `mkaq.item.q17` | I feel that my visual issues will only get worse with time. | 나의 시각 자극 문제가 시간이 갈수록 악화될 것이라고 느낀다. | workbook |
+| `mkaq.item.q18` | My visual issues currently impact my family relationships. | 나의 시각 자극 문제가 현재 가족 관계에 영향을 미치고 있다. | workbook |
+| `mkaq.item.q19` | My visual issues have recently affected my ability to be with other people. | 나는 시각 자극 문제로 인해 최근 다른 사람들과 함께 있는 것이 어려웠다. | workbook |
+| `mkaq.item.q20` | My visual issues have not been recognized as legitimate. | 나의 시각 자극 문제는 정당한 것으로 인정받지 못하고 있다. | workbook |
+| `mkaq.item.q21` | I am worried that my whole life will be affected by visual issues. | 나의 시각 자극 문제는 평생 나에게 영향을 미칠까 봐 걱정된다. | workbook |
+| `mkaq.scale.0` | Not at all | 전혀 아니다 | workbook |
+| `mkaq.scale.1` | A little of the time | 가끔 그렇다 | workbook |
+| `mkaq.scale.2` | A good deal of the time | 자주 그렇다 | workbook |
+| `mkaq.scale.3` | Almost all the time | 거의 항상 그렇다 | workbook |
+
+The live EN for `mkaq.item.q14` uses curly quotes (`‘crazy’`); the MAQ twin uses
+straight quotes (`'crazy'`). Cosmetic only — do not change either displayed string.
+
+### 5.3 GAD-7
+
+Sheet `GAD-7`. Rendered by `MisokinesiaGAD7Form.tsx`.
+
+**The Korean here is the validated Korean GAD-7, not a new translation.** The
+workbook records this explicitly (`Validated Korean version used (not a new
+translation)`). Do not re-translate, reword, or "improve" any `gad7.*` KO string:
+doing so invalidates the instrument. A lab correction to a `gad7.*` KO label is the
+one case where the `drafted`-style "labels are freely correctable" rule does **not**
+apply.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `gad7.stem` | Over the last two weeks, how often have you been bothered by the following problems? | 지난 2주 동안 당신은 다음의 문제들로 인해서 얼마나 자주 방해를 받았습니까? | workbook (validated) |
+| `gad7.item.r1` | Feeling nervous, anxious, or on edge | 초조하거나 불안하거나 조마조마하게 느낀다. | workbook (validated) |
+| `gad7.item.r2` | Not being able to stop or control worrying | 걱정하는 것을 멈추거나 조절할 수가 없다. | workbook (validated) |
+| `gad7.item.r3` | Worrying too much about different things | 여러 가지 것들에 대해 걱정을 너무 많이 한다. | workbook (validated) |
+| `gad7.item.r4` | Trouble relaxing | 편하게 있기가 어렵다. | workbook (validated) |
+| `gad7.item.r5` | Being so restless that it is hard to sit still | 너무 안절부절못해서 가만히 있기가 힘들다. | workbook (validated) |
+| `gad7.item.r6` | Becoming easily annoyed or irritable | 쉽게 짜증이 나거나 쉽게 성을 내게 된다. | workbook (validated) |
+| `gad7.item.r7` | Feeling afraid, as if something awful might happen | 마치 끔찍한 일이 생길 것처럼 두렵게 느껴진다. | workbook (validated) |
+| `gad7.scale.0` | Not at all | 전혀 방해받지 않았다 | workbook (validated) |
+| `gad7.scale.1` | Several days | 며칠 동안 방해 받았다 | workbook (validated) |
+| `gad7.scale.2` | More than half the days | 2주 중 절반 이상 방해 받았다 | workbook (validated) |
+| `gad7.scale.3` | Nearly every day | 거의 매일 방해 받았다 | workbook (validated) |
+| `gad7.difficulty.stem` | If you checked any problems, how difficult have they made it for you to do your work, take care of things at home, or get along with other people? | 위의 문제들 중 하나라도 해당되는 것이 있다면, 이러한 문제들로 인해 업무를 하거나, 집안일을 처리하거나, 다른 사람과 어울리는 것이 얼마나 어려웠습니까? | workbook (validated) |
+| `gad7.difficulty.not_at_all` | Not difficult at all | 전혀 어렵지 않았다 | workbook (validated) |
+| `gad7.difficulty.somewhat` | Somewhat difficult | 다소 어려웠다 | workbook (validated) |
+| `gad7.difficulty.very` | Very difficult | 매우 어려웠다 | workbook (validated) |
+| `gad7.difficulty.extremely` | Extremely difficult | 극도로 어려웠다 | workbook (validated) |
+
+The four `gad7.difficulty.*` options are stored as the **English label string**, not
+as an option key. `misokinesia_gad7.difficulty_impact` is a `String` column and
+`backend/app/schemas/misokinesia.py` validates it against a whitelist of those four
+exact English labels (`_VALID_GAD7_DIFFICULTY_IMPACTS`). Section 4 therefore has no
+mapping rows for it. A KO session must still submit the English label so the column
+stays poolable; only the displayed KO label comes from this table.
+
+### 5.4 MAQ / MpAQ — Misophonia Assessment Questionnaire
+
+Sheet `MpAQ`. Rendered by `MisokinesiaMAQForm.tsx` (`MAQ_ITEMS`). The platform calls
+this instrument **MAQ**; the workbook sheet calls it **MpAQ**. Same instrument.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `maq.item.q1` | My sound issues currently make me unhappy. | 나는 청각 자극 문제로 인해 현재 불행하다. | workbook |
+| `maq.item.q2` | My sound issues currently create problems for me. | 나는 청각 자극 문제로 인해 현재 어려움을 겪고 있다. | workbook |
+| `maq.item.q3` | My sound issues have recently made me feel angry. | 나는 청각 자극 문제로 인해 최근 화가 났다. | workbook |
+| `maq.item.q4` | I feel that no one understands my problems with certain sounds. | 특정 청각 자극에 대한 나의 문제를 아무도 이해하지 못한다고 느낀다. | workbook |
+| `maq.item.q5` | My sound issues do not seem to have a known cause. | 나의 청각 자극 문제는 알려진 원인이 없는 것 같다. | workbook |
+| `maq.item.q6` | My sound issues currently make me feel helpless. | 나는 청각 자극 문제로 인해 현재 무력감을 느낀다. | workbook |
+| `maq.item.q7` | My sound issues currently interfere with my social life. | 나의 청각 자극 문제가 현재 사회생활을 방해하고 있다. | workbook |
+| `maq.item.q8` | My sound issues currently make me feel isolated. | 나는 청각 자극 문제로 인해 현재 고립감을 느낀다. | workbook |
+| `maq.item.q9` | My sound issues have recently created problems for me in groups. | 나는 청각 자극 문제로 인해 최근 집단 내에서 어려움을 겪었다. | workbook |
+| `maq.item.q10` | My sound issues negatively affect my work/school life (currently or recently). | 나의 청각 자극 문제가 직장/학교생활에 부정적 영향을 미치고 있다(현재 또는 최근). | workbook |
+| `maq.item.q11` | My sound issues currently make me feel frustrated. | 나는 청각 자극 문제로 인해 현재 좌절감을 느낀다. | workbook |
+| `maq.item.q12` | My sound issues currently impact my entire life negatively. | 나의 청각 자극 문제가 현재 삶 전체에 부정적 영향을 미치고 있다. | workbook |
+| `maq.item.q13` | My sound issues have recently made me feel guilty. | 나는 청각 자극 문제로 인해 최근 죄책감을 느꼈다. | workbook |
+| `maq.item.q14` | My sound issues are classified as 'crazy'. | 나의 청각 자극 문제는 '미쳤다'고 간주된다. | workbook |
+| `maq.item.q15` | I feel that no one can help me with my sound issues. | 나의 청각 자극 문제를 도와줄 수 있는 사람이 아무도 없다고 느낀다. | workbook |
+| `maq.item.q16` | My sound issues currently make me feel hopeless. | 나는 청각 자극 문제로 인해 현재 절망감을 느낀다. | workbook |
+| `maq.item.q17` | I feel that my sound issues will only get worse with time. | 나의 청각 자극 문제가 시간이 갈수록 악화될 것이라고 느낀다. | workbook |
+| `maq.item.q18` | My sound issues currently impact my family relationships. | 나의 청각 자극 문제가 현재 가족 관계에 영향을 미치고 있다. | workbook |
+| `maq.item.q19` | My sound issues have recently affected my ability to be with other people. | 나는 청각 자극 문제로 인해 최근 다른 사람들과 함께 있는 것이 어려웠다. | workbook |
+| `maq.item.q20` | My sound issues have not been recognized as legitimate. | 나의 청각 자극 문제는 정당한 것으로 인정받지 못하고 있다. | workbook |
+| `maq.item.q21` | I am worried that my whole life will be affected by sound issues. | 나의 청각 자극 문제는 평생 나에게 영향을 미칠까 봐 걱정된다. | workbook |
+| `maq.scale.0` | Not at all | 전혀 아니다 | workbook |
+| `maq.scale.1` | A little of the time | 가끔 그렇다 | workbook |
+| `maq.scale.2` | A good deal of the time | 자주 그렇다 | workbook |
+| `maq.scale.3` | Almost all the time | 거의 항상 그렇다 | workbook |
+
+### 5.5 End-of-task items
+
+Rendered by `MisokinesiaEndOfTaskForm.tsx`. Q1 and Q2 carry the workbook's Korean
+for open-ended prompts O1 and O2 (sheet `VMA questions`). Q3 and its follow-up have
+**no workbook Korean at all** and are `drafted`.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `end.item.fidgeting` | Please list any fidgeting stimuli that you are bothered by that did not show up in the task. | 영상에 포함되지 않았으나 본인에게 어려움을 주는 타인의 반복적 움직임이 있다면 어떤 것인지 기술해 주십시오. | workbook (O1) |
+| `end.item.emotions` | Please list any emotional responses that you felt during the videos that were not asked in the questionnaire. | 영상에 대해 느꼈으나 앞선 질문들로 포착되지 않은 정서나 반응이 있다면 어떤 것인지 기술해 주십시오. | workbook (O2) |
+| `end.item.stronger_responses` | Did viewing the videos create stronger responses over time? | 영상을 계속 시청하면서 반응이 점점 더 강해졌습니까? | **drafted** |
+| `end.timing.stem` | When did the responses feel stronger? | 반응이 더 강하게 느껴진 시점은 언제였습니까? | **drafted** |
+| `end.timing.immediately` | Immediately | 즉시 | **drafted** |
+| `end.timing.after_5s` | After 5 seconds | 5초 후 | **drafted** |
+| `end.timing.after_10s` | After 10 seconds | 10초 후 | **drafted** |
+| `end.timing.end_of_video` | At the end of the video | 영상이 끝날 무렵 | **drafted** |
+
+The four `end.timing.*` labels are the display side of the option keys
+`timing_immediately` / `timing_after_5s` / `timing_after_10s` /
+`timing_end_of_video` in section 2. Key and label must stay in sync: correcting the
+KO wording never changes the stored key.
+
+### 5.6 Workbook content deliberately not surfaced
+
+Recorded so nobody assumes the data exists.
+
+| Workbook row | Status |
+|---|---|
+| Sheet `VMA questions`, prompt **O3** ("Our goal in this study is to develop a more accurate way to assess one's sensitivity to the fidgeting behaviours of others…") | **Translated in the workbook but intentionally not collected.** There is no database column, no API field, and no UI control for O3. Do not add one on the strength of the translation existing. |
+| Sheet `VMA questions`, rows 3–5 (`Instruction` block: "Participants watch a set of short (15 s) videos…") | Administration note, not a rendered string. The participant-facing equivalent is `chrome.intro.body` (section 6), which is platform copy, not workbook copy. |
+| Sheet `MpAQ`, row 4 (parent/caregiver proxy-response instruction) | Present in the original MpAQ, omitted from the Korean version because this is an adult-only study. Not rendered in either locale. |
+
+### 5.7 English wording drift (workbook vs live app)
+
+The live English is authoritative for what participants see and **is not changed by
+this task**. The workbook English differs cosmetically in the rows below; the Korean
+is unaffected because it maps to the item, not to the exact English phrasing.
+
+| Key | Live EN (kept) | Workbook EN |
+|---|---|---|
+| `vma.item.q1` | I find this video unpleasant | I found the video unpleasant. |
+| `vma.item.q2` | I felt physical discomfort during the video | I felt physical discomfort during the video. |
+| `vma.item.q3` | I felt upset during the video | I felt upset during the video. |
+| `vma.item.q4` | I wanted to stop the video early / or close my eyes | I wanted to stop the video or close my eyes. |
+| `gad7.stem` | Over the last two weeks, … | Over the last 2 weeks, … |
+| `gad7.item.r5` | Being so restless that it is hard to sit still | Being so restless that it's hard to sit still |
+| `gad7.item.r7` | Feeling afraid, as if something awful might happen | Feeling afraid as if something awful might happen |
+| `gad7.scale.2` | More than half the days | Over half the days |
+| `gad7.difficulty.stem` | If you checked any problems, how difficult have they made it… | If you checked off any problems, how difficult have these made it… |
+| `end.item.fidgeting` | Please list any fidgeting stimuli that you are bothered by that did not show up in the task. | Are there any types of fidgeting behaviours that challenge you that were not included in the video set? If so, what might they be? |
+| `end.item.emotions` | Please list any emotional responses that you felt during the videos that were not asked in the questionnaire. | Were there any emotions or reactions you had to one or more videos that were not captured by the questions we asked? If so, what might they be? |
+
+The two `end.item.*` rows are a genuine rewrite, not punctuation drift: the live app
+asks the same construct in shorter imperative form. The workbook Korean is kept
+because it asks the same construct; if the lab wants the KO shortened to match the
+live EN register, that is a label edit under the `drafted` rule, not a key change.
+
+VMA rows differ only in tense/punctuation. Trailing periods: the workbook ends VMA
+items with a period, the live app does not. Keep the live form.
+
+---
+
+## 6. UI Chrome String Catalogue
+
+Every participant-facing string with **no workbook source**: flow chrome, buttons,
+progress labels, state screens, error text, and screen-reader labels. Verified
+against the live components listed per subsection rather than estimated.
+
+**KO here is explicitly rough.** Machine-translation quality is acceptable per the
+project owner. Every row is flagged `drafted` unless the workbook happens to supply
+the exact same phrase (a few consent and block strings do). The lab can correct any
+`drafted` KO label without a code change — only the label moves, never the key.
+
+Placeholders use `{name}`. A row whose EN contains a placeholder is a format string,
+not a literal; the KO form may reorder placeholders but must use the same set.
+
+Total: **120 keys.** This exceeds the 70–90 rough estimate because the catalogue
+also covers `sr-only` legends, `aria-label`s, format strings, and the immersive
+video-player error paths — all participant-reachable, all currently inline literals.
+
+### 6.1 Shared chrome
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.task.name` | Misokinesia Task | 미소키네시아 과제 | drafted |
+| `chrome.step.trail` | Demographics → Intro → Task → Surveys | 인구통계 → 안내 → 과제 → 설문 | drafted |
+| `chrome.step.consent` | Consent | 동의 | drafted |
+| `chrome.step.intro_position` | 02 / 04 | 02 / 04 | drafted (numeric) |
+| `chrome.step.end_position` | 04 / 04 | 04 / 04 | drafted (numeric) |
+| `chrome.choice.yes` | Yes | 예 | workbook |
+| `chrome.choice.no` | No | 아니오 | workbook |
+
+`chrome.step.trail` currently renders in two spellings:
+`Demographics -> Intro -> Task -> Surveys` (ASCII) in
+`MisokinesiaDemographicsForm.tsx`, and `Demographics → Intro → Task → Surveys` in
+`page.tsx` and `MisokinesiaEndOfTaskForm.tsx`. One key covers both; unifying the EN
+glyph is a cosmetic follow-on, not part of this task.
+
+### 6.2 Buttons and transient state
+
+Used across `page.tsx`, `MisokinesiaDemographicsForm.tsx`, `MisokinesiaQuestionnaire.tsx`,
+`MisokinesiaMkaqForm.tsx`, `MisokinesiaMAQForm.tsx`, `MisokinesiaGAD7Form.tsx`,
+`MisokinesiaEndOfTaskForm.tsx`.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.button.back` | Back | 이전 | drafted |
+| `chrome.button.next` | Next | 다음 | drafted |
+| `chrome.button.next_arrow` | Next → | 다음 → | drafted |
+| `chrome.button.previous` | ← Previous | ← 이전 | drafted |
+| `chrome.button.continue` | Continue | 계속 | drafted |
+| `chrome.button.continue_arrow` | Continue → | 계속 → | drafted |
+| `chrome.button.submit` | Submit | 제출 | drafted |
+| `chrome.button.retry` | Retry | 다시 시도 | drafted |
+| `chrome.button.finish` | Finish → | 완료 → | drafted |
+| `chrome.state.loading_session` | Loading session… | 세션을 불러오는 중… | drafted |
+| `chrome.state.saving` | Saving... | 저장 중... | drafted |
+| `chrome.state.saving_kicker` | Saving | 저장 중 | drafted |
+| `chrome.state.saving_results` | Saving your results… | 응답을 저장하는 중… | drafted |
+| `chrome.state.submitting` | Submitting… | 제출 중… | drafted |
+| `chrome.state.submitting_survey` | Submitting questionnaire… | 설문을 제출하는 중… | drafted |
+
+`MisokinesiaMAQForm.tsx` renders `Submitting...` with an ASCII ellipsis while every
+other form uses `Submitting…`. Both resolve to `chrome.state.submitting`; normalize
+the EN glyph when the key lands.
+
+### 6.3 Errors
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.error.session_kicker` | Session Error | 세션 오류 | drafted |
+| `chrome.error.submission_kicker` | Submission Error | 제출 오류 | drafted |
+| `chrome.error.manifest_missing` | Session data not found. Please ask the research assistant to restart the session. | 세션 데이터를 찾을 수 없습니다. 연구 보조원에게 세션 재시작을 요청해 주십시오. | drafted |
+| `chrome.error.submit_failed` | Submission failed. Please try again. | 제출에 실패했습니다. 다시 시도해 주십시오. | drafted |
+| `chrome.error.clip_load` | This clip could not be loaded. Please ask the research assistant to restart the session. | 영상을 불러올 수 없습니다. 연구 보조원에게 세션 재시작을 요청해 주십시오. | drafted |
+
+`chrome.error.manifest_missing` and `chrome.error.clip_load` are the only two error
+strings the platform authors itself; every other error banner renders a server
+message via `getParticipantErrorMessage`. Server-produced error text is **out of
+scope for this catalogue** — it is English-only today and localizing it is a
+separate backend concern.
+
+### 6.4 Consent gate and demographics chrome
+
+`MisokinesiaDemographicsForm.tsx`. Question labels and option labels are not
+repeated here — they live in section 2 and the demographics workbook sheet.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.consent.kicker` | Before we begin | 시작하기 전에 | drafted |
+| `chrome.consent.title` | Consent | 연구 참가 동의 | workbook (Q1) |
+| `chrome.consent.body` | Do you consent to participate in this task and continue to the demographics questions? | 본 과제에 참여하고 인구통계 문항으로 계속 진행하는 데 동의하십니까? | drafted |
+| `chrome.demographics.block_kicker` | Block {n} of {total} | 블록 {n} / {total} | drafted |
+| `chrome.demographics.pane_suffix` | - Pane {n} of {m} | - 페이지 {n} / {m} | drafted |
+| `chrome.demographics.block_title.1` | Participant basics | 인적 사항 | workbook |
+| `chrome.demographics.block_title.2` | Residence and education | 거주 및 교육 | workbook |
+| `chrome.demographics.block_title.3` | Language and ethnicity | 언어 및 민족 | workbook |
+| `chrome.demographics.block_title.4` | Clinical history | 병력 | workbook |
+| `chrome.demographics.block_title.5` | Lifestyle and status | 생활 및 현재 상태 | workbook |
+| `chrome.demographics.pane_help` | Answer each visible question on this pane before continuing. | 계속하기 전에 이 페이지에 표시된 모든 문항에 답해 주십시오. | drafted |
+| `chrome.demographics.validation_banner` | Please complete every visible question before continuing. | 계속하려면 표시된 모든 문항에 답해 주십시오. | drafted |
+| `chrome.demographics.field_required` | This visible question is required. | 이 문항은 필수입니다. | drafted |
+| `chrome.demographics.other_placeholder` | Please specify | 직접 입력해 주십시오 | drafted |
+
+The consent Yes/No buttons and every boolean demographics question reuse
+`chrome.choice.yes` / `chrome.choice.no`. The small monospace `sourceId` badge under
+each question label (`Q1`, `Q27`, …) is an identifier, not prose — it is never
+localized and gets no key.
+
+### 6.5 Intro card
+
+`page.tsx`, `phase === "intro"`.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.intro.title` | Video Clip Questionnaire | 영상 시청 설문 | drafted |
+| `chrome.intro.body` | You will watch {n} short video clips. After each clip, you will be asked a few questions about how you felt. There are no right or wrong answers — just answer honestly. | {n}개의 짧은 영상을 시청하게 됩니다. 각 영상이 끝나면 어떻게 느꼈는지에 대한 몇 가지 질문에 답하게 됩니다. 정답이나 오답은 없으니 솔직하게 답해 주십시오. | drafted |
+| `chrome.intro.meta.clips.label` | Clips | 영상 | drafted |
+| `chrome.intro.meta.clips.value` | {n} short video clips | 짧은 영상 {n}개 | drafted |
+| `chrome.intro.meta.per_clip.label` | Per clip | 영상당 | drafted |
+| `chrome.intro.meta.per_clip.value` | 4 questions · scale 1–5 | 문항 4개 · 1–5점 척도 | drafted |
+| `chrome.intro.meta.after_clips.label` | After clips | 영상 시청 후 | drafted |
+| `chrome.intro.meta.after_clips.value` | 3 short surveys | 짧은 설문 3개 | drafted |
+| `chrome.intro.meta.estimated.label` | Estimated | 예상 소요 | drafted |
+| `chrome.intro.meta.estimated.value` | ≈ 18 minutes total | 총 약 18분 | drafted |
+| `chrome.intro.fullscreen_note` | The task will enter fullscreen when you click Begin. You can exit at any time using the button in the top corner. | Begin을 누르면 과제가 전체 화면으로 전환됩니다. 화면 상단 모서리의 버튼으로 언제든지 종료할 수 있습니다. | drafted |
+| `chrome.intro.begin` | Begin → | 시작 → | drafted |
+
+`chrome.intro.fullscreen_note` names the Begin button inline. When `chrome.intro.begin`
+is corrected, this string must be corrected with it — they are a pair.
+
+### 6.6 Survey transition cards
+
+`page.tsx`, `TRANSITION_CARD_COPY` and `TransitionCard`.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.transition.strip.clips_complete` | Clips complete | 영상 시청 완료 | drafted |
+| `chrome.transition.strip.survey_count` | {n} / {m} surveys | 설문 {n} / {m} | drafted |
+| `chrome.transition.kicker` | Up next · Survey {pos} of {total} | 다음 · 설문 {pos} / {total} | drafted |
+| `chrome.transition.meta.items.label` | Items | 문항 수 | drafted |
+| `chrome.transition.meta.format.label` | Format | 형식 | drafted |
+| `chrome.transition.meta.scale.label` | Scale | 척도 | drafted |
+| `chrome.transition.meta.estimated.label` | Estimated | 예상 소요 | drafted |
+| `chrome.transition.mkaq.title` | Misokinesia Assessment | 미소키네시아 평가 | drafted |
+| `chrome.transition.mkaq.description` | A short questionnaire about how certain visual stimuli affect you. Answer based on the past two weeks. There are no right or wrong answers. | 특정 시각 자극이 본인에게 미치는 영향을 묻는 짧은 설문입니다. 지난 2주를 기준으로 답해 주십시오. 정답이나 오답은 없습니다. | drafted |
+| `chrome.transition.mkaq.meta.items` | 21 statements | 문항 21개 | drafted |
+| `chrome.transition.mkaq.meta.format` | 4 panes · Previous available | 4개 페이지 · 이전으로 돌아가기 가능 | drafted |
+| `chrome.transition.mkaq.meta.scale` | 0–3 · Not at all → Almost all | 0–3 · 전혀 아니다 → 거의 항상 | drafted |
+| `chrome.transition.mkaq.meta.estimated` | ≈ 5 minutes | 약 5분 | drafted |
+| `chrome.transition.gad7.title` | Anxiety Questionnaire | 불안 설문 | drafted |
+| `chrome.transition.gad7.description` | Seven short questions about feelings of anxiety. Answer based on the past two weeks. There are no right or wrong answers. | 불안감에 관한 짧은 7문항입니다. 지난 2주를 기준으로 답해 주십시오. 정답이나 오답은 없습니다. | drafted |
+| `chrome.transition.gad7.meta.items` | 7 statements | 문항 7개 | drafted |
+| `chrome.transition.gad7.meta.format` | Single screen | 한 화면 | drafted |
+| `chrome.transition.gad7.meta.scale` | 0–3 · Not at all → Nearly every day | 0–3 · 전혀 방해받지 않았다 → 거의 매일 | drafted |
+| `chrome.transition.gad7.meta.estimated` | ≈ 1 minute | 약 1분 | drafted |
+| `chrome.transition.maq.title` | Misophonia Assessment | 미소포니아 평가 | drafted |
+| `chrome.transition.maq.description` | A short questionnaire about how certain sounds affect you. Answer based on the past two weeks. There are no right or wrong answers. | 특정 소리가 본인에게 미치는 영향을 묻는 짧은 설문입니다. 지난 2주를 기준으로 답해 주십시오. 정답이나 오답은 없습니다. | drafted |
+| `chrome.transition.maq.meta.items` | 21 statements | 문항 21개 | drafted |
+| `chrome.transition.maq.meta.format` | 3 panes · Previous available | 3개 페이지 · 이전으로 돌아가기 가능 | drafted |
+| `chrome.transition.maq.meta.scale` | 0–3 · Not at all → Almost all | 0–3 · 전혀 아니다 → 거의 항상 | drafted |
+| `chrome.transition.maq.meta.estimated` | ≈ 5 minutes | 약 5분 | drafted |
+| `chrome.transition.begin_assessment` | Begin assessment → | 평가 시작 → | drafted |
+| `chrome.transition.begin_questionnaire` | Begin questionnaire → | 설문 시작 → | drafted |
+| `chrome.transition.pause_note` | Take a breath before continuing — you can pause between questions. | 계속하기 전에 잠시 쉬어도 됩니다. 문항 사이에 언제든 멈출 수 있습니다. | drafted |
+
+MkAQ and MAQ share `chrome.transition.begin_assessment`; GAD-7 uses
+`chrome.transition.begin_questionnaire`. The `meta.scale` values paraphrase the
+instrument scale anchors — they are chrome, not instrument strings, and must not be
+used to render an actual scale chip. Chips render `mkaq.scale.*`, `gad7.scale.*`,
+`maq.scale.*` from section 5.
+
+`chrome.transition.mkaq.meta.format` and `chrome.transition.maq.meta.format` hard-code
+pane counts (4 and 3) that the forms compute at runtime. Trial mode shortens the item
+list and changes the real pane count, so these strings are already approximate in
+trial runs. Keep the literal for now; making them dynamic is a separate change.
+
+### 6.7 Clip playback and post-clip questionnaire
+
+`page.tsx` (`ProgressIndicator`), `MisokinesiaVideoPlayer.tsx`,
+`MisokinesiaQuestionnaire.tsx`.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.clip.progress` | Clip {n} of {m} | 영상 {n} / {m} | drafted |
+| `chrome.clip.progress_percent` | {pct}% | {pct}% | drafted (numeric) |
+| `chrome.clip.kicker` | Post-clip · 4 questions | 영상 시청 후 · 문항 4개 | drafted |
+| `chrome.clip.heading` | How did you feel about that clip? | 방금 본 영상에 대해 어떻게 느끼셨습니까? | drafted |
+| `chrome.clip.help` | Rate each statement from 1 (Strongly Disagree) to 5 (Strongly Agree). There are no right answers. | 각 문장을 1(전혀 동의하지 않음)에서 5(매우 동의함)까지로 평가해 주십시오. 정답은 없습니다. | drafted |
+| `chrome.clip.legend` | Q{n}: {text} | 문항 {n}: {text} | drafted (sr-only) |
+| `chrome.clip.item_number` | Q{n} | 문항 {n} | drafted |
+| `chrome.video.play` | Play Clip | 영상 재생 | drafted |
+| `chrome.video.unsupported` | Your browser does not support embedded video playback. | 이 브라우저는 내장 영상 재생을 지원하지 않습니다. | drafted |
+
+`chrome.clip.help` embeds the two endpoint anchors of the VMA scale. Its KO must stay
+consistent with `vma.scale.1` and `vma.scale.5`; if either anchor is corrected, correct
+this string too.
+
+`MisokinesiaVideoPlayer.tsx` is mounted with `immersive`, so its non-immersive
+fullscreen button (`Enter fullscreen` / `Exit fullscreen` /
+`Fullscreen is unavailable in this browser`) and its non-immersive hint (`The
+questionnaire will appear automatically when the clip ends.`) are **unreachable in
+the Misokinesia flow** and get no keys. The page-level fullscreen toggle in 6.10 is
+the one participants see.
+
+### 6.8 Shared survey-form chrome
+
+`MisokinesiaMkaqForm.tsx`, `MisokinesiaMAQForm.tsx`, `MisokinesiaGAD7Form.tsx`.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.form.answered_count` | {n}/{m} answered | {n}/{m} 응답 완료 | drafted |
+| `chrome.form.part_counter` | Part {n} / {m} | 파트 {n} / {m} | drafted |
+| `chrome.form.item_range` | Items {a}–{b} of {n} | 문항 {a}–{b} / {n} | drafted |
+| `chrome.form.rate_heading` | Please rate each statement | 각 문장을 평가해 주십시오 | drafted |
+| `chrome.form.item_legend` | {n}. {text} | {n}. {text} | drafted (sr-only) |
+| `chrome.form.pane_progress` | {a}/{b} on this part • {c}/{d} overall | 이 파트 {a}/{b} · 전체 {c}/{d} | drafted |
+| `chrome.form.scale_legend_0_3` | 0 · Not at all · 1 · A little · 2 · A good deal · 3 · Almost all the time | 0 · 전혀 아니다 · 1 · 가끔 · 2 · 자주 · 3 · 거의 항상 그렇다 | drafted |
+| `chrome.mkaq.instrument_label` | MkAQ · Misokinesia Assessment | MkAQ · 미소키네시아 평가 | drafted |
+| `chrome.maq.instrument_label` | MAQ · Misophonia Assessment | MAQ · 미소포니아 평가 | drafted |
+| `chrome.gad7.instrument_label` | GAD-7 · Anxiety Assessment | GAD-7 · 불안 평가 | drafted |
+| `chrome.gad7.scale_legend` | 0 · Not at all · 1 · Several days · 2 · More than half the days · 3 · Nearly every day | 0 · 전혀 방해받지 않았다 · 1 · 며칠 · 2 · 2주 중 절반 이상 · 3 · 거의 매일 | drafted |
+
+The GAD-7 form's `<h2>` is not chrome: it renders `gad7.stem` from section 5. The two
+scale-legend strings **abbreviate** the real anchors to fit one line; they are chrome
+and must never be substituted for `mkaq.scale.*` / `maq.scale.*` / `gad7.scale.*`. The
+chip `title` tooltips do render the real section-5 anchors.
+
+### 6.9 End-of-task and completion
+
+`MisokinesiaEndOfTaskForm.tsx`, `page.tsx` (`phase === "complete"`).
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.end.kicker` | End of task | 과제 종료 | drafted |
+| `chrome.end.heading` | A few last questions | 마지막 몇 가지 질문 | drafted |
+| `chrome.end.help` | All fields are optional — answer as many as you like. | 모든 문항은 선택 사항입니다. 원하시는 만큼만 답해 주십시오. | drafted |
+| `chrome.end.optional_placeholder` | Optional — leave blank if none | 선택 사항 — 없으면 비워 두십시오 | drafted |
+| `chrome.complete.kicker` | Session complete | 세션 완료 | drafted |
+| `chrome.complete.title` | Thank you | 감사합니다 | drafted |
+| `chrome.complete.body` | The session is complete. Please return this device to the research assistant. | 세션이 완료되었습니다. 이 기기를 연구 보조원에게 돌려주십시오. | drafted |
+| `chrome.complete.back` | Back to Misokinesia | 미소키네시아로 돌아가기 | drafted |
+
+`chrome.complete.back` navigates to the RA launch page at `/misokinesia`. It is
+rendered on a participant screen, so it is localized, but the page it lands on is
+RA-facing and stays English.
+
+### 6.10 Fullscreen toggle
+
+`page.tsx`, `FullscreenButton`. Visible label and `aria-label` differ when entering,
+so they are two keys.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.fullscreen.enter` | Fullscreen | 전체 화면 | drafted |
+| `chrome.fullscreen.enter_aria` | Enter fullscreen | 전체 화면 시작 | drafted (aria) |
+| `chrome.fullscreen.exit` | Exit fullscreen | 전체 화면 종료 | drafted |
+
+`chrome.fullscreen.exit` serves as both the visible label and the `aria-label` in the
+exit state.
+
+### 6.11 Trial-run section jumper (RA-only)
+
+`MisokinesiaSectionJumper.tsx`, labels from `MISOKINESIA_SECTION_JUMP_SECTIONS` in
+`frontend/src/lib/misokinesia-section-jump.ts`. Rendered **only in trial-run mode**,
+which no participant ever enters — it is a rehearsal control for the RA.
+
+Keys exist so the component has no inline literals, but KO is optional here: leaving
+these English in a KO trial run is acceptable and is not a defect.
+
+| Key | EN | KO | Provenance |
+|---|---|---|---|
+| `chrome.jumper.aria` | Trial section jumps | 리허설 구간 이동 | drafted (aria) |
+| `chrome.jumper.intro` | Intro | 안내 | drafted |
+| `chrome.jumper.clips` | Clips | 영상 | drafted |
+| `chrome.jumper.mkaq` | MkAQ | MkAQ | drafted |
+| `chrome.jumper.gad7` | GAD-7 | GAD-7 | drafted |
+| `chrome.jumper.maq` | MAQ | MAQ | drafted |
+| `chrome.jumper.end` | End | 종료 | drafted |
+| `chrome.jumper.done` | Done | 완료 | drafted |
+
+### 6.12 Out of scope for this catalogue
+
+| Surface | Why excluded |
+|---|---|
+| `MisokinesiaLaunchPage.tsx` and everything under `frontend/src/app/(ra)/` | RA-facing. The RA dashboard is English-only per section 1. |
+| Server error messages surfaced through `getParticipantErrorMessage` | Produced by FastAPI, not the frontend. English-only today; localizing them is a backend change. |
+| The browser's native `beforeunload` confirmation (`useTaskExitGuard`) | Text is supplied by the browser and cannot be set by the page. |
+| Non-immersive `MisokinesiaVideoPlayer` chrome | Unreachable in the Misokinesia flow (see 6.7). |

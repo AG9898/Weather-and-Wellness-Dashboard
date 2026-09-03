@@ -4944,7 +4944,7 @@
       "id": "T1848",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - instrument and UI string catalogue",
-      "status": "todo",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "estimate": "M",
