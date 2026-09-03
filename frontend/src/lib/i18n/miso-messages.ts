@@ -396,6 +396,8 @@ const MISO_MESSAGES_EN = {
   "ra.launch.error.start_status": "Server error ({status}): {message}",
   "ra.launch.error.trial": "Failed to start trial mode. Please try again.",
   "ra.launch.error.trial_status": "Trial launch failed ({status}): {message}",
+  "ra.launch.error.trial_clip_count":
+    "Full trial manifest returned only {count} clips. Expected the full active stimulus set.",
 } as const;
 
 /** Every display-only string key in the Misokinesia catalogue. */
@@ -733,6 +735,8 @@ const MISO_MESSAGES_KO: Record<MisoMessageKey, string> = {
   "ra.launch.error.start_status": "서버 오류 ({status}): {message}",
   "ra.launch.error.trial": "리허설을 시작하지 못했습니다. 다시 시도해 주세요.",
   "ra.launch.error.trial_status": "리허설 시작 실패 ({status}): {message}",
+  "ra.launch.error.trial_clip_count":
+    "전체 리허설 매니페스트에 영상이 {count}개만 있습니다. 활성 자극 세트 전체가 필요합니다.",
 };
 
 export const MISO_MESSAGES: Readonly<

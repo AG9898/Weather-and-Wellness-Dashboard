@@ -6,6 +6,7 @@ import {
   MISO_LOCALES,
   misoLocaleTag,
   misoMessage,
+  misoOptionLabel,
   type MisoLocale,
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -105,9 +106,30 @@ function formatDemographicValue(value: string | number | null | undefined): stri
   return String(value);
 }
 
-function formatDemographics(row: MisoDashboardSessionItem): string {
-  const values = [row.age, row.sex, row.residence_status].map(formatDemographicValue);
-  return values.join(" · ");
+/**
+ * `sex` and `residence_status` arrive from the dashboard as stored option keys
+ * (`sex_female`, `residence_citizenship`), so they must be rendered through the
+ * section 2 label maps rather than printed raw. `misoOptionLabel` returns the
+ * key unchanged when it does not recognise it, which keeps rows written before
+ * the option-key migration legible instead of blanking them.
+ */
+function formatDemographicOption(
+  field: "sex" | "residence_status",
+  value: string | null | undefined,
+  locale: MisoLocale,
+): string {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+  return misoOptionLabel(field, value, locale);
+}
+
+function formatDemographics(row: MisoDashboardSessionItem, locale: MisoLocale): string {
+  return [
+    formatDemographicValue(row.age),
+    formatDemographicOption("sex", row.sex, locale),
+    formatDemographicOption("residence_status", row.residence_status, locale),
+  ].join(" · ");
 }
 
 function ScoreRows({ items }: { items: MisoVideoScoreItem[] }) {
@@ -321,7 +343,7 @@ export default function MisokinesiaLaunchPage({
                   </span>
                   <span className="text-muted-foreground">{formatRelativeTime(row.started_at, locale)}</span>
                   <span className="min-w-0 truncate text-muted-foreground">
-                    {formatDemographics(row)}
+                    {formatDemographics(row, locale)}
                   </span>
                   <span
                     className="tabular-nums text-muted-foreground sm:text-right"

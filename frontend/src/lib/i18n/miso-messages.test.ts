@@ -89,6 +89,48 @@ describe("miso message catalogue", () => {
     ]);
   });
 
+  it("leaves no English-only remainder on the RA launch page", () => {
+    // The launch page is localized as a whole surface (LOCALIZATION.md s1), so
+    // every error branch the page can render must be a catalogue row — the
+    // full-trial stimulus-set guard included, which is thrown as an Error and
+    // surfaced verbatim.
+    for (const key of [
+      "ra.launch.error.dashboard",
+      "ra.launch.error.dashboard_status",
+      "ra.launch.error.start",
+      "ra.launch.error.start_status",
+      "ra.launch.error.trial",
+      "ra.launch.error.trial_status",
+      "ra.launch.error.trial_clip_count",
+    ] as MisoMessageKey[]) {
+      expect(MISO_MESSAGES.en[key]).toBeTruthy();
+      expect(MISO_MESSAGES.ko[key]).toBeTruthy();
+      expect(MISO_MESSAGES.ko[key]).not.toBe(MISO_MESSAGES.en[key]);
+    }
+  });
+
+  it("interpolates the clip count into the full-trial guard in both locales", () => {
+    expect(
+      misoMessage("ra.launch.error.trial_clip_count", "en", { count: 5 }),
+    ).toContain("only 5 clips");
+    expect(
+      misoMessage("ra.launch.error.trial_clip_count", "ko", { count: 5 }),
+    ).toContain("5개");
+  });
+
+  it("localizes the recent-sessions demographic option keys", () => {
+    // The dashboard returns stored keys; the launch table renders them through
+    // these maps, so a raw `sex_female` must never reach the RA.
+    expect(misoOptionLabel("sex", "sex_female", "en")).toBe("Female");
+    expect(misoOptionLabel("sex", "sex_female", "ko")).toBe("여성");
+    expect(misoOptionLabel("residence_status", "residence_citizenship", "ko")).toBe(
+      "대한민국 국적",
+    );
+    // A pre-migration English literal is unknown to the map and must survive
+    // verbatim rather than blanking the cell.
+    expect(misoOptionLabel("sex", "Female", "ko")).toBe("Female");
+  });
+
   it("keeps the KO GAD-7 distinct from the EN wording", () => {
     // Guards against a placeholder KO row being left as an English copy in a
     // validated instrument.

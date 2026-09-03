@@ -146,8 +146,12 @@ function MisokinesiaPageContent() {
       const trialState = createTrialRunState("misokinesia", mode);
       const trialManifest = await getMisokinesiaTrialManifest(mode === "full");
       if (mode === "full" && trialManifest.clips.length <= SHORT_TRIAL_CLIP_COUNT) {
+        // Surfaced verbatim through the `err.message` branch below, so it is
+        // built from the catalogue rather than an inline literal.
         throw new Error(
-          `Full trial manifest returned only ${trialManifest.clips.length} clips. Expected the full active stimulus set.`
+          misoMessage("ra.launch.error.trial_clip_count", locale, {
+            count: trialManifest.clips.length,
+          })
         );
       }
       const manifest = createTrialRunMisokinesiaManifest(

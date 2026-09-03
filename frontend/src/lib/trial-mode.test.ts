@@ -108,7 +108,12 @@ describe("trial-mode launch controls", () => {
 
     expect(pageSource).toContain("createTrialRunState(\"misokinesia\", mode)");
     expect(pageSource).toContain("getMisokinesiaTrialManifest(mode === \"full\")");
-    expect(pageSource).toContain("Full trial manifest returned only");
+    // The guard's wording moved into the localized catalogue; the guard itself
+    // must stay on the launch surface.
+    expect(pageSource).toContain("ra.launch.error.trial_clip_count");
+    expect(MISO_MESSAGES.en["ra.launch.error.trial_clip_count"]).toContain(
+      "Full trial manifest returned only"
+    );
     expect(apiSource).toContain('"/misokinesia/trial-manifest?full=true"');
     expect(componentSource).toContain("ra.launch.button.full_trial");
     expect(MISO_MESSAGES.en["ra.launch.button.full_trial"]).toBe("Full Trial");

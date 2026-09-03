@@ -41,7 +41,10 @@ Rules:
   `docs/labs/weather-wellness/misokinesia/`.
 - **One RA exception: the `/misokinesia` launch page.** It renders in the locale the
   RA has selected so the RA can see at a glance which language version is about to
-  run. Its strings are section 6.13. No other RA surface is translated.
+  run. The exception is the whole page, not a subset of it: every string the page
+  renders follows the toggle, including error branches and the demographic option
+  keys shown in the recent-sessions table. Its strings are section 6.13. No other RA
+  surface is translated.
 - `en` is the default. A session with no recorded locale is `en`.
 - Locale is fixed for the lifetime of a Misokinesia session. It is selected by the RA
   at session start, not by the participant mid-flow: the EN/KO toggle on
@@ -1025,7 +1028,6 @@ these English in a KO trial run is acceptable and is not a defect.
 | Surface | Why excluded |
 |---|---|
 | Everything under `frontend/src/app/(ra)/` except the `/misokinesia` launch page | RA-facing. The rest of the RA UI is English-only per section 1. The launch page itself is section 6.13. |
-| The "Full trial manifest returned only N clips" guard on the launch page | RA diagnostic for a misconfigured stimulus set, not operational copy. English-only. |
 | Server error messages surfaced through `getParticipantErrorMessage` | Produced by FastAPI, not the frontend. English-only today; localizing them is a backend change. |
 | The browser's native `beforeunload` confirmation (`useTaskExitGuard`) | Text is supplied by the browser and cannot be set by the page. |
 | Non-immersive `MisokinesiaVideoPlayer` chrome | Unreachable in the Misokinesia flow (see 6.7). |
@@ -1074,7 +1076,21 @@ The two locale codes on the toggle are identical in both locales by design.
 | `ra.launch.error.start_status` | Server error ({status}): {message} | 서버 오류 ({status}): {message} | drafted |
 | `ra.launch.error.trial` | Failed to start trial mode. Please try again. | 리허설을 시작하지 못했습니다. 다시 시도해 주세요. | drafted |
 | `ra.launch.error.trial_status` | Trial launch failed ({status}): {message} | 리허설 시작 실패 ({status}): {message} | drafted |
+| `ra.launch.error.trial_clip_count` | Full trial manifest returned only {count} clips. Expected the full active stimulus set. | 전체 리허설 매니페스트에 영상이 {count}개만 있습니다. 활성 자극 세트 전체가 필요합니다. | drafted |
+
+**The whole page is localized.** Every string this page renders itself follows the
+toggle — headings, buttons, stat and table chrome, relative times, and every error
+branch including the full-trial stimulus-set guard. A new literal added to this page
+or to its container in `frontend/src/app/(ra)/misokinesia/page.tsx` must go in the
+table above; there is no English-only remainder on this surface.
+
+Three classes of text on the page are **data, not chrome**, and so are not table rows:
+
+| Value | Rendering rule |
+|---|---|
+| `sex` and `residence_status` in the recent-sessions table | Stored option keys. Localized through the section 2 label maps via `misoOptionLabel`, so they follow the toggle. A key the map does not recognise renders verbatim, which keeps pre-migration rows legible. |
+| Participant numbers (`MKP-0001`), video labels, ages and scores | Identifiers and measurements. Rendered verbatim in both locales; numerals and the `—` empty placeholder are locale-neutral. |
+| `{status}` and `{message}` in the error rows | Verbatim FastAPI text. The frame around them is localized; the backend detail is English-only (see 6.12). |
 
 Dates and times outside these format strings are rendered by `Intl` with the locale's
-BCP 47 tag (`en-CA` / `ko-KR`), not from this table. `{status}` and `{message}` carry
-verbatim backend text, which is English-only (see 6.12).
+BCP 47 tag (`en-CA` / `ko-KR`), not from this table.
