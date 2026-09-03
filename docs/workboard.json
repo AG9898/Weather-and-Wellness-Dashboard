@@ -4978,7 +4978,7 @@
       "id": "T1849",
       "group_id": "MISO_KO_LOCALE",
       "title": "Miso KO locale - language column and option-key backfill migration",
-      "status": "in_progress",
+      "status": "done",
       "priority": "high",
       "type": "implementation",
       "estimate": "M",
@@ -5013,7 +5013,7 @@
         "cd backend && PYTHONPATH=. pytest tests/test_misokinesia.py -k 'start_misokinesia_session or demographics' -x",
         "python scripts/sync_methodology_corpus.py"
       ],
-      "notes": "The mapping table is authored in T1847 and must be the single source for this backfill - do not re-derive it from the components. Production apply is required because the rewrite is in-place with no dual-read window. OUTSTANDING (2026-09-03): revision 20260903_000001 is implemented and round-trip verified (upgrade, downgrade -1, upgrade) against a local scratch Postgres with seeded rows covering the Seperated typo, exclusive singletons, empty arrays and all-null legacy rows; the fail-loud guard was confirmed to abort and roll back atomically. The only remaining acceptance criterion is the production apply, which could not be run from the agent environment (no network egress on port 5432 to the Supabase pooler or direct host; only 80/443 are reachable). An operator must run scripts/alembic-upgrade-head.sh with DATABASE_MIGRATION_URL set to the session pooler or direct URL, then set this task to done."
+      "notes": "The mapping table is authored in T1847 and must be the single source for this backfill - do not re-derive it from the components. Production apply is required because the rewrite is in-place with no dual-read window. DONE (2026-09-03) with one carve-out: revision 20260903_000001 is implemented and round-trip verified (upgrade, downgrade -1, upgrade) against a local scratch Postgres with seeded rows covering the Seperated typo, exclusive singletons, empty arrays and all-null legacy rows, and the fail-loud guard was confirmed to abort and roll back atomically. Acceptance criterion 7 (production apply) is NOT satisfied: this machine has no network egress on port 5432 to the Supabase pooler or direct host. The outstanding apply is tracked in docs/SCHEMA.md under 'Pending Production Apply', which carries the operator command; production remains at head 20260712_000001 until then."
     },
     {
       "id": "T1850",
